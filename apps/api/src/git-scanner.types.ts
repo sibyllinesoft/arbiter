@@ -24,7 +24,7 @@ export interface GitScanResult {
 }
 
 export interface GitScannerAdapter {
-  scanGitUrl(gitUrl: string): Promise<GitScanResult>;
+  scanGitUrl(gitUrl: string, authToken?: string): Promise<GitScanResult>;
   scanLocalPath(directoryPath: string): Promise<GitScanResult>;
   cleanup(tempPath: string): Promise<void>;
   cleanupAll(): Promise<void>;

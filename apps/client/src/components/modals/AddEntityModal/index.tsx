@@ -291,9 +291,8 @@ export function AddEntityModal({
     const isLargeEditor =
       field.component === "monaco" ||
       field.component === "key-value" ||
-      field.type === "textarea" ||
-      (field.type === "textarea" &&
-        (field.markdown || (entityType === "epic" && field.name === "description")));
+      field.markdown ||
+      (entityType === "epic" && field.name === "description");
 
     if (isLargeEditor) {
       editorFields.push(field);

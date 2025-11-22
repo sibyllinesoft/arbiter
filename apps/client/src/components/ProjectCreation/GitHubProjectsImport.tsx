@@ -21,10 +21,7 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
   const [isCreatingProject, setIsCreatingProject] = React.useState(false);
 
   const {
-    gitHubRepos,
-    selectedRepos,
-    reposByOwner,
-    isLoadingGitHub,
+    state: { gitHubRepos, selectedRepos, reposByOwner, isLoadingGitHub },
     setGitHubRepos,
     setGitHubOrgs,
     setSelectedRepos,
@@ -101,15 +98,26 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
         // Search through all repos (both user repos and org repos)
         const repo = gitHubRepos.find((r) => r.id === repoId);
         if (repo) {
-          const scanResult = await apiService.scanGitUrl(repo.clone_url);
-          if (scanResult.success) {
-            const projectName = repo.name;
-            await apiService.createProject(projectName, scanResult.tempPath);
-            toast.success(`Project "${projectName}" imported successfully`);
-          } else {
-            toast.error(
-              `Failed to scan repository "${repo.name}": ${scanResult.error || "Unknown error"}`,
-            );
+          try {
+            const scanResult = await apiService.scanGitUrl(repo.clone_url);
+            if (scanResult.success) {
+              const projectName = repo.name;
+              await apiService.createProject(projectName, scanResult.tempPath);
+              toast.success(`Project "${projectName}" imported successfully`);
+            } else {
+              toast.error(
+                `Failed to scan repository "${repo.name}": ${scanResult.error || "Unknown error"}`,
+              );
+            }
+          } catch (error: any) {
+            const errorMessage =
+              error?.details?.error ||
+              error?.details?.detail ||
+              error?.details?.message ||
+              error?.message ||
+              "Unknown error";
+            toast.error(`Failed to scan repository "${repo.name}": ${errorMessage}`);
+            console.error(`Scan error for ${repo.name}:`, error);
           }
         } else {
           console.warn(`Repository with ID ${repoId} not found in gitHubRepos`);
@@ -262,7 +270,7 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
         </>
       )}
 
-      {!isLoadingGitHub && Object.keys(reposByOwner).length === 0 && (
+      {!isLoadingGitHub && (!reposByOwner || Object.keys(reposByOwner).length === 0) && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <GitIcon className="mx-auto mb-4 h-12 w-12 text-gray-300 dark:text-graphite-500" />

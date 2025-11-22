@@ -37,7 +37,7 @@ export class GitScanner implements GitScannerAdapter {
   /**
    * Clone a git repository to a temporary directory and scan its contents
    */
-  async scanGitUrl(gitUrl: string): Promise<GitScanResult> {
+  async scanGitUrl(gitUrl: string, authToken?: string): Promise<GitScanResult> {
     let tempPath: string | undefined;
 
     try {
@@ -56,8 +56,8 @@ export class GitScanner implements GitScannerAdapter {
       tempPath = await this.createTempDir();
       this.tempDirs.add(tempPath);
 
-      // Clone repository
-      await this.cloneRepository(gitUrl, tempPath);
+      // Clone repository with auth token if provided
+      await this.cloneRepository(gitUrl, tempPath, authToken);
 
       // Scan the cloned repository using parallel workers
       const { files, metrics } = await this.scanDirectoryParallel(tempPath);
@@ -368,14 +368,29 @@ export class GitScanner implements GitScannerAdapter {
     return tempPath;
   }
 
-  private async cloneRepository(gitUrl: string, targetPath: string): Promise<void> {
+  private async cloneRepository(
+    gitUrl: string,
+    targetPath: string,
+    authToken?: string,
+  ): Promise<void> {
     try {
+      // Inject auth token into HTTPS URLs for private repositories
+      let authenticatedUrl = gitUrl;
+      if (authToken && gitUrl.startsWith("https://")) {
+        // Format: https://oauth2:TOKEN@github.com/user/repo.git
+        authenticatedUrl = gitUrl.replace("https://", `https://oauth2:${authToken}@`);
+      }
+
       // Use shallow clone for faster downloads
       // Timeout is configurable for demo environments vs production
-      await execFileAsync("git", ["clone", "--depth", "1", "--single-branch", gitUrl, targetPath], {
-        timeout: this.cloneTimeout,
-        maxBuffer: 10 * 1024 * 1024, // 10MB max buffer for large repos
-      });
+      await execFileAsync(
+        "git",
+        ["clone", "--depth", "1", "--single-branch", authenticatedUrl, targetPath],
+        {
+          timeout: this.cloneTimeout,
+          maxBuffer: 10 * 1024 * 1024, // 10MB max buffer for large repos
+        },
+      );
     } catch (error) {
       const isTimeout = error instanceof Error && error.message.includes("ETIMEDOUT");
       const isKilled = error instanceof Error && (error as any).killed;

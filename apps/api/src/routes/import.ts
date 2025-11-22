@@ -21,7 +21,9 @@ export function createImportRouter(deps: Dependencies) {
         );
       }
 
-      const result = await gitScanner.scanGitUrl(gitUrl);
+      // Pass GitHub token for private repository access
+      const githubToken = process.env.GITHUB_TOKEN;
+      const result = await gitScanner.scanGitUrl(gitUrl, githubToken);
 
       if (!result.success) {
         return c.json(
