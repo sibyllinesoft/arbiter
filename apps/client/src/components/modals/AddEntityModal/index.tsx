@@ -283,6 +283,25 @@ export function AddEntityModal({
   const modalDescription = descriptionOverride ?? defaultDescription;
   const submitVerb = mode === "edit" ? "Update" : "Add";
 
+  // Split fields into regular inputs and large editor inputs
+  const regularFields: typeof fields = [];
+  const editorFields: typeof fields = [];
+
+  fields.forEach((field) => {
+    const isLargeEditor =
+      field.component === "monaco" ||
+      field.component === "key-value" ||
+      field.type === "textarea" ||
+      (field.type === "textarea" &&
+        (field.markdown || (entityType === "epic" && field.name === "description")));
+
+    if (isLargeEditor) {
+      editorFields.push(field);
+    } else {
+      regularFields.push(field);
+    }
+  });
+
   return (
     <Modal
       open={open}
@@ -295,278 +314,303 @@ export function AddEntityModal({
       containerClassName="px-4 py-6 sm:px-6"
       {...(firstField ? { initialFocus: `#${formId}-${firstField}` } : {})}
     >
-      <form
-        id={formId}
-        onSubmit={handleSubmit}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4"
-      >
-        {fields.map((field) => {
-          const fieldId = `${formId}-${field.name}`;
-          const rawValue = values[field.name];
-          const errorMessage = errors[field.name];
-          const shouldRenderMarkdown =
-            field.type === "textarea" &&
-            (field.markdown || (entityType === "epic" && field.name === "description"));
-          const resolvedOptions =
-            field.type === "select"
-              ? field.resolveOptions
-                ? field.resolveOptions(values)
-                : (field.options ?? [])
-              : [];
+      <form id={formId} onSubmit={handleSubmit} className="space-y-6">
+        {/* Regular input fields section */}
+        {regularFields.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+            {regularFields.map((field) => {
+              const fieldId = `${formId}-${field.name}`;
+              const rawValue = values[field.name];
+              const errorMessage = errors[field.name];
+              const resolvedOptions =
+                field.type === "select"
+                  ? field.resolveOptions
+                    ? field.resolveOptions(values)
+                    : (field.options ?? [])
+                  : [];
 
-          if (field.isVisible && !field.isVisible(values, resolvedOptions)) {
-            return null;
-          }
-
-          if (field.component === "key-value") {
-            const pairs = toKeyValuePairs(rawValue);
-            return (
-              <div key={field.name} className="col-span-full space-y-1">
-                <label
-                  className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
-                  htmlFor={fieldId}
-                >
-                  {field.label}
-                </label>
-                <KeyValueEditor
-                  pairs={pairs}
-                  onChange={(nextPairs: KeyValueEntry[]) => handleChange(field.name, nextPairs)}
-                  {...(field.keyPlaceholder !== undefined
-                    ? { keyPlaceholder: field.keyPlaceholder }
-                    : {})}
-                  {...(field.valuePlaceholder !== undefined
-                    ? { valuePlaceholder: field.valuePlaceholder }
-                    : {})}
-                  {...(field.addLabel !== undefined ? { addLabel: field.addLabel } : {})}
-                />
-                {field.description && (
-                  <p
-                    className="text-xs text-graphite-500 dark:text-graphite-300"
-                    dangerouslySetInnerHTML={{ __html: markdownLinkToHtml(field.description) }}
-                  />
-                )}
-                {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
-              </div>
-            );
-          }
-
-          if (field.component === "monaco") {
-            const currentValue = toStringValue(rawValue);
-            return (
-              <div key={field.name} className="col-span-1 md:col-span-2 lg:col-span-3 space-y-1">
-                <label
-                  className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
-                  htmlFor={fieldId}
-                >
-                  {field.label}
-                  {field.required && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                <div className="h-[200px] border border-gray-300 dark:border-graphite-700 rounded-md overflow-hidden">
-                  <MonacoEditor
-                    value={currentValue || ""}
-                    onChange={(value) => handleChange(field.name, value)}
-                    language={field.language || "cue"}
-                    theme={isDark ? "vs-dark" : "vs"}
-                    options={{
-                      minimap: { enabled: false },
-                      lineNumbers: "off",
-                      lineNumbersMinChars: 0,
-                      glyphMargin: false,
-                      folding: false,
-                      lineDecorationsWidth: 0,
-                      lineNumbersWidth: 0,
-                      scrollBeyondLastLine: false,
-                      fontSize: 13,
-                      wordWrap: "on",
-                      readOnly: false,
-                    }}
-                  />
-                </div>
-                {field.description && (
-                  <p
-                    className="text-xs text-graphite-500 dark:text-graphite-300"
-                    dangerouslySetInnerHTML={{ __html: markdownLinkToHtml(field.description) }}
-                  />
-                )}
-                {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
-              </div>
-            );
-          }
-
-          if (shouldRenderMarkdown) {
-            const markdownProps: MarkdownFieldProps = {
-              id: fieldId,
-              label: field.label,
-              value: toStringValue(rawValue),
-              onChange: (next: string) => handleChange(field.name, next),
-            };
-
-            if (field.placeholder) {
-              markdownProps.placeholder = field.placeholder;
-            }
-            if (field.description) {
-              markdownProps.description = field.description;
-            }
-            if (field.required) {
-              markdownProps.required = true;
-            }
-            if (errorMessage) {
-              markdownProps.error = errorMessage;
-            }
-
-            return (
-              <div key={field.name} className="col-span-1 md:col-span-2 lg:col-span-3">
-                <MarkdownField {...markdownProps} />
-              </div>
-            );
-          }
-
-          if (field.type === "textarea") {
-            return (
-              <div key={field.name} className="col-span-1 md:col-span-2 lg:col-span-3 space-y-1">
-                <label
-                  htmlFor={fieldId}
-                  className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
-                >
-                  {field.label}
-                  {field.required && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                <textarea
-                  id={fieldId}
-                  name={field.name}
-                  placeholder={field.placeholder}
-                  value={toStringValue(rawValue)}
-                  onChange={(event) => handleChange(field.name, event.target.value)}
-                  className="block w-full rounded-md border border-gray-300 dark:border-graphite-700 bg-white dark:bg-graphite-950 text-sm text-graphite-900 dark:text-graphite-50 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:border-blue-400 dark:focus:ring-blue-500/40 min-h-[120px] resize-vertical"
-                />
-                {field.description && (
-                  <p
-                    className="text-xs text-graphite-500 dark:text-graphite-300"
-                    dangerouslySetInnerHTML={{ __html: markdownLinkToHtml(field.description) }}
-                  />
-                )}
-                {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
-              </div>
-            );
-          }
-
-          if (field.type === "select") {
-            const optionValues = Array.isArray(resolvedOptions) ? resolvedOptions : [];
-            const seen = new Set<string>();
-            const selectOptions: SelectOption[] = [];
-
-            optionValues.forEach((option) => {
-              if (typeof option === "string") {
-                const trimmed = option.trim();
-                if (!trimmed) return;
-                const dedupeKey = trimmed.toLowerCase();
-                if (seen.has(dedupeKey)) return;
-                seen.add(dedupeKey);
-                selectOptions.push({ value: trimmed, label: trimmed });
-              } else if (option && typeof option.value === "string") {
-                const trimmedValue = option.value.trim();
-                if (!trimmedValue) return;
-                const dedupeKey = trimmedValue.toLowerCase();
-                if (seen.has(dedupeKey)) return;
-                seen.add(dedupeKey);
-                const normalizedOption: SelectOption = {
-                  value: trimmedValue,
-                  label: option.label?.trim() || trimmedValue,
-                };
-                if (typeof option.description === "string" && option.description.trim()) {
-                  normalizedOption.description = option.description.trim();
-                }
-                if (option.disabled !== undefined) {
-                  normalizedOption.disabled = option.disabled;
-                }
-                if (option.icon !== undefined) {
-                  normalizedOption.icon = option.icon;
-                }
-                if (typeof option.group === "string" && option.group.trim()) {
-                  normalizedOption.group = option.group.trim();
-                }
-                selectOptions.push(normalizedOption);
+              if (field.isVisible && !field.isVisible(values, resolvedOptions)) {
+                return null;
               }
-            });
 
-            const isMultiple = field.multiple === true;
-            const selectValue = isMultiple ? toArray(rawValue) : toStringValue(rawValue).trim();
+              if (field.type === "select") {
+                const optionValues = Array.isArray(resolvedOptions) ? resolvedOptions : [];
+                const seen = new Set<string>();
+                const selectOptions: SelectOption[] = [];
 
-            return (
-              <div key={field.name} className="col-span-1 lg:col-span-2 space-y-1">
-                <label
-                  htmlFor={fieldId}
-                  className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
-                >
-                  {field.label}
-                  {field.required && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                <Select
-                  key={field.name}
-                  label={field.label}
-                  hideLabel
-                  {...(isMultiple ? { multiple: true } : {})}
-                  placeholder={
-                    field.placeholder ||
-                    (isMultiple ? "Select one or more options" : "Select an option")
-                  }
-                  {...(isMultiple
-                    ? { value: selectValue as string[] }
-                    : selectValue
-                      ? { value: selectValue as string }
-                      : {})}
-                  onChange={(nextValue) => {
-                    if (isMultiple) {
-                      const normalized = Array.isArray(nextValue)
-                        ? nextValue
-                        : nextValue
-                          ? [String(nextValue)]
-                          : [];
-                      handleChange(field.name, normalized);
-                    } else {
-                      const normalized = Array.isArray(nextValue)
-                        ? (nextValue[0] ?? "")
-                        : ((nextValue as string | undefined) ?? "");
-                      handleChange(field.name, normalized);
+                optionValues.forEach((option) => {
+                  if (typeof option === "string") {
+                    const trimmed = option.trim();
+                    if (!trimmed) return;
+                    const dedupeKey = trimmed.toLowerCase();
+                    if (seen.has(dedupeKey)) return;
+                    seen.add(dedupeKey);
+                    selectOptions.push({ value: trimmed, label: trimmed });
+                  } else if (option && typeof option.value === "string") {
+                    const trimmedValue = option.value.trim();
+                    if (!trimmedValue) return;
+                    const dedupeKey = trimmedValue.toLowerCase();
+                    if (seen.has(dedupeKey)) return;
+                    seen.add(dedupeKey);
+                    const normalizedOption: SelectOption = {
+                      value: trimmedValue,
+                      label: option.label?.trim() || trimmedValue,
+                    };
+                    if (typeof option.description === "string" && option.description.trim()) {
+                      normalizedOption.description = option.description.trim();
                     }
-                  }}
-                  options={selectOptions}
-                  disabled={selectOptions.length === 0}
-                  fullWidth
-                  className={INPUT_SURFACE_CLASSES}
-                  dropdownClassName={SELECT_DROPDOWN_CLASSES}
-                  {...(field.required ? { required: true } : {})}
-                  {...(errorMessage ? { error: errorMessage } : {})}
-                />
-                {field.description && (
-                  <p
-                    className="text-xs text-graphite-500 dark:text-graphite-300"
-                    dangerouslySetInnerHTML={{ __html: markdownLinkToHtml(field.description) }}
-                  />
-                )}
-              </div>
-            );
-          }
+                    if (option.disabled !== undefined) {
+                      normalizedOption.disabled = option.disabled;
+                    }
+                    if (option.icon !== undefined) {
+                      normalizedOption.icon = option.icon;
+                    }
+                    if (typeof option.group === "string" && option.group.trim()) {
+                      normalizedOption.group = option.group.trim();
+                    }
+                    selectOptions.push(normalizedOption);
+                  }
+                });
 
-          const inputProps = {
-            id: fieldId,
-            label: field.label,
-            placeholder: field.placeholder,
-            required: field.required,
-            value: toStringValue(rawValue),
-            onChange: (event: ChangeEvent<HTMLInputElement>) =>
-              handleChange(field.name, event.target.value),
-            className: INPUT_SURFACE_CLASSES,
-          };
+                const isMultiple = field.multiple === true;
+                const selectValue = isMultiple ? toArray(rawValue) : toStringValue(rawValue).trim();
 
-          return (
-            <div key={field.name} className="col-span-1 lg:col-span-2">
-              <Input {...inputProps} {...(errorMessage ? { error: errorMessage } : {})} />
-            </div>
-          );
-        })}
+                return (
+                  <div key={field.name} className="col-span-1 lg:col-span-2 space-y-1">
+                    <label
+                      htmlFor={fieldId}
+                      className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
+                    >
+                      {field.label}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    <Select
+                      key={field.name}
+                      label={field.label}
+                      hideLabel
+                      {...(isMultiple ? { multiple: true } : {})}
+                      placeholder={
+                        field.placeholder ||
+                        (isMultiple ? "Select one or more options" : "Select an option")
+                      }
+                      {...(isMultiple
+                        ? { value: selectValue as string[] }
+                        : selectValue
+                          ? { value: selectValue as string }
+                          : {})}
+                      onChange={(nextValue) => {
+                        if (isMultiple) {
+                          const normalized = Array.isArray(nextValue)
+                            ? nextValue
+                            : nextValue
+                              ? [String(nextValue)]
+                              : [];
+                          handleChange(field.name, normalized);
+                        } else {
+                          const normalized = Array.isArray(nextValue)
+                            ? (nextValue[0] ?? "")
+                            : ((nextValue as string | undefined) ?? "");
+                          handleChange(field.name, normalized);
+                        }
+                      }}
+                      options={selectOptions}
+                      disabled={selectOptions.length === 0}
+                      fullWidth
+                      className={INPUT_SURFACE_CLASSES}
+                      dropdownClassName={SELECT_DROPDOWN_CLASSES}
+                      {...(field.required ? { required: true } : {})}
+                      {...(errorMessage ? { error: errorMessage } : {})}
+                    />
+                    {field.description && (
+                      <p
+                        className="text-xs text-graphite-500 dark:text-graphite-300"
+                        dangerouslySetInnerHTML={{ __html: markdownLinkToHtml(field.description) }}
+                      />
+                    )}
+                  </div>
+                );
+              }
 
-        <div className="col-span-full flex items-center justify-end pt-2">
+              const inputProps = {
+                id: fieldId,
+                label: field.label,
+                placeholder: field.placeholder,
+                required: field.required,
+                value: toStringValue(rawValue),
+                onChange: (event: ChangeEvent<HTMLInputElement>) =>
+                  handleChange(field.name, event.target.value),
+                className: INPUT_SURFACE_CLASSES,
+              };
+
+              return (
+                <div key={field.name} className="col-span-1 lg:col-span-2">
+                  <Input {...inputProps} {...(errorMessage ? { error: errorMessage } : {})} />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Large editor fields section */}
+        {editorFields.length > 0 && (
+          <div className="space-y-4">
+            {editorFields.map((field) => {
+              const fieldId = `${formId}-${field.name}`;
+              const rawValue = values[field.name];
+              const errorMessage = errors[field.name];
+              const shouldRenderMarkdown =
+                field.type === "textarea" &&
+                (field.markdown || (entityType === "epic" && field.name === "description"));
+              const resolvedOptions =
+                field.type === "select"
+                  ? field.resolveOptions
+                    ? field.resolveOptions(values)
+                    : (field.options ?? [])
+                  : [];
+
+              if (field.isVisible && !field.isVisible(values, resolvedOptions)) {
+                return null;
+              }
+
+              if (field.component === "key-value") {
+                const pairs = toKeyValuePairs(rawValue);
+                return (
+                  <div key={field.name} className="space-y-1">
+                    <label
+                      className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
+                      htmlFor={fieldId}
+                    >
+                      {field.label}
+                    </label>
+                    <KeyValueEditor
+                      pairs={pairs}
+                      onChange={(nextPairs: KeyValueEntry[]) => handleChange(field.name, nextPairs)}
+                      {...(field.keyPlaceholder !== undefined
+                        ? { keyPlaceholder: field.keyPlaceholder }
+                        : {})}
+                      {...(field.valuePlaceholder !== undefined
+                        ? { valuePlaceholder: field.valuePlaceholder }
+                        : {})}
+                      {...(field.addLabel !== undefined ? { addLabel: field.addLabel } : {})}
+                    />
+                    {field.description && (
+                      <p
+                        className="text-xs text-graphite-500 dark:text-graphite-300"
+                        dangerouslySetInnerHTML={{ __html: markdownLinkToHtml(field.description) }}
+                      />
+                    )}
+                    {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
+                  </div>
+                );
+              }
+
+              if (field.component === "monaco") {
+                const currentValue = toStringValue(rawValue);
+                return (
+                  <div key={field.name} className="space-y-1">
+                    <label
+                      className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
+                      htmlFor={fieldId}
+                    >
+                      {field.label}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    <div className="h-[200px] border border-gray-300 dark:border-graphite-700 rounded-md overflow-hidden">
+                      <MonacoEditor
+                        value={currentValue || ""}
+                        onChange={(value) => handleChange(field.name, value)}
+                        language={field.language || "cue"}
+                        theme={isDark ? "vs-dark" : "vs"}
+                        options={{
+                          minimap: { enabled: false },
+                          lineNumbers: "off",
+                          lineNumbersMinChars: 0,
+                          glyphMargin: false,
+                          folding: false,
+                          lineDecorationsWidth: 0,
+                          lineNumbersWidth: 0,
+                          scrollBeyondLastLine: false,
+                          fontSize: 13,
+                          wordWrap: "on",
+                          readOnly: false,
+                        }}
+                      />
+                    </div>
+                    {field.description && (
+                      <p
+                        className="text-xs text-graphite-500 dark:text-graphite-300"
+                        dangerouslySetInnerHTML={{ __html: markdownLinkToHtml(field.description) }}
+                      />
+                    )}
+                    {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
+                  </div>
+                );
+              }
+
+              if (shouldRenderMarkdown) {
+                const markdownProps: MarkdownFieldProps = {
+                  id: fieldId,
+                  label: field.label,
+                  value: toStringValue(rawValue),
+                  onChange: (next: string) => handleChange(field.name, next),
+                };
+
+                if (field.placeholder) {
+                  markdownProps.placeholder = field.placeholder;
+                }
+                if (field.description) {
+                  markdownProps.description = field.description;
+                }
+                if (field.required) {
+                  markdownProps.required = true;
+                }
+                if (errorMessage) {
+                  markdownProps.error = errorMessage;
+                }
+
+                return (
+                  <div key={field.name}>
+                    <MarkdownField {...markdownProps} />
+                  </div>
+                );
+              }
+
+              if (field.type === "textarea") {
+                return (
+                  <div key={field.name} className="space-y-1">
+                    <label
+                      htmlFor={fieldId}
+                      className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
+                    >
+                      {field.label}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    <textarea
+                      id={fieldId}
+                      name={field.name}
+                      placeholder={field.placeholder}
+                      value={toStringValue(rawValue)}
+                      onChange={(event) => handleChange(field.name, event.target.value)}
+                      className="block w-full rounded-md border border-gray-300 dark:border-graphite-700 bg-white dark:bg-graphite-950 text-sm text-graphite-900 dark:text-graphite-50 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:border-blue-400 dark:focus:ring-blue-500/40 min-h-[120px] resize-vertical"
+                    />
+                    {field.description && (
+                      <p
+                        className="text-xs text-graphite-500 dark:text-graphite-300"
+                        dangerouslySetInnerHTML={{ __html: markdownLinkToHtml(field.description) }}
+                      />
+                    )}
+                    {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
+                  </div>
+                );
+              }
+
+              return null;
+            })}
+          </div>
+        )}
+
+        {/* Submit button */}
+        <div className="flex items-center justify-end pt-2">
           <Button type="submit">
             {submitVerb} {toSingularLabel(groupLabel, entityType)}
           </Button>
