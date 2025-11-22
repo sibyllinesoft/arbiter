@@ -116,18 +116,112 @@ const INFRA_TYPE_HINTS = new Set([
   "queue",
   "broker",
   "storage",
+  "infrastructure",
+  "platform",
+  "runtime",
+  "observability",
+  "monitoring",
+  "tracing",
 ]);
 
 const INFRA_LANGUAGE_HINTS = new Set(["container", "database", "cache", "message-queue", "queue"]);
 
+// Well-known external infrastructure services and platforms
+const KNOWN_EXTERNAL_SERVICES = new Set([
+  // Databases
+  "postgres",
+  "postgresql",
+  "mysql",
+  "mariadb",
+  "mongodb",
+  "redis",
+  "elasticsearch",
+  "cassandra",
+  "dynamodb",
+  "couchdb",
+  "neo4j",
+  "influxdb",
+  "timescaledb",
+  // Message queues & event streaming
+  "kafka",
+  "rabbitmq",
+  "nats",
+  "activemq",
+  "pulsar",
+  "zeromq",
+  // Caches
+  "memcached",
+  "varnish",
+  // Observability & Monitoring
+  "prometheus",
+  "grafana",
+  "jaeger",
+  "zipkin",
+  "datadog",
+  "newrelic",
+  "sentry",
+  "opentelemetry",
+  "otel",
+  "elastic",
+  "kibana",
+  "logstash",
+  // Web servers & proxies
+  "nginx",
+  "apache",
+  "haproxy",
+  "traefik",
+  "envoy",
+  "caddy",
+  // Platforms & runtimes
+  "phoenix",
+  "elixir",
+  "erlang",
+  // Container & orchestration
+  "docker",
+  "kubernetes",
+  "k8s",
+  "nomad",
+  "mesos",
+]);
+
 export const shouldTreatAsInternalService = (service: InternalServiceCandidate): boolean => {
   const hasSource = Boolean(service.hasSource || service.sourcePath);
-  if (hasSource) {
-    return true;
-  }
 
   const rawRecord = toRecord(service.raw);
   const metadata = toRecord(rawRecord?.metadata);
+
+  // Check service name against known external services and internal patterns
+  const serviceName = normalizeString(rawRecord?.name) ?? normalizeString(metadata?.name);
+  if (serviceName) {
+    // Check for common internal service naming patterns (project-specific prefixes/suffixes)
+    const internalPatterns = [
+      /^smith-/, // smith-admissions, smith-*, etc.
+      /^chat-/, // chat-bridge, chat-*, etc.
+      /-service$/, // *-service
+      /-api$/, // *-api
+      /-backend$/, // *-backend
+      /-app$/, // *-app
+      /-worker$/, // *-worker
+      /-processor$/, // *-processor
+    ];
+
+    const hasInternalPattern = internalPatterns.some((pattern) => pattern.test(serviceName));
+    if (hasInternalPattern) {
+      return true;
+    }
+
+    // Check if the name contains any known external service identifier
+    for (const knownExternal of KNOWN_EXTERNAL_SERVICES) {
+      if (serviceName.includes(knownExternal)) {
+        return false;
+      }
+    }
+  }
+
+  // If it has source code, it's likely internal (but only after checking known externals)
+  if (hasSource) {
+    return true;
+  }
 
   const artifactHint =
     normalizeString(rawRecord?.type) ??

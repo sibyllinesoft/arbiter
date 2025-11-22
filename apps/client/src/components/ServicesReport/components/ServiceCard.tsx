@@ -178,11 +178,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         aria-hidden={!expanded}
       >
         <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, "px-3 py-3 md:px-4 md:py-4 font-medium")}>
-          <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500/70 dark:text-graphite-300/70">
-            Endpoints · {service.endpoints.length}{" "}
-            {service.endpoints.length === 1 ? "endpoint" : "endpoints"}
-          </div>
-
           {service.endpoints.length > 0 ? (
             <div className="mt-2 grid gap-3 grid-cols-1">
               {service.endpoints.map((endpoint) => (
