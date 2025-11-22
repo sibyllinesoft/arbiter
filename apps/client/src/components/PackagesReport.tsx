@@ -134,18 +134,56 @@ export const PackagesReport: React.FC<PackagesReportProps> = ({ projectId, class
     const componentsSource = spec?.components ?? resolved?.components ?? {};
 
     const entries: Array<{ key: string; name: string; data: any }> = [];
+
+    const isPackageType = (comp: any): boolean => {
+      const type = comp?.type?.toString().toLowerCase() ?? "";
+      const detectedType = comp?.metadata?.detectedType?.toString().toLowerCase() ?? "";
+
+      // Package-related type keywords (language-agnostic)
+      const packageKeywords = [
+        "module",
+        "library",
+        "package",
+        "crate",
+        "gem",
+        "wheel",
+        "jar",
+        "egg",
+      ];
+
+      // Check if type or detectedType contains any package keyword
+      const typeMatches = packageKeywords.some(
+        (keyword) => type.includes(keyword) || detectedType.includes(keyword),
+      );
+
+      // Also check for language-specific package patterns in detectedType
+      const languagePackagePatterns = [
+        "cargo",
+        "npm",
+        "pypi",
+        "maven",
+        "nuget",
+        "gem",
+        "composer",
+        "pod",
+      ];
+      const hasLanguagePackage = languagePackagePatterns.some((pattern) =>
+        detectedType.includes(pattern),
+      );
+
+      return typeMatches || hasLanguagePackage;
+    };
+
     if (Array.isArray(componentsSource)) {
       componentsSource.forEach((comp, index) => {
-        const type = comp?.type?.toString().toLowerCase() ?? "";
-        if (type === "module" || type === "library") {
+        if (isPackageType(comp)) {
           const name = comp?.name ?? `package-${index + 1}`;
           entries.push({ key: `package-${index}`, name, data: comp });
         }
       });
     } else if (componentsSource && typeof componentsSource === "object") {
       Object.entries(componentsSource).forEach(([key, value]) => {
-        const type = (value as any)?.type?.toString().toLowerCase() ?? "";
-        if (type === "module" || type === "library") {
+        if (isPackageType(value)) {
           const name = (value as any)?.name ?? key;
           entries.push({ key, name, data: value });
         }
