@@ -114,6 +114,6 @@ export const isServiceDetected = (service: InternalServiceCandidate): boolean =>
  * - External: Infrastructure like Redis, Postgres, etc. without source
  */
 export const shouldTreatAsInternalService = (service: InternalServiceCandidate): boolean => {
-  // If it has source code (package file, source path), it's internal
-  return Boolean(service.hasSource || service.sourcePath);
+  // Only check hasSource - sourcePath can be "docker-compose.yml" which isn't real source
+  return Boolean(service.hasSource);
 };
