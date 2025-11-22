@@ -161,7 +161,7 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
         </div>
       )}
 
-      {Object.keys(reposByOwner).length > 0 && !isLoadingGitHub && (
+      {reposByOwner && Object.keys(reposByOwner).length > 0 && !isLoadingGitHub && (
         <>
           <div className="flex-1 min-h-0 flex flex-col">
             <div className="flex-1 space-y-4 overflow-y-auto pr-2 scrollbar-transparent">
