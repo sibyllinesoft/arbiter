@@ -142,6 +142,7 @@ const KNOWN_EXTERNAL_SERVICES = new Set([
   "neo4j",
   "influxdb",
   "timescaledb",
+  "clickhouse",
   // Message queues & event streaming
   "kafka",
   "rabbitmq",
@@ -182,6 +183,12 @@ const KNOWN_EXTERNAL_SERVICES = new Set([
   "k8s",
   "nomad",
   "mesos",
+  // Collaboration & Communication
+  "mattermost",
+  "slack",
+  "discord",
+  "teams",
+  "rocketchat",
 ]);
 
 export const shouldTreatAsInternalService = (service: InternalServiceCandidate): boolean => {
