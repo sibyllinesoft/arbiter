@@ -198,8 +198,8 @@ export const normalizeService = (key: string, raw: any): NormalizedService => {
     (typeof metadata.framework === "string" && (metadata.framework as string).trim()) ||
     undefined;
 
-  const { path: sourcePathCandidate, hasSource } = resolveSourcePath(raw);
-  const sourcePath = hasSource ? sourcePathCandidate : undefined;
+  const { path: sourcePathCandidate, hasSource: hasActualSource } = resolveSourcePath(raw);
+  const sourcePath = sourcePathCandidate;
 
   const ports = collectPorts(raw);
   const environmentMap = buildEnvironmentMap(raw);
@@ -234,7 +234,7 @@ export const normalizeService = (key: string, raw: any): NormalizedService => {
     description,
     metadataItems,
     endpoints,
-    hasSource: Boolean(sourcePath),
+    hasSource: hasActualSource,
     ...(typeLabel ? { typeLabel } : {}),
     raw: raw ?? null,
     artifactId: artifactId ?? null,
