@@ -71,7 +71,6 @@ Arbiter is a TypeScript monorepo built with Bun, consisting of:
 - **Database**: SQLite with Drizzle ORM
 - **Auth**: OAuth 2.0 with GitHub integration
 - **WebSocket**: Real-time event broadcasting
-- **Lines of Code**: ~9,229
 
 **Key Features**:
 - Project CRUD and management
@@ -86,7 +85,6 @@ Arbiter is a TypeScript monorepo built with Bun, consisting of:
 - **Editor**: Monaco with CUE syntax support
 - **Diagrams**: D3.js + Mermaid for visualizations
 - **State**: Zustand + React Query
-- **Lines of Code**: ~17,121
 
 **Key Features**:
 - Interactive CUE editor with autocomplete
@@ -99,7 +97,6 @@ Arbiter is a TypeScript monorepo built with Bun, consisting of:
 ### Packages
 
 #### CLI (`packages/cli`)
-- **Lines of Code**: ~31,135
 - **Commands**: 50+ across 7 command groups
 - **Design**: Modular, composable, agent-friendly
 
