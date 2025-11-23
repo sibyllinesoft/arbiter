@@ -253,6 +253,7 @@ export class NodeJSPlugin implements ImporterPlugin {
     const metadata: Record<string, unknown> = {
       sourceFile: packageData.filePath,
       root: path.dirname(packageData.filePath),
+      manifest: "package.json",
       language: "javascript",
       framework: this.inferFramework(pkg),
       detectedType,

@@ -107,13 +107,106 @@ export const isServiceDetected = (service: InternalServiceCandidate): boolean =>
 };
 
 /**
+ * Checks if a service has a buildable package file.
+ *
+ * Package files indicate code that can be built/compiled:
+ * - package.json (Node.js/JavaScript/TypeScript)
+ * - Cargo.toml (Rust)
+ * - pyproject.toml, setup.py (Python)
+ * - go.mod (Go)
+ * - pom.xml, build.gradle (Java)
+ */
+export const hasBuildablePackageFile = (raw: unknown, serviceName?: string): boolean => {
+  if (!raw || typeof raw !== "object") {
+    return false;
+  }
+
+  const rawRecord = raw as Record<string, unknown>;
+  const metadata =
+    rawRecord.metadata && typeof rawRecord.metadata === "object"
+      ? (rawRecord.metadata as Record<string, unknown>)
+      : undefined;
+
+  // PRIMARY CHECK: Check for explicit manifest field in metadata
+  const manifest = normalizeString(metadata?.manifest) || normalizeString(rawRecord.manifest);
+  if (manifest) {
+    const buildableManifests = [
+      "package.json",
+      "cargo.toml",
+      "pyproject.toml",
+      "setup.py",
+      "go.mod",
+      "pom.xml",
+      "build.gradle",
+      "pipfile",
+      "requirements.txt",
+    ];
+
+    if (buildableManifests.includes(manifest)) {
+      return true;
+    }
+  }
+
+  // FALLBACK: Check for explicit package.json object
+  const hasPackageJson = getPackageJson(raw);
+  if (hasPackageJson) {
+    return true;
+  }
+
+  // FALLBACK: Check sourceFile path for buildable package files
+  const sourceFile = normalizeString(metadata?.sourceFile) || normalizeString(rawRecord.sourceFile);
+  if (sourceFile) {
+    const packageFiles = [
+      "package.json",
+      "cargo.toml",
+      "pyproject.toml",
+      "setup.py",
+      "go.mod",
+      "pom.xml",
+      "build.gradle",
+      "build.gradle.kts",
+    ];
+
+    const matchedPackageFile = packageFiles.find((pkg) => sourceFile.includes(pkg));
+    if (matchedPackageFile) {
+      return true;
+    }
+  }
+
+  // FALLBACK: Check tags for language indicators (nodejs, rust, python, go, java)
+  const tags = Array.isArray(rawRecord.tags)
+    ? rawRecord.tags
+    : Array.isArray(metadata?.tags)
+      ? metadata.tags
+      : [];
+
+  const languageTags = ["nodejs", "rust", "python", "go", "java", "typescript", "javascript"];
+  const hasLanguageTag = tags.some((tag: unknown) => {
+    if (typeof tag !== "string") return false;
+    const tagLower = tag.toLowerCase();
+    return languageTags.some((lang) => tagLower === lang || tagLower.includes(lang));
+  });
+
+  if (hasLanguageTag) {
+    // But exclude if it's ONLY docker-tagged
+    const isDockerOnly =
+      tags.length === 1 && typeof tags[0] === "string" && tags[0].toLowerCase() === "docker";
+    if (!isDockerOnly) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/**
  * Determines if a service should be classified as internal or external.
  *
- * Simple rule: Internal services have source code, external services don't.
- * - Internal: Has package.json, Cargo.toml, or other source files
- * - External: Infrastructure like Redis, Postgres, etc. without source
+ * Radically simplified rule:
+ * - Internal: Has a buildable package file (package.json, Cargo.toml, pyproject.toml, etc.)
+ * - External: Everything else (Docker Compose only, infrastructure services, etc.)
  */
 export const shouldTreatAsInternalService = (service: InternalServiceCandidate): boolean => {
-  // Only check hasSource - sourcePath can be "docker-compose.yml" which isn't real source
-  return Boolean(service.hasSource);
+  const serviceName = (service.raw as any)?.name || "unknown";
+  return hasBuildablePackageFile(service.raw, serviceName);
 };

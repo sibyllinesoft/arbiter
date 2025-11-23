@@ -332,6 +332,9 @@ export class RustPlugin implements ImporterPlugin {
     const artifactName = typeof binaryNameValue === "string" ? binaryNameValue : packageName;
 
     const metadata: Record<string, unknown> = {
+      sourceFile: cargoEvidence.filePath,
+      root: path.dirname(cargoEvidence.filePath),
+      manifest: "Cargo.toml",
       language: "rust",
       packageManager: "cargo",
       dependencies: dependencyNames,

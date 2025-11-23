@@ -461,7 +461,7 @@ export const ENTITY_DEFINITIONS = (catalog: UiOptionCatalog): Record<string, Fie
         placeholder:
           "POST /payments - Create payment\nGET /payments/{id} - Get payment details\nPOST /refunds - Process refund",
         description:
-          "Define operations using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/)",
+          "Define operations using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/#workflowcontract)",
       },
       {
         name: "requestSchema",
@@ -470,7 +470,7 @@ export const ENTITY_DEFINITIONS = (catalog: UiOptionCatalog): Record<string, Fie
         language: "cue",
         placeholder: "amount: number\ncurrency: string\ncustomer_id: string",
         description:
-          "Common request fields using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/)",
+          "Common request fields using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/#schemadef)",
       },
       {
         name: "responseSchema",
@@ -479,7 +479,7 @@ export const ENTITY_DEFINITIONS = (catalog: UiOptionCatalog): Record<string, Fie
         language: "cue",
         placeholder: "id: string\nstatus: string\ncreated_at: timestamp",
         description:
-          "Common response fields using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/)",
+          "Common response fields using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/#schemadef)",
       },
       {
         name: "description",
@@ -511,7 +511,7 @@ export const ENTITY_DEFINITIONS = (catalog: UiOptionCatalog): Record<string, Fie
         required: true,
         placeholder: "amount: number\ncurrency: string\ncustomer_id: string\nmetadata?: {...}",
         description:
-          "Define fields using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/)",
+          "Define fields using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/#field)",
       },
       {
         name: "constraints",
@@ -521,7 +521,7 @@ export const ENTITY_DEFINITIONS = (catalog: UiOptionCatalog): Record<string, Fie
         placeholder:
           'amount > 0\ncurrency: "USD" | "EUR" | "GBP"\ncustomer_id: =~"^[0-9a-f]{8}-[0-9a-f]{4}-"',
         description:
-          "Define validation constraints using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/)",
+          "Define validation constraints using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/#validator)",
       },
       {
         name: "relationships",
@@ -530,7 +530,7 @@ export const ENTITY_DEFINITIONS = (catalog: UiOptionCatalog): Record<string, Fie
         language: "cue",
         placeholder: "customer: #Customer\nitems: [...#LineItem]",
         description:
-          "Define relationships to other schemas using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/)",
+          "Define relationships to other schemas using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/#field)",
       },
       {
         name: "description",

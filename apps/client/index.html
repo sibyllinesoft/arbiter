@@ -28,18 +28,6 @@
   </head>
   <body class="h-full bg-white text-slate-900 transition-colors dark:bg-graphite-950 dark:text-graphite-50">
     <div id="root" class="h-full"></div>
-    <script type="module">
-      // Inject React DevTools standalone during local development (optional).
-      if (import.meta.env.DEV) {
-        const devtoolsScript = document.createElement("script");
-        devtoolsScript.src = "http://localhost:8097";
-        devtoolsScript.async = true;
-        devtoolsScript.crossOrigin = "anonymous";
-        devtoolsScript.onerror = () =>
-          console.warn("React DevTools is not running on :8097 (run `npx react-devtools`).");
-        document.head.appendChild(devtoolsScript);
-      }
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

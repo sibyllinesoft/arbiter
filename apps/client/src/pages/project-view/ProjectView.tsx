@@ -14,7 +14,7 @@ import { useSetCurrentProject } from "@/contexts/ProjectContext";
 // Hooks
 import { useAppSettings } from "@/contexts/AppContext";
 import { useProject } from "@/hooks/api-hooks";
-import { useWebSocket } from "@/hooks/useWebSocket";
+import { useWebSocketQuerySync } from "@/hooks/useWebSocketQuerySync";
 
 import SplitPane from "@/components/Layout/SplitPane";
 import Tabs from "@/components/Layout/Tabs";
@@ -44,9 +44,14 @@ export function ProjectView() {
 
   const onNavigateBack = () => navigate("/");
 
-  // Initialize WebSocket connection for this project
-  useWebSocket(project?.id || null, {
-    autoReconnect: true,
+  // Initialize WebSocket connection and automatic query synchronization
+  // This ensures all UI components update in real-time when changes occur from:
+  // - CLI commands
+  // - AI agents
+  // - Other users
+  // - Background processes (validation, git operations, etc.)
+  useWebSocketQuerySync({
+    projectId: project?.id || null,
     showToastNotifications: settings.showNotifications,
   });
 

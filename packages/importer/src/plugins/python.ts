@@ -684,6 +684,18 @@ export class PythonPlugin implements ImporterPlugin {
       fallbackDescriptions[artifactType] ||
       `Python component: ${artifactName}`;
 
+    const fileName = path.basename(filePath);
+    let manifest: string | undefined;
+    if (fileName === "pyproject.toml") {
+      manifest = "pyproject.toml";
+    } else if (fileName === "setup.py") {
+      manifest = "setup.py";
+    } else if (fileName === "Pipfile") {
+      manifest = "Pipfile";
+    } else if (fileName === "requirements.txt") {
+      manifest = "requirements.txt";
+    }
+
     return {
       id: `python-${artifactType}-${artifactName}`,
       type: artifactType,
@@ -692,6 +704,8 @@ export class PythonPlugin implements ImporterPlugin {
       tags: Array.from(tags),
       metadata: {
         sourceFile: filePath,
+        root: path.dirname(filePath),
+        ...(manifest ? { manifest } : {}),
         language: "python",
         framework,
         detectedType,

@@ -278,16 +278,65 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
       }
     });
 
+    // Create a set of internal service root paths for deduplication
+    const internalServiceRoots = new Set<string>();
+    console.log(
+      `[DEDUP] Found ${internal.length} internal services, ${external.length} external services`,
+    );
+
+    internal.forEach((service) => {
+      // Use the root path from metadata as the dedup key
+      const metadata =
+        service.raw && typeof service.raw === "object"
+          ? (service.raw as Record<string, unknown>).metadata
+          : undefined;
+      const root =
+        metadata && typeof metadata === "object"
+          ? (metadata as Record<string, unknown>).root
+          : undefined;
+
+      if (typeof root === "string") {
+        internalServiceRoots.add(root.toLowerCase());
+        console.log(`[DEDUP] Internal service "${service.displayName}" - root: ${root}`);
+      }
+    });
+
+    console.log(`[DEDUP] Internal service roots:`, Array.from(internalServiceRoots));
+
+    // Filter out external services that have the same root as an internal service
+    const filteredExternal = external.filter((card) => {
+      const metadata = card.data?.metadata;
+      const root =
+        metadata && typeof metadata === "object"
+          ? (metadata as Record<string, unknown>).root
+          : undefined;
+
+      const rootPath = typeof root === "string" ? root.toLowerCase() : null;
+      const matchesInternal = rootPath ? internalServiceRoots.has(rootPath) : false;
+
+      console.log(
+        `[DEDUP] External service "${card.name}" - root: ${rootPath}, matches: ${matchesInternal}`,
+      );
+
+      if (matchesInternal) {
+        console.log(
+          `[DEDUP] ✅ Filtering out external service "${card.name}" - same root as internal service`,
+        );
+      }
+
+      return !matchesInternal;
+    });
+
     const knownIdentifiers = new Set<string>([
       ...normalizedServices.map((service) => service.identifier),
-      ...external.map((card) => card.key),
+      ...filteredExternal.map((card) => card.key),
     ]);
 
     const containerCards = normalizeContainersAsExternalCards(containers, knownIdentifiers);
-    containerCards.forEach((card) => external.push(card));
+    containerCards.forEach((card) => filteredExternal.push(card));
 
     const dedupedExternal = Array.from(
-      external.reduce((acc, card) => {
+      filteredExternal.reduce((acc, card) => {
         const dedupeKey = card.key || card.name;
         if (!acc.has(dedupeKey)) {
           acc.set(dedupeKey, card);

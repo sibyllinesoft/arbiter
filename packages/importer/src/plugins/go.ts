@@ -151,6 +151,8 @@ export class GoPlugin implements ImporterPlugin {
       tags: ["go", goData.type],
       metadata: {
         sourceFile: goData.filePath,
+        root: path.dirname(goData.filePath),
+        manifest: "go.mod",
         language: "go",
       },
     };

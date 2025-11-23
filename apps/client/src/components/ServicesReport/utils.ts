@@ -60,9 +60,9 @@ export const isPotentialSourcePath = (value: string): boolean => {
   if (trimmed.startsWith("./") || trimmed.startsWith("../") || trimmed.startsWith(".\\")) {
     return true;
   }
-  if (!isAbsolutePath(trimmed) && /[\\/]/.test(trimmed)) {
-    return true;
-  }
+  // Removed overly permissive check that matched any relative path with slashes
+  // This was causing external services (like postgres with paths like "db/migrations")
+  // to be incorrectly classified as internal services
   return false;
 };
 
@@ -169,6 +169,11 @@ export const collectPathCandidates = (raw: any): string[] => {
 };
 
 export const resolveSourcePath = (raw: any): { path: string | undefined; hasSource: boolean } => {
+  // Services with Docker images are almost always external (postgres, redis, etc.)
+  const hasDockerImage =
+    (typeof raw?.image === "string" && raw.image.trim().length > 0) ||
+    (typeof raw?.metadata?.image === "string" && raw.metadata.image.trim().length > 0);
+
   const candidates = collectPathCandidates(raw);
   if (candidates.length === 0) {
     return { path: undefined, hasSource: false };
@@ -176,6 +181,11 @@ export const resolveSourcePath = (raw: any): { path: string | undefined; hasSour
 
   const sourceCandidate = candidates.find((candidate) => isPotentialSourcePath(candidate));
   if (sourceCandidate) {
+    // Even if we found a source-like path, if there's a Docker image, it's likely external
+    // (e.g., postgres with "path: db/migrations" is still external)
+    if (hasDockerImage) {
+      return { path: sourceCandidate, hasSource: false };
+    }
     return { path: sourceCandidate, hasSource: true };
   }
 

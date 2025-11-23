@@ -7,6 +7,7 @@ import { useUIState } from "@contexts/AppContext";
 import { useCurrentProject, useSetCurrentProject } from "@contexts/ProjectContext";
 import { Button } from "@design-system";
 import { useDeleteProject, useProjects } from "@hooks/api-hooks";
+import { useWebSocketQuerySync } from "@hooks/useWebSocketQuerySync";
 import { GitBranch, Plus, Settings } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -69,6 +70,13 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
   };
 
   const allTabs = useUnifiedTabs({ project: currentProject });
+
+  // Enable real-time updates for current project (if any)
+  // This keeps the landing page tabs in sync when changes are made via CLI or agents
+  useWebSocketQuerySync({
+    projectId: currentProject?.id || null,
+    showToastNotifications: false, // Quieter on landing page
+  });
 
   useEffect(() => {
     if (!projects) return;
