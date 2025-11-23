@@ -1,28 +1,151 @@
 # Arbiter Platform
 
-Arbiter turns declarative specifications into production-ready tooling. This
-monorepo brings together the CLI, importer, API, and supporting packages that
-collaborate to analyse existing systems, capture intent in CUE, and generate
-consistent project artefacts.
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/sibyllinesoft/arbiter/releases)
+[![License](https://img.shields.io/badge/license-SPL--1.0-blue.svg)](LICENSE)
+[![Bun](https://img.shields.io/badge/bun-%3E%3D1.0.0-black)](https://bun.sh)
 
-## Why Arbiter?
+**Arbiter** is a production-ready, CUE-based specification platform that transforms declarative system definitions into complete, validated codebases. From API services to infrastructure manifests, Arbiter generates consistent, type-safe artifacts across your entire stack.
 
-- **Specification Driven** – Define architecture once and keep generated code,
-  documentation, and workflows in lockstep.
-- **Brownfield Friendly** – Importer plugins scan existing repositories to
-  bootstrap specs from real projects.
-- **Extensible Tooling** – Language plugins, template overrides, and
-  configuration hooks let teams evolve the platform alongside their stack.
-- **Production Awareness** – Integrations with Git hosting, container
-  ecosystems, and infrastructure manifests help span the full lifecycle.
+## 🎯 What is Arbiter?
 
-## Why CUE Over YAML/JSON?
+Arbiter turns a single CUE specification into everything you need to run a modern application:
+
+- **API Services** - Go, Python, Rust, TypeScript backends with full OpenAPI specs
+- **Frontend Applications** - React components, routing, and state management
+- **Infrastructure** - Kubernetes manifests, Docker configs, CI/CD workflows
+- **Documentation** - Architecture diagrams, API docs, deployment guides
+- **Database Schemas** - Type-safe migrations and ORM configs
+
+**All from one source of truth.** No duplication. No drift. Always in sync.
+
+## 🚀 Version 1.0.0 Released
+
+We're excited to announce Arbiter 1.0.0, featuring:
+
+- ✅ Production-ready code generation for 4 languages (Go, Python, Rust, TypeScript)
+- ✅ Agent-first CLI designed for AI/automation workflows
+- ✅ Real-time collaboration with WebSocket event system
+- ✅ Brownfield import system for existing codebases
+- ✅ GitHub OAuth integration
+- ✅ Comprehensive web UI with Monaco editor and architecture diagrams
+- ✅ Full CI/CD workflow generation
+
+## 🎁 Key Features
+
+### Specification Driven
+Define your architecture once in CUE and keep generated code, documentation, and workflows in perfect lockstep. Changes to your spec automatically propagate through your entire stack.
+
+### Brownfield Friendly
+Don't start from scratch. Arbiter's importer plugins scan existing repositories, detect services, analyze APIs, and bootstrap specifications from real projects—complete with confidence scoring and provenance tracking.
+
+### Agent-First Design
+Built for automation. Every CLI command is non-interactive with structured output (JSON/NDJSON/table), proper exit codes, and comprehensive flags. Perfect for AI assistants, CI/CD pipelines, and programmatic workflows.
+
+### Production Awareness
+Not just scaffolding—Arbiter generates production-ready code with:
+- Health checks and monitoring
+- Structured logging
+- Metrics collection
+- Security best practices
+- Resource limits and scaling configs
+- Database migrations
+
+### Multi-Language Support
+Generate idiomatic code in your language of choice:
+- **Go** - Clean architecture with interfaces and dependency injection
+- **Python** - FastAPI services with Pydantic models
+- **Rust** - Type-safe services with Actix/Axum
+- **TypeScript** - Express/Fastify APIs with full type coverage
+
+### Real-Time Collaboration
+WebSocket-based event system keeps teams in sync. See spec changes, validation results, and generation progress in real-time across the web UI and CLI.
+
+## 🏗️ Architecture
+
+Arbiter is a TypeScript monorepo built with Bun, consisting of:
+
+### Applications
+
+#### API Server (`apps/api`)
+- **Framework**: Hono (Express-compatible)
+- **Database**: SQLite with Drizzle ORM
+- **Auth**: OAuth 2.0 with GitHub integration
+- **WebSocket**: Real-time event broadcasting
+- **Lines of Code**: ~9,229
+
+**Key Features**:
+- Project CRUD and management
+- CUE spec validation and processing
+- Code generation endpoints
+- GitHub repository import
+- OAuth authentication flow
+- Real-time event streaming
+
+#### Web Client (`apps/client`)
+- **Framework**: React 18 + Vite
+- **Editor**: Monaco with CUE syntax support
+- **Diagrams**: D3.js + Mermaid for visualizations
+- **State**: Zustand + React Query
+- **Lines of Code**: ~17,121
+
+**Key Features**:
+- Interactive CUE editor with autocomplete
+- Architecture diagram visualization
+- Project browser and workspace
+- Real-time spec validation
+- GitHub OAuth integration
+- Service and endpoint management
+
+### Packages
+
+#### CLI (`packages/cli`)
+- **Lines of Code**: ~31,135
+- **Commands**: 50+ across 7 command groups
+- **Design**: Modular, composable, agent-friendly
+
+**Command Groups**:
+- **Project Management**: `init`, `list`, status, health
+- **Spec Building**: `add` (26+ entity types: services, endpoints, databases, components)
+- **Epic & Tasks**: Project planning and task management
+- **Code Generation**: Multi-language code generation from specs
+- **Validation**: `check`, `watch`, live validation
+- **Integration**: CI/CD workflow generation, manifest sync
+- **Utilities**: Version management, API surface extraction, auth
+
+**Key Features**:
+- Preset-based initialization (web-app, mobile-app, api-service, microservice)
+- Template system with Handlebars
+- Structured output formats (JSON, NDJSON, table)
+- Non-interactive operation
+- Proper exit codes (0=success, 1=error, 2=config error)
+
+#### Shared (`packages/shared`)
+CUE processing utilities, type definitions, validation schemas, and shared business logic used across the platform.
+
+#### Shared Types (`packages/shared-types`)
+Centralized TypeScript type definitions ensuring consistency between API, CLI, and client.
+
+#### API Types (`packages/api-types`)
+Hono-specific API types for request/response handling.
+
+#### CUE Runner (`packages/cue-runner`)
+Wrapper for CUE binary invocation with structured diagnostics parsing. Handles `cue vet`, `cue export`, and `cue fmt` operations.
+
+#### Importer (`packages/importer`)
+Plugin-based brownfield codebase analyzer:
+- GitHub repository scanning
+- Service classification and detection
+- React component analysis
+- Artifact manifest generation
+- Confidence scoring and provenance tracking
+
+## 🎯 Why CUE Over YAML/JSON?
 
 **"Why not just write Terraform or OpenAPI specs directly?"**
 
 Traditional formats like YAML and JSON are verbose, error-prone, and require separate validation tooling. CUE solves this:
 
-### 1. **Type Safety & Validation**
+### 1. Type Safety & Validation
 
 **YAML/JSON:**
 ```yaml
@@ -44,7 +167,7 @@ service: #Service & {
 }
 ```
 
-### 2. **DRY (Don't Repeat Yourself)**
+### 2. DRY (Don't Repeat Yourself)
 
 **Before (YAML):**
 ```yaml
@@ -85,7 +208,7 @@ services: api: {
 // All stay in perfect sync automatically
 ```
 
-### 3. **Composition & Reusability**
+### 3. Composition & Reusability
 
 CUE's constraint-based approach means you can layer configurations without duplication:
 
@@ -116,196 +239,352 @@ services: {
 
 **The Result:** Type 1000 lines of YAML error-free, or use CUE to catch typos, type mismatches, and constraint violations before they reach production.
 
-## Repository Layout
+## 📦 Repository Layout
 
 ```
-apps/                Frontend and API applications
-packages/cli/        Arbiter CLI for specification authoring and scaffolding
-packages/importer/   Brownfield detection pipeline and plugins
-packages/shared/     Shared utilities and type definitions
-packages/shared-types API/CLI contract types
-scripts/             Utility scripts for local development and CI
+arbiter/
+├── apps/
+│   ├── api/          # Bun + Hono API server (port 5050)
+│   └── client/       # React + Vite web UI
+├── packages/
+│   ├── cli/          # Main CLI package
+│   ├── shared/       # Shared utilities and types
+│   ├── shared-types/ # Centralized TypeScript types
+│   ├── api-types/    # API-specific types
+│   ├── cue-runner/   # CUE binary wrapper
+│   └── importer/     # Brownfield codebase analysis
+├── scripts/          # Dev, docs, and build automation
+├── docs/             # MkDocs-based documentation
+├── examples/         # Sample projects and specs
+└── tests/            # E2E and integration tests
 ```
 
-Each package ships its own README with deeper details and TSDoc annotated
-sources for IDE discovery.
+Each package includes its own README with detailed documentation and TSDoc-annotated sources for IDE discovery.
 
-## Quick Start
+## 🚀 Quick Start
 
-1. **Install dependencies**
-   ```bash
-   bun install
-   ```
-2. **Bootstrap the workspace**
-   ```bash
-   bun run build
-   ```
-3. **Launch the development stack** (API + client)
-   ```bash
-   bun run dev:full
-   ```
-4. **Run the CLI**
-   ```bash
-   ./arbiter-cli --help
-   ```
-
-## Prerequisites
-
-The CLI, importer, and API all shell out to the official [CUE](https://cuelang.org/)
-binary for formatting, validation, and AST exports. Make sure a recent `cue`
-executable (v0.9.x or newer) is available on your `PATH` **before** running
-`arbiter` commands. Without it, operations such as `arbiter add`, `arbiter
-generate`, and `arbiter check` will fail fast with "cue binary not found".
-
-Recommended installation options:
-
-- **macOS** – `brew install cue-lang/tap/cue`
-- **Linux** – download the latest release tarball from
-  `https://github.com/cue-lang/cue/releases`, or install via Go:
-  `go install cuelang.org/go/cmd/cue@latest`
-- **Windows** – `winget install cue-lang.cue` or `choco install cue`
-
-Verify the toolchain with:
+### 1. Install Dependencies
 
 ```bash
-cue version
-# cue version 0.9.x (or newer)
+bun install
 ```
 
-If you maintain a custom install location, ensure `cue` is discoverable on the
-`PATH` used by the CLI or export a wrapper script that forwards to your desired
-binary. The API server exposes a `cue_binary_path` setting for the same
-purpose.
+### 2. Build the Workspace
 
-## Documentation
+```bash
+bun run build:all
+```
 
-- Hand-authored markdown lives under `docs/content/` and feeds the MkDocs site
-  defined by `mkdocs.yml`.
-- Generate API reference docs straight from TSDoc via `bun run docs:tsdoc`.
-- Preview the full docs experience locally with `bun run docs:site:dev`
-  (MkDocs live-reload).
-- Production docs are deployed from `main` via `.github/workflows/docs-site.yml`
-  and published to GitHub Pages.
+This builds all packages in dependency order:
+- shared-types → shared → importer → cue-runner → api-types → cli → api
 
-See `docs/README.md` for the full layout, authoring tips, and automation
-details.
+### 3. Launch the Development Stack
 
-## OAuth Setup & Testing
+```bash
+# Full stack (API + Client + TypeCheck)
+bun run dev:full
 
-Many workflows require exercising the OAuth flow repeatedly when iterating on
-the CLI or API. The repository ships a complete dev loop that includes a local
-OIDC provider, preconfigured server settings, and CLI helpers.
+# Or individually:
+bun run dev        # API server only
+bun run dev:workbench  # Client only
+```
 
-### 1. Launch the full OAuth stack
+The API starts on `http://localhost:5050` and the client on `http://localhost:5173`.
+
+### 4. Try the CLI
+
+```bash
+# View help
+./arbiter-cli --help
+
+# Check server health
+./arbiter-cli health
+
+# Initialize a new project from preset
+./arbiter-cli init my-app --preset web-app
+
+# List available presets
+./arbiter-cli init --list-presets
+```
+
+### 5. Install CLI Globally (Optional)
+
+```bash
+npm install -g @sibyllinesoft/arbiter-cli
+```
+
+## 📋 Prerequisites
+
+### Required
+
+- **Bun** >= 1.0.0 - Primary runtime ([install](https://bun.sh))
+- **Node.js** >= 18.0.0 - For standalone CLI
+- **CUE** v0.9.x or newer - For validation and generation ([install](https://cuelang.org/docs/install/))
+
+### Installation Methods for CUE
+
+- **macOS**: `brew install cue-lang/tap/cue`
+- **Linux**: Download from [GitHub releases](https://github.com/cue-lang/cue/releases) or `go install cuelang.org/go/cmd/cue@latest`
+- **Windows**: `winget install cue-lang.cue` or `choco install cue`
+
+Verify installation:
+```bash
+cue version
+# cue version v0.9.x
+```
+
+**Important**: The `cue` binary must be on your `PATH`. Commands like `arbiter add`, `arbiter generate`, and `arbiter check` will fail with "cue binary not found" otherwise.
+
+## 📚 Documentation
+
+### Viewing Documentation
+
+```bash
+# Preview docs with live reload
+bun run docs:site:dev
+
+# Generate API reference from TSDoc
+bun run docs:tsdoc
+
+# Build static site
+bun run docs:site:build
+```
+
+### Documentation Structure
+
+- `docs/content/overview/` - Core concepts and architecture
+- `docs/content/guides/` - Generation guides, CUE authoring, best practices
+- `docs/content/reference/` - CLI reference, CUE schema, API documentation
+- `docs/content/tutorials/` - Hands-on labs and playbooks
+
+Production docs are automatically deployed to GitHub Pages from the `main` branch.
+
+## 🔐 OAuth Setup & Testing
+
+### 1. Launch the Full OAuth Stack
 
 ```bash
 bun run dev:full:oauth
 ```
 
-This single command runs four processes:
-
+This runs four processes simultaneously:
 - Type-checker in watch mode
-- A lightweight OAuth server (`scripts/dev-oauth-server.ts`) on
-  `http://localhost:4571`
-- The API with `apps/api/config.dev-oauth.json` (auth required, OAuth enabled)
-- The web client, pointed at `http://localhost:5050`
+- Local OAuth server on `http://localhost:4571`
+- API with OAuth enabled (auth required)
+- Web client
 
-Environment overrides:
-
-- `ARBITER_CONFIG_PATH` loads the API config with OAuth defaults.
-- `ARBITER_URL` / `VITE_API_URL` ensure the client and CLI target the same API.
-- The OAuth server accepts overrides via `OAUTH_DEV_*` variables if you need to
-  test different client IDs, ports, or redirect URIs.
-
-### 2. Configure the CLI endpoint
-
-The CLI resolves the API URL in the following order: `ARBITER_URL` env var,
-`--arbiter-url/--api-url` flag, `arbiter_url` (or `apiUrl`) in
-`.arbiter/config.json`.
-
-Example JSON config:
-
-```json
-{
-  "arbiter_url": "http://localhost:5050",
-  "timeout": 750
-}
-```
-
-### 3. Authenticate the CLI
-
-Once `dev:full:oauth` is running:
+### 2. Configure CLI Authentication
 
 ```bash
+# Create config (if not exists)
+mkdir -p .arbiter
+echo '{"arbiter_url": "http://localhost:5050"}' > .arbiter/config.json
+
+# Authenticate
 arbiter auth
 ```
 
 Steps:
+1. CLI prints authorization URL
+2. Open URL in browser and approve
+3. Copy the code
+4. Paste into CLI prompt
 
-1. The command prints an authorization URL from the local OAuth server.
-2. Open it in a browser, approve access, and copy the displayed code.
-3. Paste the code back into the CLI prompt.
+Tokens are cached in `~/.arbiter/auth.json`. Use `arbiter auth --logout` to clear.
 
-Tokens are cached in `~/.arbiter/auth.json`. Re-run `arbiter auth` any time you
-want to refresh credentials, or `arbiter auth --logout` to clear the cache.
+### 3. Environment Variables
 
-### 4. Inspect metadata
+- `ARBITER_URL` / `VITE_API_URL` - API endpoint
+- `ARBITER_CONFIG_PATH` - Custom config file path
+- `OAUTH_DEV_*` - OAuth server configuration
 
-The API exposes discovery information at
-`http://localhost:5050/api/auth/metadata`. Useful for verifying the client ID,
-scopes, or endpoints consumed by external tools.
+## 🛠️ Development Workflow
 
-### 5. Common reset checklist
+### Common Commands
 
-- Restart `dev:full:oauth` after changing OAuth environment variables.
-- Delete `~/.arbiter/auth.json` (or run `arbiter auth --logout`) if scopes or
-  tokens look stale.
-- Regenerate CLI config with the correct `arbiter_url` before running commands.
+```bash
+# Development
+bun run dev                   # Start API server
+bun run dev:full             # API + Client + TypeCheck
+bun run dev:full:oauth       # Full stack with OAuth
 
-Following these steps keeps local OAuth iterations quick and reproducible.
+# Building
+bun run build:all            # Build all packages
+bun run build:standalone     # Create arbiter-cli binary
 
-## Development Workflow
+# Testing
+bun test                     # All tests
+bun run test:cli             # CLI tests only
+bun run test:api             # API tests only
+bun run test:playwright      # E2E tests
 
-- `bun run lint` – Static analysis and formatting checks
-- `bun run test` – Run package and application tests
-- `bun run build` – Compile TypeScript packages
+# Code Quality
+bun run format               # Format with Biome + Prettier
+bun run lint                 # Run linters
+bun run typecheck            # TypeScript compilation
+bun run validate             # Full check (format + lint + typecheck + test)
 
-The repository relies on Bun workspaces, so commands automatically execute in
-dependency order.
+# Documentation
+bun run docs:site:dev        # Docs with live reload
+bun run docs:tsdoc           # Generate API docs
+bun run docs:generate        # Run doc generators
+```
 
-## Key Components
+### Testing
 
-### CLI (`packages/cli/`)
+Arbiter uses multiple testing strategies:
 
-Powerful command runner for generating artefacts, validating specs, and syncing
-work items. Designed for both terminal usage and programmatic embedding.
+- **Golden File Tests** (`golden.test.ts`) - CLI output regression testing
+- **Ecosystem Tests** (`ecosystem.test.ts`) - Integration testing of workflows
+- **Unit Tests** - Individual component and utility tests
+- **E2E Tests** - Full-stack Playwright tests
+- **API Tests** - Route handler and database tests
 
-### Importer (`packages/importer/`)
+## 🎨 CLI Features
 
-Plugin-based scanner that analyses existing repositories. Emits
-`ArtifactManifest` outputs with evidence, provenance, and confidence scoring to
-drive specification generation.
+### Preset-Based Initialization
 
-### Apps (`apps/`)
+```bash
+# Web application
+arbiter init my-app --preset web-app
 
-User interface and API handlers that surface architecture diagrams, project
-insights, and integration endpoints. The client consumes the same shared types
-as the CLI for consistency.
+# Mobile application
+arbiter init mobile --preset mobile-app
 
-## Documentation & TSDoc
+# API service
+arbiter init api --preset api-service
 
-Core TypeScript modules ship with TSDoc comments. IDEs can surface guidance, and
-`pnpm doc` can generate API references if desired. See package READMEs for
-focused deep dives.
+# Microservice
+arbiter init service --preset microservice
+```
 
-## Contributing
+### Entity Types (26+)
+
+Add components to your specification:
+
+```bash
+# Infrastructure
+arbiter add service api --language typescript
+arbiter add database postgres --engine postgresql
+arbiter add cache redis
+
+# API & Routes
+arbiter add endpoint /users --method GET
+arbiter add route /dashboard --component Dashboard
+
+# Business Logic
+arbiter add flow checkout --states pending,complete
+arbiter add module auth --type capability
+
+# And many more: components, packages, schemas, etc.
+```
+
+### List Command
+
+```bash
+# List all services
+arbiter list service
+
+# List endpoints in JSON
+arbiter list endpoint --format json
+
+# List with verbose details
+arbiter list route --verbose
+```
+
+### Generation
+
+```bash
+# Generate all artifacts
+arbiter generate
+
+# Validate CUE files
+arbiter check
+
+# Watch for changes
+arbiter watch
+```
+
+## 🔧 API Endpoints
+
+The API server exposes comprehensive REST endpoints:
+
+- `/api/auth/*` - OAuth authentication
+- `/api/projects/*` - Project CRUD
+- `/api/specs/*` - Spec management
+- `/api/import/*` - GitHub import
+- `/api/github/*` - GitHub integration
+- `/api/cli/*` - CLI-specific operations
+- `/api/events` - WebSocket events
+
+## 🌟 Examples
+
+Check the `examples/` directory for:
+
+- `app-spec-example.cue` - Complete application spec
+- `sample.cue` - Basic CUE usage
+- `external-agent.ts` - Agent integration
+- `epic-task-workflow.md` - Project planning workflow
+
+## 📊 Technology Stack
+
+### Backend
+- **Runtime**: Bun
+- **Framework**: Hono
+- **Database**: SQLite + Drizzle ORM
+- **Auth**: OAuth4WebAPI + Jose (JWT)
+- **WebSocket**: Native WebSocket support
+- **Validation**: Zod
+
+### Frontend
+- **Framework**: React 18
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **Editor**: Monaco
+- **Diagrams**: D3.js + Mermaid
+- **State**: Zustand + React Query
+- **Router**: React Router
+
+### CLI
+- **Framework**: Commander.js
+- **UI**: Chalk + Ora + Inquirer
+- **Formatting**: cli-table3
+- **Validation**: Zod
+
+### Code Quality
+- **Linting**: Biome
+- **Formatting**: Biome + Prettier
+- **Testing**: Bun test + Vitest + Playwright
+- **Types**: TypeScript strict mode
+
+## 🤝 Contributing
 
 1. Fork and clone the repository
-2. Create a feature branch and make changes with thorough tests
-3. Run `pnpm lint && pnpm test`
-4. Submit a pull request describing the problem solved, implementation approach,
-   and validation steps
+2. Create a feature branch
+3. Make changes with comprehensive tests
+4. Run `bun run validate` (format + lint + typecheck + test)
+5. Submit a pull request with:
+   - Problem description
+   - Implementation approach
+   - Validation steps
+   - Breaking changes (if any)
 
-## License
+## 📝 License
 
-This project is released under the MIT License. See `LICENSE` for details.
+This project is released under the **SPL-1.0** License. See `LICENSE` for details.
+
+## 🔗 Links
+
+- **Documentation**: https://sibylline.dev/arbiter/
+- **GitHub**: https://github.com/sibyllinesoft/arbiter
+- **Issues**: https://github.com/sibyllinesoft/arbiter/issues
+- **NPM Package**: [@sibyllinesoft/arbiter-cli](https://www.npmjs.com/package/@sibyllinesoft/arbiter-cli)
+- **CUE Language**: https://cuelang.org
+
+## 🙏 Acknowledgments
+
+Built with ❤️ using [CUE](https://cuelang.org), [Bun](https://bun.sh), [React](https://react.dev), and the amazing open-source community.
+
+---
+
+**Version 1.0.0** - Production Ready • Agent-First • Brownfield Friendly

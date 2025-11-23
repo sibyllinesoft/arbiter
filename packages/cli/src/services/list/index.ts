@@ -15,8 +15,10 @@ export interface ListOptions {
 
 const VALID_TYPES = [
   "service",
+  "client",
   "endpoint",
   "route",
+  "view",
   "model",
   "event",
   "job",
@@ -32,6 +34,12 @@ const VALID_TYPES = [
   "cache",
   "database",
   "load-balancer",
+  "tool",
+  "infrastructure",
+  "epic",
+  "task",
+  "contract",
+  "capability",
 ] as const;
 
 type ValidType = (typeof VALID_TYPES)[number];
@@ -155,6 +163,15 @@ function buildComponentsFromSpec(spec: any, type: ValidType): any[] {
         language: service?.language || "unknown",
         endpoints: Object.keys(service?.endpoints ?? {}),
       }));
+    case "client":
+      return Object.entries(spec?.modules ?? {})
+        .filter(([, module]: [string, any]) => module?.metadata?.type === "frontend")
+        .map(([name, module]) => ({
+          name,
+          type,
+          language: module?.language || "unknown",
+          framework: module?.metadata?.framework || "unknown",
+        }));
     case "endpoint":
       return Object.entries(spec?.paths ?? {}).flatMap(([service, paths]: [string, any]) =>
         Object.entries(paths || {}).map(([endpointPath, handlers]: [string, any]) => ({
@@ -172,12 +189,63 @@ function buildComponentsFromSpec(spec: any, type: ValidType): any[] {
         capabilities: route.capabilities || [],
         type,
       }));
+    case "view":
+      return (spec?.ui?.views ?? []).map((view: any) => ({
+        name: view.id || view.name,
+        path: view.filePath,
+        type,
+      }));
     case "schema":
       return Object.entries(spec?.schemas ?? {}).map(([name, schema]) => ({
         name,
         type,
         references: Object.keys(schema?.references ?? {}),
       }));
+    case "database":
+      return Object.entries(spec?.databases ?? {}).map(([name, database]) => ({
+        name,
+        type,
+        engine: database?.engine || "unknown",
+      }));
+    case "module":
+      return Object.entries(spec?.modules ?? {}).map(([name, module]) => ({
+        name,
+        type,
+        language: module?.language || "unknown",
+      }));
+    case "tool":
+      return Object.entries(spec?.tools ?? {}).map(([name, tool]) => ({
+        name,
+        type,
+        commands: tool?.commands || [],
+      }));
+    case "infrastructure":
+      return (spec?.infrastructure?.containers ?? []).map((container: any) => ({
+        name: container.name,
+        type,
+        scope: container.scope,
+        image: container.image,
+      }));
+    case "contract":
+      return Object.entries(spec?.contracts?.workflows ?? {}).map(([name, contract]) => ({
+        name,
+        type,
+        operations: Object.keys(contract?.operations ?? {}),
+      }));
+    case "flow":
+      return Object.entries(spec?.domain?.stateMachines ?? {}).map(([name, flow]) => ({
+        name,
+        type,
+        states: Object.keys(flow?.states ?? {}),
+      }));
+    case "capability":
+      return Object.entries(spec?.modules ?? {})
+        .filter(([, module]: [string, any]) => module?.type === "capability")
+        .map(([name, module]) => ({
+          name,
+          type,
+          description: module?.description || "",
+        }));
     default:
       return [];
   }

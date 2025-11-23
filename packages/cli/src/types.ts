@@ -453,9 +453,11 @@ export interface ProjectTemplate {
 export interface InitOptions {
   template?: string;
   schema?: string;
+  preset?: string;
   name?: string;
   force?: boolean;
   listTemplates?: boolean;
+  listPresets?: boolean;
   directory?: string;
 }
 

@@ -6,8 +6,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { runCheckCommand } from "../services/check/index.js";
 import { diffCommand } from "../services/diff/index.js";
-import { initCommand } from "../services/init/index.js";
-import { listTemplates } from "../services/init/index.js";
+import { initCommand, listAll, listPresets, listTemplates } from "../services/init/index.js";
 import { listCommand } from "../services/list/index.js";
 import { importSpec } from "../services/spec-import/index.js";
 import { statusCommand } from "../services/status/index.js";
@@ -27,23 +26,36 @@ export function createProjectCommands(program: Command): void {
   // Init command
   program
     .command("init [display-name]")
-    .description("initialize a new CUE project with templates in current directory")
+    .description("initialize a new CUE project with templates or presets")
     .option("--schema <type>", "schema type to use (app)", "app")
+    .option("--template <type>", "template to use (basic, kubernetes, api)")
+    .option("--preset <id>", "preset to use (web-app, mobile-app, api-service, microservice)")
     .option(
       "--directory <path>",
       "target directory to initialize (defaults to current working directory)",
     )
     .option("--force", "overwrite target directory if it already exists")
     .option("--list-templates", "list available templates")
+    .option("--list-presets", "list available presets")
     .action(async (displayName: string | undefined, options: InitOptions, command) => {
       try {
+        if (options.listTemplates && options.listPresets) {
+          listAll();
+          return;
+        }
+
         if (options.listTemplates) {
           listTemplates();
           return;
         }
 
-        const config = requireCommandConfig(command);
-        const exitCode = await initCommand(displayName, options);
+        if (options.listPresets) {
+          listPresets();
+          return;
+        }
+
+        const config = command.parent?.config;
+        const exitCode = await initCommand(displayName, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(

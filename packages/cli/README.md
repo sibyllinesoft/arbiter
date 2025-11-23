@@ -1,183 +1,259 @@
-# Arbiter CLI
+# @sibyllinesoft/arbiter-cli
 
-The Arbiter CLI wraps daily workflows for working with Arbiter specifications.
-It provides commands for validating fragments, generating scaffolding,
-synchronising project plans to GitHub, and interacting with the Spec Workbench
-API without leaving a terminal session. This package is the portion of Arbiter
-that will be released publicly, so everything is designed to be easy to reason
-about, well documented, and extensible.
+> CUE-based specification validation and management CLI with agent-first automation
 
-Looking for the broader doc set? Start at
-[`docs/cli/index.md`](../../docs/cli/index.md) for an overview of every CLI
-guide.
+[![npm version](https://badge.fury.io/js/%40sibyllinesoft%2Farbiter-cli.svg)](https://www.npmjs.com/package/@sibyllinesoft/arbiter-cli)
+[![License](https://img.shields.io/badge/license-SPL--1.0-blue.svg)](LICENSE)
 
----
+## Features
+
+- 🎯 **Declarative Infrastructure** - Define complex systems in CUE and generate everything
+- 🤖 **Agent-First Design** - CLI optimized for AI/automation consumption
+- 📦 **Full-Stack Generation** - From database schemas to UI components to CI/CD pipelines
+- ✅ **Validation-First** - Strong typing and validation throughout the development lifecycle
+- 🚀 **Pre-built Presets** - Quick start with web-app, mobile-app, api-service, and microservice templates
+
+## Installation
+
+### Via npm
+
+```bash
+npm install -g @sibyllinesoft/arbiter-cli
+```
+
+### Via yarn
+
+```bash
+yarn global add @sibyllinesoft/arbiter-cli
+```
+
+### Via pnpm
+
+```bash
+pnpm add -g @sibyllinesoft/arbiter-cli
+```
+
+### Via bun
+
+```bash
+bun add -g @sibyllinesoft/arbiter-cli
+```
 
 ## Quick Start
 
+### 1. Initialize a New Project
+
+**From a preset (recommended):**
+
 ```bash
-# Install workspace dependencies
+# Create a full-stack web application
+arbiter init my-app --preset web-app
+
+# Create a mobile app
+arbiter init my-mobile-app --preset mobile-app
+
+# Create an API service
+arbiter init my-api --preset api-service
+
+# Create a microservice
+arbiter init my-service --preset microservice
+```
+
+**From a template:**
+
+```bash
+# Create a basic CUE project
+arbiter init my-project --template basic
+
+# Create a Kubernetes configuration project
+arbiter init k8s-config --template kubernetes
+
+# Create an API schema project
+arbiter init api-schema --template api
+```
+
+### 2. Add Components to Your Specification
+
+```bash
+# Add a service
+arbiter add service api --language typescript --port 3000
+
+# Add a database
+arbiter add database postgres --engine postgresql
+
+# Add an endpoint
+arbiter add endpoint /users --method GET --service api
+
+# Add a frontend route
+arbiter add route /dashboard --component Dashboard
+```
+
+### 3. Generate Code from Specification
+
+```bash
+# Generate all artifacts
+arbiter generate
+
+# Validate your CUE files
+arbiter check
+
+# Watch for changes
+arbiter watch
+```
+
+## Available Commands
+
+### Project Management
+
+- \`arbiter init [name]\` - Initialize a new project
+- \`arbiter add <type> <name>\` - Add components to your specification
+- \`arbiter list <type>\` - List components by type
+- \`arbiter status\` - Show project status
+
+### Development
+
+- \`arbiter generate\` - Generate code from specifications
+- \`arbiter check [patterns...]\` - Validate CUE files
+- \`arbiter watch [path]\` - Watch files with live validation
+- \`arbiter diff <old> <new>\` - Compare CUE schemas
+
+### Integration
+
+- \`arbiter integrate\` - Generate CI/CD workflows
+- \`arbiter sync\` - Synchronize project manifests
+- \`arbiter surface <language>\` - Extract API surface from code
+
+### Utilities
+
+- \`arbiter health\` - Check server health
+- \`arbiter version\` - Show version information
+
+## Entity Types
+
+The CLI supports 26+ entity types:
+
+**Services & Infrastructure:**
+- \`service\` - Microservices
+- \`client\` - Client applications
+- \`database\` - Databases
+- \`cache\` - Cache services
+- \`load-balancer\` - Load balancers
+- \`infrastructure\` - Infrastructure components
+
+**API & Communication:**
+- \`endpoint\` - API endpoints
+- \`route\` - UI routes
+- \`view\` - UI views
+- \`contract\` - Workflow contracts
+- \`schema\` - API schemas
+
+**Business Logic:**
+- \`flow\` - User flows
+- \`module\` - Modules
+- \`component\` - UI components
+- \`package\` - Packages
+- \`capability\` - Business capabilities
+
+**Project Management:**
+- \`epic\` - Project epics
+- \`task\` - Tasks
+- \`tool\` - Developer tools
+
+And more...
+
+## Configuration
+
+Create an \`.arbiter/config.json\` in your project:
+
+```json
+{
+  "apiUrl": "http://localhost:5050",
+  "format": "table",
+  "color": true,
+  "timeout": 10000
+}
+```
+
+## Examples
+
+### List Available Presets
+
+```bash
+arbiter init --list-presets
+```
+
+Output:
+```
+Available presets (require API server):
+
+web-app         Full-stack web application with React frontend and Node.js backend
+mobile-app      Cross-platform mobile app with React Native
+api-service     RESTful API service with database integration
+microservice    Containerized microservice with monitoring
+```
+
+### List All Services in Project
+
+```bash
+arbiter list service
+```
+
+### Generate CI/CD Workflows
+
+```bash
+arbiter integrate
+```
+
+### Extract API Surface from TypeScript Code
+
+```bash
+arbiter surface typescript
+```
+
+## Requirements
+
+- Node.js >= 18.0.0
+- CUE (for local validation)
+- Arbiter API server (for preset-based initialization and advanced features)
+
+## Development
+
+```bash
+# Clone the repository
+git clone https://github.com/sibyllinesoft/arbiter.git
+cd arbiter/packages/cli
+
+# Install dependencies
 bun install
 
-# Build shared packages (recommended before running the CLI)
+# Build the CLI
 bun run build
 
-# Execute commands directly from source
-bun run --filter @arbiter/cli cli -- --help
+# Run tests
+bun test
+
+# Run in development mode
+bun run dev
 ```
 
-The bundled binary (`arbiter-cli`) is produced via `bun run build:standalone`
-and can be distributed independently.
+## Documentation
 
----
+For comprehensive documentation, visit [https://github.com/sibyllinesoft/arbiter](https://github.com/sibyllinesoft/arbiter)
 
-## Architecture Overview
+## License
 
-The CLI is layered to keep responsibilities clear:
+LicenseRef-SPL-1.0
 
-```
-src/
-  cli/            Commander program setup & option wiring
-  commands/       Thin shims that parse flags and delegate to services
-  services/       Application services (generate, import, sync, etc.)
-  language-plugins/  Template + codegen runtime per language
-  templates/      Stock templates (render-only, no side effects)
-  utils/          Shared helpers (GitHub, sharded storage, formatting, etc.)
-```
+## Author
 
-### Commands vs. Services
+Nathan Rice
 
-- **Commands (`src/commands/*`)**: accept CLI options, resolve configuration,
-  and hand off to services. They should stay under ~200 LOC.
-- **Services (`src/services/*`)**: encapsulate orchestration logic. For example,
-  `services/generate` now composes several focused modules:
-  - `generate/compose.ts` – Docker Compose + infra emitters
-  - `generate/template-orchestrator.ts` – language plugin + template override wiring
-  - `generate/hook-executor.ts` – wraps `GenerationHookManager` so hooks stay deterministic
-  - `generate/shared.ts` – slug/path helpers shared across writers
-  Other services follow the same pattern: `services/integrate` produces CI/CD
-  workflows, `services/spec-import` persists fragments with injectable deps, and
-  `services/sync` keeps manifests aligned with Arbiter metadata. A longer-form
-  tour lives in [`docs/cli/architecture.md`](../../docs/cli/architecture.md).
+## Contributing
 
-### Configuration & Context
+Contributions are welcome! Please read our contributing guidelines and submit pull requests to our repository.
 
-`src/config.ts` builds a `CLIConfig` by merging defaults, project overrides, and
-environment variables. Commands receive this config and pass it to services,
-ensuring deterministic behaviour (no globals). Auth tokens are stored in
-`auth-store.ts`.
+## Support
 
-#### Environment Overrides
-
-| Variable | Purpose |
-| --- | --- |
-| `ARBITER_URL` / `ARBITER_API_URL` | Forces the CLI to target a specific server URL (equivalent to `--api-url`). |
-| `ARBITER_VERBOSE` / `ARBITER_FETCH_DEBUG` | Enables verbose logging globally. Same effect as passing `--verbose` (used by commands and network client). |
-| `ARBITER_DEBUG_CONFIG` | When set to `1`, `true`, or `verbose`, emits remote-config hydration details to stderr. |
-
-`--verbose` and the env flags share a single toggle (`config.verbose`), so you
-get consistent logging regardless of how the flag is set.
-
-### Template System
-
-Language plugins register template resolvers and optional overrides:
-
-1. Discover templates (built-in or user-provided override directories).
-2. Render templates using a controlled context (project metadata, spec data).
-3. Run generation hooks (pre/post file operations).
-4. Emit files via the file writer (supports dry-run + diff mode).
-
-Template overrides are configured via `.arbiter/config.json`
-under the `generator.templateOverrides` key. See
-[`docs/cli/templates.md`](../../docs/cli/templates.md) for the full cookbook and
-best practices (pure templates, deterministic hooks, versioning).
-
-### Service-Level Tests & Dry Runs
-
-To keep regression risk low, each major service has targeted Bun tests under
-`packages/cli/src/services/__tests__/`:
-
-- `compose.test.ts` ensures Docker Compose assets match expectations.
-- `hook-executor.test.ts` verifies hook ordering and dry-run behaviour.
-- `template-orchestrator.test.ts` covers override wiring + registry configuration.
-- `spec-import.test.ts`, `sync.test.ts`, and `integrate.test.ts` execute the key
-  workflows against temporary workspaces (real fs writes).
-
-Run them via:
-
-```bash
-bun test packages/cli/src/services/__tests__/*.test.ts
-```
-
-All services honour `--dry-run`, so you can preview manifests, CI workflows, and
-code generation without touching disk.
-
-### Shared Utilities
-
-- **API Client** (`src/api-client.ts`): rate-limited wrapper around the
-  Spec Workbench API with automatic retries and error normalisation.
-- **Sharded Storage** (`src/utils/sharded-storage.ts`): deterministic layout for
-  epics/tasks stored in `.arbiter/`.
-- **GitHub Sync** (`src/utils/github-sync.ts` and
-  `src/utils/unified-github-template-manager.ts`): template-driven sync helpers
-  with preview/diff capabilities.
-
----
-
-## Template & Override Best Practices
-
-1. **Keep templates pure** – no filesystem access or process state; just return
-   strings.
-2. **Version overrides** – include metadata so consumers know which version of
-   a template set they are using.
-3. **Use hooks for mutations** – modify `package.json`, `tsconfig`, etc. via
-   generation hooks so changes stay idempotent.
-4. **Validate overrides** – the CLI validates `arbiter.templates.json` using
-   Zod, surfacing actionable errors.
-5. **Dry-run first** – `arbiter generate --dry-run --diff` shows the file plan
-   before touching disk.
-
-Refer to `docs/cli/templates.md` for in-depth guidance, examples, and testing
-tips when building custom generators.
-
-Need a starting point? `packages/cli/example-templates.json` contains the same
-sample configuration used throughout the docs. It is not loaded automatically—
-copy the pieces you want into your `.arbiter/config.json` when experimenting.
-
----
-
-## Development Workflow
-
-1. **Install deps**: `bun install`
-2. **Run commands from source**:
-   ```bash
-   bun run --filter @arbiter/cli cli -- init my-app
-   ```
-3. **Watch mode** (optional): `bun run --filter @arbiter/cli dev`
-4. **Tests**:
-   - Unit/golden tests: `bun test packages/cli`
-   - Full CLI e2e: `bun test packages/cli/src/__tests__/cli-e2e.test.ts`
-5. **Lint/format**: `bun run lint` from repo root (Biome)
-
-## Runtime Dependencies
-
-Because this CLI is published for end users, interactive libraries have to live
-in `dependencies` rather than `devDependencies`. The
-`src/types/vendor.d.ts` shim references `inquirer`, `ora`, `cli-table3`, and
-`cli-spinners`; when adding or swapping runtime libraries, update both the shim
-and `package.json` so downstream installations do not fail with missing module
-errors.
-
----
-
-## Key Extension Points
-
-- `language-plugins/*`: add or customise code generation for new runtimes.
-- `templates/index.ts`: register new template sets or hook pipelines.
-- `utils/generation-hooks.ts`: implement pre/post file hooks.
-- `services/*`: add new workflows (e.g., `spec-import`, `sync`) or extend
-  existing ones without modifying command files.
-
-All core modules include TSDoc comments so IDEs surface usage hints. Start with
-`src/types.ts`, `src/api-client.ts`, and the files mentioned above to
-understand the existing contracts.
+- 🐛 [Report Issues](https://github.com/sibyllinesoft/arbiter/issues)
+- 💬 [Discussions](https://github.com/sibyllinesoft/arbiter/discussions)
+- 📖 [Documentation](https://github.com/sibyllinesoft/arbiter#readme)

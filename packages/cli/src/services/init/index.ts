@@ -1,10 +1,37 @@
 import path from "node:path";
 import chalk from "chalk";
 import fs from "fs-extra";
+import { ApiClient } from "../../api-client.js";
 import { DEFAULT_CONFIG } from "../../config.js";
 import { safeFileOperation } from "../../constraints/index.js";
-import type { InitOptions, ProjectTemplate } from "../../types.js";
+import type { CLIConfig, InitOptions, ProjectTemplate } from "../../types.js";
 import { withProgress } from "../../utils/progress.js";
+
+/**
+ * Available presets (require API server connection)
+ */
+const PRESETS = [
+  {
+    id: "web-app",
+    name: "Web Application",
+    description: "Full-stack web application with React frontend and Node.js backend",
+  },
+  {
+    id: "mobile-app",
+    name: "Mobile Application",
+    description: "Cross-platform mobile app with React Native",
+  },
+  {
+    id: "api-service",
+    name: "API Service",
+    description: "RESTful API service with database integration",
+  },
+  {
+    id: "microservice",
+    name: "Microservice",
+    description: "Containerized microservice with monitoring",
+  },
+];
 
 /**
  * Basic project templates for initialization (structure only - no CUE files)
@@ -179,14 +206,62 @@ arbiter export --format types > types.ts
 };
 
 /**
- * Initialize a new CUE project with templates
+ * Initialize a new CUE project with templates or presets
  */
 export async function initCommand(
   displayName: string | undefined,
   options: InitOptions,
+  config?: CLIConfig,
 ): Promise<number> {
   try {
-    // Get project details
+    // If a preset is specified, use the API to create the project
+    if (options.preset) {
+      if (!config) {
+        console.error(
+          chalk.red("Config is required when using presets. Please run from a configured project."),
+        );
+        return 2;
+      }
+
+      const preset = PRESETS.find((p) => p.id === options.preset);
+      if (!preset) {
+        console.error(chalk.red(`Unknown preset: ${options.preset}`));
+        console.log(chalk.dim("\nAvailable presets:"));
+        PRESETS.forEach((p) => {
+          console.log(`  ${chalk.green(p.id.padEnd(15))} ${p.description}`);
+        });
+        return 1;
+      }
+
+      const projectName = displayName || options.name || path.basename(process.cwd());
+
+      return await withProgress(
+        { text: `Creating project "${projectName}" from ${preset.name} preset...`, color: "green" },
+        async () => {
+          const apiClient = new ApiClient(config);
+          const result = await apiClient.createProject({
+            name: projectName,
+            presetId: preset.id,
+          });
+
+          if (!result.success) {
+            console.error(chalk.red("Failed to create project:"), result.error);
+            return result.exitCode ?? 1;
+          }
+
+          console.log(
+            chalk.green(`\n✓ Created project "${projectName}" from ${preset.name} preset`),
+          );
+          console.log(chalk.dim("\n💡 Your project has been created with a full specification"));
+          console.log(chalk.dim("   Use 'arbiter list <type>' to see what was generated"));
+          console.log(chalk.dim("   Use 'arbiter generate' to create code from the specification"));
+
+          return 0;
+        },
+      );
+    }
+
+    // Get project details for template-based initialization
     const projectDetails = await getProjectDetails(displayName, options);
     const { name, directory, template } = projectDetails;
 
@@ -225,6 +300,7 @@ export async function initCommand(
         console.log(chalk.green("  3. Validate your generated CUE files:"));
         console.log(chalk.cyan("     arbiter check  # Validate the generated CUE"));
         console.log(chalk.dim("\n💡 Use 'arbiter --help' to see all available add commands"));
+        console.log(chalk.dim("💡 Use 'arbiter init --list-presets' to see preset options"));
 
         return 0;
       },
@@ -307,10 +383,35 @@ async function createProject(
  * List available templates
  */
 export function listTemplates(): void {
-  console.log(chalk.cyan("Available templates:"));
+  console.log(chalk.cyan("Available templates (local, no API required):"));
   console.log();
 
   Object.entries(TEMPLATES).forEach(([key, template]) => {
-    console.log(`${chalk.green(key.padEnd(12))} ${template.description}`);
+    console.log(`${chalk.green(key.padEnd(15))} ${template.description}`);
   });
+}
+
+/**
+ * List available presets
+ */
+export function listPresets(): void {
+  console.log(chalk.cyan("Available presets (require API server):"));
+  console.log();
+
+  PRESETS.forEach((preset) => {
+    console.log(`${chalk.green(preset.id.padEnd(15))} ${preset.description}`);
+  });
+
+  console.log();
+  console.log(chalk.dim("Usage: arbiter init <name> --preset <preset-id>"));
+  console.log(chalk.dim("Example: arbiter init my-app --preset web-app"));
+}
+
+/**
+ * List both templates and presets
+ */
+export function listAll(): void {
+  listTemplates();
+  console.log();
+  listPresets();
 }

@@ -1,13 +1,50 @@
 {
-  "name": "@arbiter/cli",
-  "type": "module",
+  "name": "@sibyllinesoft/arbiter-cli",
   "version": "1.0.0",
-  "private": true,
+  "description": "CUE-based specification validation and management CLI with agent-first automation",
+  "type": "module",
   "bin": {
     "arbiter": "dist/cli.js"
   },
+  "files": [
+    "dist",
+    "templates",
+    "README.md"
+  ],
+  "keywords": [
+    "arbiter",
+    "cli",
+    "cue",
+    "validation",
+    "schema",
+    "config",
+    "typescript",
+    "agent-friendly",
+    "automation",
+    "specification",
+    "code-generation"
+  ],
+  "author": "Nathan Rice",
+  "license": "LicenseRef-SPL-1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sibyllinesoft/arbiter.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/sibyllinesoft/arbiter/issues"
+  },
+  "homepage": "https://sibylline.dev/arbiter/",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "mkdir -p dist && mkdir -p dist/services && bun build src/cli.ts --outdir dist --target=node --format=esm --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid && bun build src/index.ts --outdir dist --target=node --format=esm --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid && bun build src/config.ts --outdir dist --target=node --format=esm --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid && bun build src/api-client.ts --outdir dist --target=node --format=esm --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid && bun build src/services/**/*.ts --outdir dist/services --target=node --format=esm --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid && rm -rf dist/templates && cp -R templates dist/templates",
+    "build": "mkdir -p dist && mkdir -p dist/services && bun build src/cli.ts --outdir dist --target=node --format=esm --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid --external inquirer --external cli-spinners --external cli-table3 --external ora && bun build src/index.ts --outdir dist --target=node --format=esm --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid --external inquirer --external cli-spinners --external cli-table3 --external ora && bun build src/config.ts --outdir dist --target=node --format=esm --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid --external inquirer --external cli-spinners --external cli-table3 --external ora && bun build src/api-client.ts --outdir dist --target=node --format=esm --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid --external inquirer --external cli-spinners --external cli-table3 --external ora && bun build src/services/**/*.ts --outdir dist/services --target=node --format=esm --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid --external inquirer --external cli-spinners --external cli-table3 --external ora && rm -rf dist/templates && cp -R templates dist/templates",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build && npm test",
     "lint": "bunx @biomejs/biome check src",
     "test": "bun test",
     "smoke": "bun scripts/generator-smoke.ts",
@@ -15,13 +52,16 @@
   },
   "dependencies": {
     "chalk": "^5.3.0",
+    "chokidar": "^4.0.3",
     "cli-spinners": "^2.9.2",
     "cli-table3": "^0.6.3",
     "commander": "^11.0.0",
+    "diff": "^7.0.0",
     "fs-extra": "^11.1.1",
     "inquirer": "^9.3.7",
     "glob": "^11.0.3",
     "ora": "^8.0.1",
+    "uuid": "^11.0.4",
     "yaml": "^2.4.2",
     "zod": "^3.23.8"
   },
