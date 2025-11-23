@@ -440,7 +440,7 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
                 )}
 
                 {externalCards.length > 0 ? (
-                  <div className="overflow-hidden font-medium">
+                  <div className="overflow-hidden font-medium rounded-lg border border-graphite-200/60 dark:border-graphite-700/60">
                     <div className="border-b border-graphite-200/60 bg-gray-100 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">

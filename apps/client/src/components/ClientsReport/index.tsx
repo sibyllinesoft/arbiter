@@ -5,6 +5,7 @@ import React, { type FC, useCallback, useEffect, useMemo, useState } from "react
 import { toast } from "react-toastify";
 
 import { useTabBadgeUpdater } from "@/contexts/TabBadgeContext";
+import { Button } from "@/design-system";
 import { useResolvedSpec, useUiOptionCatalog } from "@/hooks/api-hooks";
 import { apiService } from "@/services/api";
 import ArtifactCard from "../ArtifactCard";
@@ -14,7 +15,6 @@ import {
   type FieldValue,
   type UiOptionCatalog,
 } from "../modals/entityTypes";
-import { EntityCatalog } from "../templates/EntityCatalog";
 import { ClientCard } from "./components/ClientCard";
 import { createExternalArtifactCard, isManualClient, normalizeClient } from "./normalizers";
 import type { ClientsReportProps, NormalizedClient, NormalizedClientView } from "./types";
@@ -437,56 +437,87 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
             </div>
           ) : (
             <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
-              <EntityCatalog
-                title="Client Experiences"
-                description="Explore detected frontends and add new experiences to your project catalog."
-                icon={Layout}
-                items={internalClients}
-                isLoading={isLoading}
-                emptyMessage="No code-backed clients found yet. Add one manually or ingest more sources."
-                addAction={{
-                  label: "Add Client",
-                  onAdd: handleOpenAddClient,
-                  disabled: !projectId || isCreatingClient,
-                  loading: isCreatingClient,
-                }}
-                renderCard={(client) => (
-                  <ClientCard
-                    key={client.key}
-                    client={client}
-                    onAddView={handleOpenAddView}
-                    disableAddView={isCreatingView || addViewState.open}
-                  />
-                )}
-              />
-
-              {externalClients.length > 0 && (
-                <div className="overflow-hidden font-medium">
-                  <div className="bg-gray-100 px-5 py-4 dark:bg-graphite-900/70">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">
-                        <Layout className="h-4 w-4" />
-                        <span>External Clients</span>
-                      </div>
-                      <span className="text-xs text-gray-500/70 dark:text-graphite-300/70">
-                        {externalClients.length}
-                      </span>
+              <div className="border-b border-graphite-200/60 bg-gray-100 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center text-blue-600 dark:text-blue-200">
+                      <Layout className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <h2 className="text-xl font-semibold text-gray-900 dark:text-graphite-25">
+                        Client Experiences
+                      </h2>
+                      <p className="text-sm text-gray-600 dark:text-graphite-300">
+                        Explore detected frontends and add new experiences to your project catalog.
+                      </p>
                     </div>
                   </div>
-                  <div className="px-5 py-4">
-                    <div className="grid gap-3 grid-cols-1">
-                      {externalClients.map((card, idx) => (
-                        <React.Fragment key={card.key}>
-                          <ArtifactCard name={card.name} data={card.data} onClick={noop} />
-                          {idx < externalClients.length - 1 ? (
-                            <hr className="border-graphite-200/40 dark:border-graphite-700/40" />
-                          ) : null}
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleOpenAddClient}
+                    disabled={!projectId || isCreatingClient}
+                    loading={isCreatingClient}
+                    className={clsx(
+                      "inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors",
+                      "hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+                      "disabled:cursor-not-allowed disabled:bg-blue-400 disabled:text-blue-100",
+                    )}
+                  >
+                    Add Client
+                  </Button>
                 </div>
-              )}
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-6 scrollbar-transparent">
+                <div className="space-y-6">
+                  {internalClients.length > 0 ? (
+                    <div className="overflow-hidden font-medium">
+                      <div className="grid gap-3 grid-cols-1">
+                        {internalClients.map((client) => (
+                          <ClientCard
+                            key={client.key}
+                            client={client}
+                            onAddView={handleOpenAddView}
+                            disableAddView={isCreatingView || addViewState.open}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-graphite-300">
+                      No code-backed clients found yet. Add one manually or ingest more sources.
+                    </p>
+                  )}
+
+                  {externalClients.length > 0 && (
+                    <div className="overflow-hidden font-medium rounded-lg border border-graphite-200/60 dark:border-graphite-700/60">
+                      <div className="border-b border-graphite-200/60 bg-gray-100 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">
+                            <Layout className="h-4 w-4" />
+                            <span>External Clients</span>
+                          </div>
+                          <span className="text-xs text-gray-500/70 dark:text-graphite-300/70">
+                            {externalClients.length}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="px-3 py-3 md:px-4 md:py-4">
+                        <div className="grid gap-3 grid-cols-1">
+                          {externalClients.map((card) => (
+                            <ArtifactCard
+                              key={card.key}
+                              name={card.name}
+                              data={card.data}
+                              onClick={noop}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>
