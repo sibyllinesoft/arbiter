@@ -1,5 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
+import { ScannerRunner } from "@arbiter/importer";
+import { NodeJSPlugin, goPlugin, pythonPlugin, rustPlugin } from "@arbiter/importer/plugins";
 import { ProjectEntities } from "@arbiter/shared/types/entities";
 import { Hono } from "hono";
 import type { ContentFetcher } from "../content-fetcher";
@@ -365,7 +367,7 @@ function buildManualArtifactPayload(
       return {
         name,
         description,
-        artifactType: "module",
+        artifactType: "package",
         metadata,
       };
     }
@@ -1619,7 +1621,7 @@ export function createProjectsRouter(deps: Dependencies) {
       for (const [key, comp] of Object.entries(components)) {
         if (comp.type === "infrastructure") {
           infrastructureCount++;
-        } else if (!["module", "tool", "binary", "frontend"].includes(comp.type)) {
+        } else if (!["package", "tool", "binary", "frontend"].includes(comp.type)) {
           externalCount++;
         }
       }
@@ -1694,7 +1696,7 @@ export function createProjectsRouter(deps: Dependencies) {
             databases: Object.keys(databases).length,
             packages: Object.keys(components).filter((k) => {
               const componentType = components[k].type;
-              return componentType === "package" || componentType === "module";
+              return componentType === "package";
             }).length,
             tools: Object.keys(components).filter(
               (k) => components[k].type === "tool" || components[k].type === "binary",
@@ -2695,6 +2697,83 @@ export function createProjectsRouter(deps: Dependencies) {
           services = analysis.serviceCount;
           databases = analysis.databaseCount;
           detectedStructure = analysis.structure;
+
+          // Run the importer pipeline to detect services from package manifests
+          if (absoluteProjectRoot) {
+            try {
+              console.log("[projects.create] Running importer pipeline on", absoluteProjectRoot);
+              const scanner = new ScannerRunner({
+                projectRoot: absoluteProjectRoot,
+                projectName: actualProjectName,
+                plugins: [new NodeJSPlugin(), rustPlugin, pythonPlugin, goPlugin],
+                parseOptions: {
+                  deepAnalysis: false,
+                  targetLanguages: [],
+                  maxFileSize: 10 * 1024 * 1024,
+                  includeBinaries: false,
+                  patterns: { include: [], exclude: [] },
+                },
+                inferenceOptions: {
+                  minConfidence: 0.3,
+                  inferRelationships: false,
+                  maxDependencyDepth: 3,
+                  useHeuristics: true,
+                },
+                ignorePatterns: [
+                  "node_modules/**",
+                  ".git/**",
+                  "dist/**",
+                  "build/**",
+                  "target/**",
+                  "**/__pycache__/**",
+                ],
+                maxConcurrency: 10,
+                debug: true,
+              });
+
+              const manifest = await scanner.scan();
+              console.log(
+                "[projects.create] Importer found",
+                manifest.artifacts.length,
+                "artifacts",
+              );
+
+              // Convert importer artifacts to our artifact format and merge them
+              for (const inferredArtifact of manifest.artifacts) {
+                const artifact = inferredArtifact.artifact;
+                const metadata = artifact.metadata || {};
+                artifacts.push({
+                  id: artifact.id,
+                  name: artifact.name,
+                  type: artifact.type as string,
+                  description: artifact.description || null,
+                  language: (metadata.language as string) || null,
+                  framework: (metadata.framework as string) || null,
+                  metadata,
+                  filePath: (metadata.sourceFile as string) || null,
+                });
+
+                // Count services and databases from importer
+                if (artifact.type === "service") {
+                  services++;
+                } else if (artifact.type === "database") {
+                  databases++;
+                }
+              }
+
+              console.log(
+                "[projects.create] Total artifacts after importer:",
+                artifacts.length,
+                "services:",
+                services,
+                "databases:",
+                databases,
+              );
+            } catch (error) {
+              console.warn("[projects.create] Importer pipeline failed:", error);
+              // Continue with just the tree analysis artifacts
+            }
+          }
         }
       }
 

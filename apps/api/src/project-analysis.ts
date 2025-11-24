@@ -16,7 +16,7 @@ export interface ArtifactLink {
 export interface AnalyzedArtifact {
   id: string;
   name: string;
-  type: "service" | "database" | "infrastructure" | "config" | "tool" | "module" | "frontend";
+  type: "service" | "database" | "infrastructure" | "config" | "tool" | "package" | "frontend";
   description: string;
   language: string | null;
   framework: string | null;
@@ -144,7 +144,7 @@ function packageUsesTypeScript(pkg: any): boolean {
 }
 
 function classifyPackageManifest(pkg: any): {
-  type: "service" | "frontend" | "tool" | "module";
+  type: "service" | "frontend" | "tool" | "package";
   detectedType: string;
   reason: string;
 } {
@@ -192,8 +192,8 @@ function classifyPackageManifest(pkg: any): {
   }
 
   return {
-    type: "module",
-    detectedType: "module",
+    type: "package",
+    detectedType: "package",
     reason: "default-module",
   };
 }
@@ -270,8 +270,8 @@ function classifyCargoManifest(options: {
   hasBinaries: boolean;
   hasLibrary: boolean;
 }): {
-  type: "service" | "module" | "tool";
-  detectedType: "service" | "module" | "binary";
+  type: "service" | "package" | "tool";
+  detectedType: "service" | "package" | "binary";
   reason: string;
   framework?: string;
 } {
@@ -303,8 +303,8 @@ function classifyCargoManifest(options: {
   }
 
   return {
-    type: "module",
-    detectedType: "module",
+    type: "package",
+    detectedType: "package",
     reason: options.hasLibrary ? "library-target" : "default-module",
   };
 }
@@ -1136,45 +1136,22 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
   const id = makeArtifactId(projectId, filePath);
 
   if (base === "package.json") {
-    return {
-      id,
-      name: `${name}-service`,
-      type: "service",
-      description: "Node.js service detected from package.json manifest.",
-      language: "nodejs",
-      framework: null,
-      metadata: {
-        filePath,
-        manifest: "package.json",
-      },
-      filePath,
-      links: [],
-    };
+    // Don't classify package.json here - let the proper manifest analysis handle it
+    return null;
   }
 
   if (base === "cargo.toml") {
-    return {
-      id,
-      name: `${name}-module`,
-      type: "module",
-      description: "Rust crate detected from Cargo manifest.",
-      language: "rust",
-      framework: null,
-      metadata: {
-        filePath,
-        manifest: "cargo.toml",
-      },
-      filePath,
-      links: [],
-    };
+    // Don't classify Cargo.toml here - let the proper manifest analysis handle it
+    return null;
   }
 
   if (base === "dockerfile" || base.startsWith("dockerfile.")) {
+    // Dockerfiles are infrastructure, not services
     return {
       id,
       name: `${name}-container`,
-      type: "service",
-      description: "Dockerfile detected for containerized service.",
+      type: "infrastructure",
+      description: "Dockerfile detected for containerized deployment.",
       language: null,
       framework: null,
       metadata: {

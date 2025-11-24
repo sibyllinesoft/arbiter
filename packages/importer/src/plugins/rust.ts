@@ -313,7 +313,7 @@ export class RustPlugin implements ImporterPlugin {
     const binariesForCrate = binaryEvidence.filter((e) => e.filePath === cargoEvidence.filePath);
     const hasExplicitBinary = data.hasBinaries || binariesForCrate.length > 0;
 
-    let artifactType: ArtifactType = "module";
+    let artifactType: ArtifactType = "package";
     if (framework) {
       artifactType = "service";
     } else if (jobFramework) {
@@ -353,7 +353,7 @@ export class RustPlugin implements ImporterPlugin {
     const tags = new Set<string>(["rust"]);
     if (artifactType === "binary") tags.add("tool");
     if (artifactType === "service") tags.add("service");
-    if (artifactType === "module" || data.hasLibrary) tags.add("module");
+    if (artifactType === "package" || data.hasLibrary) tags.add("package");
     if (artifactType === "job") tags.add("job");
 
     const provenance: Provenance = {

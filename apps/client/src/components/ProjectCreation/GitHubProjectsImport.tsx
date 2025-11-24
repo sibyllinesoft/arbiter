@@ -72,11 +72,11 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
       setReposByOwner(groupedRepos);
 
       if (!reposResult.success) {
-        toast.error(reposResult.error || "Failed to load GitHub repositories");
+        toast.error(reposResult.error || "Failed to load GitHub repositories", { autoClose: 3000 });
       }
     } catch (error) {
       console.error("Failed to load GitHub projects:", error);
-      toast.error("Failed to load GitHub projects");
+      toast.error("Failed to load GitHub projects", { autoClose: 3000 });
     } finally {
       setLoadingGitHub(false);
     }
@@ -88,7 +88,7 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
 
   const handleImportSelectedRepos = async () => {
     if (selectedRepos.size === 0) {
-      toast.error("Please select at least one repository to import");
+      toast.error("Please select at least one repository to import", { autoClose: 2000 });
       return;
     }
 
@@ -103,10 +103,11 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
             if (scanResult.success) {
               const projectName = repo.name;
               await apiService.createProject(projectName, scanResult.tempPath);
-              toast.success(`Project "${projectName}" imported successfully`);
+              toast.success(`Project "${projectName}" imported successfully`, { autoClose: 2000 });
             } else {
               toast.error(
                 `Failed to scan repository "${repo.name}": ${scanResult.error || "Unknown error"}`,
+                { autoClose: 3000 },
               );
             }
           } catch (error: any) {
@@ -116,7 +117,9 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
               error?.details?.message ||
               error?.message ||
               "Unknown error";
-            toast.error(`Failed to scan repository "${repo.name}": ${errorMessage}`);
+            toast.error(`Failed to scan repository "${repo.name}": ${errorMessage}`, {
+              autoClose: 3000,
+            });
             console.error(`Scan error for ${repo.name}:`, error);
           }
         } else {
@@ -127,7 +130,7 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
       onClose();
       setSelectedRepos(new Set());
     } catch (error) {
-      toast.error("Failed to import repositories");
+      toast.error("Failed to import repositories", { autoClose: 3000 });
       console.error("Import error:", error);
     } finally {
       setIsCreatingProject(false);
@@ -171,102 +174,100 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
 
       {reposByOwner && Object.keys(reposByOwner).length > 0 && !isLoadingGitHub && (
         <>
-          <div className="flex-1 min-h-0 flex flex-col">
-            <div className="flex-1 space-y-4 overflow-y-auto pr-2 scrollbar-transparent">
-              {Object.entries(reposByOwner).map(([owner, repos]) => (
-                <div
-                  key={owner}
-                  className="rounded-lg border border-gray-200 p-3 dark:border-graphite-700 dark:bg-graphite-900"
-                >
-                  <div className="mb-3 flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-graphite-800">
-                      <span className="text-sm font-medium text-gray-600 dark:text-graphite-200">
-                        {owner.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <h5 className="font-medium text-gray-900 dark:text-gray-100">{owner}</h5>
-                      <p className="text-xs text-gray-500 dark:text-graphite-300">
-                        {repos.length} repositories
-                      </p>
-                    </div>
+          <div className="flex-1 space-y-4 overflow-y-auto pr-2 scrollbar-transparent min-h-0">
+            {Object.entries(reposByOwner).map(([owner, repos]) => (
+              <div
+                key={owner}
+                className="rounded-lg border border-gray-200 p-3 dark:border-graphite-700 dark:bg-graphite-900"
+              >
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-graphite-800">
+                    <span className="text-sm font-medium text-gray-600 dark:text-graphite-200">
+                      {owner.charAt(0).toUpperCase()}
+                    </span>
                   </div>
-
-                  <div className="space-y-2">
-                    {repos.map((repo) => (
-                      <div
-                        key={repo.id}
-                        className={cn(
-                          "flex cursor-pointer items-center gap-3 rounded border p-2 transition-colors",
-                          selectedRepos.has(repo.id)
-                            ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-500/10"
-                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-graphite-700 dark:hover:border-graphite-600 dark:hover:bg-graphite-800",
-                        )}
-                        onClick={() => handleSelectRepo(repo.id)}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedRepos.has(repo.id)}
-                          onChange={(e) => e.stopPropagation()}
-                          onClick={(e) => e.stopPropagation()}
-                          className="pointer-events-none h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-graphite-600 dark:bg-graphite-800 dark:text-blue-300 dark:focus:ring-blue-400"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h6 className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {repo.name}
-                            </h6>
-                            {repo.language && (
-                              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-graphite-800 dark:text-graphite-300">
-                                {repo.language}
-                              </span>
-                            )}
-                            {repo.private && (
-                              <span className="rounded px-2 py-0.5 text-xs bg-yellow-100 text-yellow-600 dark:bg-yellow-500/10 dark:text-yellow-300">
-                                Private
-                              </span>
-                            )}
-                          </div>
-                          {repo.description && (
-                            <p className="mt-1 truncate text-xs text-gray-500 dark:text-graphite-300">
-                              {repo.description}
-                            </p>
-                          )}
-                          <div className="mt-1 flex items-center gap-3 text-xs text-gray-400 dark:text-graphite-400">
-                            <span>★ {repo.stargazers_count}</span>
-                            <span>⑂ {repo.forks_count}</span>
-                            <span>Updated {new Date(repo.updated_at).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div>
+                    <h5 className="font-medium text-gray-900 dark:text-gray-100">{owner}</h5>
+                    <p className="text-xs text-gray-500 dark:text-graphite-300">
+                      {repos.length} repositories
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <div className="space-y-2">
+                  {repos.map((repo) => (
+                    <div
+                      key={repo.id}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-3 rounded border p-2 transition-colors",
+                        selectedRepos.has(repo.id)
+                          ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-500/10"
+                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-graphite-700 dark:hover:border-graphite-600 dark:hover:bg-graphite-800",
+                      )}
+                      onClick={() => handleSelectRepo(repo.id)}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedRepos.has(repo.id)}
+                        onChange={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        className="pointer-events-none h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-graphite-600 dark:bg-graphite-800 dark:text-blue-300 dark:focus:ring-blue-400"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h6 className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {repo.name}
+                          </h6>
+                          {repo.language && (
+                            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-graphite-800 dark:text-graphite-300">
+                              {repo.language}
+                            </span>
+                          )}
+                          {repo.private && (
+                            <span className="rounded px-2 py-0.5 text-xs bg-yellow-100 text-yellow-600 dark:bg-yellow-500/10 dark:text-yellow-300">
+                              Private
+                            </span>
+                          )}
+                        </div>
+                        {repo.description && (
+                          <p className="mt-1 truncate text-xs text-gray-500 dark:text-graphite-300">
+                            {repo.description}
+                          </p>
+                        )}
+                        <div className="mt-1 flex items-center gap-3 text-xs text-gray-400 dark:text-graphite-400">
+                          <span>★ {repo.stargazers_count}</span>
+                          <span>⑂ {repo.forks_count}</span>
+                          <span>Updated {new Date(repo.updated_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
-          {selectedRepos.size > 0 && (
-            <div className="flex-shrink-0 border-t border-gray-200 pt-4 dark:border-graphite-700">
-              <Button
-                variant="primary"
-                onClick={handleImportSelectedRepos}
-                disabled={isCreatingProject}
-                className="w-full"
-                leftIcon={
-                  isCreatingProject ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Upload className="w-4 h-4" />
-                  )
-                }
-              >
-                {isCreatingProject
-                  ? "Importing Projects..."
-                  : `Import ${selectedRepos.size} Selected Project${selectedRepos.size > 1 ? "s" : ""}`}
-              </Button>
-            </div>
-          )}
+          <div className="flex-shrink-0 border-t border-gray-200 pt-4 dark:border-graphite-700">
+            <Button
+              variant="primary"
+              onClick={handleImportSelectedRepos}
+              className="w-full"
+              leftIcon={
+                isCreatingProject ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4" />
+                )
+              }
+              disabled={isCreatingProject || selectedRepos.size === 0}
+            >
+              {isCreatingProject
+                ? "Importing Projects..."
+                : selectedRepos.size > 0
+                  ? `Import ${selectedRepos.size} Selected Project${selectedRepos.size > 1 ? "s" : ""}`
+                  : "Select Projects to Import"}
+            </Button>
+          </div>
         </>
       )}
 

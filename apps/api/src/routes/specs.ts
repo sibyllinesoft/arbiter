@@ -307,6 +307,13 @@ export function createSpecsRouter(deps: Dependencies) {
           }
         }
 
+        // Log metadata.manifest for debugging
+        console.log("[specs.resolved] service artifact", {
+          name: artifact.name,
+          manifest: metadata.manifest,
+          hasManifest: Boolean(metadata.manifest),
+        });
+
         services[serviceName] = {
           name: artifact.name, // Use the original name from docker-compose.yml
           type: "service",

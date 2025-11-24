@@ -11,9 +11,11 @@ import { Command } from "commander";
 import { createAddCommands } from "./add.js";
 import { createAuthCommand } from "./auth.js";
 import { hydrateCliContext } from "./context.js";
+import { createDesignCommand } from "./design.js";
 import { createEpicTaskCommands } from "./epic-task.js";
 import { createGenerationCommands } from "./generation.js";
 import { createIntegrationCommands } from "./integration.js";
+import { createPlanCommand } from "./plan.js";
 import { createProjectCommands } from "./project.js";
 import { createRemoveCommands } from "./remove.js";
 import { createUtilitiesCommands } from "./utilities.js";
@@ -56,6 +58,8 @@ createGenerationCommands(program);
 createIntegrationCommands(program);
 createUtilitiesCommands(program);
 createAuthCommand(program);
+createPlanCommand(program);
+createDesignCommand(program);
 
 // Handle unknown commands
 program.on("command:*", () => {
@@ -72,18 +76,22 @@ ${chalk.cyan("Arbiter CLI - Agent-Friendly Specification Management")}
 
 ${chalk.yellow("Core Workflows:")}
 
-  ${chalk.green("1. SPEC FRAGMENT MANAGEMENT (Git-Style):")}
-    arbiter init my-app --schema=app     # Initialize with app-centric schema 
+  ${chalk.green("1. FEATURE PLANNING (AI-Assisted):")}
+    arbiter plan                         # Interactive feature planning prompt
+    arbiter design                       # Detailed technical design (after plan)
+
+  ${chalk.green("2. SPEC FRAGMENT MANAGEMENT (Git-Style):")}
+    arbiter init my-app --schema=app     # Initialize with app-centric schema
     arbiter add service billing          # Add service specification
     arbiter add api/order                # Add API endpoint specification
     arbiter add flow checkout            # Add user flow specification
     arbiter generate                     # Generate code from specifications
 
-  ${chalk.green("2. VALIDATION & FEEDBACK:")}
+  ${chalk.green("3. VALIDATION & FEEDBACK:")}
     arbiter check                        # Validate all specifications
     arbiter watch                        # Watch mode with live validation
 
-  ${chalk.green("3. RELEASE MANAGEMENT:")}
+  ${chalk.green("4. RELEASE MANAGEMENT:")}
     arbiter version plan                 # Plan version changes
     arbiter integrate                    # Generate CI/CD workflows
 

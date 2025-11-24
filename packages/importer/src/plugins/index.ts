@@ -11,6 +11,10 @@ import { pythonPlugin } from "./python";
 import { rustPlugin } from "./rust";
 import { TerraformPlugin } from "./terraform";
 
+// Export all plugins
+export { DockerPlugin, KubernetesPlugin, NodeJSPlugin, TerraformPlugin };
+export { goPlugin, pythonPlugin, rustPlugin };
+
 /**
  * Returns all bundled importer plugins in their recommended registration order.
  */

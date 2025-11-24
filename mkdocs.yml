@@ -29,6 +29,8 @@ plugins:
   - git-revision-date-localized:
       fallback_to_build_date: true
       type: datetime
+hooks:
+  - docs/hooks.py
 markdown_extensions:
   - admonition
   - attr_list

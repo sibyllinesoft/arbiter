@@ -101,7 +101,171 @@ arbiter check
 arbiter watch
 ```
 
+## Workflows
+
+Arbiter supports three main workflows for creating and managing specifications, each suited to different use cases and levels of planning:
+
+### 1. Quick Start: Preset + Customize
+
+**Best for:** Rapid prototyping, standard application patterns, getting started quickly
+
+The fastest way to get productive is to start with a preset and customize it using `arbiter add`:
+
+```bash
+# Initialize with a preset
+arbiter init my-app --preset web-app
+
+# Customize by adding components
+arbiter add service api --language typescript --port 3000
+arbiter add database postgres --engine postgresql
+arbiter add endpoint /users --method GET
+arbiter add route /dashboard --component Dashboard
+
+# Generate code
+arbiter generate
+```
+
+**Pros:**
+- Fastest time to working code
+- Pre-configured best practices
+- Immediate code generation
+- Great for standard architectures
+
+**Cons:**
+- Less upfront planning
+- May include components you don't need
+- Requires understanding the preset structure
+
+### 2. Structured Planning: plan/design Workflow
+
+**Best for:** New features, team collaboration, AI-assisted development, architectural clarity
+
+For more structured development with clear planning phases, use the `plan` and `design` commands:
+
+```bash
+# Step 1: Define WHAT to build (feature intent)
+arbiter plan
+# Follow the interactive prompts to capture:
+# - Problem/motivation
+# - Target users
+# - Desired outcomes
+# - Scope (in/out)
+# - Key user flows
+# - Success criteria
+
+# Step 2: Define HOW to build (technical design)
+arbiter design
+# Follow the interactive prompts to capture:
+# - Existing stack and constraints
+# - Overall approach
+# - Components and responsibilities
+# - Data model changes
+# - Integrations
+# - Non-functional requirements
+# - Rollout strategy
+
+# The design phase uses `arbiter add` to record decisions:
+arbiter add design.approach "New API endpoint on service X..."
+arbiter add design.component "Name: OrderValidator; Responsibility: ..."
+arbiter add design.data_model "orders table: add column status..."
+
+# Step 3: Generate implementation
+arbiter generate
+```
+
+**Pros:**
+- Clear separation of WHAT vs HOW
+- Better documentation of decisions
+- AI-friendly prompts for assistant collaboration
+- Incremental decision capture
+- Easier team review and alignment
+
+**Cons:**
+- More upfront time investment
+- Requires discipline to follow process
+- May feel heavyweight for simple changes
+
+### 3. Brownfield Import
+
+**Best for:** Existing codebases, legacy system documentation, detailed external specifications
+
+Arbiter has built-in static analysis to introspect existing projects, or you can use external tools for heavyweight specification processes.
+
+**Option A: Built-in Static Analysis (Recommended)**
+
+```bash
+# Import existing project through GitHub
+arbiter init --github-url https://github.com/org/my-project
+
+# Or import local directory
+arbiter init --local-path ../my-existing-project
+
+# Arbiter's importer detects:
+# - Services with manifests (package.json, Cargo.toml, go.mod, pyproject.toml)
+# - Dependencies and frameworks
+# - Build tools and binaries
+# - Docker configurations
+
+# Customize the imported spec
+arbiter add endpoint /new-api --service api --method POST
+arbiter generate
+```
+
+**Pros:**
+- Automatic service and dependency detection
+- No external tools required
+- Supports Node.js, Rust, Python, Go, Docker, Kubernetes
+- Fast brownfield onboarding
+
+**Cons:**
+- Limited to what static analysis can detect
+- May miss complex architectural patterns
+
+**Option B: External Tool Integration**
+
+For heavyweight specification processes with extensive deliberation, use tools like speckit or bmad:
+
+```bash
+# Create comprehensive spec with external tool
+speckit analyze ./my-project --deep-analysis > spec.json
+
+# Review and translate to arbiter add commands (with AI assistance)
+cat spec.json
+arbiter init my-project
+arbiter add service api --language typescript --port 3000
+# ... translate remaining spec decisions
+
+arbiter generate
+```
+
+**Pros:**
+- Captures detailed architectural decisions
+- Incorporates team deliberation and design choices
+- Can combine multiple analysis sources
+
+**Cons:**
+- Requires external tool setup
+- Manual translation needed
+- More time-intensive process
+
+**Note:** Use built-in import for quick brownfield onboarding. Use external tools when you need heavyweight specs after extensive team deliberation.
+
+### Choosing a Workflow
+
+| Workflow | Time Investment | Planning | Best For |
+|----------|----------------|----------|----------|
+| Preset + Customize | Low | Minimal | Prototypes, standard patterns |
+| plan/design | Medium | Structured | New features, team projects |
+| Brownfield Import | Low-Variable | Introspection or Translation | Existing codebases, migrations |
+
+**Tip:** You can mix workflows! Start with a preset for greenfield projects, use `plan`/`design` for new features, import brownfield codebases with static analysis, or translate heavyweight external specs.
+
 ## Available Commands
+
+### Planning & Design
+
+- \`arbiter plan\` - Interactive feature planning assistant (WHAT to build)
+- \`arbiter design\` - Interactive technical design assistant (HOW to build)
 
 ### Project Management
 

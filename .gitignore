@@ -37,3 +37,5 @@ docs/public/
 .env
 *.tsbuildinfo
 deploy/cloudflare/wrangler.toml
+*.tgz
+*.t.err

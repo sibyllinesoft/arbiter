@@ -1,0 +1,121 @@
+name: Documentation Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'packages/cli/**'
+      - '.github/workflows/docs-test.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'packages/cli/**'
+
+jobs:
+  test-cli-docs:
+    name: Test CLI Documentation Examples
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Node.js dependencies
+        run: bun install
+
+      - name: Install Python dependencies
+        run: pip install -r docs/requirements.txt
+
+      - name: Build CLI
+        run: |
+          cd packages/cli
+          bun run build
+
+      - name: Start Arbiter API server
+        run: |
+          cd apps/api
+          bun run dev &
+          echo $! > /tmp/arbiter-api.pid
+        env:
+          NODE_ENV: test
+
+      - name: Wait for API server to be ready
+        run: |
+          echo "Waiting for API server..."
+          for i in {1..30}; do
+            if curl -f http://localhost:5050/health 2>/dev/null; then
+              echo "API server is ready"
+              break
+            fi
+            echo "Attempt $i/30: API not ready yet..."
+            sleep 2
+          done
+
+      - name: Run Cram CLI tests
+        run: cram --verbose docs/tests/*.t
+        env:
+          PATH: ${{ github.workspace }}/packages/cli/dist:${{ env.PATH }}
+
+      - name: Build documentation with validation
+        run: |
+          VALIDATE_CLI_EXAMPLES=1 VALIDATE_CLI_STRICT=1 mkdocs build
+        env:
+          SITE_URL: https://arbiter.sibylline.dev
+
+      - name: Stop API server
+        if: always()
+        run: |
+          if [ -f /tmp/arbiter-api.pid ]; then
+            kill $(cat /tmp/arbiter-api.pid) || true
+          fi
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cram-test-failures
+          path: |
+            docs/tests/*.t.err
+            docs/public/
+
+  # Optional: Deploy docs to GitHub Pages after tests pass
+  deploy-docs:
+    name: Deploy Documentation
+    needs: test-cli-docs
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r docs/requirements.txt
+
+      - name: Build documentation
+        run: mkdocs build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/public

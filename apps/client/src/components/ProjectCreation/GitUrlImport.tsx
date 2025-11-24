@@ -26,7 +26,7 @@ export function GitUrlImport({ onClose }: GitUrlImportProps) {
 
   const handleScanGitUrl = async () => {
     if (!gitUrl.trim()) {
-      toast.error("Please enter a valid Git URL");
+      toast.error("Please enter a valid Git URL", { autoClose: 2000 });
       return;
     }
 
@@ -35,12 +35,12 @@ export function GitUrlImport({ onClose }: GitUrlImportProps) {
       const result = await apiService.scanGitUrl(gitUrl);
       if (result.success) {
         setScanResult(result);
-        toast.success("Repository scanned successfully");
+        toast.success("Repository scanned successfully", { autoClose: 2000 });
       } else {
-        toast.error(result.error || "Failed to scan repository");
+        toast.error(result.error || "Failed to scan repository", { autoClose: 3000 });
       }
     } catch (error) {
-      toast.error("Failed to scan git repository");
+      toast.error("Failed to scan git repository", { autoClose: 3000 });
       console.error("Git scan error:", error);
     } finally {
       setIsScanning(false);
@@ -73,9 +73,9 @@ export function GitUrlImport({ onClose }: GitUrlImportProps) {
           console.warn("Failed to cleanup temp directory:", cleanupError);
         }
       }
-      toast.success(`Project "${newProject.name}" created from repository`);
+      toast.success(`Project "${newProject.name}" created from repository`, { autoClose: 2000 });
     } catch (error) {
-      toast.error("Failed to create project from scan");
+      toast.error("Failed to create project from scan", { autoClose: 3000 });
       console.error("Import from scan error:", error);
     } finally {
       setIsCreatingProject(false);

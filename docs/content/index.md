@@ -28,43 +28,154 @@ Traditional development tools force you to choose between flexibility and struct
 
 This approach ensures specs stay consistent, agents stay productive, and teams stay aligned.
 
-## Quickstart: CLI-First Path (Recommended)
+## Three Workflows, One Tool
 
-**For AI Agents and Command-Line Users**
+Arbiter adapts to your situation with three complementary workflows:
 
-The CLI is your primary interface. It provides guided, incremental spec building with built-in validation:
+### 🚀 Quick Start: Preset + Customize
+
+**Best for:** Rapid prototyping, standard patterns, getting started fast
+
+Start with a preset that matches your use case, then customize with incremental `arbiter add` commands:
 
 ```bash
-# 1) Install Arbiter
+# Initialize from preset
+arbiter init my-app --preset web-app
+
+# Customize the spec
+arbiter add service api --language typescript --port 3000
+arbiter add database postgres --engine postgresql
+arbiter add endpoint /users --method GET
+
+# Generate and go
+arbiter generate
+```
+
+**When to use:**
+- Building standard architectures (web apps, APIs, microservices)
+- Prototyping new ideas quickly
+- Learning Arbiter's conventions
+- Onboarding new team members
+
+### 🎯 Structured Planning: plan/design Workflow
+
+**Best for:** New features, team collaboration, AI-assisted development
+
+Follow a guided two-phase process that separates **what to build** from **how to build it**:
+
+```bash
+# Phase 1: Define WHAT to build (feature intent)
+arbiter plan
+# → Outputs planning prompt for AI assistant
+# → Captures problem, users, outcomes, scope, flows, success criteria
+
+# Phase 2: Define HOW to build (technical design)
+arbiter design
+# → Outputs design prompt for AI assistant
+# → Records decisions using `arbiter add` as you go:
+arbiter add design.approach "New API endpoint on service X..."
+arbiter add design.component "Name: OrderValidator; Responsibility: ..."
+arbiter add design.data_model "orders table: add status column..."
+
+# Phase 3: Generate implementation
+arbiter generate
+```
+
+**When to use:**
+- Building complex features that need team alignment
+- Working with AI assistants on architectural decisions
+- Documenting design decisions for future reference
+- Onboarding developers to unfamiliar domains
+
+**Why it works:**
+- Clear separation of WHAT vs HOW keeps conversations focused
+- AI assistants stay on track with structured prompts
+- Design decisions are captured incrementally, not as an afterthought
+- The spec becomes living documentation of intent and architecture
+
+### 📦 Brownfield Import
+
+**Best for:** Existing codebases, legacy system documentation, detailed external specifications
+
+Arbiter has built-in static analysis to introspect existing projects, or you can use external tools for heavyweight specification processes:
+
+**Option A: Built-in Static Analysis (Recommended)**
+
+Arbiter introspects your existing codebase to detect services, dependencies, and architecture:
+
+```bash
+# Import existing project through GitHub
+arbiter init --github-url https://github.com/org/my-project
+
+# Or import local directory
+arbiter init --local-path ../my-existing-project
+
+# Arbiter's importer detects:
+# - Services with manifests (package.json, Cargo.toml, go.mod, pyproject.toml)
+# - Dependencies and frameworks
+# - Build tools and binaries
+# - Docker configurations
+
+# Customize the imported spec
+arbiter add endpoint /new-api --service api --method POST
+arbiter generate
+```
+
+**Option B: External Tool Integration**
+
+For heavyweight specification processes with extensive deliberation, use tools like speckit or bmad to create detailed specs, then translate to Arbiter:
+
+```bash
+# Create comprehensive spec with external tool
+speckit analyze ./my-project --deep-analysis > spec.json
+
+# Review and translate to arbiter add commands (with AI assistance)
+cat spec.json
+arbiter init my-project
+arbiter add service api --language typescript --port 3000
+# ... translate remaining spec decisions
+
+arbiter generate
+```
+
+**When to use:**
+- **Built-in import:** Quick brownfield onboarding, automatic service detection
+- **External tools:** Heavyweight specs after team deliberation, detailed architectural documentation
+
+**Note:** Arbiter's importer supports Node.js, Rust, Python, Go, Docker, and Kubernetes out of the box. External tools are for cases requiring extensive upfront design work beyond what introspection provides.
+
+### Choosing Your Workflow
+
+| Workflow | Time | Planning | Best For |
+|----------|------|----------|----------|
+| **Preset + Customize** | Low | Minimal | Prototypes, standard patterns |
+| **plan/design** | Medium | Structured | Complex features, team projects |
+| **Brownfield Import** | Low-Variable | Introspection or Translation | Existing codebases, migrations |
+
+**Mix and match:** Start with a preset for greenfield projects, use plan/design for new features, import brownfield codebases with static analysis, or translate heavyweight external specs. All workflows produce the same validated CUE specs.
+
+## Getting Started
+
+### Installation
+
+```bash
+# Clone the repository
 git clone https://github.com/arbiter/arbiter.git && cd arbiter
 bun install  # or npm install
 
-# 2) Start the API server (required for validation and generation)
+# Start the API server (required for validation and generation)
 bun run dev  # Starts API on http://localhost:5050
-
-# 3) Initialize a new project
-arbiter init my-app --language typescript
-
-# 4) Build your spec incrementally (agents: this is your happy path!)
-arbiter add service web --language typescript --port 3000
-arbiter add endpoint /api/health --service web --method GET
-arbiter add endpoint /api/users --service web --method POST
-
-# 5) Validate your spec (happens automatically, but you can check explicitly)
-arbiter check
-
-# 6) Generate code, tests, and infrastructure
-arbiter generate --force
-
-# Output lands in services/, clients/, tests/, and docs/
 ```
 
-**Why CLI first?**
-- ✅ Keeps agents on the right track with clear next steps
-- ✅ Validates every change automatically
-- ✅ Produces consistent, reviewable CUE specs
-- ✅ Works non-interactively for automation
-- ✅ Perfect for AI-assisted development
+### Your First Project
+
+Choose one of the three workflows above based on your needs:
+
+- **New greenfield project?** Start with "Preset + Customize" for the fastest path
+- **Complex feature or team project?** Use "plan/design" for structured development
+- **Existing codebase?** Use "Brownfield Import" with built-in static analysis, or translate heavyweight external specs
+
+Once you've chosen your workflow, the CLI guides you through the rest with clear next steps and automatic validation.
 
 ## Alternative: UI for Visual Exploration
 
@@ -107,8 +218,9 @@ Arbiter is built for AI assistants and automation from day one:
 - **Proper Exit Codes**: 0 for success, 1 for errors, 2 for configuration issues. Automation-friendly.
 - **Incremental Building**: Start simple, add complexity step by step. No giant config files to wrangle.
 - **Built-in Validation**: Invalid specs fail fast with clear error messages. No silent failures.
+- **Guided Prompts for Planning**: `arbiter plan` and `arbiter design` output structured prompts that keep AI assistants focused on WHAT vs HOW, preventing scope creep and ensuring decisions get captured.
 
-**For AI Agents**: Follow the CLI commands in order. The tool is designed to guide you through spec creation. If you get stuck, run `arbiter <command> --help` for detailed guidance.
+**For AI Agents**: Use `arbiter plan` and `arbiter design` for structured feature development. The tool outputs prompts specifically designed to guide you through planning (WHAT) and design (HOW) phases. Follow the CLI commands in order, and run `arbiter <command> --help` for detailed guidance.
 
 ## What You'll Find Here
 

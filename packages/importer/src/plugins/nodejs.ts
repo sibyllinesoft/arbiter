@@ -920,8 +920,8 @@ export class NodeJSPlugin implements ImporterPlugin {
 
     if (hasTypesField && !hasRuntimeScript && !hasBin) {
       return {
-        artifactType: "module",
-        detectedType: "module",
+        artifactType: "package",
+        detectedType: "package",
         reason: "types-package",
       };
     }
@@ -955,9 +955,9 @@ export class NodeJSPlugin implements ImporterPlugin {
     }
 
     return {
-      artifactType: "module",
-      detectedType: "module",
-      reason: "default-module",
+      artifactType: "package",
+      detectedType: "package",
+      reason: "default-package",
     };
   }
 
@@ -1080,15 +1080,15 @@ export class NodeJSPlugin implements ImporterPlugin {
       tool: "tool",
       web_service: "service",
       frontend: "frontend",
-      module: "module",
+      module: "package",
       desktop_app: "binary", // or 'module' depending on context
-      data_processing: "module",
+      data_processing: "package",
       testing: "test",
-      build_tool: "module",
+      build_tool: "package",
       game: "frontend",
       mobile: "frontend",
     };
-    return mapping[category] || "module";
+    return mapping[category] || "package";
   }
 
   private inferFramework(pkg: any): string {

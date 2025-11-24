@@ -152,7 +152,7 @@ export function createIrRouter(deps: Dependencies) {
         dependencies: [
           { id: "auth", name: "Authentication Service", type: "service" },
           { id: "api", name: "REST API", type: "api" },
-          { id: "charts", name: "Chart Module", type: "module" },
+          { id: "charts", name: "Chart Module", type: "package" },
         ],
       },
     });

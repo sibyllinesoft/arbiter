@@ -70,7 +70,9 @@ export function EntityCatalog<T>({
             <p className="text-sm text-gray-500 dark:text-graphite-300">Loading...</p>
           ) : items.length > 0 ? (
             <div className="overflow-hidden font-medium">
-              <div className="grid gap-3 grid-cols-1">{items.map(renderCard)}</div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {items.map(renderCard)}
+              </div>
             </div>
           ) : (
             <p className="text-sm text-gray-500 dark:text-graphite-300">{emptyMessage}</p>

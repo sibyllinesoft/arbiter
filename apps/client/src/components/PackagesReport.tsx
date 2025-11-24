@@ -137,41 +137,7 @@ export const PackagesReport: React.FC<PackagesReportProps> = ({ projectId, class
 
     const isPackageType = (comp: any): boolean => {
       const type = comp?.type?.toString().toLowerCase() ?? "";
-      const detectedType = comp?.metadata?.detectedType?.toString().toLowerCase() ?? "";
-
-      // Package-related type keywords (language-agnostic)
-      const packageKeywords = [
-        "module",
-        "library",
-        "package",
-        "crate",
-        "gem",
-        "wheel",
-        "jar",
-        "egg",
-      ];
-
-      // Check if type or detectedType contains any package keyword
-      const typeMatches = packageKeywords.some(
-        (keyword) => type.includes(keyword) || detectedType.includes(keyword),
-      );
-
-      // Also check for language-specific package patterns in detectedType
-      const languagePackagePatterns = [
-        "cargo",
-        "npm",
-        "pypi",
-        "maven",
-        "nuget",
-        "gem",
-        "composer",
-        "pod",
-      ];
-      const hasLanguagePackage = languagePackagePatterns.some((pattern) =>
-        detectedType.includes(pattern),
-      );
-
-      return typeMatches || hasLanguagePackage;
+      return type === "package";
     };
 
     if (Array.isArray(componentsSource)) {
@@ -195,6 +161,37 @@ export const PackagesReport: React.FC<PackagesReportProps> = ({ projectId, class
 
   const tabBadgeUpdater = useTabBadgeUpdater();
   const packageCount = isLoading || isError ? null : packages.length;
+
+  // Debug logging
+  React.useEffect(() => {
+    if (packages.length > 0) {
+      console.log("[PackagesReport] Found packages:", packages.length);
+      console.log("[PackagesReport] First package:", packages[0]);
+      console.log(
+        "[PackagesReport] Sample types:",
+        packages.slice(0, 3).map((p) => ({ name: p.name, type: p.data?.type })),
+      );
+    } else {
+      console.log("[PackagesReport] No packages found");
+      if (data?.resolved) {
+        const resolved = data.resolved as Record<string, any>;
+        const spec = resolved?.spec ?? resolved;
+        const componentsSource = spec?.components ?? resolved?.components ?? {};
+        if (Array.isArray(componentsSource)) {
+          console.log(
+            "[PackagesReport] Component types:",
+            componentsSource.slice(0, 5).map((c) => ({ name: c?.name, type: c?.type })),
+          );
+        } else if (componentsSource && typeof componentsSource === "object") {
+          const entries = Object.entries(componentsSource).slice(0, 5);
+          console.log(
+            "[PackagesReport] Component types:",
+            entries.map(([k, v]: any) => ({ name: k, type: v?.type })),
+          );
+        }
+      }
+    }
+  }, [packages, data?.resolved]);
 
   useEffect(() => {
     if (!projectId || packageCount == null) {

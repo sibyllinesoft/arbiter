@@ -63,9 +63,11 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
       setCurrentProject(newProject);
       refetchProjects();
       onClose();
-      toast.success(`Project "${newProject.name}" created from ${preset.name} preset`);
+      toast.success(`Project "${newProject.name}" created from ${preset.name} preset`, {
+        autoClose: 2000,
+      });
     } catch (error) {
-      toast.error("Failed to create project");
+      toast.error("Failed to create project", { autoClose: 3000 });
       console.error("Failed to create project:", error);
     } finally {
       setIsCreatingProject(false);
@@ -84,13 +86,13 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
   };
 
   return (
-    <div className="border-r border-gray-200 p-6 dark:border-graphite-700">
-      <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+    <div className="border-r border-gray-200 p-6 dark:border-graphite-700 flex flex-col h-full overflow-hidden">
+      <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">
         <FileText className="w-5 h-5" />
         Create from Preset
       </h3>
 
-      <div className="mb-6 space-y-3">
+      <div className="mb-6 space-y-3 overflow-y-auto flex-1 min-h-0 pr-2 scrollbar-transparent">
         {presets.map((preset) => (
           <div
             key={preset.id}
@@ -140,7 +142,7 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
       </div>
 
       {selectedPreset && (
-        <div className="space-y-4">
+        <div className="space-y-4 flex-shrink-0 border-t border-gray-200 dark:border-graphite-700 pt-4 mt-4">
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-graphite-200">
               Project Name

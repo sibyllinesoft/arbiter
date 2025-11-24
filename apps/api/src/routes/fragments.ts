@@ -250,7 +250,7 @@ const SPEC_ARTIFACT_SOURCE = "spec-import";
 
 type DerivedArtifact = {
   name: string;
-  type: "service" | "database" | "frontend" | "view" | "module" | "tool" | "infrastructure";
+  type: "service" | "database" | "frontend" | "view" | "package" | "tool" | "infrastructure";
   description?: string | null;
   language?: string | null;
   framework?: string | null;
@@ -505,7 +505,7 @@ export function extractArtifactsFromResolved(
       const flowId = typeof flow.id === "string" ? flow.id : "flow";
       modules.push({
         name: flowId,
-        type: "module",
+        type: "package",
         metadata: withSpecSource({
           moduleType: "flow",
           steps: flow.steps ?? [],
@@ -520,7 +520,7 @@ export function extractArtifactsFromResolved(
       const capability = capabilityValue as Record<string, unknown>;
       modules.push({
         name: capabilityName,
-        type: "module",
+        type: "package",
         description:
           typeof capability.description === "string" ? (capability.description as string) : null,
         metadata: withSpecSource({
@@ -556,7 +556,7 @@ export function extractArtifactsFromResolved(
     if (docs.api) {
       modules.push({
         name: "API Documentation",
-        type: "module",
+        type: "package",
         metadata: withSpecSource({
           moduleType: "documentation",
           api: docs.api,
@@ -569,7 +569,7 @@ export function extractArtifactsFromResolved(
         const runbookName = typeof runbook.name === "string" ? runbook.name : "Operational Runbook";
         modules.push({
           name: runbookName,
-          type: "module",
+          type: "package",
           metadata: withSpecSource({
             moduleType: "runbook",
             runbook,
@@ -584,7 +584,7 @@ export function extractArtifactsFromResolved(
     for (const [schemaName, schemaDef] of Object.entries(data.schemas as Record<string, any>)) {
       modules.push({
         name: `${schemaName}-schema`,
-        type: "module",
+        type: "package",
         metadata: withSpecSource({
           moduleType: "data-schema",
           schema: schemaDef,
@@ -608,7 +608,7 @@ export function extractArtifactsFromResolved(
   if (security && typeof security === "object") {
     modules.push({
       name: "security",
-      type: "module",
+      type: "package",
       metadata: withSpecSource({
         moduleType: "security",
         config: security,
@@ -620,7 +620,7 @@ export function extractArtifactsFromResolved(
   if (performance && typeof performance === "object") {
     modules.push({
       name: "performance",
-      type: "module",
+      type: "package",
       metadata: withSpecSource({
         moduleType: "performance",
         config: performance,

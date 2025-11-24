@@ -133,6 +133,21 @@ export const ToolsReport: React.FC<ToolsReportProps> = ({ projectId, className }
     const spec = resolved?.spec ?? resolved;
     const componentsSource = spec?.components ?? resolved?.components ?? {};
 
+    // DEBUG: Log components data
+    console.log("=== TOOLS DEBUG DUMP ===", {
+      hasResolved: Boolean(resolved),
+      hasSpec: Boolean(spec),
+      hasComponents: Boolean(componentsSource),
+      componentsType: Array.isArray(componentsSource) ? "array" : typeof componentsSource,
+      componentsKeys: typeof componentsSource === "object" ? Object.keys(componentsSource) : [],
+      componentsCount: Array.isArray(componentsSource)
+        ? componentsSource.length
+        : typeof componentsSource === "object"
+          ? Object.keys(componentsSource).length
+          : 0,
+      fullComponents: componentsSource,
+    });
+
     const entries: Array<{ key: string; name: string; data: any }> = [];
     if (Array.isArray(componentsSource)) {
       componentsSource.forEach((comp, index) => {
@@ -141,6 +156,7 @@ export const ToolsReport: React.FC<ToolsReportProps> = ({ projectId, className }
         if (
           type === "tool" ||
           type === "cli" ||
+          type === "binary" ||
           detectedType === "tool" ||
           detectedType === "build_tool"
         ) {
@@ -155,6 +171,7 @@ export const ToolsReport: React.FC<ToolsReportProps> = ({ projectId, className }
         if (
           type === "tool" ||
           type === "cli" ||
+          type === "binary" ||
           detectedType === "tool" ||
           detectedType === "build_tool"
         ) {
@@ -164,7 +181,22 @@ export const ToolsReport: React.FC<ToolsReportProps> = ({ projectId, className }
       });
     }
 
-    return entries.sort((a, b) => a.name.localeCompare(b.name));
+    const sorted = entries.sort((a, b) => a.name.localeCompare(b.name));
+
+    // DEBUG: Log filtered tools
+    console.log("=== FILTERED TOOLS ===", {
+      totalFiltered: sorted.length,
+      tools: sorted.map((t) => ({
+        key: t.key,
+        name: t.name,
+        type: t.data?.type,
+        detectedType: t.data?.metadata?.detectedType,
+      })),
+      uniqueKeys: new Set(sorted.map((t) => t.key)).size,
+      duplicateKeys: sorted.length !== new Set(sorted.map((t) => t.key)).size,
+    });
+
+    return sorted;
   }, [data?.resolved]);
 
   const tabBadgeUpdater = useTabBadgeUpdater();

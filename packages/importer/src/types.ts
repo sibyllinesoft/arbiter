@@ -140,7 +140,7 @@ export type ArtifactType =
   | "service" // HTTP services, APIs, microservices
   | "binary" // Executable binaries
   | "tool" // Command-line interface tools
-  | "module" // Reusable modules, components, libraries
+  | "package" // Reusable packages, modules, components, libraries
   | "job" // Background jobs, cron jobs, workers
   | "schema" // Database schemas, API schemas
   | "config" // Configuration files, environment settings
@@ -262,10 +262,10 @@ export interface ToolArtifact extends BaseArtifact {
 }
 
 /**
- * Module artifact representing reusable modules, components, or libraries
+ * Package artifact representing reusable packages, modules, components, or libraries
  */
-export interface ModuleArtifact extends BaseArtifact {
-  type: "module";
+export interface PackageArtifact extends BaseArtifact {
+  type: "package";
   metadata: {
     sourceFile?: string;
     root?: string;
@@ -275,11 +275,11 @@ export interface ModuleArtifact extends BaseArtifact {
     framework?: string;
     /** Package manager (e.g., 'npm', 'pip', 'maven') */
     packageManager?: string;
-    /** Public API exposed by the module */
+    /** Public API exposed by the package */
     publicApi: string[];
     /** Internal dependencies */
     dependencies: string[];
-    /** Routes if frontend module */
+    /** Routes if frontend package */
     routes?: FrontendRoute[];
     /** API endpoints consumed */
     apiDependencies?: string[];

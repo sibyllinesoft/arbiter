@@ -182,25 +182,35 @@ function App() {
             </Routes>
             <ToastContainer
               position="bottom-right"
-              autoClose={3000}
+              autoClose={2000}
               hideProgressBar={false}
-              newestOnTop
-              closeOnClick
+              newestOnTop={true}
+              closeOnClick={true}
               rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              toastClassName={() =>
-                clsx("graphite-toast", isDark ? "graphite-toast-dark" : "graphite-toast-light")
-              }
-              bodyClassName={() =>
+              pauseOnFocusLoss={false}
+              draggable={false}
+              pauseOnHover={false}
+              limit={5}
+              theme={isDark ? "dark" : "light"}
+              toastClassName={(context) =>
                 clsx(
+                  context?.defaultClassName,
+                  "graphite-toast",
+                  isDark ? "graphite-toast-dark" : "graphite-toast-light",
+                )
+              }
+              bodyClassName={(context) =>
+                clsx(
+                  context?.defaultClassName,
                   "graphite-toast-body",
                   isDark ? "graphite-toast-body-dark" : "graphite-toast-body-light",
                 )
               }
-              progressClassName={() =>
-                isDark ? "graphite-toast-progress-dark" : "graphite-toast-progress-light"
+              progressClassName={(context) =>
+                clsx(
+                  context?.defaultClassName,
+                  isDark ? "graphite-toast-progress-dark" : "graphite-toast-progress-light",
+                )
               }
             />
           </ProjectProvider>

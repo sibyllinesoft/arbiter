@@ -224,7 +224,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                                 <span className="uppercase tracking-wide text-[10px] text-gray-400 dark:text-graphite-400">
                                   Endpoints
                                 </span>
-                                <ul className="mt-1 space-y-2">
+                                <div className="mt-1 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                                   {endpoints.map((endpoint, idx) => {
                                     const endpointMethods = formatMethods([endpoint.method]);
                                     const parameters = Array.isArray(endpoint.parameters)
@@ -240,7 +240,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                                     );
 
                                     return (
-                                      <li
+                                      <div
                                         key={`${routeKey}-endpoint-${idx}`}
                                         className="rounded-md border border-gray-100 dark:border-graphite-800/60 bg-gray-50/60 dark:bg-graphite-800/40 p-3 space-y-2"
                                       >
@@ -385,10 +385,10 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                                               : ""}
                                           </div>
                                         )}
-                                      </li>
+                                      </div>
                                     );
                                   })}
-                                </ul>
+                                </div>
                               </div>
                             )}
 

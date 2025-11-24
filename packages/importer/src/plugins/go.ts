@@ -180,7 +180,7 @@ export class GoPlugin implements ImporterPlugin {
     if (hasWeb) return "service";
     if (hasCli) return "binary";
     if (hasJob) return "job";
-    return "module";
+    return "package";
   }
 }
 

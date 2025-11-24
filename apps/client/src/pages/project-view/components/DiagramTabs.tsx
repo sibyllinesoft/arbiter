@@ -24,7 +24,7 @@ export function useDiagramTabs({ project, tabBadges }: DiagramTabsProps) {
   const eventCount = tabBadges?.events;
   const schemaCount = tabBadges?.schemas;
   const contractCount = tabBadges?.contracts;
-  const packageCount = tabBadges?.packages ?? project?.entities?.modules;
+  const packageCount = tabBadges?.packages;
   const toolCount = tabBadges?.tools ?? project?.entities?.tools;
   const infrastructureCount = tabBadges?.infrastructure ?? project?.entities?.infrastructure;
   const flowCount = tabBadges?.flows ?? project?.entities?.flows;

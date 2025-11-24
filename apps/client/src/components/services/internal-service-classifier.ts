@@ -129,6 +129,13 @@ export const hasBuildablePackageFile = (raw: unknown, serviceName?: string): boo
 
   // PRIMARY CHECK: Check for explicit manifest field in metadata
   const manifest = normalizeString(metadata?.manifest) || normalizeString(rawRecord.manifest);
+  console.log("[internal-classifier] checking manifest", {
+    serviceName,
+    manifest,
+    hasMetadata: Boolean(metadata),
+    metadataManifest: metadata?.manifest,
+    rawRecordManifest: rawRecord.manifest,
+  });
   if (manifest) {
     const buildableManifests = [
       "package.json",
@@ -143,6 +150,10 @@ export const hasBuildablePackageFile = (raw: unknown, serviceName?: string): boo
     ];
 
     if (buildableManifests.includes(manifest)) {
+      console.log("[internal-classifier] ✅ INTERNAL service (has buildable manifest)", {
+        serviceName,
+        manifest,
+      });
       return true;
     }
   }

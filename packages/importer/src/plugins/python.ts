@@ -141,9 +141,9 @@ function classifyPythonPackage(packageData: PythonPackageData): PythonClassifica
   }
 
   return {
-    artifactType: "module",
-    detectedType: "module",
-    reason: "default-module",
+    artifactType: "package",
+    detectedType: "package",
+    reason: "default-package",
   };
 }
 
@@ -178,8 +178,8 @@ function classifyPythonSource(evidence: PythonSourceData[]): PythonClassificatio
   }
 
   return {
-    artifactType: "module",
-    detectedType: "module",
+    artifactType: "package",
+    detectedType: "package",
     reason: "source-default",
   };
 }
@@ -258,7 +258,9 @@ export class PythonPlugin implements ImporterPlugin {
       const packageEvidence = pythonEvidence.filter((e) => {
         if (e.type !== "config") return false;
         const configType = typeof e.data?.configType === "string" ? e.data.configType : "";
-        return ["setup", "pyproject", "package"].some((token) => configType.includes(token));
+        return ["setup", "pyproject", "package", "requirements", "pipfile"].some((token) =>
+          configType.includes(token),
+        );
       });
 
       for (const pkg of packageEvidence) {
@@ -431,16 +433,23 @@ export class PythonPlugin implements ImporterPlugin {
         .filter((line) => line && !line.startsWith("#") && !line.startsWith("-"))
         .map((line) => line.split(/[>=<~!]/)[0].trim());
 
+      // Derive package name from the directory containing requirements.txt
+      const packageName = path.basename(path.dirname(filePath));
+
+      const packageData: PythonPackageData = {
+        configType: "requirements-txt",
+        name: packageName,
+        dependencies,
+        devDependencies: [],
+        scripts: {},
+      };
+
       evidence.push({
         id: baseId,
         source: "python",
-        type: "dependency",
+        type: "config",
         filePath,
-        data: {
-          configType: "requirements-txt",
-          dependencies,
-          devDependencies: [],
-        },
+        data: packageData,
         metadata: {
           timestamp: Date.now(),
           fileSize: content.length,
@@ -651,7 +660,7 @@ export class PythonPlugin implements ImporterPlugin {
     } else if (artifactType === "frontend") {
       tags.add("frontend");
     } else {
-      tags.add("module");
+      tags.add("package");
     }
 
     if (framework) {
@@ -662,7 +671,7 @@ export class PythonPlugin implements ImporterPlugin {
       service: `Python web service: ${artifactName}`,
       binary: `Python CLI tool: ${artifactName}`,
       tool: `Python tool: ${artifactName}`,
-      module: `Python module: ${artifactName}`,
+      package: `Python package: ${artifactName}`,
       job: `Python job: ${artifactName}`,
       schema: `Python schema: ${artifactName}`,
       config: `Python config: ${artifactName}`,

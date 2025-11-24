@@ -28,11 +28,11 @@ clap = "4.0"
 
     const artifact = result.artifacts.find((item) => item.filePath === cargoPath);
     expect(artifact).toBeDefined();
-    expect(artifact?.type).toBe("module");
+    expect(artifact?.type).toBe("package");
     expect(artifact?.name).toBe("smith-protocol");
     expect(artifact?.description).toBe("Shared protocol definitions");
     expect(artifact?.metadata?.cargo?.hasBinaries).toBe(false);
-    expect(artifact?.metadata?.detectedType).toBe("module");
+    expect(artifact?.metadata?.detectedType).toBe("package");
   });
 
   it("classifies Cargo web services using web frameworks", async () => {

@@ -270,6 +270,23 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
     const internal: NormalizedService[] = [];
     const external: ExternalArtifactCard[] = [];
 
+    // DEBUG: Log all services data in one object
+    console.log("=== ALL SERVICES DEBUG DUMP ===", {
+      totalServices: normalizedServices.length,
+      services: normalizedServices.map((service) => ({
+        identifier: service.identifier,
+        displayName: service.displayName,
+        isInternal: shouldTreatAsInternalService(service),
+        type: service.raw?.type,
+        hasMetadata: Boolean(service.raw?.metadata),
+        manifest: (service.raw?.metadata as any)?.manifest,
+        metadataType: (service.raw?.metadata as any)?.type,
+        metadataKeys: service.raw?.metadata ? Object.keys(service.raw.metadata) : [],
+        rawKeys: service.raw ? Object.keys(service.raw) : [],
+        fullRaw: service.raw,
+      })),
+    });
+
     normalizedServices.forEach((service) => {
       if (shouldTreatAsInternalService(service)) {
         internal.push(service);
