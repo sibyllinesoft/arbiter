@@ -622,6 +622,27 @@ export class SpecEngine {
             message: "No capabilities defined in specification",
           });
         }
+
+        // Detect overlapping / duplicate capability namespaces (e.g., "user.auth" and "user.auth.login")
+        const capabilityIds = Object.keys(capabilities || {});
+        const overlaps = new Set<string>();
+        for (let i = 0; i < capabilityIds.length; i++) {
+          for (let j = i + 1; j < capabilityIds.length; j++) {
+            const a = capabilityIds[i];
+            const b = capabilityIds[j];
+            if (a === b) continue;
+            if (a.startsWith(`${b}.`) || b.startsWith(`${a}.`)) {
+              const key = a.startsWith(`${b}.`) ? `${b}->${a}` : `${a}->${b}`;
+              if (!overlaps.has(key)) {
+                overlaps.add(key);
+                warnings.push({
+                  type: "duplicate",
+                  message: `Capability "${a.startsWith(`${b}.`) ? a : b}" overlaps with parent capability "${a.startsWith(`${b}.`) ? b : a}"`,
+                });
+              }
+            }
+          }
+        }
       }
 
       // Add more custom validations as needed

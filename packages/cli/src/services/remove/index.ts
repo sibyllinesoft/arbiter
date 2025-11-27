@@ -25,11 +25,12 @@ export async function removeCommand(
   config: CLIConfig,
 ): Promise<number> {
   const manipulator = getCueManipulator();
+  const projectDir = config.projectDir || process.cwd();
 
   try {
     console.log(chalk.blue(`🧹 Removing ${subcommand}${target ? `: ${target}` : ""}`));
 
-    const assemblyDir = path.resolve(".arbiter");
+    const assemblyDir = path.resolve(projectDir, ".arbiter");
     const assemblyPath = path.join(assemblyDir, "assembly.cue");
     const useLocalOnly = config.localMode === true;
 

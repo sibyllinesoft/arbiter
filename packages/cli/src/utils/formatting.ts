@@ -5,30 +5,31 @@ import yaml from "yaml";
 import type { ValidationResult } from "../types.js";
 
 /**
- * Format a small table without external dependencies
+ * Format a small table using cli-table3 with optional header coloring.
+ * Returns a dimmed message when there is no data to show.
  */
 export function formatTable(
   headers: string[],
   rows: string[][],
   headerColor: (value: string) => string = chalk.cyan,
 ): string {
-  const table = [headers, ...rows];
-  const colWidths = headers.map((_, colIndex) =>
-    Math.max(...table.map((row) => (row[colIndex] || "").length)),
-  );
+  if (rows.length === 0) {
+    return chalk.dim("No data to display");
+  }
 
-  const formatRow = (row: string[], isHeader = false) => {
-    const formattedCells = row.map((cell, idx) => (cell || "").padEnd(colWidths[idx])).join(" | ");
-    return isHeader ? headerColor(formattedCells) : formattedCells;
-  };
+  const table = new Table({
+    head: headers.map((header) => headerColor(header)),
+    style: {
+      head: [],
+      border: ["dim"],
+    },
+  });
 
-  const lines = [
-    formatRow(headers, true),
-    colWidths.map((w) => "-".repeat(w)).join("-|-"),
-    ...rows.map((row) => formatRow(row)),
-  ];
+  rows.forEach((row) => {
+    table.push(row);
+  });
 
-  return lines.join("\n");
+  return table.toString();
 }
 
 /**
@@ -244,29 +245,6 @@ export function formatExitMessage(exitCode: number, operation: string): string {
 
 /**
  * Format data as a table with headers and rows
- */
-export function formatTable(headers: string[], rows: string[][]): string {
-  if (rows.length === 0) {
-    return chalk.dim("No data to display");
-  }
-
-  const table = new Table({
-    head: headers.map((header) => chalk.cyan(header)),
-    style: {
-      head: [],
-      border: ["dim"],
-    },
-  });
-
-  rows.forEach((row) => {
-    table.push(row);
-  });
-
-  return table.toString();
-}
-
-/**
- * Format YAML output with colors
  */
 export function formatYaml(data: any, color = true): string {
   const yamlString = yaml.stringify(data, {

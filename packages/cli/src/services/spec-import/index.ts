@@ -108,7 +108,11 @@ export async function importSpec(
   }
 }
 
-function determineRemotePath(projectRoot: string, specPath: string, override?: string): string {
+export function determineRemotePath(
+  projectRoot: string,
+  specPath: string,
+  override?: string,
+): string {
   if (override && override.trim().length > 0) {
     return normalizeFragmentPath(override.trim());
   }

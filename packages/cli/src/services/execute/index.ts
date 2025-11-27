@@ -168,6 +168,9 @@ class EpicLoader {
   }
 }
 
+// Exported for testing
+export { EpicLoader };
+
 /**
  * Plan generator class - Single responsibility: Creating execution plans
  */
@@ -531,6 +534,9 @@ class ReportGenerator {
     return result;
   }
 }
+
+// Export selected internals for testing
+export { PlanExecutor, DryRunExecutionStrategy, ReportGenerator };
 
 /**
  * Test runner class - Single responsibility: Running and managing tests

@@ -101,6 +101,59 @@ arbiter check
 arbiter watch
 ```
 
+## CLI Essentials (1-minute version)
+
+- Global config path: `~/.arbiter/config.json`
+- Project config: `.arbiter/config.json` at repo root
+- Precedence: CLI flags > env vars > project config > global config
+- Auth (if API protected): `arbiter auth login --url https://api.example.com`
+- Dry runs: many commands accept `--dry-run` to preview changes
+- JSON output (for automation): add `--format json`
+
+### Common Flags and Environment Variables
+
+| Purpose              | Flag                            | Env Var                    | Notes                               |
+|----------------------|---------------------------------|----------------------------|-------------------------------------|
+| API base URL         | `--api-url https://...`         | `ARBITER_URL` or `ARBITER_API_URL` | Defaults to `http://localhost:5050` |
+| Auth token           | `--token <jwt>`                 | `ARBITER_TOKEN`            | Stored in `~/.arbiter/auth.json`    |
+| Verbose logging      | `--verbose`                     | `ARBITER_VERBOSE=1`        | Shows request/response bodies       |
+| Fetch debug traces   | `--fetch-debug`                 | `ARBITER_FETCH_DEBUG=1`    | Helpful for HTTP troubleshooting    |
+| Non-interactive use  | `--ci`                          | `CI=1`                     | Suppresses prompts                  |
+| Output format        | `--format json|table|yaml`      | `ARBITER_FORMAT`           | Defaults to `table`                 |
+
+### Fast Command Cheat Sheet
+
+```bash
+# Discover an API server (tries common ports)
+arbiter health
+
+# Initialize from GitHub or local path (brownfield import)
+arbiter init --github-url https://github.com/org/service
+arbiter init --local-path ../existing-repo
+
+# Generate everything from CUE spec
+arbiter generate
+
+# Validate CUE and surface structured errors
+arbiter check
+
+# Plan and design flows (records decisions as spec data)
+arbiter plan
+arbiter design
+
+# Manage entities
+arbiter add service api --language typescript --port 3000
+arbiter add endpoint /users --method GET --service api
+arbiter list service
+
+# CI/CD workflow generation
+arbiter integrate
+
+# Inspect or update fragments through the API
+arbiter surface typescript
+arbiter diff path/to/a.cue path/to/b.cue
+```
+
 ## Workflows
 
 Arbiter supports three main workflows for creating and managing specifications, each suited to different use cases and levels of planning:
@@ -250,6 +303,14 @@ arbiter generate
 
 **Note:** Use built-in import for quick brownfield onboarding. Use external tools when you need heavyweight specs after extensive team deliberation.
 
+### Brownfield Import Tips
+
+- Prefer `--github-url` when the repo is accessible; it provides branch metadata and avoids local path resolution issues.
+- Use `--local-path` when working offline or with private code you have locally.
+- Exclude heavy directories for speed: `--ignore "**/node_modules/**" --ignore "**/dist/**"`.
+- Enable deeper heuristics when you need schema, infra, and test detection: `arbiter init --deep-analysis ...`.
+- After import, rerun `arbiter generate` to materialize code and `arbiter check` to validate edits.
+
 ### Choosing a Workflow
 
 | Workflow | Time Investment | Planning | Best For |
@@ -325,6 +386,33 @@ The CLI supports 26+ entity types:
 
 And more...
 
+## Command Reference (practical defaults)
+
+### `arbiter add`
+- Purpose: add or update entities (service, endpoint, route, database, cache, client, flow, module, component, etc.).
+- Templates: `--template <alias>` to bind an entity to a template alias (see `TEMPLATE_SYSTEM.md`).
+- Common flags: `--language`, `--port`, `--method`, `--service`, `--path`, `--capabilities`, `--attach-to <service>` (for databases/caches), `--template`, `--force`.
+- Idempotency: merges into existing fragments; use `--force` when you intend to overwrite conflicts.
+- Examples:
+  - `arbiter add service api --language typescript --port 3000 --template bun-hono`
+  - `arbiter add endpoint /users --method GET --service api`
+  - `arbiter add database main --engine postgres --attach-to api`
+
+### `arbiter generate`
+- Purpose: render code, infra, and workflows from the current spec.
+- Dry run: `--dry-run` shows the plan without writing files.
+- Scope control: `--types=api,client,infra,docs` to limit generators.
+- Overwrites: `--force` permits overwriting changed files; defaults to fail-fast to protect edits.
+- Hooks & overrides: honors `generator.hooks` and `templateOverrides` in `.arbiter/config.json` (details in `TEMPLATE_SYSTEM.md`).
+- Caching: uses `.arbiter/.cache` to skip unchanged outputs where possible.
+- Examples:
+  - `arbiter generate --types=api,client --dry-run`
+  - `arbiter generate --types=infra --force`
+
+### Template System Quick Links
+- Template aliases, implementors, overrides, and hooks are documented in `TEMPLATE_SYSTEM.md`.
+- GitHub template config specifics live in `GITHUB_TEMPLATES_CONFIG.md`.
+
 ## Configuration
 
 Create an \`.arbiter/config.json\` in your project:
@@ -337,6 +425,9 @@ Create an \`.arbiter/config.json\` in your project:
   "timeout": 10000
 }
 ```
+
+Override any of these per command with flags, or globally via `~/.arbiter/config.json`.
+Auth tokens are cached in `~/.arbiter/auth.json`.
 
 ## Examples
 

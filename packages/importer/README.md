@@ -10,6 +10,19 @@ automatically detecting architectural artifacts such as services, binaries,
 libraries, and jobs. It's designed to help with reverse engineering and
 understanding of legacy codebases for import into Arbiter specifications.
 
+### CLI flags (quick reference)
+
+| Flag | Purpose | Notes |
+|------|---------|-------|
+| `--github-url <url>` | Analyze a remote repo | Fetches branch metadata; good for public repos |
+| `--local-path <path>` | Analyze a local checkout | Skips network; good for private code |
+| `--ignore "<glob>"` | Skip expensive/noisy paths | Repeatable; defaults include node_modules/dist |
+| `--deep-analysis` | Enable heavier heuristics | Slower, better for infra/tests/schema detection |
+| `--target-languages ts,go` | Restrict plugins | Speeds up polyglot monorepos |
+| `--min-confidence 0.4` | Filter low-confidence artifacts | Defaults to 0.3 in code |
+| `--max-file-size 10485760` | Cap file size (bytes) | Guard against binaries |
+| `--max-concurrency 8` | Tune parallelism | Increase on CI, lower on laptops |
+
 ## Features
 
 - **Plugin-based Architecture**: Extensible system for language-specific
@@ -46,6 +59,27 @@ const scanner = new ScannerRunner({
 const manifest = await scanner.scan();
 console.log(`Found ${manifest.artifacts.length} artifacts`);
 ```
+
+### Using via the Arbiter CLI
+
+Most users trigger the importer through the CLI instead of programmatic calls:
+
+```bash
+# Analyze a GitHub repo (recommended when you need branch metadata)
+arbiter init --github-url https://github.com/org/project
+
+# Analyze a local checkout
+arbiter init --local-path ../project
+
+# Speed up large repos by ignoring heavy folders
+arbiter init --local-path ../project --ignore "**/node_modules/**" --ignore "**/dist/**"
+
+# Enable deeper heuristics for infra/tests/schema detection
+arbiter init --local-path ../project --deep-analysis
+```
+
+The CLI writes the detected specification into `.arbiter` fragments, which you
+can immediately validate (`arbiter check`) or generate (`arbiter generate`).
 
 ## Plugin Development
 
@@ -91,6 +125,33 @@ The import analysis follows a five-stage pipeline:
 3. **Infer**: Artifact inference from collected evidence
 4. **Normalize**: De-duplication and confidence merging
 5. **Validate**: Sanity checks and consistency validation
+
+### Example Output (trimmed)
+
+```json
+{
+  "project": { "path": "/repo", "fileCount": 1423, "totalBytes": 58_230_144 },
+  "artifacts": [
+    {
+      "kind": "service",
+      "name": "api",
+      "language": "typescript",
+      "framework": "express",
+      "confidence": 0.82,
+      "evidence": ["package.json:scripts[start]", "src/server.ts:Express()"]
+    },
+    {
+      "kind": "binary",
+      "name": "migrate",
+      "language": "rust",
+      "confidence": 0.74,
+      "evidence": ["Cargo.toml:bin.migrate", "src/bin/migrate.rs:clap"]
+    }
+  ],
+  "statistics": { "evidenceCount": 512, "pluginsUsed": ["rust"] },
+  "configuration": { "deepAnalysis": true, "minConfidence": 0.3 }
+}
+```
 
 ## Supported Artifact Types
 
@@ -150,6 +211,14 @@ languages, frameworks, or infrastructure formats. Plugins typically focus on:
 The shared `PluginRegistry` and `ScannerRunner` utilities handle concurrency,
 error isolation, and manifest assembly so plugins can remain focused on their
 specific detection logic.
+
+## Performance and Accuracy Tips
+
+- Ignore noisy or generated paths to cut runtime: `ignorePatterns: ["**/node_modules/**", "**/dist/**"]`.
+- For monorepos, set `parseOptions.targetLanguages` to the primary languages to avoid scanning everything.
+- Increase `maxConcurrency` on fast disks/CI runners; decrease on laptops to keep fans quiet.
+- Raise `inferenceOptions.minConfidence` (e.g., 0.5) when you prefer precision over recall.
+- Enable `deepAnalysis` only when you need schema, infra, and test detection; it is slower but more thorough.
 
 ## License
 

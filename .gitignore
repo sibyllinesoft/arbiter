@@ -39,3 +39,4 @@ docs/public/
 deploy/cloudflare/wrangler.toml
 *.tgz
 *.t.err
+.arbiter/

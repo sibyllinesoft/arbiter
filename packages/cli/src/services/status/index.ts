@@ -165,7 +165,7 @@ function displayStatusTable(status: ProjectStatus, detailed: boolean): void {
   }
 }
 
-function getHealthColor(health: ProjectStatus["health"]): typeof chalk.green {
+export function getHealthColor(health: ProjectStatus["health"]): typeof chalk.green {
   switch (health) {
     case "healthy":
       return chalk.green;
@@ -178,7 +178,7 @@ function getHealthColor(health: ProjectStatus["health"]): typeof chalk.green {
   }
 }
 
-function getHealthIcon(health: ProjectStatus["health"]): string {
+export function getHealthIcon(health: ProjectStatus["health"]): string {
   switch (health) {
     case "healthy":
       return "✅";
@@ -191,7 +191,7 @@ function getHealthIcon(health: ProjectStatus["health"]): string {
   }
 }
 
-function normalizeRemoteProjectStatus(data: any, projectId?: string): ProjectStatus {
+export function normalizeRemoteProjectStatus(data: any, projectId?: string): ProjectStatus {
   const isValid = data?.status === "healthy";
   const components = Array.isArray(data?.components) ? data.components : [];
   const specs = Array.isArray(data?.specifications) ? data.specifications : [];

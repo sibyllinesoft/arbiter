@@ -250,4 +250,11 @@ function buildComponentsFromSpec(spec: any, type: ValidType): any[] {
       return [];
   }
 }
+
+// Expose internal helpers for unit testing
+export const __listTesting = {
+  buildComponentsFromSpec,
+  loadLocalAssemblySpec,
+  VALID_TYPES,
+};
 // @ts-nocheck

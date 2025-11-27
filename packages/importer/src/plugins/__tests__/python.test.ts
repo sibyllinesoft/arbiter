@@ -119,8 +119,8 @@ dependencies = ["pydantic"]
 
     expect(artifacts).toHaveLength(1);
     const artifact = artifacts[0].artifact;
-    expect(artifact.type).toBe("module");
-    expect(artifact.metadata.detectedType).toBe("module");
+    expect(artifact.type).toBe("package");
+    expect(artifact.metadata.detectedType).toBe("package");
     expect(artifact.description).toBe("Shared utilities");
   });
 });

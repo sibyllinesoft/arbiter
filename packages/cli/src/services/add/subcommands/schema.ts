@@ -66,7 +66,7 @@ export async function addSchema(
   return await manipulator.addToSection(content, "components.schemas", schemaName, schemaConfig);
 }
 
-async function convertJsonSchemaRulesToCue(
+export async function convertJsonSchemaRulesToCue(
   schemaName: string,
   rules: Record<string, unknown>,
 ): Promise<CueSchemaDetails> {

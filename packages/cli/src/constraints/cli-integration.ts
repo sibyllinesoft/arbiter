@@ -153,6 +153,16 @@ export function getCueManipulator(): CUEManipulator {
   return currentCueManipulatorFactory();
 }
 
+// Testing surface
+export const __cliIntegrationTesting = {
+  setCueManipulatorFactory,
+  getCueManipulator,
+  withConstraintEnforcement,
+  setupConstraintEventHandlers,
+  showQuickStatus,
+  formatBytes,
+};
+
 /**
  * Wrap command execution with constraint enforcement
  */

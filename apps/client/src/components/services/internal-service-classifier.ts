@@ -219,5 +219,12 @@ export const hasBuildablePackageFile = (raw: unknown, serviceName?: string): boo
  */
 export const shouldTreatAsInternalService = (service: InternalServiceCandidate): boolean => {
   const serviceName = (service.raw as any)?.name || "unknown";
+
+  // Fast-path: explicit signals from discovery
+  if (service.hasSource) return true;
+  if (service.sourcePath) return true;
+  const rawType = normalizeString((service.raw as any)?.type);
+  if (rawType === "internal") return true;
+
   return hasBuildablePackageFile(service.raw, serviceName);
 };

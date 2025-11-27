@@ -310,10 +310,10 @@ flows: [
   {
     id: "baseline_e2e"
     steps: [
-      { visit: "/" }
-      { expect: { locator: "page:home",  state: "visible" } }
-      { click:  "btn:start" }
-      { expect: { locator: "toast:ok", text: { contains: "ready" } } }
+      { visit: "/" },
+      { expect: { locator: "page:home",  state: "visible" } },
+      { click:  "btn:start" },
+      { expect: { locator: "toast:ok", text: { contains: "ready" } } },
     ]
   },
 ]

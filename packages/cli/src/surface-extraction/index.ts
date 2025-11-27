@@ -25,3 +25,7 @@ export function getExtractor(language: SurfaceLanguage): SurfaceExtractorFn | un
 export function registerExtractor(language: SurfaceLanguage, extractor: SurfaceExtractorFn): void {
   defaultExtractors[language] = extractor;
 }
+
+export function listExtractors(): SurfaceLanguage[] {
+  return Object.keys(defaultExtractors) as SurfaceLanguage[];
+}

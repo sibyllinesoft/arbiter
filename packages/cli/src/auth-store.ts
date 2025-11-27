@@ -3,18 +3,24 @@ import path from "node:path";
 import fs from "fs-extra";
 import type { AuthSession } from "./types.js";
 
-const AUTH_DIRECTORY = path.join(os.homedir(), ".arbiter");
-const AUTH_FILE = path.join(AUTH_DIRECTORY, "auth.json");
+const resolveAuthFile = () => {
+  const authDir = path.join(os.homedir(), ".arbiter");
+  return {
+    authDir,
+    authFile: path.join(authDir, "auth.json"),
+  };
+};
 
 export interface StoredAuthSession extends AuthSession {}
 
 export async function loadAuthSession(): Promise<AuthSession | null> {
   try {
-    if (!(await fs.pathExists(AUTH_FILE))) {
+    const { authFile } = resolveAuthFile();
+    if (!(await fs.pathExists(authFile))) {
       return null;
     }
 
-    const data = await fs.readJSON(AUTH_FILE);
+    const data = await fs.readJSON(authFile);
     if (!data || typeof data !== "object") {
       return null;
     }
@@ -26,18 +32,20 @@ export async function loadAuthSession(): Promise<AuthSession | null> {
 }
 
 export async function saveAuthSession(session: AuthSession): Promise<void> {
-  await fs.ensureDir(AUTH_DIRECTORY);
-  await fs.writeJSON(AUTH_FILE, session, { spaces: 2 });
+  const { authDir, authFile } = resolveAuthFile();
+  await fs.ensureDir(authDir);
+  await fs.writeJSON(authFile, session, { spaces: 2 });
 }
 
 export async function clearAuthSession(): Promise<void> {
   try {
-    await fs.remove(AUTH_FILE);
+    const { authFile } = resolveAuthFile();
+    await fs.remove(authFile);
   } catch {
     // Ignore errors when clearing auth session
   }
 }
 
 export function getAuthStorePath(): string {
-  return AUTH_FILE;
+  return resolveAuthFile().authFile;
 }

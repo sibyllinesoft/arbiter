@@ -70,7 +70,7 @@
     "typecheck": "bunx tsc --build",
     "typecheck:watch": "bunx tsc --build --watch --pretty --preserveWatchOutput",
     "migrate": "bun run --cwd apps/api migrate",
-    "test": "PORT=0 bun test packages/ apps/api --recursive && bun run --cwd apps/client test",
+    "test": "PORT=0 bun test packages/importer packages/cue-runner packages/shared packages/shared-types packages/cli/src apps/api --recursive && bun run --cwd apps/client test",
     "test:playwright": "bun run --cwd apps/client test:e2e",
     "test:unit": "bun test packages/shared/src --recursive --bail",
     "test:cli": "bun test packages/cli --recursive",

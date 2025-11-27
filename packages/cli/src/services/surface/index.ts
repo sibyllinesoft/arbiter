@@ -216,7 +216,7 @@ export async function surfaceCommand(options: SurfaceOptions, _config: CLIConfig
 /**
  * Find source files for the specified language
  */
-async function findSourceFiles(language: string): Promise<string[]> {
+export async function findSourceFiles(language: string): Promise<string[]> {
   const patterns: Record<string, string[]> = {
     typescript: ["**/*.ts", "**/*.tsx"],
     python: ["**/*.py"],
@@ -247,7 +247,7 @@ async function findSourceFiles(language: string): Promise<string[]> {
 /**
  * Extract API surface based on language
  */
-async function extractAPISurface(
+export async function extractAPISurface(
   options: SurfaceOptions,
   sourceFiles: string[],
 ): Promise<APISurface | null> {

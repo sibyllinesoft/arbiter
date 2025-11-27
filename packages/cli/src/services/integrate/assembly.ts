@@ -112,3 +112,5 @@ function parseVersionArray(arrayContent: string): string[] {
     .map((value) => value.trim().replace(/["']/g, ""))
     .filter((value) => value.length > 0);
 }
+
+export { parseVersionArray };

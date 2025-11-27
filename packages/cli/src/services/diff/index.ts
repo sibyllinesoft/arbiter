@@ -38,7 +38,7 @@ export interface SchemaDiff {
 /**
  * Parse CUE file and extract structural information
  */
-async function parseCueStructure(filePath: string): Promise<Map<string, string>> {
+export async function parseCueStructure(filePath: string): Promise<Map<string, string>> {
   const content = await fs.readFile(filePath, "utf-8");
   const lines = content.split("\n");
   const structure = new Map<string, string>();
@@ -142,7 +142,7 @@ async function parseCueStructure(filePath: string): Promise<Map<string, string>>
 /**
  * Compare two schema structures and generate diff
  */
-function compareSchemas(
+export function compareSchemas(
   oldStructure: Map<string, string>,
   newStructure: Map<string, string>,
 ): SchemaChange[] {
@@ -343,7 +343,7 @@ function getModificationMigrationHint(key: string, oldValue: string, newValue: s
 /**
  * Calculate compatibility score
  */
-function calculateCompatibilityScore(changes: SchemaChange[]): number {
+export function calculateCompatibilityScore(changes: SchemaChange[]): number {
   if (changes.length === 0) return 100;
 
   let score = 100;
@@ -498,7 +498,7 @@ function getImpactLabel(impact: SchemaChange["impact"]): string {
 /**
  * Generate migration script
  */
-function generateMigrationScript(diff: SchemaDiff): string {
+export function generateMigrationScript(diff: SchemaDiff): string {
   const breakingChanges = diff.changes.filter((c) => c.impact === "breaking");
   if (breakingChanges.length === 0) {
     return "# No migration needed - all changes are backward compatible\n";

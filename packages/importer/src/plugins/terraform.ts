@@ -28,6 +28,7 @@ export class TerraformPlugin implements ImporterPlugin {
     const relative = path.relative(process.cwd(), filePath).toLowerCase();
     return (
       basename.endsWith(".tf") ||
+      basename.endsWith(".tf.json") ||
       basename === ".terraform.lock.hcl" ||
       relative.includes("terraform")
     );
@@ -105,11 +106,11 @@ export class TerraformPlugin implements ImporterPlugin {
     const evidence: Evidence[] = [];
 
     // Parse for resource, data, provider blocks
-    const resourceMatches = content.match(/resource\s+"([^"]+)"\s+"([^"]+)"\s+"(\w+)"/g);
+    const resourceMatches = content.match(/resource\s+"([^"]+)"\s+"([^"]+)"\s*\{/g);
     if (resourceMatches) {
       resourceMatches.forEach((match, index) => {
-        const provider = match.match(/resource\s+"([^"]+)"\s+"([^"]+)"/)?.[2];
-        const name = match.match(/resource\s+"[^"]+"\s+"[^"]+"\s+"(\w+)"/)?.[1];
+        const provider = match.match(/resource\s+"([^"]+)"/)?.[1];
+        const name = match.match(/resource\s+"[^"]+"\s+"([^"]+)"/)?.[1];
 
         const data: TerraformData = {
           name,

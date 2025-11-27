@@ -74,14 +74,14 @@ export async function runCheckCommand(
   }
 }
 
-function isJsonFormat(options: CheckOptions): boolean {
+export function isJsonFormat(options: CheckOptions): boolean {
   return options.format === "json";
 }
 
 /**
  * Find CUE files matching the given patterns
  */
-async function findCueFiles(
+export async function findCueFiles(
   patterns: string[],
   options: {
     recursive: boolean;

@@ -269,6 +269,17 @@ function outputCompatibilityText(result: CompatibilityResult, verbose: boolean):
   }
 }
 
+// Expose selected helpers for testing
+export const __compatTesting = {
+  normalizeVersionPayload,
+  augmentWithApiVersionCheck,
+  outputCompatibilityResult,
+  outputCompatibilityText,
+  outputCompatibilityTable,
+  loadVersionsToCheck,
+  showMigrationPaths,
+};
+
 /**
  * Output compatibility result as table
  */

@@ -3,6 +3,18 @@ import type { CLIConfig } from "../../types.js";
 import { type Epic, ShardedCUEStorage, type Task } from "../../utils/sharded-storage.js";
 import type { EpicCreateOptions, EpicOptions, TaskCreateOptions, TaskOptions } from "./types.js";
 
+type StorageFactory = () => ShardedCUEStorage;
+
+let createStorage: StorageFactory = () => new ShardedCUEStorage();
+
+export function setShardedStorageFactory(factory: StorageFactory): void {
+  createStorage = factory;
+}
+
+export function resetShardedStorageFactory(): void {
+  createStorage = () => new ShardedCUEStorage();
+}
+
 export interface EpicListFilters {
   status?: string;
   assignee?: string;
@@ -32,8 +44,9 @@ export interface StatsResult {
 export async function listEpicsData(
   filters: EpicListFilters = {},
   _config?: CLIConfig,
+  storageOverride?: ShardedCUEStorage,
 ): Promise<Epic[]> {
-  const storage = new ShardedCUEStorage();
+  const storage = storageOverride ?? createStorage();
   try {
     await storage.initialize();
 
@@ -60,8 +73,11 @@ export async function listEpicsData(
 /**
  * Retrieve a single epic by id.
  */
-export async function getEpicById(epicId: string): Promise<Epic | null> {
-  const storage = new ShardedCUEStorage();
+export async function getEpicById(
+  epicId: string,
+  storageOverride?: ShardedCUEStorage,
+): Promise<Epic | null> {
+  const storage = storageOverride ?? createStorage();
   try {
     await storage.initialize();
     return await storage.getEpic(epicId);
@@ -76,8 +92,9 @@ export async function getEpicById(epicId: string): Promise<Epic | null> {
 export async function listTasksData(
   filters: TaskListFilters = {},
   _config?: CLIConfig,
+  storageOverride?: ShardedCUEStorage,
 ): Promise<Task[]> {
-  const storage = new ShardedCUEStorage();
+  const storage = storageOverride ?? createStorage();
 
   try {
     await storage.initialize();
@@ -109,8 +126,8 @@ export async function listTasksData(
 /**
  * Storage statistics (exposed for command-level rendering).
  */
-export async function getStatsData(): Promise<StatsResult> {
-  const storage = new ShardedCUEStorage();
+export async function getStatsData(storageOverride?: ShardedCUEStorage): Promise<StatsResult> {
+  const storage = storageOverride ?? createStorage();
   try {
     await storage.initialize();
     return await storage.getStats();
@@ -125,12 +142,13 @@ export async function getStatsData(): Promise<StatsResult> {
 export async function createEpicData(
   options: EpicCreateOptions,
   _config?: CLIConfig,
+  storageOverride?: ShardedCUEStorage,
 ): Promise<{ epic: Epic; shardId: string }> {
   if (!options.name) {
     throw new Error("Epic name is required");
   }
 
-  const storage = new ShardedCUEStorage();
+  const storage = storageOverride ?? createStorage();
   try {
     await storage.initialize();
 
@@ -174,8 +192,9 @@ export async function updateEpicData(
   epicId: string,
   options: EpicOptions,
   _config?: CLIConfig,
+  storageOverride?: ShardedCUEStorage,
 ): Promise<Epic> {
-  const storage = new ShardedCUEStorage();
+  const storage = storageOverride ?? createStorage();
   try {
     await storage.initialize();
 
@@ -219,8 +238,9 @@ export async function deleteEpicData(
   epicId: string,
   options: EpicOptions,
   config?: CLIConfig,
+  storageOverride?: ShardedCUEStorage,
 ): Promise<Epic> {
-  return updateEpicData(epicId, { ...options, status: "cancelled" }, config);
+  return updateEpicData(epicId, { ...options, status: "cancelled" }, config, storageOverride);
 }
 
 /**
@@ -230,8 +250,9 @@ export async function createTaskData(
   epicId: string,
   options: TaskCreateOptions,
   _config?: CLIConfig,
+  storageOverride?: ShardedCUEStorage,
 ): Promise<Task> {
-  const storage = new ShardedCUEStorage();
+  const storage = storageOverride ?? createStorage();
   try {
     await storage.initialize();
 
@@ -289,8 +310,9 @@ export async function updateTaskData(
   taskId: string,
   options: TaskOptions,
   _config?: CLIConfig,
+  storageOverride?: ShardedCUEStorage,
 ): Promise<Task> {
-  const storage = new ShardedCUEStorage();
+  const storage = storageOverride ?? createStorage();
   try {
     await storage.initialize();
 
@@ -356,19 +378,23 @@ export async function completeTaskData(
   taskId: string,
   options: TaskOptions,
   config?: CLIConfig,
+  storageOverride?: ShardedCUEStorage,
 ): Promise<Task> {
-  return updateTaskData(taskId, { ...options, status: "completed" }, config);
+  return updateTaskData(taskId, { ...options, status: "completed" }, config, storageOverride);
 }
 
 /**
  * Dependency graph across tasks (optionally scoped to an epic).
  */
-export async function dependencyGraphData(epicId?: string): Promise<{
+export async function dependencyGraphData(
+  epicId?: string,
+  storageOverride?: ShardedCUEStorage,
+): Promise<{
   nodes: Array<{ id: string; label: string; epicId?: string; status: string; priority: string }>;
   edges: Array<{ from: string; to: string }>;
   tasks: Task[];
 }> {
-  const storage = new ShardedCUEStorage();
+  const storage = storageOverride ?? createStorage();
   try {
     await storage.initialize();
     const tasks = epicId ? await storage.getOrderedTasks(epicId) : await storage.getOrderedTasks();
@@ -384,8 +410,11 @@ export async function dependencyGraphData(epicId?: string): Promise<{
 /**
  * Show task details across shards.
  */
-export async function getTaskById(taskId: string): Promise<{ epic: Epic; task: Task } | null> {
-  const storage = new ShardedCUEStorage();
+export async function getTaskById(
+  taskId: string,
+  storageOverride?: ShardedCUEStorage,
+): Promise<{ epic: Epic; task: Task } | null> {
+  const storage = storageOverride ?? createStorage();
   try {
     await storage.initialize();
     const epics = await storage.listEpics();
@@ -401,8 +430,11 @@ export async function getTaskById(taskId: string): Promise<{ epic: Epic; task: T
   }
 }
 
-export async function readyTasksData(epicId?: string): Promise<Task[]> {
-  const storage = new ShardedCUEStorage();
+export async function readyTasksData(
+  epicId?: string,
+  storageOverride?: ShardedCUEStorage,
+): Promise<Task[]> {
+  const storage = storageOverride ?? createStorage();
   try {
     await storage.initialize();
     const tasks = epicId ? await storage.getOrderedTasks(epicId) : await storage.getOrderedTasks();
@@ -412,8 +444,11 @@ export async function readyTasksData(epicId?: string): Promise<Task[]> {
   }
 }
 
-export async function blockedTasksData(epicId?: string): Promise<Task[]> {
-  const storage = new ShardedCUEStorage();
+export async function blockedTasksData(
+  epicId?: string,
+  storageOverride?: ShardedCUEStorage,
+): Promise<Task[]> {
+  const storage = storageOverride ?? createStorage();
   try {
     await storage.initialize();
     const tasks = epicId ? await storage.getOrderedTasks(epicId) : await storage.getOrderedTasks();

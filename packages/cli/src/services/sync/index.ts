@@ -933,3 +933,21 @@ function displayLanguageSpecificGuidance(manifests: ManifestFile[], projectPath:
     }
   }
 }
+
+// Export helpers for testing
+export {
+  detectManifestFiles,
+  calculateChecksum,
+  createBackup,
+  writeFileSafely,
+  deepMerge,
+  generateChangeSet,
+  validateIdempotency,
+  getArbiterPackageUpdates,
+  applyArbiterUpdates,
+  reportPotentialChanges,
+  applyPackageChanges,
+  syncPackageJson,
+  syncPyprojectToml,
+  syncCargoToml,
+};

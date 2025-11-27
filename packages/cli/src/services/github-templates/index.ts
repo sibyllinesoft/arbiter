@@ -102,7 +102,7 @@ export async function githubTemplatesCommand(
 /**
  * List available templates
  */
-async function listTemplates(
+export async function listTemplates(
   templatesConfig: GitHubTemplatesConfig | undefined,
   format: "table" | "json" | "yaml",
 ): Promise<number> {
@@ -154,7 +154,7 @@ async function listTemplates(
 /**
  * Show specific template details
  */
-async function showTemplate(
+export async function showTemplate(
   templatesConfig: GitHubTemplatesConfig | undefined,
   templateName: string,
   format: "table" | "json" | "yaml",
@@ -205,7 +205,9 @@ async function showTemplate(
 /**
  * Validate template configuration
  */
-async function validateTemplates(templateManager: UnifiedGitHubTemplateManager): Promise<number> {
+export async function validateTemplates(
+  templateManager: UnifiedGitHubTemplateManager,
+): Promise<number> {
   console.log(chalk.blue("🔍 Validating template configuration..."));
 
   const errors = await templateManager.validateTemplateConfig();

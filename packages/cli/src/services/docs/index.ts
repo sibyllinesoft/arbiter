@@ -226,6 +226,15 @@ async function generateApiDocumentation(options: DocsOptions, _config: CLIConfig
   return 0;
 }
 
+// Export helpers for testing
+export const __docsTesting = {
+  generateMarkdownDocs,
+  generateHtmlDocs,
+  generateExampleFiles,
+  parseCueSchema,
+  generateApiDocs,
+};
+
 /**
  * Parse CUE schema to extract documentation information
  */

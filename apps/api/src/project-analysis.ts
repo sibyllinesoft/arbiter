@@ -558,6 +558,36 @@ export async function analyzeProjectFiles(
     }
   }
 
+  // Fallback: if no services detected yet but a docker-compose file is present,
+  // create a placeholder service entry so downstream consumers have at least one service.
+  if (!artifacts.some((a) => a.type === "service")) {
+    const composeFile = files.find((file) =>
+      DOCKER_COMPOSE_FILES.has(path.basename(file).toLowerCase()),
+    );
+    if (composeFile) {
+      const id = makeArtifactId(projectId, `${composeFile}#placeholder-service`);
+      artifacts.push({
+        id,
+        name: `${prettifyName(composeFile)}-service`,
+        type: "service",
+        description: "Service inferred from docker-compose presence.",
+        language: null,
+        framework: null,
+        metadata: {
+          composeFile,
+          inferred: "docker-compose",
+        },
+        filePath: composeFile,
+        links: [
+          {
+            type: "defined_in",
+            target: composeFile,
+          },
+        ],
+      });
+    }
+  }
+
   const serviceCount = artifacts.filter((a) => a.type === "service").length;
   const databaseCount = artifacts.filter((a) => a.type === "database").length;
 
@@ -1136,13 +1166,37 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
   const id = makeArtifactId(projectId, filePath);
 
   if (base === "package.json") {
-    // Don't classify package.json here - let the proper manifest analysis handle it
-    return null;
+    // Seed a package artifact so the manifest parser can enrich it
+    return {
+      id,
+      name,
+      type: "package",
+      description: "Node package manifest detected.",
+      language: "JavaScript",
+      framework: null,
+      metadata: {
+        filePath,
+      },
+      filePath,
+      links: [],
+    };
   }
 
   if (base === "cargo.toml") {
-    // Don't classify Cargo.toml here - let the proper manifest analysis handle it
-    return null;
+    // Seed a Rust package artifact so the Cargo parser can classify it
+    return {
+      id,
+      name,
+      type: "package",
+      description: "Rust Cargo manifest detected.",
+      language: "Rust",
+      framework: null,
+      metadata: {
+        filePath,
+      },
+      filePath,
+      links: [],
+    };
   }
 
   if (base === "dockerfile" || base.startsWith("dockerfile.")) {

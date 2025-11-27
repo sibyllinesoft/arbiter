@@ -280,7 +280,7 @@ async fn main() {
       const artifacts = await plugin.infer([cargoEvidence], context);
 
       expect(artifacts).toHaveLength(1);
-      expect(artifacts[0].artifact.type).toBe("module");
+      expect(artifacts[0].artifact.type).toBe("package");
       expect(artifacts[0].artifact.name).toBe("my-lib");
       expect(artifacts[0].artifact.description).toBe("A useful module");
       expect(artifacts[0].artifact.metadata.language).toBe("rust");
@@ -331,7 +331,7 @@ async fn main() {
       const artifacts = await plugin.infer([cargoEvidence], context);
 
       expect(artifacts).toHaveLength(1);
-      expect(artifacts[0].artifact.type).toBe("module");
+      expect(artifacts[0].artifact.type).toBe("package");
       expect(artifacts[0].artifact.name).toBe("smith-protocol");
     });
   });
