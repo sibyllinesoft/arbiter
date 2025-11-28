@@ -170,9 +170,14 @@ export const collectPathCandidates = (raw: any): string[] => {
 
 export const resolveSourcePath = (raw: any): { path: string | undefined; hasSource: boolean } => {
   // Services with Docker images are almost always external (postgres, redis, etc.)
+  // Check all the places where an image might be specified
   const hasDockerImage =
     (typeof raw?.image === "string" && raw.image.trim().length > 0) ||
-    (typeof raw?.metadata?.image === "string" && raw.metadata.image.trim().length > 0);
+    (typeof raw?.metadata?.image === "string" && raw.metadata.image.trim().length > 0) ||
+    (typeof raw?.metadata?.containerImage === "string" &&
+      raw.metadata.containerImage.trim().length > 0) ||
+    (typeof raw?.metadata?.docker?.composeService?.image === "string" &&
+      raw.metadata.docker.composeService.image.trim().length > 0);
 
   const candidates = collectPathCandidates(raw);
   if (candidates.length === 0) {

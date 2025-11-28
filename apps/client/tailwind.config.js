@@ -6,17 +6,8 @@ export default {
     extend: {
       fontFamily: {
         mono: ["Fira Code", "Consolas", "Monaco", "Courier New", "monospace"],
-        sans: [
-          "ui-sans-serif",
-          "system-ui",
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "Segoe UI",
-          "Roboto",
-          "Helvetica Neue",
-          "Arial",
-          "sans-serif",
-        ],
+        sans: ["Sunflower", "ui-sans-serif", "system-ui", "sans-serif"],
+        heading: ["Michroma", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       colors: {
         // New Professional Graphite Scale

@@ -67,7 +67,6 @@ import type {
   ServiceGenerationContext,
   ServiceGenerationTarget,
 } from "./contexts.js";
-import { generateFlowBasedTests } from "./flow-tests.js";
 import { handleGitHubSync } from "./github-sync.js";
 import { ensureDirectory, setActiveHookManager, writeFileWithHooks } from "./hook-executor.js";
 import { joinRelativePath, slugify, toPathSegments } from "./shared.js";
@@ -489,7 +488,6 @@ export const __generateTesting = {
   shouldSyncGithub,
   executeCommand,
   handleGitHubSync,
-  buildRouteComponentContent,
   deriveServiceEndpointsFromPaths,
   deriveServiceEndpointsFromFlows,
 };

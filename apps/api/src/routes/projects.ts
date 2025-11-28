@@ -2739,9 +2739,23 @@ export function createProjectsRouter(deps: Dependencies) {
               );
 
               // Convert importer artifacts to our artifact format and merge them
+              // Deduplicate by name to avoid counting the same artifact twice
+              const existingArtifactNames = new Set(artifacts.map((a) => a.name));
+
               for (const inferredArtifact of manifest.artifacts) {
                 const artifact = inferredArtifact.artifact;
                 const metadata = artifact.metadata || {};
+
+                // Skip if we already have an artifact with this name
+                if (existingArtifactNames.has(artifact.name)) {
+                  console.log(
+                    "[projects.create] Skipping duplicate artifact from importer:",
+                    artifact.name,
+                  );
+                  continue;
+                }
+
+                existingArtifactNames.add(artifact.name);
                 artifacts.push({
                   id: artifact.id,
                   name: artifact.name,

@@ -9,6 +9,7 @@ import {
   Layout,
   Navigation,
   Server,
+  Settings,
   Shield,
   Terminal,
   Trash2,
@@ -22,6 +23,7 @@ interface ProjectListProps {
   currentProject: any;
   onSelectProject: (project: any) => void;
   onDeleteProject: (e: React.MouseEvent, projectId: string) => void;
+  onSettingsProject?: (e: React.MouseEvent, projectId: string) => void;
   getProjectStatus: (project: any) => any;
   isLoading?: boolean;
 }
@@ -31,6 +33,7 @@ export function ProjectList({
   currentProject,
   onSelectProject,
   onDeleteProject,
+  onSettingsProject,
   getProjectStatus,
   isLoading = false,
 }: ProjectListProps) {
@@ -86,16 +89,30 @@ export function ProjectList({
                 <h3 className="text-2xl font-semibold text-gray-900/70 dark:text-gray-100/70 flex-1">
                   {project.name}
                 </h3>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteProject(e, project.id);
-                  }}
-                  className="p-1 text-black/40 dark:text-white/40 hover:text-red-400 hover:bg-red-500/10 dark:hover:text-red-300 dark:hover:bg-red-900/20 rounded transition-colors ml-4"
-                  title="Delete project"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1 ml-4">
+                  {onSettingsProject && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSettingsProject(e, project.id);
+                      }}
+                      className="p-1 text-black/40 dark:text-white/40 hover:text-blue-400 hover:bg-blue-500/10 dark:hover:text-blue-300 dark:hover:bg-blue-900/20 rounded transition-colors"
+                      title="Project settings"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteProject(e, project.id);
+                    }}
+                    className="p-1 text-black/40 dark:text-white/40 hover:text-red-400 hover:bg-red-500/10 dark:hover:text-red-300 dark:hover:bg-red-900/20 rounded transition-colors"
+                    title="Delete project"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               {/* Entity Metrics - Below the name */}

@@ -211,18 +211,96 @@ export const hasBuildablePackageFile = (raw: unknown, serviceName?: string): boo
 };
 
 /**
+ * Checks if a service has a Docker build context defined.
+ * Services with build contexts are built from source code, not pulled from a registry.
+ */
+const hasDockerBuild = (raw: unknown): boolean => {
+  if (!raw || typeof raw !== "object") return false;
+  const rawRecord = raw as Record<string, unknown>;
+  const metadata =
+    rawRecord.metadata && typeof rawRecord.metadata === "object"
+      ? (rawRecord.metadata as Record<string, unknown>)
+      : undefined;
+
+  // Check all the places where a build context might be specified
+  const buildLocations = [
+    rawRecord.build,
+    metadata?.build,
+    metadata?.dockerBuild,
+    metadata?.buildContext,
+    (metadata?.docker as Record<string, unknown>)?.composeService &&
+      ((metadata?.docker as Record<string, unknown>)?.composeService as Record<string, unknown>)
+        ?.build,
+    (metadata?.composeService as Record<string, unknown>)?.build,
+  ];
+
+  return buildLocations.some((build) => build !== undefined && build !== null);
+};
+
+/**
+ * Checks if a service is container-only (has an image but no build context).
+ * Services like nats, postgres, redis are container-only.
+ * Services with build contexts (spec-workbench, api) are NOT container-only.
+ */
+const isContainerOnlyService = (raw: unknown): boolean => {
+  if (!raw || typeof raw !== "object") return false;
+
+  // If there's a build context, it's NOT container-only (it's built from source)
+  if (hasDockerBuild(raw)) {
+    return false;
+  }
+
+  const rawRecord = raw as Record<string, unknown>;
+  const metadata =
+    rawRecord.metadata && typeof rawRecord.metadata === "object"
+      ? (rawRecord.metadata as Record<string, unknown>)
+      : undefined;
+
+  // Check all the places where an image might be specified
+  const imageLocations = [
+    metadata?.image,
+    metadata?.containerImage,
+    metadata?.originalImage,
+    (metadata?.docker as Record<string, unknown>)?.composeService &&
+      ((metadata?.docker as Record<string, unknown>)?.composeService as Record<string, unknown>)
+        ?.image,
+    (metadata?.composeService as Record<string, unknown>)?.image,
+  ];
+
+  // Has an image but no build = container-only (external)
+  return imageLocations.some((img) => typeof img === "string" && img.trim().length > 0);
+};
+
+/**
  * Determines if a service should be classified as internal or external.
  *
  * Radically simplified rule:
  * - Internal: Has a buildable package file (package.json, Cargo.toml, pyproject.toml, etc.)
- * - External: Everything else (Docker Compose only, infrastructure services, etc.)
+ *             OR has a Docker build context (builds from source)
+ * - External: Everything else (Docker Compose image-only, infrastructure services, etc.)
  */
 export const shouldTreatAsInternalService = (service: InternalServiceCandidate): boolean => {
   const serviceName = (service.raw as any)?.name || "unknown";
 
-  // Fast-path: explicit signals from discovery
+  // Fast-path: explicit signals from discovery (source code detected)
   if (service.hasSource) return true;
+
+  // Services with Docker build contexts are internal (they build from source)
+  if (hasDockerBuild(service.raw)) {
+    console.log("[internal-classifier] internal (has docker build):", serviceName);
+    return true;
+  }
+
+  // Container-only services (image but no build context) are external
+  // This catches nats, postgres, redis, etc. from docker-compose
+  if (isContainerOnlyService(service.raw)) {
+    console.log("[internal-classifier] external (container-only):", serviceName);
+    return false;
+  }
+
+  // If there's a sourcePath, it's internal
   if (service.sourcePath) return true;
+
   const rawType = normalizeString((service.raw as any)?.type);
   if (rawType === "internal") return true;
 
