@@ -53,7 +53,8 @@ const resolveLayerClass = (data: any): string => {
       case "frontend":
         return "frontend";
       case "module":
-        return "module";
+      case "package":
+        return "package";
       case "tool":
         return "tool";
       case "infrastructure":

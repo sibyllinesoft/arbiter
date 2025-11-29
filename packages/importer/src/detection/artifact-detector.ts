@@ -114,10 +114,10 @@ export class ArtifactDetector {
       (factors.sourceFactors?.length ?? 0) > 0;
 
     if (!hasEvidence) {
-      const explanation = ["Detected as module based on:", "no strong detection signals"];
+      const explanation = ["Detected as package based on:", "no strong detection signals"];
       const confidence = DEPENDENCY_MATRIX[context.language] ? 0.2 : 0;
       return {
-        primaryType: "module",
+        primaryType: "package",
         confidence,
         alternativeTypes: [],
         explanation,
@@ -135,7 +135,7 @@ export class ArtifactDetector {
       }))
       .sort((a, b) => b.confidence - a.confidence);
 
-    const primaryType = sortedTypes[0]?.type || "module";
+    const primaryType = sortedTypes[0]?.type || "package";
     const confidence = sortedTypes[0]?.confidence || 0.1;
     const alternativeTypes = sortedTypes.slice(1);
 
@@ -362,7 +362,7 @@ export class ArtifactDetector {
     );
     if (modulePatterns.length > 0) {
       factors.push({
-        category: "module",
+        category: "package",
         confidence: Math.min(0.4, modulePatterns.length * 0.1),
         patterns: modulePatterns,
       });
@@ -488,7 +488,7 @@ export class ArtifactDetector {
     }
     if (moduleIndicators.length > 0) {
       factors.push({
-        category: "module",
+        category: "package",
         confidence: Math.min(0.8, moduleIndicators.length * 0.2),
         indicators: moduleIndicators,
       });
@@ -680,9 +680,9 @@ export class ArtifactDetector {
       if (factors.configFactors.some((f) => f.category === "tool" && f.confidence > 0.5)) {
         scores["tool"] = 0.7;
       }
-      // Strong module indicators
-      else if (factors.configFactors.some((f) => f.category === "module" && f.confidence > 0.3)) {
-        scores["module"] = 0.5;
+      // Strong package indicators
+      else if (factors.configFactors.some((f) => f.category === "package" && f.confidence > 0.3)) {
+        scores["package"] = 0.5;
       }
       // Check for web service patterns
       else if (
@@ -696,9 +696,9 @@ export class ArtifactDetector {
       ) {
         scores["frontend"] = 0.5;
       }
-      // Default to module with low confidence
+      // Default to package with low confidence
       else {
-        scores["module"] = 0.2;
+        scores["package"] = 0.2;
       }
     }
 

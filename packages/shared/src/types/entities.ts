@@ -6,7 +6,6 @@ import { z } from "zod";
 export const ComponentTypeSchema = z.enum([
   "service",
   "package",
-  "module",
   "tool",
   "frontend",
   "database",
@@ -110,7 +109,6 @@ export function countComponentsByType(components: Component[]): ProjectEntityCou
         counts.services++;
         break;
       case "package":
-      case "module":
         counts.packages++;
         break;
       case "tool":

@@ -96,9 +96,9 @@ describe("CLI Detection Improvements Demo", () => {
           expectedType: "frontend",
         },
         {
-          type: "module",
+          type: "package",
           deps: ["lodash", "axios", "uuid"],
-          expectedType: "module",
+          expectedType: "package",
         },
       ];
 

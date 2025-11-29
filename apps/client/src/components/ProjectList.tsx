@@ -121,59 +121,45 @@ export function ProjectList({
                   {projectStatus.entities.services > 0 && (
                     <Badge
                       variant="default"
-                      className="bg-blue-500 dark:bg-blue-600 text-white/70 dark:text-white/70 border-blue-700 dark:border-blue-800"
+                      className="bg-blue-500 dark:bg-blue-600 text-white border-blue-700 dark:border-blue-800"
+                      title="Services"
                     >
-                      <Server className="w-3.5 h-3.5 mr-1 text-white/70 dark:text-white/70" />
-                      <span className="text-xs font-medium text-white/70 dark:text-white/70">
-                        Services:{" "}
-                        <span className="text-white dark:text-white">
-                          {projectStatus.entities.services}
-                        </span>
-                      </span>
+                      <Server className="w-3.5 h-3.5 mr-1" />
+                      <span className="text-xs font-medium">{projectStatus.entities.services}</span>
                     </Badge>
                   )}
 
                   {projectStatus.entities.packages > 0 && (
                     <Badge
                       variant="default"
-                      className="bg-purple-500 dark:bg-purple-600 text-white/70 dark:text-white/70 border-purple-700 dark:border-purple-800"
+                      className="bg-purple-500 dark:bg-purple-600 text-white border-purple-700 dark:border-purple-800"
+                      title="Packages"
                     >
-                      <Component className="w-3.5 h-3.5 mr-1 text-white/70 dark:text-white/70" />
-                      <span className="text-xs font-medium text-white/70 dark:text-white/70">
-                        Packages:{" "}
-                        <span className="text-white dark:text-white">
-                          {projectStatus.entities.packages}
-                        </span>
-                      </span>
+                      <Component className="w-3.5 h-3.5 mr-1" />
+                      <span className="text-xs font-medium">{projectStatus.entities.packages}</span>
                     </Badge>
                   )}
 
                   {projectStatus.entities.tools > 0 && (
                     <Badge
                       variant="default"
-                      className="bg-red-500 dark:bg-red-600 text-white/70 dark:text-white/70 border-red-700 dark:border-red-800"
+                      className="bg-red-500 dark:bg-red-600 text-white border-red-700 dark:border-red-800"
+                      title="Tools"
                     >
-                      <Terminal className="w-3.5 h-3.5 mr-1 text-white/70 dark:text-white/70" />
-                      <span className="text-xs font-medium text-white/70 dark:text-white/70">
-                        Tools:{" "}
-                        <span className="text-white dark:text-white">
-                          {projectStatus.entities.tools}
-                        </span>
-                      </span>
+                      <Terminal className="w-3.5 h-3.5 mr-1" />
+                      <span className="text-xs font-medium">{projectStatus.entities.tools}</span>
                     </Badge>
                   )}
 
                   {projectStatus.entities.frontends > 0 && (
                     <Badge
                       variant="default"
-                      className="bg-teal-500 dark:bg-teal-600 text-white/70 dark:text-white/70 border-teal-700 dark:border-teal-800"
+                      className="bg-teal-500 dark:bg-teal-600 text-white border-teal-700 dark:border-teal-800"
+                      title="Frontends"
                     >
-                      <Layout className="w-3.5 h-3.5 mr-1 text-white/70 dark:text-white/70" />
-                      <span className="text-xs font-medium text-white/70 dark:text-white/70">
-                        Frontends:{" "}
-                        <span className="text-white dark:text-white">
-                          {projectStatus.entities.frontends}
-                        </span>
+                      <Layout className="w-3.5 h-3.5 mr-1" />
+                      <span className="text-xs font-medium">
+                        {projectStatus.entities.frontends}
                       </span>
                     </Badge>
                   )}
@@ -181,29 +167,23 @@ export function ProjectList({
                   {projectStatus.entities.views > 0 && (
                     <Badge
                       variant="default"
-                      className="bg-[#725718] dark:bg-[#5D4614] text-white/70 dark:text-white/70 border-[#5D4614] dark:border-[#3D2E0C]"
+                      className="bg-[#725718] dark:bg-[#5D4614] text-white border-[#5D4614] dark:border-[#3D2E0C]"
+                      title="Views"
                     >
-                      <Eye className="w-3.5 h-3.5 mr-1 text-white/70 dark:text-white/70" />
-                      <span className="text-xs font-medium text-white/70 dark:text-white/70">
-                        Views:{" "}
-                        <span className="text-white dark:text-white">
-                          {projectStatus.entities.views}
-                        </span>
-                      </span>
+                      <Eye className="w-3.5 h-3.5 mr-1" />
+                      <span className="text-xs font-medium">{projectStatus.entities.views}</span>
                     </Badge>
                   )}
 
                   {projectStatus.entities.databases > 0 && (
                     <Badge
                       variant="default"
-                      className="bg-amber-500 dark:bg-amber-600 text-white/70 dark:text-white/70 border-amber-700 dark:border-amber-800"
+                      className="bg-amber-500 dark:bg-amber-600 text-white border-amber-700 dark:border-amber-800"
+                      title="Databases"
                     >
-                      <Database className="w-3.5 h-3.5 mr-1 text-white/70 dark:text-white/70" />
-                      <span className="text-xs font-medium text-white/70 dark:text-white/70">
-                        Databases:{" "}
-                        <span className="text-white dark:text-white">
-                          {projectStatus.entities.databases}
-                        </span>
+                      <Database className="w-3.5 h-3.5 mr-1" />
+                      <span className="text-xs font-medium">
+                        {projectStatus.entities.databases}
                       </span>
                     </Badge>
                   )}
@@ -211,14 +191,12 @@ export function ProjectList({
                   {projectStatus.entities.infrastructure > 0 && (
                     <Badge
                       variant="default"
-                      className="bg-emerald-500 dark:bg-emerald-600 text-white/70 dark:text-white/70 border-emerald-700 dark:border-emerald-800"
+                      className="bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-700 dark:border-emerald-800"
+                      title="Infrastructure"
                     >
-                      <Shield className="w-3.5 h-3.5 mr-1 text-white/70 dark:text-white/70" />
-                      <span className="text-xs font-medium text-white/70 dark:text-white/70">
-                        Infrastructure:{" "}
-                        <span className="text-white dark:text-white">
-                          {projectStatus.entities.infrastructure}
-                        </span>
+                      <Shield className="w-3.5 h-3.5 mr-1" />
+                      <span className="text-xs font-medium">
+                        {projectStatus.entities.infrastructure}
                       </span>
                     </Badge>
                   )}
@@ -226,15 +204,11 @@ export function ProjectList({
                   {projectStatus.entities.routes > 0 && (
                     <Badge
                       variant="default"
-                      className="bg-indigo-500 dark:bg-indigo-600 text-white/70 dark:text-white/70 border-indigo-700 dark:border-indigo-800"
+                      className="bg-indigo-500 dark:bg-indigo-600 text-white border-indigo-700 dark:border-indigo-800"
+                      title="Routes"
                     >
-                      <Navigation className="w-3.5 h-3.5 mr-1 text-white/70 dark:text-white/70" />
-                      <span className="text-xs font-medium text-white/70 dark:text-white/70">
-                        Routes:{" "}
-                        <span className="text-white dark:text-white">
-                          {projectStatus.entities.routes}
-                        </span>
-                      </span>
+                      <Navigation className="w-3.5 h-3.5 mr-1" />
+                      <span className="text-xs font-medium">{projectStatus.entities.routes}</span>
                     </Badge>
                   )}
                 </div>

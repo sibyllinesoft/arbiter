@@ -140,7 +140,7 @@ const buildInitialValuesFromMetadata = (
     initial.description = metadata.description;
   }
 
-  if (entityType === "module") {
+  if (entityType === "package") {
     if (typeof metadata.moduleType === "string") {
       initial.moduleType = metadata.moduleType;
     }
@@ -253,7 +253,7 @@ const getComponentType = (data: any, name: string): string => {
   if (detectedType === "web_service") return "service";
 
   if (rawType.includes("service")) return "service";
-  if (["module", "library"].includes(rawType)) return "module";
+  if (["package", "module", "library"].includes(rawType)) return "package";
   if (["tool", "cli", "binary"].includes(rawType)) return "tool";
   if (["deployment", "infrastructure"].includes(rawType)) return "infrastructure";
   if (rawType === "database") return "database";
@@ -275,7 +275,7 @@ const getComponentType = (data: any, name: string): string => {
   if (data.metadata?.containerImage || data.metadata?.compose) return "service";
   if (data.metadata?.kubernetes || data.metadata?.terraform) return "infrastructure";
 
-  if (name.includes("@")) return "module";
+  if (name.includes("@")) return "package";
 
   return "component";
 };
@@ -291,7 +291,7 @@ const computeGroupedComponents = (
   > = {
     service: { label: "Services", layout: "grid" },
     frontend: { label: "Frontends", layout: "grid" },
-    module: { label: "Modules", layout: "grid" },
+    package: { label: "Packages", layout: "grid" },
     tool: { label: "Tools", layout: "grid" },
     route: { label: "Routes", layout: "grid" },
     view: { label: "Views", layout: "grid" },
@@ -1014,7 +1014,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
 
   const groupIconMap: Record<string, LucideIcon> = {
     service: Server,
-    module: Component,
+    package: Component,
     tool: Terminal,
     route: Navigation,
     view: Eye,

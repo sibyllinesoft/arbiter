@@ -63,7 +63,7 @@ function detectPackageType(pkg: PackageDetectionData): string {
     (packageJson.typings && !packageJson.main);
 
   if (isTypesPackage) {
-    return "module";
+    return "package";
   }
 
   // 3. Web Service - Has web framework, database driver, or server-related scripts
@@ -165,7 +165,7 @@ function detectPackageType(pkg: PackageDetectionData): string {
       );
 
     if (isComponentLibrary) {
-      return "module";
+      return "package";
     }
 
     if (packageJson.private || packageJson.browserslist) {
@@ -173,8 +173,8 @@ function detectPackageType(pkg: PackageDetectionData): string {
     }
   }
 
-  // 6. Module - Everything else
-  return "module";
+  // 6. Package - Everything else
+  return "package";
 }
 
 // Define expected types for key packages
@@ -182,17 +182,17 @@ const expectedTypes: Record<string, string> = {
   // Arbiter packages
   "@arbiter/cli": "tool",
   "@arbiter/api": "service",
-  "@arbiter/shared": "module",
-  "@arbiter/shared-types": "module",
-  "@arbiter/api-types": "module", // Should be module, not service
-  "@arbiter/importer": "module",
-  "@arbiter/cue-runner": "module",
+  "@arbiter/shared": "package",
+  "@arbiter/shared-types": "package",
+  "@arbiter/api-types": "package",
+  "@arbiter/importer": "package",
+  "@arbiter/cue-runner": "package",
   "spec-workbench-frontend": "frontend",
   arbiter: "tool", // Root has bin field
 
   // Smith packages
   "smith-agent-visualizer": "frontend",
-  "@smith/protocol": "module",
+  "@smith/protocol": "package",
 };
 
 async function runTests() {

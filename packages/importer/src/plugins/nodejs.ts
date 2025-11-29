@@ -1080,8 +1080,8 @@ export class NodeJSPlugin implements ImporterPlugin {
       tool: "tool",
       web_service: "service",
       frontend: "frontend",
-      module: "package",
-      desktop_app: "binary", // or 'module' depending on context
+      package: "package",
+      desktop_app: "binary",
       data_processing: "package",
       testing: "test",
       build_tool: "package",

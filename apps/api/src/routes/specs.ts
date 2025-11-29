@@ -405,7 +405,13 @@ export function createSpecsRouter(deps: Dependencies) {
       );
 
       for (const artifact of otherArtifacts) {
-        const componentName = artifact.name.replace(/_/g, "-");
+        // Use artifact ID if available, otherwise derive a unique key from name + filepath
+        const baseName = artifact.name.replace(/_/g, "-");
+        const componentKey =
+          artifact.id ||
+          (artifact.file_path
+            ? `${baseName}-${artifact.file_path.replace(/[^a-z0-9]/gi, "-").slice(-50)}`
+            : baseName);
 
         const language = artifact.language || "unknown";
         const framework = artifact.framework || "unknown";
@@ -425,11 +431,19 @@ export function createSpecsRouter(deps: Dependencies) {
           continue;
         }
 
-        if (detectedType === "tool" || classificationReason === "manifest-bin" || hasCliBin) {
+        // Normalize binary/cli types to tool
+        if (
+          componentType === "binary" ||
+          componentType === "cli" ||
+          detectedType === "tool" ||
+          detectedType === "binary" ||
+          classificationReason === "manifest-bin" ||
+          hasCliBin
+        ) {
           componentType = "tool";
         }
 
-        components[componentName] = {
+        components[componentKey] = {
           name: artifact.name, // Use the original name
           type: componentType,
           description: artifact.description || artifact.metadata?.description || "",
@@ -443,6 +457,16 @@ export function createSpecsRouter(deps: Dependencies) {
           },
         };
       }
+
+      // Debug: log infrastructure components
+      const infraComponents = Object.entries(components).filter(
+        ([_, comp]) => comp.type === "infrastructure",
+      );
+      console.log(
+        "[specs.resolved] Infrastructure components:",
+        infraComponents.length,
+        infraComponents.map(([key, comp]) => ({ key, name: comp.name, type: comp.type })),
+      );
 
       const typeGroups = Object.values(components).reduce(
         (acc: Record<string, { count: number; names: string[] }>, component: any) => {

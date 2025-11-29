@@ -234,7 +234,6 @@ function createMcpServer() {
     { name: "schema", description: "Add a schema for API documentation" },
     { name: "package", description: "Add a reusable package/library" },
     { name: "component", description: "Add a UI component" },
-    { name: "module", description: "Add a standalone module" },
     {
       name: "epic",
       description: "Add an epic for managing dependency-driven tasks using sharded CUE storage",

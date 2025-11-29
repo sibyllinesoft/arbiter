@@ -26,7 +26,6 @@ const VALID_TYPES = [
   "config",
   "deployment",
   "component",
-  "module",
   "package",
   "flow",
   "locator",
@@ -207,11 +206,11 @@ function buildComponentsFromSpec(spec: any, type: ValidType): any[] {
         type,
         engine: database?.engine || "unknown",
       }));
-    case "module":
-      return Object.entries(spec?.modules ?? {}).map(([name, module]) => ({
+    case "package":
+      return Object.entries(spec?.packages ?? spec?.modules ?? {}).map(([name, pkg]) => ({
         name,
         type,
-        language: module?.language || "unknown",
+        language: pkg?.language || "unknown",
       }));
     case "tool":
       return Object.entries(spec?.tools ?? {}).map(([name, tool]) => ({

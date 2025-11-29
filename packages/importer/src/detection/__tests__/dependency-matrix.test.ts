@@ -140,14 +140,14 @@ describe("Dependency Matrix", () => {
     it("should handle unknown languages gracefully", () => {
       const result = determineMostLikelyCategory(["some-dep"], "unknown-language");
 
-      expect(result.category).toBe("module");
+      expect(result.category).toBe("package");
       expect(result.confidence).toBe(0);
     });
 
     it("should handle empty dependencies", () => {
       const result = determineMostLikelyCategory([], "javascript");
 
-      expect(result.category).toBe("module");
+      expect(result.category).toBe("package");
       expect(result.confidence).toBe(0.1);
     });
 

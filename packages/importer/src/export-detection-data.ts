@@ -92,7 +92,7 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
           data: {
             name: packageJson.name,
             description: packageJson.description,
-            type: "module",
+            type: "package",
             filePath: pkgPath,
           },
           confidence: 0.95,
@@ -136,7 +136,7 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
         packageJson: {
           name: packageJson.name,
           description: packageJson.description,
-          type: "module",
+          type: "package",
           filePath: pkgPath,
         },
         filePatterns: filePatterns.slice(0, 20), // Limit to first 20 files for brevity

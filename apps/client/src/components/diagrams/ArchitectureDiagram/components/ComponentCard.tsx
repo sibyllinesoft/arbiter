@@ -279,7 +279,7 @@ const buildInfrastructureMetaRows = (data: DiagramComponentData): ArtifactCardMe
 
 const deriveMetaRows = (data: DiagramComponentData): ArtifactCardMetaRow[] => {
   const type = safeText(data?.type)?.toLowerCase();
-  if (type === "module") {
+  if (type === "package") {
     return buildModuleMetaRows(data);
   }
   if (type === "infrastructure") {

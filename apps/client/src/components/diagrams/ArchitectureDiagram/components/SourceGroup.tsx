@@ -21,7 +21,7 @@ const DEFAULT_ICON_COLOR = "text-gray-500 dark:text-gray-300";
 
 const ICON_COLOR_MAP: Record<string, string> = {
   service: "text-blue-500 dark:text-blue-300",
-  module: "text-purple-500 dark:text-purple-300",
+  package: "text-purple-500 dark:text-purple-300",
   tool: "text-red-500 dark:text-red-300",
   route: "text-indigo-500 dark:text-indigo-300",
   view: "text-[#725718] dark:text-[#d8b66f]",

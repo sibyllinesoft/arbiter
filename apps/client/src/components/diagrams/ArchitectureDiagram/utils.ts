@@ -11,7 +11,7 @@ interface TypeDisplayConfig {
 const TYPE_CONFIG: Record<string, TypeDisplayConfig> = {
   service: { label: "Services", layout: "grid" },
   frontend: { label: "Frontends", layout: "grid" },
-  module: { label: "Modules", layout: "grid" },
+  package: { label: "Packages", layout: "grid" },
   tool: { label: "Tools", layout: "grid" },
   route: { label: "Routes", layout: "tree", treeMode: "routes" },
   view: { label: "Views", layout: "tree", treeMode: "routes" },
@@ -24,7 +24,7 @@ const TYPE_CONFIG: Record<string, TypeDisplayConfig> = {
 const DESIRED_GROUP_ORDER = [
   "Frontends",
   "Services",
-  "Modules",
+  "Packages",
   "Tools",
   "Routes",
   "Views",
@@ -105,7 +105,7 @@ export const getComponentType = (data: any, name: string): string => {
   if (detectedType === "web_service") return "service";
 
   if (rawType.includes("service")) return "service";
-  if (["module", "library"].includes(rawType)) return "module";
+  if (["package", "module", "library"].includes(rawType)) return "package";
   if (["tool", "cli", "binary"].includes(rawType)) return "tool";
   if (["deployment", "infrastructure"].includes(rawType)) return "infrastructure";
   if (rawType === "database") return "database";
@@ -127,7 +127,7 @@ export const getComponentType = (data: any, name: string): string => {
   if (data.metadata?.containerImage || data.metadata?.compose) return "service";
   if (data.metadata?.kubernetes || data.metadata?.terraform) return "infrastructure";
 
-  if (name.includes("@")) return "module";
+  if (name.includes("@")) return "package";
 
   return "component";
 };

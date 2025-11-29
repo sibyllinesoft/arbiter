@@ -315,7 +315,7 @@ describe("ArtifactDetector", () => {
 
       const result = detectArtifactType(minimalContext);
 
-      expect(result.primaryType).toBe("module"); // Default fallback
+      expect(result.primaryType).toBe("package"); // Default fallback
       expect(result.confidence).toBeLessThan(0.5);
     });
 
@@ -330,7 +330,7 @@ describe("ArtifactDetector", () => {
 
       const result = detectArtifactType(unknownLangContext);
 
-      expect(result.primaryType).toBe("module");
+      expect(result.primaryType).toBe("package");
       expect(result.confidence).toBe(0);
     });
   });

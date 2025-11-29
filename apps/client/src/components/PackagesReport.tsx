@@ -249,7 +249,7 @@ export const PackagesReport: React.FC<PackagesReportProps> = ({ projectId, class
 
       <AddEntityModal
         open={isAddPackageOpen}
-        entityType="module"
+        entityType="package"
         groupLabel="Packages"
         optionCatalog={uiOptionCatalog}
         onClose={handleCloseAddPackage}
@@ -260,7 +260,7 @@ export const PackagesReport: React.FC<PackagesReportProps> = ({ projectId, class
       {editPackageState.open && (
         <AddEntityModal
           open={editPackageState.open}
-          entityType="module"
+          entityType="package"
           groupLabel="Packages"
           optionCatalog={uiOptionCatalog}
           onClose={handleCloseEditPackage}

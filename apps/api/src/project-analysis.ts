@@ -1201,16 +1201,21 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
 
   if (base === "dockerfile" || base.startsWith("dockerfile.")) {
     // Dockerfiles are infrastructure, not services
+    // Include parent directory in name for disambiguation
+    const parentDir = path.basename(path.dirname(filePath));
+    const dockerfileSuffix = base === "dockerfile" ? "" : `-${base.replace("dockerfile.", "")}`;
+    const contextName = parentDir && parentDir !== "." ? `${parentDir}${dockerfileSuffix}` : name;
     return {
       id,
-      name: `${name}-container`,
+      name: `${contextName}-container`,
       type: "infrastructure",
-      description: "Dockerfile detected for containerized deployment.",
+      description: `Dockerfile for ${contextName} containerized deployment.`,
       language: null,
       framework: null,
       metadata: {
         filePath,
         dockerfile: true,
+        context: parentDir,
       },
       filePath,
       links: [],
@@ -1253,16 +1258,21 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
   }
 
   if ((ext === ".yaml" || ext === ".yml") && isInfrastructureYaml(base)) {
+    // Include parent directories for context (e.g., "prometheus/configmap" instead of just "configmap")
+    const pathParts = filePath.split(path.sep);
+    const parentDir = pathParts.length > 1 ? pathParts[pathParts.length - 2] : "";
+    const contextName = parentDir && parentDir !== "." ? `${parentDir}/${name}` : name;
     return {
       id,
-      name: `${name}-k8s`,
+      name: `${contextName}-k8s`,
       type: "infrastructure",
-      description: "Infrastructure definition detected from YAML.",
+      description: `Kubernetes resource: ${contextName}.`,
       language: null,
       framework: null,
       metadata: {
         filePath,
         kubernetes: true,
+        context: parentDir,
       },
       filePath,
       links: [],

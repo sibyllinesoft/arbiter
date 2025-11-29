@@ -16,7 +16,7 @@ export async function addModule(
 
   const moduleConfig: Record<string, unknown> = {
     name: moduleName,
-    type: "module",
+    type: "package",
     language: options.language || "typescript",
     directory: options.directory || `modules/${moduleName}`,
   };

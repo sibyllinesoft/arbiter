@@ -250,7 +250,7 @@ export function AddEntityModal({
       });
     };
 
-    if (entityType === "module") {
+    if (entityType === "package") {
       normalizeLists(["deliverables", "flowSteps", "schemaTables"]);
     } else if (entityType === "infrastructure") {
       normalizeLists(["environmentSecrets", "observabilityAlerts"]);

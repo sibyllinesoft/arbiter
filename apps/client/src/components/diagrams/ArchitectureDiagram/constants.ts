@@ -5,7 +5,7 @@ export const LAYER_STYLE_CLASSES: Record<string, string> = {
     "bg-blue-500 border-blue-700 text-white/70 dark:bg-blue-600 dark:border-blue-800 dark:text-white/70",
   service:
     "bg-blue-500 border-blue-700 text-white/70 dark:bg-blue-600 dark:border-blue-800 dark:text-white/70",
-  module:
+  package:
     "bg-purple-500 border-purple-700 text-white/70 dark:bg-purple-600 dark:border-purple-800 dark:text-white/70",
   tool: "bg-red-500 border-red-700 text-white/70 dark:bg-red-600 dark:border-red-800 dark:text-white/70",
   database:

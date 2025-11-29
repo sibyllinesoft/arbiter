@@ -260,7 +260,7 @@ function buildManualArtifactPayload(
         filePath: typeof values.sourcePath === "string" ? values.sourcePath : undefined,
       };
     }
-    case "module": {
+    case "package": {
       const moduleType = coerceOptionalTrimmedString(values.moduleType);
       const owner = coerceOptionalTrimmedString(values.owner);
       const kind = coerceOptionalTrimmedString(values.kind);
@@ -288,7 +288,7 @@ function buildManualArtifactPayload(
       const metadata: Record<string, unknown> = {
         description,
         classification: {
-          detectedType: "module",
+          detectedType: "package",
           reason: "manual-entry",
           source: "user",
         },
@@ -1600,7 +1600,7 @@ export function createProjectsRouter(deps: Dependencies) {
           case "database":
             databases[cleanName] = baseData;
             break;
-          case "module":
+          case "package":
           case "tool":
           case "binary":
           case "frontend":
@@ -1756,7 +1756,7 @@ export function createProjectsRouter(deps: Dependencies) {
     const supportedTypes = new Set([
       "frontend",
       "service",
-      "module",
+      "package",
       "tool",
       "database",
       "infrastructure",
@@ -2035,11 +2035,16 @@ export function createProjectsRouter(deps: Dependencies) {
 
             // Group artifacts by type for debugging
             const typeGroups: Record<string, number> = {};
+            const infraArtifacts: string[] = [];
             for (const artifact of otherArtifacts) {
               const type = artifact.type;
               typeGroups[type] = (typeGroups[type] || 0) + 1;
+              if (type === "infrastructure") {
+                infraArtifacts.push(artifact.name);
+              }
             }
             console.log(`[DEBUG] Artifact types for project ${project.name}:`, typeGroups);
+            console.log(`[DEBUG] Infrastructure artifacts:`, infraArtifacts);
 
             let packageCount = 0;
             let toolCount = 0;
@@ -2057,7 +2062,6 @@ export function createProjectsRouter(deps: Dependencies) {
 
               switch (type) {
                 case "package":
-                case "module":
                   packageCount++;
                   break;
                 case "tool":
@@ -2254,7 +2258,7 @@ export function createProjectsRouter(deps: Dependencies) {
     const supportedTypes = new Set([
       "frontend",
       "service",
-      "module",
+      "package",
       "tool",
       "database",
       "infrastructure",

@@ -190,7 +190,7 @@ export async function runAddCommand(
         console.error(chalk.red(`❌ Unknown subcommand: ${subcommand}`));
         console.log(
           chalk.dim(
-            "Available subcommands: service, client, endpoint, route, flow, load-balancer, database, cache, locator, schema, contract, contract-operation, package, component, module",
+            "Available subcommands: service, client, endpoint, route, flow, load-balancer, database, cache, locator, schema, contract, contract-operation, package, component",
           ),
         );
         return 1;
@@ -425,7 +425,7 @@ async function addModule(
 
   const moduleConfig: any = {
     name: moduleName,
-    type: "module",
+    type: "package",
     language: options.language || "typescript",
     directory: options.directory || `src/modules/${moduleName}`,
   };

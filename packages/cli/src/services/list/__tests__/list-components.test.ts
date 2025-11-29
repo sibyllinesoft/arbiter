@@ -57,7 +57,7 @@ describe("buildComponentsFromSpec coverage", () => {
   it("builds schemas, databases, modules, tools, infra, contracts, flows, capabilities", () => {
     expect(__listTesting.buildComponentsFromSpec(spec, "schema")[0].name).toBe("user");
     expect(__listTesting.buildComponentsFromSpec(spec, "database")[0].engine).toBe("postgres");
-    expect(__listTesting.buildComponentsFromSpec(spec, "module")[0].language).toBe("ts");
+    expect(__listTesting.buildComponentsFromSpec(spec, "package")[0].language).toBe("ts");
     expect(__listTesting.buildComponentsFromSpec(spec, "tool")[0].commands).toContain("build");
     expect(__listTesting.buildComponentsFromSpec(spec, "infrastructure")[0].image).toBe(
       "api:latest",
