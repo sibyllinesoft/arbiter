@@ -1,7 +1,7 @@
 import os from "node:os";
 import path from "node:path";
+import type { AuthSession } from "@/types.js";
 import fs from "fs-extra";
-import type { AuthSession } from "./types.js";
 
 const resolveAuthFile = () => {
   const authDir = path.join(os.homedir(), ".arbiter");

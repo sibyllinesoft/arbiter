@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { normalizeCapabilities } from "../index.js";
+import { normalizeCapabilities } from "@/services/generate/index.js";
 
 describe("normalizeCapabilities", () => {
   it("returns null for falsy input", () => {

@@ -1,10 +1,10 @@
 import path from "node:path";
+import { ApiClient } from "@/api-client.js";
+import { validateCUE } from "@/cue/index.js";
+import type { CLIConfig } from "@/types.js";
+import { ensureProjectExists } from "@/utils/project.js";
 import chalk from "chalk";
 import fs from "fs-extra";
-import { ApiClient } from "../../api-client.js";
-import { validateCUE } from "../../cue/index.js";
-import type { CLIConfig } from "../../types.js";
-import { ensureProjectExists } from "../../utils/project.js";
 
 export interface SpecImportOptions {
   project?: string;

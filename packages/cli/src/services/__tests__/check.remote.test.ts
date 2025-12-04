@@ -2,8 +2,8 @@ import { describe, expect, it, spyOn } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { ApiClient } from "../../api-client.js";
-import { runCheckCommand } from "../check/index.js";
+import { ApiClient } from "@/api-client.js";
+import { runCheckCommand } from "@/services/check/index.js";
 
 const baseConfig = { projectDir: "", color: false, localMode: false, apiUrl: "https://api" } as any;
 

@@ -8,9 +8,9 @@
 import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
+import { CUEManipulator } from "@/cue/index.js";
 import chalk from "chalk";
 import fs from "fs-extra";
-import { CUEManipulator } from "../cue/index.js";
 
 /**
  * Helper function to replace execa with spawn

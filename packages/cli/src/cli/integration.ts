@@ -2,13 +2,13 @@
  * Integration commands module - CI/CD and external integrations
  */
 
+import { requireCommandConfig } from "@/cli/context.js";
+import { githubTemplatesCommand } from "@/services/github-templates/index.js";
+import { integrateProject } from "@/services/integrate/index.js";
+import { syncProject } from "@/services/sync/index.js";
+import type { IntegrateOptions, SyncOptions } from "@/types.js";
 import chalk from "chalk";
 import { Command } from "commander";
-import { githubTemplatesCommand } from "../services/github-templates/index.js";
-import { integrateProject } from "../services/integrate/index.js";
-import { syncProject } from "../services/sync/index.js";
-import type { IntegrateOptions, SyncOptions } from "../types.js";
-import { requireCommandConfig } from "./context.js";
 
 export function createIntegrationCommands(program: Command): void {
   // Sync command

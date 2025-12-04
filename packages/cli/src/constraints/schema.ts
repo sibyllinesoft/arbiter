@@ -1,5 +1,5 @@
+import { ConstraintViolationError, globalConstraintEnforcer } from "@/constraints/core.js";
 import { z } from "zod";
-import { ConstraintViolationError, globalConstraintEnforcer } from "./core.js";
 
 /**
  * Latest API version - must be updated when schema changes

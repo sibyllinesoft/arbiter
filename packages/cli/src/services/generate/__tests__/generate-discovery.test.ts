@@ -1,8 +1,8 @@
 import os from "node:os";
 import path from "node:path";
+import { __generateTesting } from "@/services/generate/index.js";
 import fs from "fs-extra";
 import { afterEach, describe, expect, it } from "vitest";
-import { __generateTesting } from "../index.js";
 
 describe("generate discovery helpers", () => {
   const originalCwd = process.cwd();

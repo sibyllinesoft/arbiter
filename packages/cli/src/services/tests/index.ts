@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { safeFileOperation } from "@/constraints/index.js";
+import type { CLIConfig } from "@/types.js";
 import chalk from "chalk";
 import { glob } from "glob";
-import { safeFileOperation } from "../../constraints/index.js";
-import type { CLIConfig } from "../../types.js";
 
 /**
  * Revolutionary test scaffolding and coverage system
@@ -88,7 +88,7 @@ export async function scaffoldCommand(options: TestsOptions, _config: CLIConfig)
   try {
     const language = options.language || "typescript";
     const framework = options.framework || (language === "python" ? "pytest" : "jest");
-    const outputDir = options.output || "./tests";
+    const outputDir = options.output || "@/services/tests/tests";
 
     console.log(
       chalk.blue(

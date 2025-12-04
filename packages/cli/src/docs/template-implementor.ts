@@ -5,8 +5,8 @@
  */
 
 import * as path from "path";
+import type { OptionInfo, ParsedCommandInfo, TemplateConfig, TemplateData } from "@/docs/types.js";
 import * as fs from "fs-extra";
-import type { OptionInfo, ParsedCommandInfo, TemplateConfig, TemplateData } from "./types.js";
 
 export class DocsTemplateImplementor {
   private templateCache = new Map<string, string>();

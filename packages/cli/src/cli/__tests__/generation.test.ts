@@ -1,15 +1,15 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import * as configSvc from "../../config.js";
-import * as docsSvc from "../../services/docs/index.js";
-import * as examplesSvc from "../../services/examples/index.js";
-import * as executeSvc from "../../services/execute/index.js";
-import * as explainSvc from "../../services/explain/index.js";
-import * as generateSvc from "../../services/generate/index.js";
-import * as renameSvc from "../../services/rename/index.js";
-import { requireCommandConfig } from "../context.js";
-import { createGenerationCommands } from "../generation.js";
+import { requireCommandConfig } from "@/cli/context.js";
+import { createGenerationCommands } from "@/cli/generation.js";
+import * as configSvc from "@/config.js";
+import * as docsSvc from "@/services/docs/index.js";
+import * as examplesSvc from "@/services/examples/index.js";
+import * as executeSvc from "@/services/execute/index.js";
+import * as explainSvc from "@/services/explain/index.js";
+import * as generateSvc from "@/services/generate/index.js";
+import * as renameSvc from "@/services/rename/index.js";
 
 // Minimal config to satisfy command lookups
 const baseConfig: any = {

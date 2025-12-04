@@ -10,28 +10,28 @@
  */
 
 import * as path from "node:path";
+import { ApiClient } from "@/api-client.js";
+import { getCueManipulator } from "@/constraints/cli-integration.js";
+import { safeFileOperation } from "@/constraints/index.js";
+import { formatCUE, validateCUE } from "@/cue/index.js";
+import { toTitleCase } from "@/services/add/shared.js";
+import { addCache } from "@/services/add/subcommands/cache.js";
+import { addClient } from "@/services/add/subcommands/client.js";
+import { addContractOperation, addContractWorkflow } from "@/services/add/subcommands/contracts.js";
+import { addDatabase } from "@/services/add/subcommands/database.js";
+import { addEndpoint } from "@/services/add/subcommands/endpoint.js";
+import { addFlow } from "@/services/add/subcommands/flow.js";
+import { addLoadBalancer } from "@/services/add/subcommands/load-balancer.js";
+import { addLocator } from "@/services/add/subcommands/locator.js";
+// Module and package helpers are defined locally in this file
+import { addRoute } from "@/services/add/subcommands/route.js";
+import { addSchema } from "@/services/add/subcommands/schema.js";
+import { addService } from "@/services/add/subcommands/service.js";
+import type { CLIConfig } from "@/types.js";
+import { ensureProjectExists } from "@/utils/project.js";
 import chalk from "chalk";
 import { diffLines } from "diff";
 import fs from "fs-extra";
-import { ApiClient } from "../../api-client.js";
-import { getCueManipulator } from "../../constraints/cli-integration.js";
-import { safeFileOperation } from "../../constraints/index.js";
-import { formatCUE, validateCUE } from "../../cue/index.js";
-import type { CLIConfig } from "../../types.js";
-import { ensureProjectExists } from "../../utils/project.js";
-import { toTitleCase } from "./shared.js";
-import { addCache } from "./subcommands/cache.js";
-import { addClient } from "./subcommands/client.js";
-import { addContractOperation, addContractWorkflow } from "./subcommands/contracts.js";
-import { addDatabase } from "./subcommands/database.js";
-import { addEndpoint } from "./subcommands/endpoint.js";
-import { addFlow } from "./subcommands/flow.js";
-import { addLoadBalancer } from "./subcommands/load-balancer.js";
-import { addLocator } from "./subcommands/locator.js";
-// Module and package helpers are defined locally in this file
-import { addRoute } from "./subcommands/route.js";
-import { addSchema } from "./subcommands/schema.js";
-import { addService } from "./subcommands/service.js";
 
 export interface AddOptions {
   verbose?: boolean;

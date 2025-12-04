@@ -1,6 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import { ApiClient } from "../../api-client.js";
-import { statusCommand } from "../status/index.js";
+import { ApiClient } from "@/api-client.js";
+import { statusCommand } from "@/services/status/index.js";
 
 describe("statusCommand remote fallback", () => {
   it("falls back to local status on API error and returns health code", async () => {

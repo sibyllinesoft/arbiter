@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import * as validation from "../../../validation/warnings.js";
-import { generateCommand } from "../index.js";
+import { generateCommand } from "@/services/generate/index.js";
+import * as validation from "@/validation/warnings.js";
 
 const baseOptions: any = { force: false, verbose: false };
 const baseConfig: any = {

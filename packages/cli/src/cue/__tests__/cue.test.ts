@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import path from "node:path";
 
-import * as constraints from "../../constraints/index.js";
-import { CUEManipulator } from "../index.js";
+import * as constraints from "@/constraints/index.js";
+import { CUEManipulator } from "@/cue/index.js";
 
 const fakeRunner: any = {
   exportJson: async () => ({ success: true, value: {}, diagnostics: [], error: undefined }),

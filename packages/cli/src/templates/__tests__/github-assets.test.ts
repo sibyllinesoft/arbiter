@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { GitHubTemplateAssetStrategy } from "../github-assets";
+import { GitHubTemplateAssetStrategy } from "@/templates/github-assets";
 
 describe("GitHubTemplateAssetStrategy", () => {
   it("delegates resolution to the orchestrator with override and default dirs", async () => {

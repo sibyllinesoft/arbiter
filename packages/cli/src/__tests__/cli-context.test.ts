@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import { requireCommandConfig } from "@/cli/context";
 import { Command } from "commander";
-import { requireCommandConfig } from "../cli/context";
 
 describe("cli/context", () => {
   it("throws when config is missing", () => {

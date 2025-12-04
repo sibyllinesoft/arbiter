@@ -2,8 +2,8 @@ import { describe, expect, it } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { calculateSurfaceDelta } from "../delta.js";
-import type { APISurface } from "../types.js";
+import { calculateSurfaceDelta } from "@/surface-extraction/delta.js";
+import type { APISurface } from "@/surface-extraction/types.js";
 
 const baseSurface = (): APISurface => ({
   language: "typescript",

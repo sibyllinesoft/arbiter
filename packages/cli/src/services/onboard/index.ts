@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Enhanced Project Onboarding System for Arbiter
  *
@@ -7,13 +6,13 @@
  */
 
 import path from "node:path";
+import { safeFileOperation } from "@/constraints/index.js";
+import { syncProject } from "@/services/sync/index.js";
+import type { CLIConfig } from "@/types.js";
+import { ProgressBar } from "@/utils/progress.js";
 import chalk from "chalk";
 import fs from "fs-extra";
 import inquirer from "inquirer";
-import { safeFileOperation } from "../../constraints/index.js";
-import type { CLIConfig } from "../../types.js";
-import { withProgress } from "../../utils/progress.js";
-import { syncProject } from "../sync/index.js";
 
 interface OnboardOptions {
   projectPath?: string;
@@ -62,8 +61,8 @@ export async function onboardCommand(options: OnboardOptions, config: CLIConfig)
   const projectPath = path.resolve(options.projectPath || process.cwd());
   console.log(chalk.blue(`🚀 Analyzing project at ${projectPath}`));
 
-  const progress = withProgress("Scanning project", 5);
-  progress.start();
+  const progress = new ProgressBar({ title: "Scanning project", total: 5 });
+  progress.update(0);
 
   // Build project structure metadata
   const structure = await analyzeProjectStructure(projectPath);
@@ -92,7 +91,7 @@ export async function onboardCommand(options: OnboardOptions, config: CLIConfig)
   }
   progress.increment();
 
-  progress.stop();
+  progress.complete("Onboarding steps complete");
   console.log(chalk.green("✅ Onboarding complete!"));
   console.log(chalk.dim(`Spec written to ${outputPath}`));
   return 0;
@@ -109,14 +108,14 @@ async function analyzeProjectStructure(root: string): Promise<ProjectStructure> 
     directories,
     hasFile: (filename: string) => files.includes(filename),
     hasDirectory: (dirname: string) => directories.includes(dirname),
-    hasPackage: (packageName: string) => files.includes("package.json") && packageName,
+    hasPackage: (packageName: string) => files.includes(packageName),
     hasPattern: (pattern: RegExp) => files.some((f) => pattern.test(f)),
   };
 }
 
 async function detectServices(
   structure: ProjectStructure,
-  progress: ReturnType<typeof withProgress>,
+  progress: ProgressBar,
 ): Promise<OnboardAnalysis> {
   const services: ServiceDetection[] = [];
   const languages = new Set<string>();
@@ -206,4 +205,3 @@ project: {
 ${services}
 `;
 }
-// @ts-nocheck

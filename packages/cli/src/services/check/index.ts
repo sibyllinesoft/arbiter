@@ -1,11 +1,7 @@
 import path from "node:path";
-import { translateCueErrors } from "@arbiter/shared";
-import chalk from "chalk";
-import fs from "fs-extra";
-import { glob } from "glob";
-import { ApiClient } from "../../api-client.js";
-import { validateCUE } from "../../cue/index.js";
-import type { CLIConfig, CheckOptions, ValidationResult } from "../../types.js";
+import { ApiClient } from "@/api-client.js";
+import { validateCUE } from "@/cue/index.js";
+import type { CLIConfig, CheckOptions, ValidationResult } from "@/types.js";
 import {
   formatErrorDetails,
   formatFileSize,
@@ -13,8 +9,12 @@ import {
   formatSummary,
   formatValidationTable,
   formatWarningDetails,
-} from "../../utils/formatting.js";
-import { withProgress } from "../../utils/progress.js";
+} from "@/utils/formatting.js";
+import { withProgress } from "@/utils/progress.js";
+import { translateCueErrors } from "@arbiter/shared";
+import chalk from "chalk";
+import fs from "fs-extra";
+import { glob } from "glob";
 
 /**
  * Check command implementation

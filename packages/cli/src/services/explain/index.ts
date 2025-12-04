@@ -2,9 +2,9 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { Config } from "@/config.js";
+import { safeFileOperation } from "@/constraints/index.js";
 import chalk from "chalk";
-import type { Config } from "../../config.js";
-import { safeFileOperation } from "../../constraints/index.js";
 
 /**
  * Options for explain command

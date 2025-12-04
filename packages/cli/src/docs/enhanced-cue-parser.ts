@@ -7,7 +7,7 @@
 
 import { existsSync, readFileSync } from "fs";
 import path from "path";
-import { ParsedField, ParsedSchema, ParsedType } from "./schema-parser.js";
+import { ParsedField, ParsedSchema, ParsedType } from "@/docs/schema-parser.js";
 
 export interface CUEStructField {
   name: string;

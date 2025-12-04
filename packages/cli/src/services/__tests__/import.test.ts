@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { importCommand } from "../import/index.js";
+import { importCommand } from "@/services/import/index.js";
 
 async function tmpDir(): Promise<string> {
   return mkdtemp(path.join(os.tmpdir(), "arb-import-"));

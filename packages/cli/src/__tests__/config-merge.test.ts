@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 
-import { DEFAULT_CONFIG, applyCliOverrides, loadConfig, saveConfig } from "../config.js";
+import { DEFAULT_CONFIG, applyCliOverrides, loadConfig, saveConfig } from "@/config.js";
 
 describe("config helpers", () => {
   it("applies CLI overrides with trimming and parsing", () => {

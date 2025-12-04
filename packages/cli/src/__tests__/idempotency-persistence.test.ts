@@ -1,8 +1,8 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import { IdempotencyValidator } from "@/constraints/idempotency.js";
 import fs from "fs-extra";
-import { IdempotencyValidator } from "../constraints/idempotency.js";
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "arbiter-idem-"));
 const cacheFile = path.join(tempRoot, ".arbiter", "cache", "idempotency.json");

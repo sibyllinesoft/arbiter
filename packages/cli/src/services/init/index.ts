@@ -1,11 +1,11 @@
 import path from "node:path";
+import { ApiClient } from "@/api-client.js";
+import { DEFAULT_CONFIG } from "@/config.js";
+import { safeFileOperation } from "@/constraints/index.js";
+import type { CLIConfig, InitOptions, ProjectTemplate } from "@/types.js";
+import { withProgress } from "@/utils/progress.js";
 import chalk from "chalk";
 import fs from "fs-extra";
-import { ApiClient } from "../../api-client.js";
-import { DEFAULT_CONFIG } from "../../config.js";
-import { safeFileOperation } from "../../constraints/index.js";
-import type { CLIConfig, InitOptions, ProjectTemplate } from "../../types.js";
-import { withProgress } from "../../utils/progress.js";
 
 /**
  * Available presets (require API server connection)

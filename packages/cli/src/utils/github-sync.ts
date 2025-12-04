@@ -1,10 +1,10 @@
 import path from "node:path";
+import type { GitHubSyncConfig, IssueSpec } from "@/types.js";
+import type { Epic, Task } from "@/utils/sharded-storage.js";
+import { UnifiedGitHubTemplateManager } from "@/utils/unified-github-template-manager.js";
 import { Octokit } from "@octokit/rest";
 import chalk from "chalk";
 import fs from "fs-extra";
-import type { GitHubSyncConfig, IssueSpec } from "../types.js";
-import type { Epic, Task } from "./sharded-storage.js";
-import { UnifiedGitHubTemplateManager } from "./unified-github-template-manager.js";
 
 export interface GitHubIssue {
   number: number;

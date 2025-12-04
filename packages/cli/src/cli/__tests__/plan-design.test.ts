@@ -1,8 +1,8 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import { createDesignCommand } from "../design.js";
-import { createPlanCommand } from "../plan.js";
+import { createDesignCommand } from "@/cli/design.js";
+import { createPlanCommand } from "@/cli/plan.js";
 
 describe("plan/design CLI prompts", () => {
   it("prints planning prompt and exits 0", async () => {

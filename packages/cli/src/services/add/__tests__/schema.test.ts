@@ -3,10 +3,10 @@ import { EventEmitter } from "node:events";
 import os from "node:os";
 import path from "node:path";
 
+import * as constraints from "@/constraints/index.js";
+import { addSchema } from "@/services/add/subcommands/schema.js";
+import * as schemaModule from "@/services/add/subcommands/schema.js";
 import fs from "fs-extra";
-import * as constraints from "../../../constraints/index.js";
-import { addSchema } from "../subcommands/schema.js";
-import * as schemaModule from "../subcommands/schema.js";
 
 const manipulator = {
   addToSection: mock(async (_content: string, _section: string, name: string, cfg: any) => {

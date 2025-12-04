@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import { syncProject } from "@/services/sync/index.js";
+import type { CLIConfig, SyncOptions } from "@/types.js";
 import fs from "fs-extra";
-import type { CLIConfig, SyncOptions } from "../../types.js";
-import { syncProject } from "../sync/index.js";
 
 const cleanup: Array<() => Promise<void>> = [];
 

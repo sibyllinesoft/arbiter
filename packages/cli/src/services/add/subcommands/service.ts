@@ -1,8 +1,8 @@
+import type { PlatformServiceType, RouteConfig, ServiceConfig } from "@/cue/index.js";
+import { toTitleCase } from "@/services/add/shared.js";
+import { executeTemplate, validateTemplateExists } from "@/services/add/template-engine.js";
+import { detectPlatform, getPlatformServiceDefaults } from "@/utils/platform-detection.js";
 import chalk from "chalk";
-import type { PlatformServiceType, RouteConfig, ServiceConfig } from "../../../cue/index.js";
-import { detectPlatform, getPlatformServiceDefaults } from "../../../utils/platform-detection.js";
-import { toTitleCase } from "../shared.js";
-import { executeTemplate, validateTemplateExists } from "../template-engine.js";
 
 interface ServiceTemplateOptions {
   language?: string;

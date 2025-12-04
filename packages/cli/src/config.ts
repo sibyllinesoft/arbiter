@@ -2,6 +2,17 @@ import crypto from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { safeFileOperation } from "@/constraints/index.js";
+import type {
+  CLIConfig,
+  DockerGeneratorConfig,
+  DockerTemplateConfig,
+  GeneratorConfig,
+  GeneratorTestingConfig,
+  LanguagePluginConfig,
+  MasterTestRunnerConfig,
+  ProjectStructureConfig,
+} from "@/types.js";
 import {
   ARRAY_UI_OPTION_KEYS,
   DEFAULT_UI_OPTION_CATALOG,
@@ -13,17 +24,6 @@ import chalk from "chalk";
 import fs from "fs-extra";
 import yaml from "yaml";
 import { z } from "zod";
-import { safeFileOperation } from "./constraints/index.js";
-import type {
-  CLIConfig,
-  DockerGeneratorConfig,
-  DockerTemplateConfig,
-  GeneratorConfig,
-  GeneratorTestingConfig,
-  LanguagePluginConfig,
-  MasterTestRunnerConfig,
-  ProjectStructureConfig,
-} from "./types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -795,7 +795,7 @@ export async function loadConfigWithGitDetection(
     verbose?: boolean;
   } = {},
 ): Promise<CLIConfig> {
-  const { getSmartRepositoryConfig } = await import("./utils/git-detection.js");
+  const { getSmartRepositoryConfig } = await import("@/utils/git-detection.js");
 
   // Always try to get smart repository config, which handles conflicts
   const smartRepoConfig = getSmartRepositoryConfig(baseConfig.github?.repository, options);

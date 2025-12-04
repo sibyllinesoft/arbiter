@@ -9,7 +9,7 @@ mock.module("node:child_process", () => ({
   execSync: execMock,
 }));
 
-const gitModulePromise = import("../git-detection.js");
+const gitModulePromise = import("@/utils/git-detection.js");
 
 afterEach(() => {
   execMock.mockReset();

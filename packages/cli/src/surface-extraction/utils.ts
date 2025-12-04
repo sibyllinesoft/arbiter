@@ -1,4 +1,4 @@
-import type { APISurface, APISymbol } from "./types.js";
+import type { APISurface, APISymbol } from "@/surface-extraction/types.js";
 
 export function calculateStatistics(symbols: APISymbol[]): APISurface["statistics"] {
   const byType: Record<string, number> = {};

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 
-import { detectPlatform, getPlatformServiceDefaults } from "../platform-detection.js";
+import { detectPlatform, getPlatformServiceDefaults } from "@/utils/platform-detection.js";
 
 async function setupTempDir(files: Record<string, string | null>): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), "arbiter-platform-"));

@@ -80,11 +80,11 @@ describe("UI option resolution", () => {
 describe("UI option config builder", () => {
   it("builds config entries from catalog and generators without mutating inputs", () => {
     const config = buildUIOptionConfig(DEFAULT_UI_OPTION_CATALOG, {
-      frontendFrameworks: "./gen.js",
+      frontendFrameworks: "@/__tests__/gen.js",
     });
 
     expect(config.frontendFrameworks?.values).toEqual(DEFAULT_UI_OPTION_CATALOG.frontendFrameworks);
-    expect(config.frontendFrameworks?.generator).toBe("./gen.js");
+    expect(config.frontendFrameworks?.generator).toBe("@/__tests__/gen.js");
 
     // Ensure deep copies were created
     expect(config.frontendFrameworks?.values).not.toBe(

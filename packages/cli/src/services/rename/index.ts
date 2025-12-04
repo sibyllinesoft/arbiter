@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Rename command - Migrate existing files to smart naming
  *
@@ -7,15 +6,9 @@
  */
 
 import fs from "node:fs";
+import type { CLIConfig } from "@/types.js";
+import { FILE_PATTERNS, type FileType, migrateExistingFiles } from "@/utils/smart-naming.js";
 import chalk from "chalk";
-import type { CLIConfig } from "../../types.js";
-import {
-  FILE_PATTERNS,
-  type FileType,
-  detectNamingPreferences,
-  migrateExistingFiles,
-  resolveSmartNaming,
-} from "../../utils/smart-naming.js";
 
 export interface RenameOptions {
   /** Show what would be renamed without doing it */
@@ -37,74 +30,42 @@ export async function renameCommand(options: RenameOptions, _config: CLIConfig):
   try {
     console.log(chalk.blue("🔄 Analyzing files for smart naming migration..."));
 
-    // Detect current naming preferences
-    const preferences = await detectNamingPreferences();
+    const dryRun = options.apply ? false : (options.dryRun ?? true);
+    const preferredTypes = options.types?.length ? new Set(options.types as FileType[]) : null;
 
-    // Determine which files to rename
-    const typesToRename = options.types?.length
-      ? (options.types as FileType[])
-      : (Object.keys(FILE_PATTERNS) as FileType[]);
+    const migrations = await migrateExistingFiles(process.cwd(), dryRun);
+    const filtered = preferredTypes
+      ? migrations.filter((migration) => {
+          const entry = Object.entries(FILE_PATTERNS).find(
+            ([, pattern]) => pattern.default === migration.from,
+          );
+          return entry ? preferredTypes.has(entry[0] as FileType) : false;
+        })
+      : migrations;
 
-    const naming = resolveSmartNaming(preferences.projectName);
-
-    console.log(chalk.dim(`Project naming: ${naming.projectSlug}`));
-    if (options.verbose) {
-      console.log(chalk.dim(`Config prefix: ${naming.configPrefix}`));
-      console.log(chalk.dim(`Surface prefix: ${naming.surfacePrefix}`));
-    }
-
-    // Get proposed changes
-    const changes = await migrateExistingFiles(typesToRename, naming, { dryRun: true });
-
-    if (changes.length === 0) {
+    if (filtered.length === 0) {
       console.log(chalk.green("✅ All files already use smart naming"));
       return 0;
     }
 
-    console.log(chalk.blue("📦 Proposed changes:"));
-    for (const change of changes) {
-      console.log(
-        `${chalk.dim(change.from)} ${chalk.yellow("→")} ${chalk.green(change.to)}${
-          change.exists && !options.force ? chalk.red(" (exists)") : ""
-        }`,
-      );
-    }
+    const heading = dryRun ? "📦 Proposed changes:" : "📦 Applied changes:";
+    console.log(chalk.blue(heading));
+    filtered.forEach((migration) => {
+      const arrow = `${chalk.dim(migration.from)} ${chalk.yellow("→")} ${chalk.green(migration.to)}`;
+      if (dryRun) {
+        console.log(arrow);
+      } else {
+        const status = migration.migrated ? chalk.green("done") : chalk.yellow("skipped");
+        console.log(`${arrow} ${chalk.dim(`(${status})`)}`);
+      }
+    });
 
-    // If dry run, exit after showing changes
-    if (options.dryRun) {
+    if (dryRun) {
       console.log(chalk.dim("\nDry run complete. Use --apply to perform changes."));
       return 0;
     }
 
-    // Confirm there are no conflicts unless force is used
-    for (const change of changes) {
-      if (change.exists && !options.force) {
-        console.log(
-          chalk.red(`❌ Destination file exists: ${change.to}. Use --force to overwrite.`),
-        );
-        return 1;
-      }
-    }
-
-    // Apply changes
-    const results = await migrateExistingFiles(typesToRename, naming, {
-      dryRun: false,
-      force: options.force,
-    });
-
-    for (const result of results) {
-      if (result.success) {
-        console.log(chalk.green(`✅ Renamed: ${result.from} → ${result.to}`));
-      } else {
-        console.log(
-          chalk.red(`❌ Failed: ${result.from} → ${result.to} (${result.error ?? "unknown"})`),
-        );
-      }
-    }
-
     console.log(chalk.green("\n🎉 Smart naming migration complete!"));
-
-    // Show next steps
     console.log(chalk.blue("Next steps:"));
     console.log(
       chalk.dim(
@@ -161,4 +122,3 @@ export function existsSafe(filePath: string): boolean {
     return false;
   }
 }
-// @ts-nocheck

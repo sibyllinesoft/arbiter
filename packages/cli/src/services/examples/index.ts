@@ -2,14 +2,14 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import chalk from "chalk";
-import type { Config } from "../../config.js";
-import { safeFileOperation } from "../../constraints/index.js";
+import type { Config } from "@/config.js";
+import { safeFileOperation } from "@/constraints/index.js";
 import {
   type PackageManagerCommandSet,
   detectPackageManager,
   getPackageManagerCommands,
-} from "../../utils/package-manager.js";
+} from "@/utils/package-manager.js";
+import chalk from "chalk";
 
 /**
  * Options for examples command
@@ -52,7 +52,7 @@ export async function examplesCommand(
   try {
     console.log(chalk.blue("🏗️  Generating example projects..."));
 
-    const outputDir = options.output || "./examples";
+    const outputDir = options.output || "@/services/examples/examples";
     const exampleType = type as "profile" | "language";
 
     if (!["profile", "language"].includes(exampleType)) {
@@ -314,8 +314,8 @@ function getTypescriptLibraryPackageJson(): string {
   "name": "@my-org/example-library",
   "version": "0.1.0",
   "description": "Example TypeScript library with Arbiter integration",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "@/services/examples/dist/index.js",
+  "types": "@/services/examples/dist/index.d.ts",
   "files": [
     "dist"
   ],
@@ -359,8 +359,8 @@ function getTypescriptConfig(): string {
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     
-    "outDir": "./dist",
-    "rootDir": "./src",
+    "outDir": "@/services/examples/dist",
+    "rootDir": "@/services/examples/src",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -499,8 +499,8 @@ export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;`;
 
 function getTypescriptLibraryTests(): string {
   return `import { describe, it, expect } from 'bun:test';
-import { ExampleProcessor, createProcessor } from '../src/index.js';
-import type { LibraryConfig, ProcessingOptions } from '../src/types.js';
+import { ExampleProcessor, createProcessor } from '@/services/src/index.js';
+import type { LibraryConfig, ProcessingOptions } from '@/services/src/types.js';
 
 describe('ExampleProcessor', () => {
   const defaultConfig: LibraryConfig = {
@@ -586,7 +586,7 @@ Artifact: artifact.#Artifact & {
 
   build: {
     tool: "bun"
-    targets: ["./src"]
+    targets: ["@/services/examples/src"]
     matrix: {
       versions: ["18", "20", "latest"]
       os: ["linux", "darwin"]
@@ -605,7 +605,7 @@ Profile: profiles.#library & {
   
   apiSurface: {
     source: "generated"
-    file: "./surface.json"
+    file: "@/services/examples/surface.json"
   }
   
   contracts: {
@@ -737,9 +737,9 @@ function getCliPackageJson(): string {
   "version": "0.1.0",
   "description": "Example TypeScript CLI with Arbiter integration",
   "bin": {
-    "example-cli": "./bin/cli.js"
+    "example-cli": "@/services/examples/bin/cli.js"
   },
-  "main": "./dist/cli.js",
+  "main": "@/services/examples/dist/cli.js",
   "files": [
     "dist",
     "bin"
@@ -771,7 +771,7 @@ function getCliSrc(): string {
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { helloCommand } from './commands/hello.js';
+import { helloCommand } from '@/services/examples/commands/hello.js';
 
 const program = new Command();
 
@@ -834,12 +834,12 @@ function getCliBin(): string {
   return `#!/usr/bin/env node
 
 // Simple wrapper to run the compiled CLI
-require('../dist/cli.js');`;
+require('@/services/dist/cli.js');`;
 }
 
 function getCliTests(): string {
   return `import { describe, it, expect } from 'bun:test';
-import { helloCommand } from '../src/commands/hello.js';
+import { helloCommand } from '@/services/src/commands/hello.js';
 
 describe('helloCommand', () => {
   it('should return success code', async () => {
@@ -875,7 +875,7 @@ Artifact: artifact.#Artifact & {
 
   build: {
     tool: "bun"
-    targets: ["./src/cli.ts"]
+    targets: ["@/services/examples/src/cli.ts"]
   }
 }
 
@@ -1086,7 +1086,7 @@ Artifact: artifact.#Artifact & {
 
   build: {
     tool: "uv"
-    targets: ["./src"]
+    targets: ["@/services/examples/src"]
   }
 }
 

@@ -1,9 +1,9 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import { generateDockerComposeArtifacts } from "@/services/generate/compose.js";
 import fs from "fs-extra";
 import type { ProjectStructureConfig } from "../../../types.js";
-import { generateDockerComposeArtifacts } from "../generate/compose.js";
 
 const tmpDirs: string[] = [];
 

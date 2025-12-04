@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { formatWarnings, validateSpecification } from "../warnings.js";
+import { formatWarnings, validateSpecification } from "@/validation/warnings.js";
 
 describe("Validation Warning System - Property Tests", () => {
   // Property: validation should never throw errors

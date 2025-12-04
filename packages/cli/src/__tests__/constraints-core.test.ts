@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { constrainedOperation, globalConstraintEnforcer } from "../constraints/core";
+import { constrainedOperation, globalConstraintEnforcer } from "@/constraints/core";
 
 describe("constraints core", () => {
   it("start/end operation around constrainedOperation", async () => {

@@ -4,15 +4,15 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { dirname, join } from "node:path";
-import fs from "fs-extra";
-import { safeFileOperation } from "../constraints/index.js";
+import { safeFileOperation } from "@/constraints/index.js";
 import {
   FILE_PATTERNS,
   detectProjectContext,
   generateOutputPath,
   generateSmartFilename,
   resolveSmartNaming,
-} from "./smart-naming.js";
+} from "@/utils/smart-naming.js";
+import fs from "fs-extra";
 
 describe("Smart Naming", () => {
   const testDir = join(process.cwd(), ".test-smart-naming");

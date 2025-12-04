@@ -8,12 +8,12 @@
  */
 
 import * as path from "path";
+import { safeFileOperation } from "@/constraints/index.js";
+import { CLIDocumentationGenerator } from "@/docs/cli-doc-generator.js";
+import { DocsTemplateImplementor } from "@/docs/template-implementor.js";
+import type { TemplateData } from "@/docs/types.js";
 import chalk from "chalk";
 import * as fs from "fs-extra";
-import { safeFileOperation } from "../constraints/index.js";
-import { CLIDocumentationGenerator } from "./cli-doc-generator.js";
-import { DocsTemplateImplementor } from "./template-implementor.js";
-import type { TemplateData } from "./types.js";
 
 async function writeDemoFile(filePath: string, content: string): Promise<void> {
   await safeFileOperation("write", filePath, async (validatedPath) => {
@@ -27,7 +27,7 @@ async function main() {
 
   try {
     // Import the CLI program
-    const { default: program } = await import("../cli/index.js");
+    const { default: program } = await import("@/cli/index.js");
 
     console.log(chalk.blue("\n📖 Step 1: Analyzing CLI structure..."));
 

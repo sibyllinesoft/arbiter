@@ -6,15 +6,15 @@
  * so that downstream tooling can integrate the CLI without shelling out.
  */
 
-export * from "./api-client.js";
+export * from "@/api-client.js";
 // Main CLI program for programmatic use
-export { default as program } from "./cli/index.js";
+export { default as program } from "@/cli/index.js";
 // Commands
-export { runCheckCommand as checkCommand } from "./services/check/index.js";
-export { initCommand, listTemplates } from "./services/init/index.js";
-export { importSpec as importSpecCommand } from "./services/spec-import/index.js";
-export * from "./config.js";
-export * from "./types.js";
+export { runCheckCommand as checkCommand } from "@/services/check/index.js";
+export { initCommand, listTemplates } from "@/services/init/index.js";
+export { importSpec as importSpecCommand } from "@/services/spec-import/index.js";
+export * from "@/config.js";
+export * from "@/types.js";
 // Utilities
-export * from "./utils/formatting.js";
-export * from "./utils/progress.js";
+export * from "@/utils/formatting.js";
+export * from "@/utils/progress.js";

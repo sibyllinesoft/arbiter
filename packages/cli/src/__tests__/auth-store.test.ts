@@ -2,13 +2,8 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { clearAuthSession, getAuthStorePath, loadAuthSession, saveAuthSession } from "@/auth-store";
 import fs from "fs-extra";
-import {
-  clearAuthSession,
-  getAuthStorePath,
-  loadAuthSession,
-  saveAuthSession,
-} from "../auth-store";
 
 const realHomedir = os.homedir;
 

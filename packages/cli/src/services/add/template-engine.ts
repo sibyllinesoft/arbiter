@@ -1,7 +1,7 @@
 import path from "node:path";
+import { buildTemplateContext, templateOrchestrator } from "@/templates/index.js";
 import chalk from "chalk";
 import fs from "fs-extra";
-import { buildTemplateContext, templateOrchestrator } from "../../templates/index.js";
 
 export async function validateTemplateExists(template: string): Promise<void> {
   await templateOrchestrator.loadConfig();

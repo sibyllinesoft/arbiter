@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { EndpointConfig } from "../../../cue/index.js";
+import type { EndpointConfig } from "@/cue/index.js";
 
 export interface EndpointOptions {
   service?: string;

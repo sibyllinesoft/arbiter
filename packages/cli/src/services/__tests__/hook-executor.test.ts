@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import os from "node:os";
 import path from "node:path";
-import fs from "fs-extra";
-import type { GenerationHookManager } from "../../../utils/generation-hooks.js";
 import {
   ensureDirectory,
   setActiveHookManager,
   writeFileWithHooks,
-} from "../generate/hook-executor.js";
+} from "@/services/generate/hook-executor.js";
+import fs from "fs-extra";
+import type { GenerationHookManager } from "../../../utils/generation-hooks.js";
 
 const createdPaths: string[] = [];
 

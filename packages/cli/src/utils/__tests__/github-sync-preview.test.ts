@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { GitHubSyncClient } from "../github-sync.js";
+import { GitHubSyncClient } from "@/utils/github-sync.js";
 
 const tokenEnv = "GITHUB_TOKEN";
 

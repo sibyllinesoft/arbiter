@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { getHealthColor, getHealthIcon, normalizeRemoteProjectStatus } from "../status/index.js";
+import {
+  getHealthColor,
+  getHealthIcon,
+  normalizeRemoteProjectStatus,
+} from "@/services/status/index.js";
 
 describe("status helpers", () => {
   it("maps health to colors and icons", () => {

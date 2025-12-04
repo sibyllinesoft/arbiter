@@ -1,14 +1,14 @@
 /* istanbul ignore file */
 import path from "node:path";
+import type { ClientGenerationTarget } from "@/services/generate/contexts.js";
+import { ensureDirectory, writeFileWithHooks } from "@/services/generate/hook-executor.js";
+import { joinRelativePath, toPathSegments } from "@/services/generate/shared.js";
+import { getConfiguredLanguagePlugin } from "@/services/generate/template-orchestrator.js";
+import type { GenerateOptions } from "@/services/generate/types.js";
+import type { ProjectStructureConfig } from "@/types.js";
 import type { AppSpec } from "@arbiter/shared";
 import chalk from "chalk";
 import fs from "fs-extra";
-import type { ProjectStructureConfig } from "../../types.js";
-import type { ClientGenerationTarget } from "./contexts.js";
-import { ensureDirectory, writeFileWithHooks } from "./hook-executor.js";
-import { joinRelativePath, toPathSegments } from "./shared.js";
-import { getConfiguredLanguagePlugin } from "./template-orchestrator.js";
-import type { GenerateOptions } from "./types.js";
 
 type FlowRouteMetadata = {
   rootTestId?: string;

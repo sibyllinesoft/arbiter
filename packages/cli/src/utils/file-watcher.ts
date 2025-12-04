@@ -1,5 +1,5 @@
+import { debounce } from "@/utils/debounce.js";
 import chokidar from "chokidar";
-import { debounce } from "./debounce.js";
 
 export interface FileWatcherOptions {
   /** Paths or patterns to watch */

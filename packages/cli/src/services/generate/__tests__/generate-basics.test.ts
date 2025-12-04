@@ -1,12 +1,12 @@
-import { describe, expect, it } from "vitest";
 import {
   collectClientTargets,
   createClientTarget,
   createServiceTarget,
   normalizeCapabilities,
   toRelativePath,
-} from "../index.js";
-import { __generateTesting } from "../index.js";
+} from "@/services/generate/index.js";
+import { __generateTesting } from "@/services/generate/index.js";
+import { describe, expect, it } from "vitest";
 
 const baseStructure = {
   clientsDirectory: "clients",

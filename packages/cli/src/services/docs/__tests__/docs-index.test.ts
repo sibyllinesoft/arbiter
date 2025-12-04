@@ -3,8 +3,8 @@ import fs from "node:fs/promises";
 import { mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 
-import * as constraints from "../../../constraints/index.js";
-import { __docsTesting, docsCommand, docsGenerateCommand } from "../index.js";
+import * as constraints from "@/constraints/index.js";
+import { __docsTesting, docsCommand, docsGenerateCommand } from "@/services/docs/index.js";
 
 const baseConfig: any = { projectDir: process.cwd(), format: "table" };
 

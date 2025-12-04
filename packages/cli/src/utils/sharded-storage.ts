@@ -4,11 +4,11 @@
  */
 
 import path from "node:path";
+import { getCueManipulator } from "@/constraints/cli-integration.js";
+import { safeFileOperation } from "@/constraints/index.js";
+import { formatCUE, validateCUE } from "@/cue/index.js";
 import chalk from "chalk";
 import fs from "fs-extra";
-import { getCueManipulator } from "../constraints/cli-integration.js";
-import { safeFileOperation } from "../constraints/index.js";
-import { formatCUE, validateCUE } from "../cue/index.js";
 
 // Types for sharded storage management
 /**

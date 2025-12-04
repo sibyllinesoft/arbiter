@@ -10,8 +10,8 @@
  * 4. Test variable extraction
  */
 
+import { buildTemplateContext, templateOrchestrator } from "@/templates/index.js";
 import chalk from "chalk";
-import { buildTemplateContext, templateOrchestrator } from "./templates/index.js";
 
 async function testTemplateSystem() {
   console.log(chalk.cyan("🧪 Testing Template System"));

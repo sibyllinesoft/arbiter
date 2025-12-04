@@ -116,12 +116,16 @@ export interface CLIConfig {
   verbose?: boolean;
   /** Default project directory */
   projectDir: string;
+  /** Optional explicit path to the assembly/spec file */
+  specPath?: string;
   /** Project ID for API requests */
   projectId?: string;
   /** Optional path to the loaded configuration file */
   configFilePath?: string;
   /** Optional directory of the loaded configuration file */
   configDir?: string;
+  /** Optional friendly project name used in scaffolding */
+  projectName?: string;
   /** Saved authentication session for API access */
   authSession?: AuthSession;
   /** GitHub sync configuration */
@@ -681,6 +685,8 @@ export interface SyncOptions {
   backup?: boolean;
   /** Force overwrite conflicting sections */
   force?: boolean;
+  /** Verbose logging */
+  verbose?: boolean;
 }
 
 /**

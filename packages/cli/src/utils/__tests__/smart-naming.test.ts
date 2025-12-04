@@ -9,7 +9,7 @@ import {
   generateSmartFilename,
   resolveSmartNaming,
   validateNaming,
-} from "../smart-naming.js";
+} from "@/utils/smart-naming.js";
 
 const mkTmp = () => fs.mkdtemp(path.join(os.tmpdir(), "smart-name-"));
 

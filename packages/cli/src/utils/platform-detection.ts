@@ -6,8 +6,8 @@
  */
 
 import path from "node:path";
+import type { PlatformServiceType } from "@/cue/index.js";
 import fs from "fs-extra";
-import type { PlatformServiceType } from "../cue/index.js";
 
 export interface PlatformContext {
   detected: "cloudflare" | "vercel" | "supabase" | "kubernetes" | "unknown";

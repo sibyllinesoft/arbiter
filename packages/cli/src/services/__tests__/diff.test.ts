@@ -7,7 +7,7 @@ import {
   diffCommand,
   generateMigrationScript,
   parseCueStructure,
-} from "../diff/index.js";
+} from "@/services/diff/index.js";
 
 const tmp = () => fs.mkdtemp(path.join(os.tmpdir(), "arb-diff-"));
 

@@ -10,14 +10,14 @@ import type {
   LanguagePlugin,
   ProjectConfig,
   ServiceConfig,
-} from "./index.js";
-import { TemplateResolver } from "./template-resolver.js";
+} from "@/language-support/index.js";
+import { TemplateResolver } from "@/language-support/template-resolver.js";
 
 const rustTemplateResolver = new TemplateResolver({
   language: "rust",
   defaultDirectories: [
-    new URL("./templates/rust", import.meta.url).pathname,
-    new URL("../templates/rust", import.meta.url).pathname,
+    new URL("@/language-support/templates/rust", import.meta.url).pathname,
+    new URL("@/templates/rust", import.meta.url).pathname,
   ],
 });
 
@@ -268,131 +268,13 @@ export class RustPlugin implements LanguagePlugin {
     const dbPoolRef = config.database ? "&app_state.db_pool" : "";
     const validateLine = config.validation ? "payload.validate()?;" : "";
 
-    const fallback = `use axum::{
-    extract::{Path, Query, State},
-    response::Json,
-    http::StatusCode,
-};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use tracing::{info, error};
-
-use crate::{
-    app::AppState,
-    errors::AppError,
-    models::${moduleName}::{${structName}, Create${structName}Request, Update${structName}Request},
-    services::${moduleName}::${structName}Service,
-};
-
-#[derive(Debug, Deserialize)]
-pub struct QueryParams {
-    pub page: Option<u32>,
-    pub limit: Option<u32>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ${structName}Response {
-    pub data: Vec<${structName}>,
-    pub total: u64,
-    pub page: u32,
-    pub limit: u32,
-}
-
-/// Get all ${config.name} items
-pub async fn get_all_${moduleName}(
-    State(app_state): State<AppState>,
-    Query(params): Query<QueryParams>,
-) -> Result<Json<${structName}Response>, AppError> {
-    info!("Fetching all ${config.name} items");
-    
-    let page = params.page.unwrap_or(1);
-    let limit = params.limit.unwrap_or(20);
-    
-    let service = ${structName}Service::new(${config.database ? "&app_state.db_pool" : ""});
-    
-    let (items, total) = service.get_all(page, limit).await?;
-    
-    let response = ${structName}Response {
-        data: items,
-        total,
-        page,
-        limit,
-    };
-    
-    Ok(Json(response))
-}
-
-/// Get ${config.name} by ID
-pub async fn get_${moduleName}_by_id(
-    State(app_state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<${structName}>, AppError> {
-    info!("Fetching ${config.name} with ID: {}", id);
-    
-    let service = ${structName}Service::new(${config.database ? "&app_state.db_pool" : ""});
-    let item = service.get_by_id(id).await?;
-    
-    Ok(Json(item))
-}
-
-/// Create new ${config.name}
-pub async fn create_${moduleName}(
-    State(app_state): State<AppState>,
-    Json(payload): Json<Create${structName}Request>,
-) -> Result<(StatusCode, Json<${structName}>), AppError> {
-    info!("Creating new ${config.name}");
-    
-    // Validate payload if validation is enabled
-    ${config.validation ? "payload.validate()?;" : ""}
-    
-    let service = ${structName}Service::new(${config.database ? "&app_state.db_pool" : ""});
-    let item = service.create(payload).await?;
-    
-    Ok((StatusCode::CREATED, Json(item)))
-}
-
-/// Update ${config.name}
-pub async fn update_${moduleName}(
-    State(app_state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(payload): Json<Update${structName}Request>,
-) -> Result<Json<${structName}>, AppError> {
-    info!("Updating ${config.name} with ID: {}", id);
-    
-    // Validate payload if validation is enabled
-    ${config.validation ? "payload.validate()?;" : ""}
-    
-    let service = ${structName}Service::new(${config.database ? "&app_state.db_pool" : ""});
-    let item = service.update(id, payload).await?;
-    
-    Ok(Json(item))
-}
-
-/// Delete ${config.name}
-pub async fn delete_${moduleName}(
-    State(app_state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<StatusCode, AppError> {
-    info!("Deleting ${config.name} with ID: {}", id);
-    
-    let service = ${structName}Service::new(${config.database ? "&app_state.db_pool" : ""});
-    service.delete(id).await?;
-    
-    Ok(StatusCode::NO_CONTENT)
-}
-`;
-
-    return rustTemplateResolver.renderTemplate(
-      "src/handlers/handler.rs.tpl",
-      {
-        struct_name: structName,
-        module_name: moduleName,
-        resource_name: config.name,
-        db_pool_ref: dbPoolRef,
-        validate_line: validateLine,
-      },
-      fallback,
-    );
+    return await rustTemplateResolver.renderTemplate("api-handler.tpl", {
+      structName,
+      moduleName,
+      name: config.name,
+      dbPoolRef,
+      validateLine,
+    });
   }
 
   private async generateRoutes(config: ServiceConfig): Promise<string> {
@@ -927,7 +809,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Database connection pool created");
 
     // Run migrations
-    sqlx::migrate!("./migrations")
+    sqlx::migrate!("@/language-support/migrations")
         .run(&db_pool)
         .await
         .map_err(|e| {
@@ -969,7 +851,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Database connection pool created");
 
     // Run migrations
-    sqlx::migrate!("./migrations")
+    sqlx::migrate!("@/language-support/migrations")
         .run(&db_pool)
         .await
         .map_err(|e| {
@@ -1307,110 +1189,23 @@ pub mod health;
   }
 
   private generateServicesModule(): string {
-    return `//! Business logic services
-
-// Add your service modules here
-// pub mod user;
-// pub mod item;
-`;
+    return rustTemplateResolver.renderTemplate("service.tpl", {}) as any;
   }
 
   private generateHandlersModule(): string {
-    return `//! HTTP request handlers
-
-pub mod health;
-
-// Add your handler modules here
-// pub mod user;
-// pub mod item;
-`;
+    return rustTemplateResolver.renderTemplate("handlers.tpl", {}) as any;
   }
 
-  private generateRoutesModule(config: ProjectConfig): string {
-    return `//! Application routes
-
-use axum::{
-    routing::get,
-    Router,
-};
-
-use crate::{
-    app::AppState,
-    handlers::health::health_check,
-};
-
-/// Create all application routes
-pub fn create_routes() -> Router<AppState> {
-    Router::new()
-        .route("/health", get(health_check))
-        // API v1 routes
-        .nest("/api/v1", create_api_v1_routes())
-}
-
-/// Create API v1 routes
-fn create_api_v1_routes() -> Router<AppState> {
-    Router::new()
-        .route("/ping", get(ping))
-        // Add your API routes here
-        // .nest("/users", user_routes())
-        // .nest("/items", item_routes())
-}
-
-/// Ping endpoint
-async fn ping() -> &'static str {
-    "pong"
-}
-`;
+  private generateRoutesModule(_config: ProjectConfig): string {
+    return rustTemplateResolver.renderTemplate("routes.tpl", {}) as any;
   }
 
   private generateMiddlewareModule(): string {
-    return `//! Application middleware
-
-// Add your middleware modules here
-// pub mod auth;
-// pub mod cors;
-// pub mod logging;
-`;
+    return rustTemplateResolver.renderTemplate("middleware.tpl", {}) as any;
   }
 
   private generateHealthHandler(): string {
-    return `use axum::{response::Json, http::StatusCode};
-use serde_json::{json, Value};
-use chrono::Utc;
-
-/// Health check endpoint
-pub async fn health_check() -> (StatusCode, Json<Value>) {
-    let health_info = json!({
-        "status": "healthy",
-        "timestamp": Utc::now(),
-        "service": "api",
-        "version": env!("CARGO_PKG_VERSION")
-    });
-
-    (StatusCode::OK, Json(health_info))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use axum_test::TestServer;
-    use crate::app::create_app;
-
-    #[tokio::test]
-    async fn test_health_check() {
-        let app = create_app(/* db_pool if needed */).await.unwrap();
-        let server = TestServer::new(app).unwrap();
-
-        let response = server.get("/health").await;
-        
-        assert_eq!(response.status_code(), StatusCode::OK);
-        
-        let json: serde_json::Value = response.json();
-        assert_eq!(json["status"], "healthy");
-        assert!(json["timestamp"].is_string());
-    }
-}
-`;
+    return rustTemplateResolver.renderTemplate("health-handler.tpl", {}) as any;
   }
 
   private generateLibFile(config: ProjectConfig): string {
@@ -1502,58 +1297,17 @@ pub mod common {
   }
 
   private async generateIntegrationTests(config: ProjectConfig): Promise<string> {
-    const moduleName = config.name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    const dbImport = config.database ? "use sqlx::PgPool;" : "";
+    const dbHelper = config.database ? ", create_test_db_pool" : "";
+    const dbSetup = config.database ? "let db_pool = create_test_db_pool().await;" : "";
     const dbArg = config.database ? "db_pool" : "";
 
-    const fallback = `use axum::http::StatusCode;
-use axum_test::TestServer;
-${config.database ? "use sqlx::PgPool;" : ""}
-
-use crate::tests::common::{create_test_server${config.database ? ", create_test_db_pool" : ""}};
-
-#[tokio::test]
-async fn test_health_endpoint() {
-    ${config.database ? "let db_pool = create_test_db_pool().await;" : ""}
-    let server = create_test_server(${config.database ? "db_pool" : ""}).await;
-
-    let response = server.get("/health").await;
-    
-    assert_eq!(response.status_code(), StatusCode::OK);
-    
-    let json: serde_json::Value = response.json();
-    assert_eq!(json["status"], "healthy");
-}
-
-#[tokio::test]
-async fn test_ping_endpoint() {
-    ${config.database ? "let db_pool = create_test_db_pool().await;" : ""}
-    let server = create_test_server(${config.database ? "db_pool" : ""}).await;
-
-    let response = server.get("/api/v1/ping").await;
-    
-    assert_eq!(response.status_code(), StatusCode::OK);
-    assert_eq!(response.text(), "pong");
-}
-
-#[tokio::test]
-async fn test_not_found() {
-    ${config.database ? "let db_pool = create_test_db_pool().await;" : ""}
-    let server = create_test_server(${config.database ? "db_pool" : ""}).await;
-
-    let response = server.get("/nonexistent").await;
-    
-    assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
-}
-`;
-
-    return rustTemplateResolver.renderTemplate(
-      "src/tests/integration.rs.tpl",
-      {
-        module_name: moduleName,
-        db_arg: dbArg,
-      },
-      fallback,
-    );
+    return rustTemplateResolver.renderTemplate("tests-integration.tpl", {
+      db_import: dbImport,
+      db_helper: dbHelper,
+      db_setup: dbSetup,
+      db_arg: dbArg,
+    });
   }
 
   private generateJustfile(config: ProjectConfig): string {

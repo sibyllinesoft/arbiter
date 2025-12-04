@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { addContractOperation, addContractWorkflow } from "../services/add/subcommands/contracts";
+import { addContractOperation, addContractWorkflow } from "@/services/add/subcommands/contracts";
 
 const manipulator = {
   parse: async (content: string) => (content ? JSON.parse(content) : ({ contracts: {} } as any)),

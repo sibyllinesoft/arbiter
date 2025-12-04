@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { GitHubSyncConfig } from "../types.js";
-import type { Epic, Task } from "../utils/sharded-storage.js";
+import type { GitHubSyncConfig } from "@/types.js";
+import type { Epic, Task } from "@/utils/sharded-storage.js";
 
 describe("GitHub Sync Configuration", () => {
   test("should validate configuration schema", () => {

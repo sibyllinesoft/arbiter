@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 
-import { importCommand } from "../index.js";
+import { importCommand } from "@/services/import/index.js";
 
 let originalCwd: string;
 let tempDir: string;

@@ -1,8 +1,8 @@
+import { getAuthStorePath, loadAuthSession } from "@/auth-store.js";
+import { runAuthCommand } from "@/services/auth/index.js";
+import type { CLIConfig } from "@/types.js";
 import chalk from "chalk";
 import { Command } from "commander";
-import { getAuthStorePath, loadAuthSession } from "../auth-store.js";
-import { runAuthCommand } from "../services/auth/index.js";
-import type { CLIConfig } from "../types.js";
 
 export function createAuthCommand(program: Command): void {
   program

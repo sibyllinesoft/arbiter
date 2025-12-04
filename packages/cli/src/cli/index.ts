@@ -6,20 +6,20 @@
  * This module imports all command modules and creates a unified CLI interface.
  */
 
+import { createAddCommands } from "@/cli/add.js";
+import { createAuthCommand } from "@/cli/auth.js";
+import { hydrateCliContext } from "@/cli/context.js";
+import { createDesignCommand } from "@/cli/design.js";
+import { createEpicTaskCommands } from "@/cli/epic-task.js";
+import { createGenerationCommands } from "@/cli/generation.js";
+import { createIntegrationCommands } from "@/cli/integration.js";
+import { createPlanCommand } from "@/cli/plan.js";
+import { createProjectCommands } from "@/cli/project.js";
+import { createRemoveCommands } from "@/cli/remove.js";
+import { createUtilitiesCommands } from "@/cli/utilities.js";
+import { createVersionCommands } from "@/cli/version.js";
 import chalk from "chalk";
 import { Command } from "commander";
-import { createAddCommands } from "./add.js";
-import { createAuthCommand } from "./auth.js";
-import { hydrateCliContext } from "./context.js";
-import { createDesignCommand } from "./design.js";
-import { createEpicTaskCommands } from "./epic-task.js";
-import { createGenerationCommands } from "./generation.js";
-import { createIntegrationCommands } from "./integration.js";
-import { createPlanCommand } from "./plan.js";
-import { createProjectCommands } from "./project.js";
-import { createRemoveCommands } from "./remove.js";
-import { createUtilitiesCommands } from "./utilities.js";
-import { createVersionCommands } from "./version.js";
 
 // Create the main program
 const program = new Command();

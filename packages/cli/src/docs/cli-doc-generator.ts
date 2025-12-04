@@ -6,10 +6,10 @@
  */
 
 import * as path from "path";
+import { safeFileOperation } from "@/constraints/index.js";
+import type { CommandMetadata, DocGenerationOptions, ParsedCommandInfo } from "@/docs/types.js";
 import type { Command, Option } from "commander";
 import * as fs from "fs-extra";
-import { safeFileOperation } from "../constraints/index.js";
-import type { CommandMetadata, DocGenerationOptions, ParsedCommandInfo } from "./types.js";
 
 export class CLIDocumentationGenerator {
   private commands: ParsedCommandInfo[] = [];

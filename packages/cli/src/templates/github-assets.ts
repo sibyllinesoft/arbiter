@@ -1,5 +1,5 @@
-import type { TemplateOrchestrator } from "./index.js";
-import { templateOrchestrator } from "./index.js";
+import type { TemplateOrchestrator } from "@/templates/index.js";
+import { templateOrchestrator } from "@/templates/index.js";
 
 export interface GitHubTemplateAssetOptions {
   overrideDirectories?: string[];

@@ -3,12 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const storageInstances: any[] = [];
 const githubClients: any[] = [];
 
-vi.mock("../../utils/git-detection.js", () => ({
+vi.mock("@/services/utils/git-detection.js", () => ({
   getSmartRepositoryConfig: vi.fn(),
   validateRepositoryConfig: vi.fn(),
 }));
 
-vi.mock("../../utils/sharded-storage.js", () => ({
+vi.mock("@/services/utils/sharded-storage.js", () => ({
   ShardedCUEStorage: vi.fn().mockImplementation(() => {
     const instance = {
       initialize: vi.fn().mockResolvedValue(undefined),
@@ -19,7 +19,7 @@ vi.mock("../../utils/sharded-storage.js", () => ({
   }),
 }));
 
-vi.mock("../../utils/github-sync.js", () => ({
+vi.mock("@/services/utils/github-sync.js", () => ({
   GitHubSyncClient: vi.fn().mockImplementation(() => {
     const client = {
       generateSyncPreview: vi.fn().mockResolvedValue({
@@ -34,9 +34,12 @@ vi.mock("../../utils/github-sync.js", () => ({
   }),
 }));
 
-import { getSmartRepositoryConfig, validateRepositoryConfig } from "../../utils/git-detection.js";
-import { GitHubSyncClient } from "../../utils/github-sync.js";
-import { __generateTesting } from "../index.js";
+import { __generateTesting } from "@/services/generate/index.js";
+import {
+  getSmartRepositoryConfig,
+  validateRepositoryConfig,
+} from "@/services/utils/git-detection.js";
+import { GitHubSyncClient } from "@/services/utils/github-sync.js";
 
 describe("handleGitHubSync", () => {
   beforeEach(() => {
@@ -77,7 +80,7 @@ describe("handleGitHubSync", () => {
     ];
 
     // configure storage mock to return epics
-    const storageFactory = (await import("../../utils/sharded-storage.js")) as any;
+    const storageFactory = (await import("@/services/utils/sharded-storage.js")) as any;
     vi.spyOn(storageFactory, "ShardedCUEStorage").mockImplementation(() => {
       const instance = {
         initialize: vi.fn().mockResolvedValue(undefined),
@@ -88,32 +91,33 @@ describe("handleGitHubSync", () => {
     });
 
     // configure GitHub preview output with data to hit loops
-    vi.spyOn(await import("../../utils/github-sync.js"), "GitHubSyncClient").mockImplementation(
-      () => {
-        const client = {
-          generateSyncPreview: vi.fn().mockResolvedValue({
-            epics: {
-              create: [{ name: "New Epic" }],
-              update: [{ epic: { name: "Epic A" } }],
-              close: [{ epic: { name: "Epic B", status: "done" } }],
-            },
-            tasks: {
-              create: [{ name: "Task X", type: "bug" }],
-              update: [{ task: { name: "Task Y", type: "feature" } }],
-              close: [{ task: { name: "Task Z", status: "done", type: "bug" } }],
-            },
-            milestones: {
-              create: [{ name: "MS1" }],
-              update: [{ epic: { name: "Epic B" } }],
-              close: [{ epic: { name: "Epic A", status: "done" } }],
-            },
-          }),
-          syncToGitHub: vi.fn(),
-        };
-        githubClients.push(client);
-        return client as any;
-      },
-    );
+    vi.spyOn(
+      await import("@/services/utils/github-sync.js"),
+      "GitHubSyncClient",
+    ).mockImplementation(() => {
+      const client = {
+        generateSyncPreview: vi.fn().mockResolvedValue({
+          epics: {
+            create: [{ name: "New Epic" }],
+            update: [{ epic: { name: "Epic A" } }],
+            close: [{ epic: { name: "Epic B", status: "done" } }],
+          },
+          tasks: {
+            create: [{ name: "Task X", type: "bug" }],
+            update: [{ task: { name: "Task Y", type: "feature" } }],
+            close: [{ task: { name: "Task Z", status: "done", type: "bug" } }],
+          },
+          milestones: {
+            create: [{ name: "MS1" }],
+            update: [{ epic: { name: "Epic B" } }],
+            close: [{ epic: { name: "Epic A", status: "done" } }],
+          },
+        }),
+        syncToGitHub: vi.fn(),
+      };
+      githubClients.push(client);
+      return client as any;
+    });
 
     await __generateTesting.handleGitHubSync({ githubDryRun: true } as any, { github: {} } as any);
 

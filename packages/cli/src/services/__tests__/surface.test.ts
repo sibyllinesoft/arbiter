@@ -2,9 +2,9 @@ import { describe, expect, it } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { registerExtractor } from "../../surface-extraction/index.js";
-import type { APISurface } from "../../surface-extraction/types.js";
-import { extractAPISurface, findSourceFiles, surfaceCommand } from "../surface/index.js";
+import { extractAPISurface, findSourceFiles, surfaceCommand } from "@/services/surface/index.js";
+import { registerExtractor } from "@/surface-extraction/index.js";
+import type { APISurface } from "@/surface-extraction/types.js";
 
 const makeTmp = () => fs.mkdtemp(path.join(os.tmpdir(), "arb-surface-"));
 

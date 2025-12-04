@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { CUEManipulator } from "../../cue/index.js";
-import { TemplateOrchestrator, buildTemplateContext } from "../index.js";
+import { CUEManipulator } from "@/cue/index.js";
+import { TemplateOrchestrator, buildTemplateContext } from "@/templates/index.js";
 
 function withCwd<T>(cwd: string, run: () => Promise<T>): Promise<T> {
   const prev = process.cwd();
@@ -39,7 +39,9 @@ describe("template orchestrator", () => {
       await mkdir(cfgDir, { recursive: true });
       const legacyConfig = {
         engines: { legacy: { command: "sh", defaultArgs: [] } },
-        aliases: { legacy: { engine: "legacy", source: "./tpl", description: "Legacy" } },
+        aliases: {
+          legacy: { engine: "legacy", source: "@/templates/__tests__/tpl", description: "Legacy" },
+        },
         settings: { defaultEngine: "legacy" },
       };
       const cfgPath = path.join(cfgDir, "templates.json");
@@ -95,7 +97,7 @@ describe("template orchestrator", () => {
           aliases: {
             demo: {
               implementor: "custom",
-              source: "./tpl",
+              source: "@/templates/__tests__/tpl",
               description: "demo",
               variables: { foo: "bar" },
             },

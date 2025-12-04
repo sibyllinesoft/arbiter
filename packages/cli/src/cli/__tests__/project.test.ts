@@ -1,14 +1,14 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import * as check from "../../services/check/index.js";
-import * as diff from "../../services/diff/index.js";
-import * as init from "../../services/init/index.js";
-import * as list from "../../services/list/index.js";
-import * as specImport from "../../services/spec-import/index.js";
-import * as status from "../../services/status/index.js";
-import * as surface from "../../services/surface/index.js";
-import { createProjectCommands } from "../project.js";
+import { createProjectCommands } from "@/cli/project.js";
+import * as check from "@/services/check/index.js";
+import * as diff from "@/services/diff/index.js";
+import * as init from "@/services/init/index.js";
+import * as list from "@/services/list/index.js";
+import * as specImport from "@/services/spec-import/index.js";
+import * as status from "@/services/status/index.js";
+import * as surface from "@/services/surface/index.js";
 
 const baseConfig = {
   apiUrl: "https://api",
@@ -88,7 +88,7 @@ describe("project CLI", () => {
     await program.parseAsync(
       [
         "spec-import",
-        "./fragment.cue",
+        "@/cli/__tests__/fragment.cue",
         "--project",
         "demo",
         "--remote-path",
@@ -100,7 +100,7 @@ describe("project CLI", () => {
     );
 
     expect(importSpy).toHaveBeenCalledWith(
-      "./fragment.cue",
+      "@/cli/__tests__/fragment.cue",
       expect.objectContaining({ project: "demo", remotePath: "services/api", message: "update" }),
       baseConfig,
     );

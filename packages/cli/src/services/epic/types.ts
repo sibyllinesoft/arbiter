@@ -29,6 +29,18 @@ export interface TaskOptions {
   type?: string;
   assignee?: string;
   priority?: string;
+  name?: string;
+  description?: string;
+  reviewer?: string;
+  dependsOn?: string;
+  acceptanceCriteria?: string;
+  epic?: string;
+  json?: string;
+  file?: string;
+  canRunInParallel?: boolean;
+  requiresReview?: boolean;
+  requiresTesting?: boolean;
+  blocksOtherTasks?: boolean;
 }
 
 export interface TaskCreateOptions extends TaskOptions {

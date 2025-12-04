@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { detectSchemaVersion } from "../index.js";
+import { detectSchemaVersion } from "@/services/generate/index.js";
 
 describe("detectSchemaVersion", () => {
   it("always returns app schema version", () => {

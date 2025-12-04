@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import { safeFileOperation } from "@/constraints/index.js";
+import { type SpecImportDependencies, importSpec } from "@/services/spec-import/index.js";
+import type { CLIConfig } from "@/types.js";
 import fs from "fs-extra";
-import { safeFileOperation } from "../../constraints/index.js";
-import type { CLIConfig } from "../../types.js";
-import { type SpecImportDependencies, importSpec } from "../spec-import/index.js";
 
 const tempDirs: string[] = [];
 

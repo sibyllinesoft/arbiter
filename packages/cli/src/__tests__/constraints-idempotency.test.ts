@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { idempotent, withIdempotencyValidation } from "../constraints/idempotency";
+import { idempotent, withIdempotencyValidation } from "@/constraints/idempotency";
 
 describe("idempotency constraints", () => {
   it("wraps a function with idempotency validation utility", async () => {

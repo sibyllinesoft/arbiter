@@ -2,9 +2,9 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import { safeFileOperation } from "@/constraints/index.js";
+import type { CLIConfig } from "@/types.js";
 import chalk from "chalk";
-import { safeFileOperation } from "../../constraints/index.js";
-import type { CLIConfig } from "../../types.js";
 
 /**
  * Options for docs command
@@ -74,7 +74,7 @@ export async function docsCommand(
  * Generate CLI reference documentation (placeholder implementation for compatibility).
  */
 export async function docsGenerateCommand(options: any, _config: CLIConfig): Promise<number> {
-  const outputDir = options.output || "./docs";
+  const outputDir = options.output || "@/services/docs/docs";
   const formats = (options.formats || "markdown").split(",");
   const fileBase = path.join(outputDir, "cli-reference");
 
@@ -375,14 +375,14 @@ function generateMarkdownDocs(schemaInfo: SchemaDoc): string {
   md += `  language: "typescript"\n`;
   md += "  build: {\n";
   md += `    tool: "bun"\n`;
-  md += `    targets: ["./src"]\n`;
+  md += `    targets: ["@/services/docs/src"]\n`;
   md += "  }\n";
   md += "}\n\n";
   md += "Profile: profiles.#library & {\n";
   md += `  semver: "strict"\n`;
   md += "  apiSurface: {\n";
   md += `    source: "generated"\n`;
-  md += `    file: "./dist/api-surface.json"\n`;
+  md += `    file: "@/services/docs/dist/api-surface.json"\n`;
   md += "  }\n";
   md += "}\n";
   md += "```\n\n";
@@ -516,7 +516,7 @@ Artifact: artifact.#Artifact & {
   language: "typescript"
   build: {
     tool: "bun"
-    targets: ["./src"]
+    targets: ["@/services/docs/src"]
   }
 }
 
@@ -524,7 +524,7 @@ Profile: profiles.#library & {
   semver: "strict"
   apiSurface: {
     source: "generated"
-    file: "./dist/api-surface.json"
+    file: "@/services/docs/dist/api-surface.json"
   }
 }`;
   html += "</code></pre>\n";
@@ -852,7 +852,7 @@ Artifact: artifact.#Artifact & {
   
   build: {
     tool: "bun"
-    targets: ["./src"]
+    targets: ["@/services/docs/src"]
     matrix: {
       versions: ["18", "20", "latest"]
       os: ["linux", "darwin"]
@@ -869,7 +869,7 @@ Profile: profiles.#library & {
   semver: "strict"
   apiSurface: {
     source: "generated"
-    file: "./dist/api-surface.json"
+    file: "@/services/docs/dist/api-surface.json"
   }
   contracts: {
     forbidBreaking: true
@@ -895,7 +895,7 @@ Artifact: artifact.#Artifact & {
   
   build: {
     tool: "bun"
-    targets: ["./src/cli.ts"]
+    targets: ["@/services/docs/src/cli.ts"]
   }
 }
 

@@ -1,4 +1,4 @@
-import type { ServiceConfig } from "../../../cue/index.js";
+import type { ServiceConfig } from "@/cue/index.js";
 
 interface LoadBalancerOptions {
   target?: string;

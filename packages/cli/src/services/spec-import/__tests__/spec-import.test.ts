@@ -3,10 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 
-import { DEFAULT_PROJECT_STRUCTURE } from "../../../config.js";
-import type { CLIConfig } from "../../../types.js";
-import { importSpec } from "../index.js";
-import { determineRemotePath } from "../index.js";
+import { DEFAULT_PROJECT_STRUCTURE } from "@/config.js";
+import { importSpec } from "@/services/spec-import/index.js";
+import { determineRemotePath } from "@/services/spec-import/index.js";
+import type { CLIConfig } from "@/types.js";
 
 function makeConfig(dir: string, overrides: Partial<CLIConfig> = {}): CLIConfig {
   return {
@@ -100,7 +100,11 @@ describe("importSpec", () => {
     const remoteRelative = determineRemotePath("/root", "/root/.arbiter/assembly.cue");
     expect(remoteRelative).toBe(".arbiter/assembly.cue".replace(/^\.\/+/, ""));
 
-    const remoteOverride = determineRemotePath("/root", "/elsewhere/spec.cue", "./foo/bar.cue");
+    const remoteOverride = determineRemotePath(
+      "/root",
+      "/elsewhere/spec.cue",
+      "@/services/spec-import/__tests__/foo/bar.cue",
+    );
     expect(remoteOverride).toBe("foo/bar.cue");
 
     const remoteFallback = determineRemotePath("/root", "/other/spec.cue");

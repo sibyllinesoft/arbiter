@@ -1,4 +1,4 @@
-import type { CLIConfig, WatchOptions } from "../../types.js";
+import type { CLIConfig, WatchOptions } from "@/types.js";
 
 /**
  * TODO: Restore watch implementation. Placeholder returns success.

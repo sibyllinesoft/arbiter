@@ -1,7 +1,11 @@
-// @ts-nocheck
-import type { CLIConfig } from "../../types.js";
-import { type Epic, ShardedCUEStorage, type Task } from "../../utils/sharded-storage.js";
-import type { EpicCreateOptions, EpicOptions, TaskCreateOptions, TaskOptions } from "./types.js";
+import type {
+  EpicCreateOptions,
+  EpicOptions,
+  TaskCreateOptions,
+  TaskOptions,
+} from "@/services/epic/types.js";
+import type { CLIConfig } from "@/types.js";
+import { type Epic, ShardedCUEStorage, type Task } from "@/utils/sharded-storage.js";
 
 type StorageFactory = () => ShardedCUEStorage;
 
@@ -398,8 +402,21 @@ export async function dependencyGraphData(
   try {
     await storage.initialize();
     const tasks = epicId ? await storage.getOrderedTasks(epicId) : await storage.getOrderedTasks();
+    const graph = storage.getDependencyGraph(tasks);
+    const nodes = graph.nodes.map((node) => {
+      const task = tasks.find((t) => t.id === node.id);
+      return {
+        id: node.id,
+        label: task?.name ?? node.name,
+        epicId: task?.epicId ?? undefined,
+        status: task?.status ?? node.status,
+        priority: task?.priority ?? "medium",
+      };
+    });
+
     return {
-      ...storage.getDependencyGraph(tasks),
+      nodes,
+      edges: graph.edges,
       tasks,
     };
   } finally {
@@ -466,4 +483,3 @@ function slugify(value: string): string {
     .replace(/-+/g, "-")
     .trim();
 }
-// @ts-nocheck

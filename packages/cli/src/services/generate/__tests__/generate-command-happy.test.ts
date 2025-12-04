@@ -3,7 +3,7 @@ import path from "node:path";
 import fs from "fs-extra";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../validation/warnings.js", () => ({
+vi.mock("@/services/validation/warnings.js", () => ({
   validateSpecification: vi.fn().mockReturnValue({ hasErrors: false, hasWarnings: false }),
   formatWarnings: () => "",
 }));
@@ -37,7 +37,7 @@ describe("generateCommand happy path (dryRun)", () => {
       'product: { name: "HappyApp" }\nconfig: { language: "typescript" }\nui: { routes: [] }\nflows: []\n',
     );
 
-    const mod = await import("../index.js");
+    const mod = await import("@/services/generate/index.js");
     const code = await mod.generateCommand({ dryRun: true, force: true }, {
       ...baseConfig,
       projectDir: tmp,

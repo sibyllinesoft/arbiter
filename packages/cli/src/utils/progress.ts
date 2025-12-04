@@ -1,6 +1,6 @@
+import type { ProgressBarOptions, ProgressOptions, StepProgressOptions } from "@/types.js";
 import chalk from "chalk";
 import ora, { type Ora } from "ora";
-import type { ProgressBarOptions, ProgressOptions, StepProgressOptions } from "../types.js";
 
 /**
  * Enhanced progress indicator utility class with step-by-step tracking

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
-import { ApiClient } from "../api-client";
-import { DEFAULT_PROJECT_STRUCTURE } from "../config.js";
-import type { CLIConfig } from "../types";
+import { ApiClient } from "@/api-client";
+import { DEFAULT_PROJECT_STRUCTURE } from "@/config.js";
+import type { CLIConfig } from "@/types";
 
 // Mock fetch globally
 const originalFetch = global.fetch;

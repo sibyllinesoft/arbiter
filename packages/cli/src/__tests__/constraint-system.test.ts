@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ConstraintSystem } from "../constraints/index";
+import { ConstraintSystem } from "@/constraints/index";
 
 const config = {
   apiUrl: "http://localhost:5050",

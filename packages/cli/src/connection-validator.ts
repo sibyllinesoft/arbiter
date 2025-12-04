@@ -1,5 +1,5 @@
-import { COMMON_PORTS } from "./config.js";
-import type { CLIConfig } from "./types.js";
+import { COMMON_PORTS } from "@/config.js";
+import type { CLIConfig } from "@/types.js";
 
 /**
  * Connection validation and auto-discovery utility

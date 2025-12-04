@@ -1,5 +1,5 @@
-import type { PlatformServiceType, ServiceConfig } from "../../../cue/index.js";
-import { getPlatformServiceDefaults } from "../../../utils/platform-detection.js";
+import type { PlatformServiceType, ServiceConfig } from "@/cue/index.js";
+import { getPlatformServiceDefaults } from "@/utils/platform-detection.js";
 
 interface CacheServiceOptions {
   attachTo?: string;

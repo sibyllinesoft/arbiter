@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
-import type { CLIConfig, EpicOptions, TaskOptions } from "../../types.js";
-import { epicCommand, taskCommand } from "../epic/commands.js";
-import * as data from "../epic/data.js";
+import { epicCommand, taskCommand } from "@/services/epic/commands.js";
+import * as data from "@/services/epic/data.js";
+import type { CLIConfig, EpicOptions, TaskOptions } from "@/types.js";
 
 const baseConfig: CLIConfig = {
   apiUrl: "http://localhost",

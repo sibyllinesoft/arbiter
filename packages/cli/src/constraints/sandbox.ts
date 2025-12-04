@@ -1,6 +1,6 @@
 import { performance } from "node:perf_hooks";
-import type { CLIConfig } from "../types.js";
-import { ConstraintViolationError, globalConstraintEnforcer } from "./core.js";
+import { ConstraintViolationError, globalConstraintEnforcer } from "@/constraints/core.js";
+import type { CLIConfig } from "@/types.js";
 
 /**
  * Operation types that must use server endpoints

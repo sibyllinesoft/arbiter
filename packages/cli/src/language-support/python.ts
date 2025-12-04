@@ -10,14 +10,21 @@ import type {
   LanguagePlugin,
   ProjectConfig,
   ServiceConfig,
-} from "./index.js";
-import { TemplateResolver } from "./template-resolver.js";
+} from "@/language-support/index.js";
+import { TemplateResolver } from "@/language-support/template-resolver.js";
+
+function toPascalCase(value: string): string {
+  return value
+    .split(/[-_\s]+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
+}
 
 const pythonTemplateResolver = new TemplateResolver({
   language: "python",
   defaultDirectories: [
-    new URL("./templates/python", import.meta.url).pathname,
-    new URL("../templates/python", import.meta.url).pathname,
+    new URL("@/language-support/templates/python", import.meta.url).pathname,
+    new URL("@/templates/python", import.meta.url).pathname,
   ],
 });
 
@@ -243,134 +250,35 @@ export class PythonPlugin implements LanguagePlugin {
       .map((endpoint) => {
         const [method, path] = endpoint.split(" ");
         const methodName = method.toLowerCase();
-        const safePath = path.replace("{", "{").replace("}", "}"); // Ensure proper formatting
+        const safePath = path; // already CUE-safe
 
-        return `
-@router.${methodName}("${safePath}")
+        return `@router.${methodName}("${safePath}")
 async def ${methodName}_${config.name}(${path.includes("{id}") ? "id: int" : ""}):
-    """${method} ${path} endpoint for ${config.name}"""
+    \"\"\"${method} ${path} endpoint for ${config.name}\"\"\"
     # TODO: Implement endpoint logic
-    return {"message": "${method} ${config.name} endpoint", ${path.includes("{id}") ? '"id": id' : ""}}`;
+    return {"message": "${method} ${config.name} endpoint"${path.includes("{id}") ? ', "id": id' : ""}}`;
       })
       .join("\n");
 
-    const fallback = `"""
-${config.name} Router
-FastAPI router for ${config.name} endpoints
-"""
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
-${config.database ? "from app.core.database import get_db_session" : ""}
-${config.validation ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update` : ""}
-
-router = APIRouter(
-    prefix="/${config.name.toLowerCase()}",
-    tags=["${config.name}"],
-    responses={404: {"description": "Not found"}},
-)
-
-${routerMethods}
-`;
-
-    return pythonTemplateResolver.renderTemplate(
-      "app/routers/api.py.tpl",
-      { resource_name: config.name.toLowerCase() },
-      fallback,
-    );
+    return await pythonTemplateResolver.renderTemplate("router.tpl", {
+      name: config.name,
+      routerMethods,
+    });
   }
 
   private async generateBusinessService(config: ServiceConfig): Promise<string> {
-    const fallback = `"""
-${config.name} Service
-Business logic for ${config.name} operations
-"""
-from typing import List, Optional, Any
-from sqlalchemy.ext.asyncio import AsyncSession
-${config.database ? "from app.core.database import get_db_session" : ""}
-${config.validation ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update` : ""}
-import logging
-
-logger = logging.getLogger(__name__)
-
-
-class ${config.name}Service:
-    """Service class for ${config.name} business logic"""
-
-    async def get_all(self${config.database ? ", db: AsyncSession" : ""}) -> List[Any]:
-        """Get all ${config.name} items"""
-        logger.info(f"Fetching all ${config.name} items")
-        # TODO: Implement get_all logic
-        return []
-
-    async def get_by_id(self, item_id: int${config.database ? ", db: AsyncSession" : ""}) -> Optional[Any]:
-        """Get ${config.name} by ID"""
-        logger.info(f"Fetching ${config.name} with ID: {item_id}")
-        # TODO: Implement get_by_id logic
-        return None
-
-    async def create(self, item_data: Any${config.database ? ", db: AsyncSession" : ""}) -> Any:
-        """Create new ${config.name}"""
-        logger.info(f"Creating new ${config.name}")
-        # TODO: Implement create logic
-        return item_data
-
-    async def update(self, item_id: int, item_data: Any${config.database ? ", db: AsyncSession" : ""}) -> Optional[Any]:
-        """Update ${config.name} by ID"""
-        logger.info(f"Updating ${config.name} with ID: {item_id}")
-        # TODO: Implement update logic
-        return item_data
-
-    async def delete(self, item_id: int${config.database ? ", db: AsyncSession" : ""}) -> bool:
-        """Delete ${config.name} by ID"""
-        logger.info(f"Deleting ${config.name} with ID: {item_id}")
-        # TODO: Implement delete logic
-        return True
-
-
-# Service instance
-${config.name.toLowerCase()}_service = ${config.name}Service()
-`;
-
-    return pythonTemplateResolver.renderTemplate(
-      "app/services/service.py.tpl",
-      { service_class: `${config.name}Service`, service_name: config.name.toLowerCase() },
-      fallback,
-    );
+    return pythonTemplateResolver.renderTemplate("service.tpl", {
+      className: toPascalCase(config.name),
+      name: config.name,
+    });
   }
 
   private async generateModel(config: ServiceConfig): Promise<string> {
-    const fallback = `"""
-${config.name} Model
-SQLAlchemy 2.0+ async model definition
-"""
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
-from sqlalchemy.sql import func
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
-
-
-class ${config.name}(Base):
-    """${config.name} database model"""
-    
-    __tablename__ = "${config.name.toLowerCase()}s"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False, index=True)
-    description = Column(String, nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-    def __repr__(self) -> str:
-        return f"<${config.name}(id={self.id}, name='{self.name}')>"
-`;
-
-    return pythonTemplateResolver.renderTemplate(
-      "app/models/model.py.tpl",
-      { model_class: config.name, table_name: `${config.name.toLowerCase()}s` },
-      fallback,
-    );
+    return pythonTemplateResolver.renderTemplate("model.tpl", {
+      className: toPascalCase(config.name),
+      name: config.name,
+      tableName: `${config.name.toLowerCase()}s`,
+    });
   }
 
   private async generateHandler(config: ServiceConfig): Promise<string> {
@@ -381,148 +289,24 @@ class ${config.name}(Base):
     const dbDependency = config.database ? ", db: AsyncSession = Depends(get_db_session)" : "";
     const dbArgument = config.database ? "db=db" : "";
 
-    const fallback = `"""
-${config.name} Handler
-HTTP request handlers for ${config.name}
-"""
-from fastapi import HTTPException, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Any
-${dbImport}
-${schemaImport}
-from app.services.${config.name}_service import ${config.name.toLowerCase()}_service
-import logging
-
-logger = logging.getLogger(__name__)
-
-
-class ${config.name}Handler:
-    """Handler class for ${config.name} HTTP operations"""
-
-    async def handle_get_all(self${dbDependency}) -> List[Any]:
-        """Handle GET request for all ${config.name} items"""
-        try:
-            return await ${config.name.toLowerCase()}_service.get_all(${dbArgument})
-        except Exception as e:
-            logger.error(f"Error fetching all ${config.name}: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
-
-    async def handle_get_by_id(self, item_id: int${dbDependency}) -> Any:
-        """Handle GET request for ${config.name} by ID"""
-        try:
-            item = await ${config.name.toLowerCase()}_service.get_by_id(item_id${dbArgument ? `, ${dbArgument}` : ""})
-            if not item:
-                raise HTTPException(status_code=404, detail="${config.name} not found")
-            return item
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error fetching ${config.name} {item_id}: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
-
-    async def handle_create(self, item_data: Any${dbDependency}) -> Any:
-        """Handle POST request to create ${config.name}"""
-        try:
-            return await ${config.name.toLowerCase()}_service.create(item_data${dbArgument ? `, ${dbArgument}` : ""})
-        except Exception as e:
-            logger.error(f"Error creating ${config.name}: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
-
-    async def handle_update(self, item_id: int, item_data: Any${dbDependency}) -> Any:
-        """Handle PUT request to update ${config.name}"""
-        try:
-            item = await ${config.name.toLowerCase()}_service.update(item_id, item_data${dbArgument ? `, ${dbArgument}` : ""})
-            if not item:
-                raise HTTPException(status_code=404, detail="${config.name} not found")
-            return item
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error updating ${config.name} {item_id}: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
-
-    async def handle_delete(self, item_id: int${dbDependency}) -> dict:
-        """Handle DELETE request for ${config.name}"""
-        try:
-            success = await ${config.name.toLowerCase()}_service.delete(item_id${dbArgument ? `, ${dbArgument}` : ""})
-            if not success:
-                raise HTTPException(status_code=404, detail="${config.name} not found")
-            return {"message": "${config.name} deleted successfully"}
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error deleting ${config.name} {item_id}: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
-
-
-# Handler instance
-${config.name.toLowerCase()}_handler = ${config.name}Handler()
-`;
-
-    return pythonTemplateResolver.renderTemplate(
-      "app/handlers/handler.py.tpl",
-      {
-        resource_name: config.name,
-        service_module: config.name,
-        service_instance: `${config.name.toLowerCase()}_service`,
-        handler_class: `${config.name}Handler`,
-        handler_instance: `${config.name.toLowerCase()}_handler`,
-        db_import: dbImport,
-        schema_import: schemaImport,
-        db_dependency: dbDependency,
-        db_argument: dbArgument,
-      },
-      fallback,
-    );
+    return pythonTemplateResolver.renderTemplate("handler.tpl", {
+      resource_name: config.name,
+      service_module: config.name,
+      service_instance: `${config.name.toLowerCase()}_service`,
+      handler_class: `${config.name}Handler`,
+      handler_instance: `${config.name.toLowerCase()}_handler`,
+      db_import: dbImport,
+      schema_import: schemaImport,
+      db_dependency: dbDependency,
+      db_argument: dbArgument,
+    });
   }
 
   private async generatePydanticSchema(config: ServiceConfig): Promise<string> {
-    const fallback = `"""
-${config.name} Pydantic Schemas
-Data validation and serialization schemas using Pydantic v2
-"""
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
-from datetime import datetime
-
-
-class ${config.name}Base(BaseModel):
-    """Base schema for ${config.name}"""
-    name: str = Field(..., description="${config.name} name", min_length=1, max_length=100)
-    description: Optional[str] = Field(None, description="${config.name} description", max_length=500)
-    is_active: bool = Field(True, description="Whether the ${config.name} is active")
-
-
-class ${config.name}Create(${config.name}Base):
-    """Schema for creating ${config.name}"""
-    pass
-
-
-class ${config.name}Update(${config.name}Base):
-    """Schema for updating ${config.name}"""
-    name: Optional[str] = Field(None, description="${config.name} name", min_length=1, max_length=100)
-    is_active: Optional[bool] = Field(None, description="Whether the ${config.name} is active")
-
-
-class ${config.name}Schema(${config.name}Base):
-    """Schema for ${config.name} responses"""
-    model_config = ConfigDict(from_attributes=True)
-    
-    id: int = Field(..., description="Unique identifier")
-    created_at: datetime = Field(..., description="Creation timestamp")
-    updated_at: datetime = Field(..., description="Last update timestamp")
-
-
-class ${config.name}InDB(${config.name}Schema):
-    """Schema for ${config.name} as stored in database"""
-    pass
-`;
-
-    return pythonTemplateResolver.renderTemplate(
-      "app/schemas/schema.py.tpl",
-      { schema_class: `${config.name}Schema` },
-      fallback,
-    );
+    const className = toPascalCase(config.name);
+    return pythonTemplateResolver.renderTemplate("schema.tpl", {
+      className,
+    });
   }
 
   private async generateMainApp(config: ProjectConfig): Promise<string> {
@@ -538,127 +322,20 @@ class ${config.name}InDB(${config.name}Schema):
     allow_headers=["*"],
 )`
       : "";
-    const databaseImport = config.database ? "from app.core.database import init_db" : "";
-    const databaseStartup = config.database ? "await init_db()" : "";
 
-    const fallback = `"""
-${config.name} FastAPI Application
-Main application entry point with modern async patterns
-"""
-import uvicorn
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
-${corsImport}
-from contextlib import asynccontextmanager
-import logging
-import time
+    const routersImport =
+      ((config as any).modules || []).map((m) => `${m.name}`).join(", ") || "router";
+    const routerInits = ((config as any).modules || [])
+      .map((m) => `app.include_router(${m.name}.router)`)
+      .join("\n");
 
-from app.core.config import settings
-${databaseImport}
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan manager"""
-    # Startup
-    logger.info("Starting up ${config.name}")
-    ${databaseStartup}
-    
-    yield
-    
-    # Shutdown
-    logger.info("Shutting down ${config.name}")
-
-
-# Create FastAPI instance
-app = FastAPI(
-    title="${config.name}",
-    description="${config.description || "A modern FastAPI application"}",
-    version="1.0.0",
-    lifespan=lifespan,
-)
-
-${corsSetup}
-
-# Middleware for request timing
-@app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
-    return response
-
-
-# Global exception handler
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error": exc.detail,
-            "status_code": exc.status_code,
-            "path": str(request.url.path)
-        }
-    )
-
-
-# Health check endpoint
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "service": "${config.name}",
-        "version": "1.0.0"
-    }
-
-
-# Root endpoint
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {
-        "message": "Welcome to ${config.name} API",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
-
-
-# Include routers
-# TODO: Add your routers here
-# app.include_router(your_router, prefix="/api/v1")
-
-
-if __name__ == "__main__":
-    uvicorn.run(
-        "app.main:app",
-        host=settings.HOST,
-        port=settings.PORT,
-        reload=settings.DEBUG,
-        log_level="info"
-    )
-`;
-
-    return pythonTemplateResolver.renderTemplate(
-      "app/main.py.tpl",
-      {
-        project_name: config.name,
-        description: config.description || "A modern FastAPI application",
-        cors_import: corsImport,
-        cors_setup: corsSetup,
-        database_import: databaseImport,
-        database_startup: databaseStartup,
-      },
-      fallback,
-    );
+    return pythonTemplateResolver.renderTemplate("main.tpl", {
+      projectName: (config as any).projectName || "Generated API",
+      routersImport,
+      routerInits,
+      corsImport,
+      corsSetup,
+    });
   }
 
   private async generateConfig(config: ProjectConfig): Promise<string> {
@@ -948,57 +625,8 @@ async def async_client() -> AsyncGenerator[AsyncClient, None]:
     );
   }
 
-  private async generateMainTest(config: ProjectConfig): Promise<string> {
-    const fallback = `"""
-Main Application Tests
-Basic API endpoint tests
-"""
-import pytest
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
-
-
-def test_root_endpoint(client: TestClient):
-    """Test root endpoint"""
-    response = client.get("/")
-    assert response.status_code == 200
-    data = response.json()
-    assert "message" in data
-    assert "${config.name}" in data["message"]
-
-
-def test_health_check(client: TestClient):
-    """Test health check endpoint"""
-    response = client.get("/health")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "healthy"
-    assert data["service"] == "${config.name}"
-
-
-@pytest.mark.asyncio
-async def test_root_endpoint_async(async_client: AsyncClient):
-    """Test root endpoint with async client"""
-    response = await async_client.get("/")
-    assert response.status_code == 200
-    data = response.json()
-    assert "message" in data
-
-
-@pytest.mark.asyncio
-async def test_health_check_async(async_client: AsyncClient):
-    """Test health check endpoint with async client"""
-    response = await async_client.get("/health")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "healthy"
-`;
-
-    return pythonTemplateResolver.renderTemplate(
-      "tests/test_main.py.tpl",
-      { project_name: config.name },
-      fallback,
-    );
+  private async generateMainTest(_config: ProjectConfig): Promise<string> {
+    return pythonTemplateResolver.renderTemplate("test-main.tpl", {});
   }
 
   private async generateDockerfile(config: ProjectConfig): Promise<string> {
@@ -1181,167 +809,14 @@ asyncio_mode = "auto"
       fallback,
     );
   }
-  private async generateProductionDockerfile(config: BuildConfig): Promise<string> {
-    const fallback = `# Production Python Dockerfile
-FROM python:3.11-slim as builder
-
-WORKDIR /app
-
-# Install build dependencies
-RUN apt-get update \\
-    && apt-get install -y --no-install-recommends \\
-        build-essential \\
-        libpq-dev \\
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements
-COPY requirements.txt .
-RUN pip install --user --no-cache-dir --upgrade pip \\
-    && pip install --user --no-cache-dir -r requirements.txt
-
-# Production stage
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# Install runtime dependencies
-RUN apt-get update \\
-    && apt-get install -y --no-install-recommends \\
-        libpq5 \\
-        curl \\
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy installed packages from builder
-COPY --from=builder /root/.local /root/.local
-
-# Copy application
-COPY . .
-
-# Create non-root user
-RUN adduser --disabled-password --gecos '' --uid 1000 appuser \\
-    && chown -R appuser:appuser /app
-USER appuser
-
-# Make sure scripts in .local are usable
-ENV PATH=/root/.local/bin:$PATH
-
-EXPOSE 8000
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
-    CMD curl -f http://localhost:8000/health || exit 1
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
-`;
-
-    return pythonTemplateResolver.renderTemplate("Dockerfile.prod.tpl", {}, fallback);
+  private async generateProductionDockerfile(_config: BuildConfig): Promise<string> {
+    return pythonTemplateResolver.renderTemplate("dockerfile-prod.tpl", {});
   }
 
   private async generateGitHubActions(config: BuildConfig): Promise<string> {
-    const deployBlock =
-      config.target === "production"
-        ? `deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Build and push Docker image
-      env:
-        DOCKER_REGISTRY: your-registry.com
-      run: |
-        docker build -f Dockerfile.prod -t $DOCKER_REGISTRY/your-app:\${{ github.sha }} .
-        docker push $DOCKER_REGISTRY/your-app:\${{ github.sha }}`
-        : "";
-
-    const fallback = `name: Python Application CI/CD
-
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: \${{ runner.os }}-pip-\${{ hashFiles('**/requirements*.txt') }}
-        restore-keys: |
-          \${{ runner.os }}-pip-
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-    
-    - name: Lint with flake8
-      run: |
-        flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 app tests --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
-    
-    - name: Format check with black
-      run: black --check app tests
-    
-    - name: Import sort check
-      run: isort --check-only app tests
-    
-    - name: Type check with mypy
-      run: mypy app
-    
-    - name: Test with pytest
-      env:
-        DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test
-      run: |
-        pytest --cov=app --cov-report=xml --cov-report=term-missing
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-
-${deployBlock}
-`;
-
-    return pythonTemplateResolver.renderTemplate(
-      ".github/workflows/python-app.yml.tpl",
-      {
-        deploy_block: deployBlock,
-        runner_os_expr: "${{ runner.os }}",
-        hashfiles_expr: "${{ hashFiles('**/requirements*.txt') }}",
-        github_sha_expr: "${{ github.sha }}",
-      },
-      fallback,
-    );
+    if (config.target === "production") {
+      return pythonTemplateResolver.renderTemplate("github-actions-prod.tpl", {});
+    }
+    return pythonTemplateResolver.renderTemplate("github-actions.tpl", {});
   }
 }

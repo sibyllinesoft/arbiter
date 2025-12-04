@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import { CUESchemaParser } from "@/docs/schema-parser.js";
 import fs from "fs-extra";
-import { CUESchemaParser } from "../docs/schema-parser.js";
 
 const mockRunner = {
   async exportJson(_paths: string[]) {

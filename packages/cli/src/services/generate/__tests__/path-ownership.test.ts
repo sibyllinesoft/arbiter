@@ -7,7 +7,7 @@ import {
   determinePathOwnership,
   isTypeScriptServiceLanguage,
   pathBelongsToService,
-} from "../index.js";
+} from "@/services/generate/index.js";
 
 describe("generate helpers - path ownership and proxies", () => {
   it("detects TypeScript friendly service languages", () => {

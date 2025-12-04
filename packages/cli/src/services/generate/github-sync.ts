@@ -1,10 +1,10 @@
+import type { GenerateOptions } from "@/services/generate/types.js";
+import type { CLIConfig } from "@/types.js";
+import { getSmartRepositoryConfig, validateRepositoryConfig } from "@/utils/git-detection.js";
+import { GitHubSyncClient } from "@/utils/github-sync.js";
+import { ShardedCUEStorage } from "@/utils/sharded-storage.js";
 /* istanbul ignore file */
 import chalk from "chalk";
-import type { CLIConfig } from "../../types.js";
-import { getSmartRepositoryConfig, validateRepositoryConfig } from "../../utils/git-detection.js";
-import { GitHubSyncClient } from "../../utils/github-sync.js";
-import { ShardedCUEStorage } from "../../utils/sharded-storage.js";
-import type { GenerateOptions } from "./types.js";
 
 /**
  * Handle GitHub synchronization for epics and tasks.

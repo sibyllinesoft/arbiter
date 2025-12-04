@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { SimpleProgress, withProgress } from "../progress.js";
+import { SimpleProgress, withProgress } from "@/utils/progress.js";
 
 describe("progress utilities", () => {
   it("SimpleProgress logs success/error", () => {

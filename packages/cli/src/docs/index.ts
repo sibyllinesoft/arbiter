@@ -8,20 +8,20 @@
 import * as fs from "node:fs";
 import path from "node:path";
 
+import { runDemo } from "@/docs/demo-documentation.js";
+import { DocumentationGenerator } from "@/docs/documentation-generator.js";
+import { EnhancedCUEParser } from "@/docs/enhanced-cue-parser.js";
+import { generateExampleDocumentation } from "@/docs/generate-example.js";
+import { technicalTemplate } from "@/docs/templates/technical-template.js";
 import {
   type SchemaDocsCommandOptions,
   createSchemaDocsCommand,
   generateSchemaDocumentation,
-} from "../services/schema-docs/index.js";
-import { runDemo } from "./demo-documentation.js";
-import { DocumentationGenerator } from "./documentation-generator.js";
-import { EnhancedCUEParser } from "./enhanced-cue-parser.js";
-import { generateExampleDocumentation } from "./generate-example.js";
-import { technicalTemplate } from "./templates/technical-template.js";
+} from "@/services/schema-docs/index.js";
 
-export type { ParsedField, ParsedType, ParsedSchema } from "./schema-parser.js";
-export type { CUEStructField, CUEContext } from "./enhanced-cue-parser.js";
-export type { GeneratorOptions, Templates } from "./documentation-generator.js";
+export type { ParsedField, ParsedType, ParsedSchema } from "@/docs/schema-parser.js";
+export type { CUEStructField, CUEContext } from "@/docs/enhanced-cue-parser.js";
+export type { GeneratorOptions, Templates } from "@/docs/documentation-generator.js";
 export type { SchemaDocsCommandOptions };
 export {
   EnhancedCUEParser,

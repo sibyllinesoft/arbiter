@@ -1,8 +1,7 @@
-// @ts-nocheck
+import type { ValidationResult } from "@/types.js";
 import chalk from "chalk";
 import Table from "cli-table3";
 import yaml from "yaml";
-import type { ValidationResult } from "../types.js";
 
 /**
  * Format a small table using cli-table3 with optional header coloring.
@@ -363,4 +362,3 @@ export function formatStatusTable(status: any): string {
 
   return table.toString();
 }
-// @ts-nocheck

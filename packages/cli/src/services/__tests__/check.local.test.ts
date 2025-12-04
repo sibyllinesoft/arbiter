@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { runCheckCommand } from "../check/index.js";
+import { runCheckCommand } from "@/services/check/index.js";
 
 const config = { projectDir: "" } as any;
 

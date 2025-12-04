@@ -1,7 +1,7 @@
 import { describe, expect, it, mock, spyOn } from "bun:test";
 
-import { ConstraintViolationError, globalConstraintEnforcer } from "../core.js";
-import { REQUIRED_ENDPOINTS, SandboxValidator } from "../sandbox.js";
+import { ConstraintViolationError, globalConstraintEnforcer } from "@/constraints/core.js";
+import { REQUIRED_ENDPOINTS, SandboxValidator } from "@/constraints/sandbox.js";
 
 const baseConfig: any = { apiUrl: "https://api", localMode: false };
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import type { CLIConfig, WatchOptions } from "../../types.js";
-import { watchCommand } from "../watch/index.js";
+import { watchCommand } from "@/services/watch/index.js";
+import type { CLIConfig, WatchOptions } from "@/types.js";
 
 const baseConfig: CLIConfig = {
   apiUrl: "http://localhost",

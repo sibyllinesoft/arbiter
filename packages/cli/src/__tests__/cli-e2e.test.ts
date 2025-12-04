@@ -7,7 +7,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-const CLI_ENTRY = path.resolve(import.meta.dir, "../cli.ts");
+const CLI_ENTRY = path.resolve(import.meta.dir, "@/cli.ts");
 const BUN_EXECUTABLE = process.env.BUN_PATH || "bun";
 const hasCue =
   spawnSync("cue", ["version"], { stdio: "ignore" }).status === 0 ||

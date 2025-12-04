@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import * as entrypoint from "../index";
+import * as entrypoint from "@/index";
 
 describe("package entrypoint", () => {
   it("exports the program object without executing the CLI", () => {

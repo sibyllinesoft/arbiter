@@ -1,9 +1,9 @@
+import { ApiClient } from "@/api-client.js";
+import { loadAuthSession } from "@/auth-store.js";
+import { applyCliOverrides, applyEnvironmentOverrides, loadConfig } from "@/config.js";
+import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
 import chalk from "chalk";
 import type { Command } from "commander";
-import { ApiClient } from "../api-client.js";
-import { loadAuthSession } from "../auth-store.js";
-import { applyCliOverrides, applyEnvironmentOverrides, loadConfig } from "../config.js";
-import type { CLIConfig, ProjectStructureConfig } from "../types.js";
 
 export interface CliContext {
   config: CLIConfig;

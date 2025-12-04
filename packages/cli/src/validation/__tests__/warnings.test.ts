@@ -6,7 +6,11 @@
  */
 
 import { beforeEach, describe, expect, it } from "bun:test";
-import { type ValidationResult, formatWarnings, validateSpecification } from "../warnings.js";
+import {
+  type ValidationResult,
+  formatWarnings,
+  validateSpecification,
+} from "@/validation/warnings.js";
 
 describe("Validation Warning System", () => {
   let minimalValidSpec: any;

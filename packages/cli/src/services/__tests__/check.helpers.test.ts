@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { findCueFiles, isJsonFormat } from "../check/index.js";
+import { findCueFiles, isJsonFormat } from "@/services/check/index.js";
 
 describe("check helpers", () => {
   it("detects json format flag", () => {

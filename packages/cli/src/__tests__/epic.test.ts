@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
+import { type Epic, ShardedCUEStorage, type Task } from "@/utils/sharded-storage.js";
 import fs from "fs-extra";
-import { type Epic, ShardedCUEStorage, type Task } from "../utils/sharded-storage.js";
 
 const hasCue =
   spawnSync("cue", ["version"], { stdio: "ignore" }).status === 0 ||

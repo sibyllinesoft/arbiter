@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 
-import { CUESchemaParser } from "../schema-parser.js";
+import { CUESchemaParser } from "@/docs/schema-parser.js";
 
 const tmpDirs: string[] = [];
 

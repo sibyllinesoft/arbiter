@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { addLocator } from "../services/add/subcommands/locator";
+import { addLocator } from "@/services/add/subcommands/locator";
 
 const manipulator = {
   addToSection: async (_c: string, _section: string, key: string, value: any) =>

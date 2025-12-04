@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { explainCommand } from "../index.js";
+import { explainCommand } from "@/services/explain/index.js";
 
 const writeAssembly = async (dir: string, content: string) => {
   const arbiterDir = path.join(dir, ".arbiter");

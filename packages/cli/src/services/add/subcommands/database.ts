@@ -1,13 +1,13 @@
 import path from "node:path";
-import chalk from "chalk";
-import type { DatabaseConfig, PlatformServiceType } from "../../../cue/index.js";
+import type { DatabaseConfig, PlatformServiceType } from "@/cue/index.js";
+import { validateTemplateExistsSync } from "@/services/add/template-engine.js";
 import {
   type TemplateContext,
   buildTemplateContext,
   templateOrchestrator,
-} from "../../../templates/index.js";
-import { getPlatformServiceDefaults } from "../../../utils/platform-detection.js";
-import { validateTemplateExistsSync } from "../template-engine.js";
+} from "@/templates/index.js";
+import { getPlatformServiceDefaults } from "@/utils/platform-detection.js";
+import chalk from "chalk";
 
 interface DatabaseAddOptions {
   attachTo?: string;

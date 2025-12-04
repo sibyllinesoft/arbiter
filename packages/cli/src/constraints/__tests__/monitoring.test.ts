@@ -1,8 +1,8 @@
 import { describe, expect, it, mock } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import { ConstraintMonitor, DEFAULT_MONITORING_CONFIG } from "@/constraints/monitoring.js";
 import fs from "fs-extra";
-import { ConstraintMonitor, DEFAULT_MONITORING_CONFIG } from "../monitoring.js";
 
 const tmpFile = (prefix: string) => path.join(os.tmpdir(), `${prefix}-${Date.now()}.log`);
 

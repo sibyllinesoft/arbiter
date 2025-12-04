@@ -1,9 +1,9 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import * as authStore from "../../auth-store.js";
-import * as authService from "../../services/auth/index.js";
-import { createAuthCommand } from "../auth.js";
+import * as authStore from "@/auth-store.js";
+import { createAuthCommand } from "@/cli/auth.js";
+import * as authService from "@/services/auth/index.js";
 
 const minimalConfig = {
   apiUrl: "https://api",

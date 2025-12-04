@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { getExtractor, listExtractors, registerExtractor } from "../index.js";
+import { getExtractor, listExtractors, registerExtractor } from "@/surface-extraction/index.js";
 
 describe("surface extractor registry", () => {
   it("returns default extractor for known language", () => {

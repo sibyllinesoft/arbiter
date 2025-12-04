@@ -7,8 +7,8 @@
  * Warnings block generation unless --force flag is used.
  */
 
+import { resolveServiceArtifactType, resolveServiceWorkload } from "@/utils/service-metadata.js";
 import chalk from "chalk";
-import { resolveServiceArtifactType, resolveServiceWorkload } from "../utils/service-metadata.js";
 
 const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"];
 

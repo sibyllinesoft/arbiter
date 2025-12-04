@@ -38,7 +38,7 @@ vi.mock("@arbiter/shared", () => {
   };
 });
 
-import { __compatTesting, runMigration } from "../index.js";
+import { __compatTesting, runMigration } from "@/services/compat/index.js";
 
 const { loadVersionsToCheck, outputCompatibilityResult, showMigrationPaths } = __compatTesting;
 

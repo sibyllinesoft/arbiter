@@ -3,11 +3,11 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { ApiClient } from "../../api-client.js";
-import * as cue from "../../constraints/cli-integration.js";
-import * as cueValidate from "../../cue/index.js";
-import { runAddCommand } from "../add/index.js";
-import * as serviceModule from "../add/subcommands/service.js";
+import { ApiClient } from "@/api-client.js";
+import * as cue from "@/constraints/cli-integration.js";
+import * as cueValidate from "@/cue/index.js";
+import { runAddCommand } from "@/services/add/index.js";
+import * as serviceModule from "@/services/add/subcommands/service.js";
 
 describe("runAddCommand service subcommand", () => {
   it("adds a service and stores remotely when validation passes", async () => {

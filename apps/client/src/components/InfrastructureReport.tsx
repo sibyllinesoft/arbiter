@@ -1,12 +1,12 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { Shield } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
 import { useTabBadgeUpdater } from "@/contexts/TabBadgeContext";
-import { useResolvedSpec, useUiOptionCatalog } from "@/hooks/api-hooks";
+import { useCatalog } from "@/hooks/useCatalog";
 import { useProjectEntityPersistence } from "@/hooks/useProjectEntityPersistence";
+import type { ResolvedSpecResponse } from "@/types/api";
 import ArtifactCard from "./ArtifactCard";
 import AddEntityModal from "./modals/AddEntityModal";
 import {
@@ -25,8 +25,8 @@ export const InfrastructureReport: React.FC<InfrastructureReportProps> = ({
   projectId,
   className,
 }) => {
-  const { data, isLoading, isError, error } = useResolvedSpec(projectId);
-  const queryClient = useQueryClient();
+  const catalog = useCatalog<ResolvedSpecResponse>(projectId);
+  const { data, isLoading, isError, error } = catalog;
   const [isAddInfraOpen, setIsAddInfraOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [editInfraState, setEditInfraState] = useState<{
@@ -34,22 +34,16 @@ export const InfrastructureReport: React.FC<InfrastructureReportProps> = ({
     infra: { key: string; name: string; data: any } | null;
     initialValues?: Record<string, FieldValue>;
   }>({ open: false, infra: null });
-  const { data: uiOptionCatalogData } = useUiOptionCatalog();
   const uiOptionCatalog = useMemo<UiOptionCatalog>(
-    () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(uiOptionCatalogData ?? {}) }),
-    [uiOptionCatalogData],
+    () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(catalog.uiOptionCatalog ?? {}) }),
+    [catalog.uiOptionCatalog],
   );
 
   const refreshResolved = useCallback(
     async (_options: { silent?: boolean } = {}) => {
-      if (!projectId) return;
-      await queryClient.invalidateQueries({ queryKey: ["resolved-spec", projectId] });
-      await queryClient.refetchQueries({
-        queryKey: ["resolved-spec", projectId],
-        type: "active",
-      });
+      await catalog.refresh(_options);
     },
-    [projectId, queryClient],
+    [catalog],
   );
 
   const { persistEntity } = useProjectEntityPersistence({

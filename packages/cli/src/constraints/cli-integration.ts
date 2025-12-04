@@ -1,18 +1,18 @@
-import chalk from "chalk";
-import type { Command } from "commander";
-import { type CUEManipulator, createCUEManipulator } from "../cue/index.js";
-import type { CLIConfig } from "../types.js";
 import {
   ConstraintViolationError,
   type Constraints,
   getGlobalConstraintSystem,
   initializeGlobalConstraintSystem,
-} from "./index.js";
+} from "@/constraints/index.js";
 import {
   type MonitoringConfig,
   createConstraintMonitor,
   globalConstraintMonitor,
-} from "./monitoring.js";
+} from "@/constraints/monitoring.js";
+import { type CUEManipulator, createCUEManipulator } from "@/cue/index.js";
+import type { CLIConfig } from "@/types.js";
+import chalk from "chalk";
+import type { Command } from "commander";
 
 /**
  * CLI constraint integration options
@@ -279,7 +279,7 @@ function setupConstraintEventHandlers(
 
     try {
       await constraintSystem.shutdown();
-      await monitor.exportData("./constraint-data-export.json");
+      await monitor.exportData("@/constraints/constraint-data-export.json");
       console.log(chalk.dim("Constraint data exported to ./constraint-data-export.json"));
     } catch (error) {
       console.error(chalk.red("Shutdown error:"), error);

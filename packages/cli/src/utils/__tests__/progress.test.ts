@@ -27,7 +27,7 @@ mock.module("ora", () => ({
   },
 }));
 
-const progressModulePromise = import("../progress.js");
+const progressModulePromise = import("@/utils/progress.js");
 
 describe("progress utilities", () => {
   const originalCI = process.env.CI;

@@ -1,6 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import { ApiClient } from "../../api-client.js";
-import { statusCommand } from "../status/index.js";
+import { ApiClient } from "@/api-client.js";
+import { statusCommand } from "@/services/status/index.js";
 
 describe("statusCommand (remote mode)", () => {
   it("prints remote status when API succeeds", async () => {

@@ -1,5 +1,5 @@
+import { __generateTesting } from "@/services/generate/index.js";
 import { describe, expect, it } from "vitest";
-import { __generateTesting } from "../index.js";
 
 const pkgManagerBun = { name: "bun", run: (cmd: string) => `bun ${cmd}` } as any;
 const pkgManagerNpm = { name: "npm", run: (cmd: string) => `npm run ${cmd}` } as any;

@@ -3,13 +3,13 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { LATEST_API_VERSION } from "../../constraints/schema.js";
+import { LATEST_API_VERSION } from "@/constraints/schema.js";
 import {
   evaluateApiVersion,
   loadVersionsToCheck,
   runMigration,
   showVersionInfo,
-} from "../compat/index.js";
+} from "@/services/compat/index.js";
 
 // Mock shared module before imports execute real code
 const sharedMock = {

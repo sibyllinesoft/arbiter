@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ProjectLanguage } from "./types.js";
+import type { ProjectLanguage } from "@/services/integrate/types.js";
 
 export async function detectProjectLanguages(projectPath: string): Promise<ProjectLanguage[]> {
   const languages: ProjectLanguage[] = [];

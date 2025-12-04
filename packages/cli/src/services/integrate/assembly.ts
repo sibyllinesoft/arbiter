@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { AssemblyConfig, BuildMatrix } from "./types.js";
+import type { AssemblyConfig, BuildMatrix } from "@/services/integrate/types.js";
 
 export async function readAssemblyConfig(projectPath: string): Promise<AssemblyConfig | null> {
   const assemblyPath = path.join(projectPath, "arbiter.assembly.cue");

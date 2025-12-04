@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { GitHubSyncClient } from "../github-sync.js";
+import { GitHubSyncClient } from "@/utils/github-sync.js";
 
 function makeStubOctokit() {
   const created: any[] = [];

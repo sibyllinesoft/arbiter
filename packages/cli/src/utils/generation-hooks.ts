@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
-import type { GeneratorHookEvent, GeneratorHookMap } from "../types.js";
+import type { GeneratorHookEvent, GeneratorHookMap } from "@/types.js";
 
 export interface GenerationHookOptions {
   hooks?: GeneratorHookMap;

@@ -9,8 +9,8 @@
 
 import path from "path";
 import { fileURLToPath } from "url";
-import { DocumentationGenerator } from "./documentation-generator.js";
-import { EnhancedCUEParser } from "./enhanced-cue-parser.js";
+import { DocumentationGenerator } from "@/docs/documentation-generator.js";
+import { EnhancedCUEParser } from "@/docs/enhanced-cue-parser.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

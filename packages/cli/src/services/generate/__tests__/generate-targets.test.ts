@@ -1,5 +1,5 @@
+import { __generateTesting } from "@/services/generate/index.js";
 import { describe, expect, it } from "vitest";
-import { __generateTesting } from "../index.js";
 
 const structure = {
   clientsDirectory: "clients",

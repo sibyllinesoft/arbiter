@@ -1,4 +1,4 @@
-import type { RouteConfig } from "../../../cue/index.js";
+import type { RouteConfig } from "@/cue/index.js";
 
 export interface RouteOptions {
   id?: string;

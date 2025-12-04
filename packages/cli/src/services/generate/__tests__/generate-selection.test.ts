@@ -1,8 +1,8 @@
 import os from "node:os";
 import path from "node:path";
+import { __generateTesting } from "@/services/generate/index.js";
 import fs from "fs-extra";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { __generateTesting } from "../index.js";
 
 const { resolveAssemblyPath, shouldAbortOnWarnings, shouldSyncGithub } = __generateTesting;
 

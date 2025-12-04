@@ -8,9 +8,9 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { safeFileOperation } from "@/constraints/index.js";
+import { CLIBenchmark, PERFORMANCE_TARGETS } from "@/utils/performance.js";
 import fs from "fs-extra";
-import { safeFileOperation } from "./constraints/index.js";
-import { CLIBenchmark, PERFORMANCE_TARGETS } from "./utils/performance.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

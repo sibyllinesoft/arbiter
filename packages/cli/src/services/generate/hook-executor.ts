@@ -1,7 +1,7 @@
+import { safeFileOperation } from "@/constraints/index.js";
+import type { GenerateOptions } from "@/services/generate/types.js";
+import { GenerationHookManager } from "@/utils/generation-hooks.js";
 import fs from "fs-extra";
-import { safeFileOperation } from "../../constraints/index.js";
-import { GenerationHookManager } from "../../utils/generation-hooks.js";
-import type { GenerateOptions } from "./types.js";
 
 let activeHookManager: GenerationHookManager | null = null;
 

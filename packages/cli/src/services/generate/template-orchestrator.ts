@@ -4,8 +4,8 @@ import {
   generateService,
   initializeProject,
   registry as languageRegistry,
-} from "../../language-plugins/index.js";
-import type { CLIConfig } from "../../types.js";
+} from "@/language-support/index.js";
+import type { CLIConfig } from "@/types.js";
 
 export { generateComponent, generateService, initializeProject };
 

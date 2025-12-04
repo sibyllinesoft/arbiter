@@ -1,10 +1,10 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import * as api from "../../api-client.js";
-import * as authStore from "../../auth-store.js";
-import * as configModule from "../../config.js";
-import { hydrateCliContext, requireCommandConfig, resolveCliContext } from "../context.js";
+import * as api from "@/api-client.js";
+import * as authStore from "@/auth-store.js";
+import { hydrateCliContext, requireCommandConfig, resolveCliContext } from "@/cli/context.js";
+import * as configModule from "@/config.js";
 
 const baseConfig = {
   apiUrl: "https://api",

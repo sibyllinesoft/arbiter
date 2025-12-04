@@ -1,9 +1,9 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import * as store from "@/auth-store.js";
+import { runAuthCommand } from "@/services/auth/index.js";
 import fs from "fs-extra";
-import * as store from "../../auth-store.js";
-import { runAuthCommand } from "../auth/index.js";
 
 const baseConfig = {
   apiUrl: "http://localhost:5050",

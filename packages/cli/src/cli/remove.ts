@@ -2,10 +2,10 @@
  * Remove commands module - Specification element removal
  */
 
+import { removeCommand } from "@/services/remove/index.js";
+import type { RemoveOptions } from "@/services/remove/index.js";
 import chalk from "chalk";
 import { Command } from "commander";
-import { removeCommand } from "../services/remove/index.js";
-import type { RemoveOptions } from "../services/remove/index.js";
 
 export function createRemoveCommands(program: Command): Command {
   const removeCmd = program

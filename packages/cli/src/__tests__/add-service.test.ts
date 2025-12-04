@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { addService } from "../services/add/subcommands/service";
+import { addService } from "@/services/add/subcommands/service";
 
 const manipulator = {
   addService: async (_c: string, _n: string, cfg: any) => JSON.stringify({ svc: cfg }),

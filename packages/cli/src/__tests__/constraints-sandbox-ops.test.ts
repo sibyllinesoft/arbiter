@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { REQUIRED_ENDPOINTS, createSandboxValidator } from "../constraints/sandbox";
+import { REQUIRED_ENDPOINTS, createSandboxValidator } from "@/constraints/sandbox";
 
 describe("sandbox validator", () => {
   it("starts and ends a sandbox operation", () => {

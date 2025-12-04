@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { REQUIRED_ENDPOINTS } from "../constraints/sandbox";
+import { REQUIRED_ENDPOINTS } from "@/constraints/sandbox";
 
 describe("constraints/sandbox REQUIRED_ENDPOINTS", () => {
   it("contains validate endpoint with expected method", () => {

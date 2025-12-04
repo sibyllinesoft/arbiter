@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { runCheckCommand } from "../check/index.js";
+import { runCheckCommand } from "@/services/check/index.js";
 
 describe("runCheckCommand with no files", () => {
   it("returns success and prints empty json", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { LATEST_API_VERSION, VERSION_COMPATIBILITY } from "../../../constraints/schema.js";
-import { evaluateApiVersion, loadVersionsToCheck } from "../index.js";
+import { LATEST_API_VERSION, VERSION_COMPATIBILITY } from "@/constraints/schema.js";
+import { evaluateApiVersion, loadVersionsToCheck } from "@/services/compat/index.js";
 
 describe("compat version helpers", () => {
   it("loadVersionsToCheck injects latest api version when missing", async () => {

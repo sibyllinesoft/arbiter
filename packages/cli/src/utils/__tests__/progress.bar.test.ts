@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { withProgressBar } from "../progress.js";
+import { withProgressBar } from "@/utils/progress.js";
 
 describe("withProgressBar", () => {
   it("runs operation and completes bar", async () => {

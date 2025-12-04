@@ -1,11 +1,11 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { copyStandalone, safeFileOperation } from "@/constraints/index.js";
+import type { CLIConfig, SyncOptions } from "@/types.js";
+import { detectPackageManager, getPackageManagerCommands } from "@/utils/package-manager.js";
 import chalk from "chalk";
 import packageJson from "../../../package.json" with { type: "json" };
-import { copyStandalone, safeFileOperation } from "../../constraints/index.js";
-import type { CLIConfig, SyncOptions } from "../../types.js";
-import { detectPackageManager, getPackageManagerCommands } from "../../utils/package-manager.js";
 
 interface ManifestFile {
   path: string;

@@ -3,9 +3,13 @@ import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 
-import { DEFAULT_PROJECT_STRUCTURE } from "../../../config.js";
-import type { CLIConfig } from "../../../types.js";
-import { generateProjectTemplates, listTemplates, showTemplate } from "../index.js";
+import { DEFAULT_PROJECT_STRUCTURE } from "@/config.js";
+import {
+  generateProjectTemplates,
+  listTemplates,
+  showTemplate,
+} from "@/services/github-templates/index.js";
+import type { CLIConfig } from "@/types.js";
 
 const tempDirs: string[] = [];
 

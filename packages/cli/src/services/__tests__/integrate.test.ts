@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import { integrateProject } from "@/services/integrate/index.js";
+import type { CLIConfig } from "@/types.js";
+import { DEFAULT_TEMPLATES_CONFIG } from "@/utils/unified-github-template-manager.js";
 import fs from "fs-extra";
-import type { CLIConfig } from "../../types.js";
-import { DEFAULT_TEMPLATES_CONFIG } from "../../utils/unified-github-template-manager.js";
-import { integrateProject } from "../integrate/index.js";
 
 const tempProjects: string[] = [];
 

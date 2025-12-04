@@ -2,11 +2,11 @@
  * Utilities commands module - Import, testing, and other utility commands
  */
 
+import { importCommand } from "@/services/import/index.js";
+import { testCommand } from "@/services/test/index.js";
+import { coverCommand, scaffoldCommand } from "@/services/tests/index.js";
 import chalk from "chalk";
 import { Command } from "commander";
-import { importCommand } from "../services/import/index.js";
-import { testCommand } from "../services/test/index.js";
-import { coverCommand, scaffoldCommand } from "../services/tests/index.js";
 
 export function createUtilitiesCommands(program: Command): void {
   // Import command
@@ -44,7 +44,7 @@ export function createUtilitiesCommands(program: Command): void {
   testsCmd
     .command("scaffold")
     .description("generate test scaffolding from CUE specifications")
-    .option("--output <dir>", "output directory for test files", "./tests")
+    .option("--output <dir>", "output directory for test files", "@/cli/tests")
     .option("--format <format>", "test format (jest, vitest, pytest)", "jest")
     .option("--include-integration", "include integration test templates")
     .option("--include-e2e", "include end-to-end test templates")

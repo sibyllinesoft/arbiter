@@ -2,10 +2,10 @@ import { describe, expect, it, spyOn } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import * as cliIntegration from "../../constraints/cli-integration.js";
-import { getCueManipulator } from "../../constraints/cli-integration.js";
-import * as cue from "../../cue/index.js";
-import { removeCommand } from "../remove/index.js";
+import * as cliIntegration from "@/constraints/cli-integration.js";
+import { getCueManipulator } from "@/constraints/cli-integration.js";
+import * as cue from "@/cue/index.js";
+import { removeCommand } from "@/services/remove/index.js";
 
 describe("removeCommand success path", () => {
   it("removes declaration and writes updated file", async () => {

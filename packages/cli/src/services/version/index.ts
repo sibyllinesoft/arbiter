@@ -1,12 +1,11 @@
-// @ts-nocheck
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { safeFileOperation } from "@/constraints/index.js";
+import type { APISurface } from "@/services/surface/index.js";
+import type { CLIConfig } from "@/types.js";
+import { FILE_PATTERNS, resolveSmartNaming } from "@/utils/smart-naming.js";
 import chalk from "chalk";
-import { safeFileOperation } from "../../constraints/index.js";
-import type { CLIConfig } from "../../types.js";
-import { resolveSmartNaming } from "../../utils/smart-naming.js";
-import type { APISurface } from "../surface/index.js";
 
 /**
  * Semantic version bump types
@@ -106,9 +105,9 @@ export async function versionReleaseCommand(
   try {
     console.log(chalk.blue("🚀 Executing version release..."));
 
-    const naming = resolveSmartNaming(config.projectName || "project");
+    const naming = await resolveSmartNaming("surface");
     const effectivePlan = options.plan || "version-plan.json";
-    const surfacePath = join(process.cwd(), `${naming.surfacePrefix}.json`);
+    const surfacePath = naming.fullPath || join(process.cwd(), FILE_PATTERNS.surface.default);
 
     if (!existsSync(surfacePath)) {
       console.error(chalk.red(`Surface file not found: ${surfacePath}`));
@@ -158,8 +157,12 @@ function analyzeSurfaceChanges(
 ): any {
   // Simple diff algorithm placeholder
   const changes = [];
-  const currentEndpoints = new Set(current.endpoints?.map((e) => `${e.method} ${e.path}`) || []);
-  const previousEndpoints = new Set(previous.endpoints?.map((e) => `${e.method} ${e.path}`) || []);
+  const currentEndpoints = new Set(
+    ((current as any)?.endpoints ?? []).map((e: any) => `${e.method} ${e.path}`),
+  );
+  const previousEndpoints = new Set(
+    ((previous as any)?.endpoints ?? []).map((e: any) => `${e.method} ${e.path}`),
+  );
 
   for (const ep of currentEndpoints) {
     if (!previousEndpoints.has(ep)) {
@@ -193,4 +196,3 @@ function generateReleaseNotes(version: string, plan: any): string {
     .join("\n");
   return `${header}${changes || "- No changes listed"}\n`;
 }
-// @ts-nocheck

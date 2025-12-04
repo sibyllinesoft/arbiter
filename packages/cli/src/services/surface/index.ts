@@ -1,16 +1,16 @@
+import type { CLIConfig } from "@/types.js";
+import type { SurfaceOutput } from "@/types/output.js";
+import { withStepProgress } from "@/utils/progress.js";
+import { resolveSmartNaming } from "@/utils/smart-naming.js";
+import { createOutputManager, shouldUseAgentMode } from "@/utils/standardized-output.js";
 import chalk from "chalk";
 import { glob } from "glob";
-import type { CLIConfig } from "../../types.js";
-import type { SurfaceOutput } from "../../types/output.js";
-import { withStepProgress } from "../../utils/progress.js";
-import { resolveSmartNaming } from "../../utils/smart-naming.js";
-import { createOutputManager, shouldUseAgentMode } from "../../utils/standardized-output.js";
 
-import { calculateSurfaceDelta } from "../../surface-extraction/delta.js";
-import { getExtractor } from "../../surface-extraction/index.js";
-import type { APISurface, APISymbol, SurfaceOptions } from "../../surface-extraction/types.js";
+import { calculateSurfaceDelta } from "@/surface-extraction/delta.js";
+import { getExtractor } from "@/surface-extraction/index.js";
+import type { APISurface, APISymbol, SurfaceOptions } from "@/surface-extraction/types.js";
 
-export type { APISurface } from "../../surface-extraction/types.js";
+export type { APISurface } from "@/surface-extraction/types.js";
 
 /**
  * Surface command implementation

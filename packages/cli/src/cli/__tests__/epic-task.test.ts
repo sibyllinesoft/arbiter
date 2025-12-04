@@ -1,8 +1,8 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import * as epicSvc from "../../services/epic/commands.js";
-import { createEpicTaskCommands } from "../epic-task.js";
+import { createEpicTaskCommands } from "@/cli/epic-task.js";
+import * as epicSvc from "@/services/epic/commands.js";
 
 const baseConfig: any = {
   apiUrl: "https://api",

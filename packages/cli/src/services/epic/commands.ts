@@ -1,8 +1,3 @@
-// @ts-nocheck
-import chalk from "chalk";
-import type { CLIConfig } from "../../types.js";
-import { formatJson, formatTable } from "../../utils/formatting.js";
-import { type Epic as EpicModel, ShardedCUEStorage } from "../../utils/sharded-storage.js";
 import {
   type EpicListFilters,
   type TaskListFilters,
@@ -20,10 +15,18 @@ import {
   readyTasksData,
   updateEpicData,
   updateTaskData,
-} from "./data.js";
-import type { EpicOptions, TaskOptions } from "./types.js";
+} from "@/services/epic/data.js";
+import type {
+  EpicCreateOptions,
+  EpicOptions,
+  TaskCreateOptions,
+  TaskOptions,
+} from "@/services/epic/types.js";
+import type { CLIConfig } from "@/types.js";
+import { formatJson, formatTable } from "@/utils/formatting.js";
+import chalk from "chalk";
 
-export type { EpicOptions, TaskOptions } from "./types.js";
+export type { EpicOptions, TaskOptions } from "@/services/epic/types.js";
 
 export async function epicCommand(
   action: string,
@@ -31,7 +34,7 @@ export async function epicCommand(
   options: EpicOptions,
   config: CLIConfig,
 ): Promise<number> {
-  if (action === "create") return await handleEpicCreate(options);
+  if (action === "create") return await handleEpicCreate(options as EpicCreateOptions);
   if (action === "update" && epicId) return await handleEpicUpdate(epicId, options);
   if (action === "delete" && epicId) return await handleEpicDelete(epicId, options);
   if (action === "list") {
@@ -81,7 +84,7 @@ export async function taskCommand(
   }
 
   if (action === "dependency-graph") {
-    return await handleDependencyGraph(options, config);
+    return await handleDependencyGraph(options);
   }
 
   if (action === "blocked") {
@@ -110,16 +113,16 @@ async function handleEpicList(options: EpicOptions): Promise<number> {
     return 0;
   }
 
-  console.log(
-    formatTable(epics, [
-      { key: "id", label: "ID" },
-      { key: "name", label: "Name" },
-      { key: "status", label: "Status" },
-      { key: "priority", label: "Priority" },
-      { key: "owner", label: "Owner" },
-      { key: "assignee", label: "Assignee" },
-    ]),
-  );
+  const rows = epics.map((epic) => [
+    epic.id,
+    epic.name,
+    epic.status,
+    epic.priority,
+    epic.owner ?? "",
+    epic.assignee ?? "",
+  ]);
+
+  console.log(formatTable(["ID", "Name", "Status", "Priority", "Owner", "Assignee"], rows));
 
   return 0;
 }
@@ -149,7 +152,7 @@ async function handleEpicShow(epicId: string, options: EpicOptions): Promise<num
   return 0;
 }
 
-async function handleEpicCreate(options: EpicOptions): Promise<number> {
+async function handleEpicCreate(options: EpicCreateOptions): Promise<number> {
   const { epic, shardId } = await createEpicData(options);
   console.log(chalk.green(`✅ Created epic '${epic.id}' in shard ${shardId}`));
   return 0;
@@ -194,62 +197,60 @@ async function handleTaskList(options: TaskOptions): Promise<number> {
     return 0;
   }
 
-  console.log(
-    formatTable(tasks, [
-      { key: "id", label: "ID" },
-      { key: "name", label: "Name" },
-      { key: "status", label: "Status" },
-      { key: "priority", label: "Priority" },
-      { key: "assignee", label: "Assignee" },
-      { key: "type", label: "Type" },
-    ]),
-  );
+  const rows = tasks.map((task) => [
+    task.id,
+    task.name ?? "",
+    task.status,
+    task.priority,
+    task.assignee ?? "",
+    task.type ?? "",
+  ]);
+
+  console.log(formatTable(["ID", "Name", "Status", "Priority", "Assignee", "Type"], rows));
 
   return 0;
 }
 
 async function handleTaskShow(taskId: string, options: TaskOptions): Promise<number> {
-  const task = await getTaskById(taskId);
-  if (!task) {
+  const record = await getTaskById(taskId);
+  if (!record) {
     console.error(chalk.red(`Task '${taskId}' not found`));
     return 1;
   }
 
   if (options.format === "json") {
-    console.log(formatJson(task));
+    console.log(formatJson(record));
     return 0;
   }
+
+  const { task } = record;
 
   console.log(chalk.blue(`\n🧭 Task ${task.name}`));
   console.log(chalk.dim(`ID: ${task.id}  Status: ${task.status}  Priority: ${task.priority}`));
   console.log(chalk.dim(`Assignee: ${task.assignee ?? "unassigned"}`));
   console.log(chalk.dim(`Type: ${task.type ?? "unspecified"}`));
 
-  if (task.dependencies?.length) {
+  if (task.dependsOn?.length) {
     console.log(chalk.yellow("\nDependencies:"));
-    task.dependencies.forEach((dep) => console.log(`  • ${dep}`));
+    task.dependsOn.forEach((dep) => console.log(`  • ${dep}`));
   }
 
   return 0;
 }
 
 async function handleTaskCreate(epicId: string, options: TaskOptions): Promise<number> {
-  const task = await createTaskData(epicId, options);
+  const task = await createTaskData(epicId, { ...options, epic: epicId } as TaskCreateOptions);
   console.log(chalk.green(`✅ Created task '${task.id}' in epic ${epicId}`));
   return 0;
 }
 
 async function handleTaskBatch(epicId: string, options: TaskOptions): Promise<number> {
-  const storage = new ShardedCUEStorage();
-  try {
-    await storage.initialize();
-    const tasks = parseBatchTasks(options);
-    await storage.addTasks(epicId, tasks);
-    console.log(chalk.green(`✅ Created ${tasks.length} tasks in epic ${epicId}`));
-    return 0;
-  } finally {
-    await storage.close();
+  const tasks = parseBatchTasks(options);
+  for (const task of tasks) {
+    await createTaskData(epicId, { ...task, epic: epicId });
   }
+  console.log(chalk.green(`✅ Created ${tasks.length} tasks in epic ${epicId}`));
+  return 0;
 }
 
 async function handleTaskUpdate(taskId: string, options: TaskOptions): Promise<number> {
@@ -264,25 +265,25 @@ async function handleTaskComplete(taskId: string, options: TaskOptions): Promise
   return 0;
 }
 
-async function handleDependencyGraph(options: TaskOptions, config: CLIConfig): Promise<number> {
-  const graph = await dependencyGraphData(options, config);
+async function handleDependencyGraph(options: TaskOptions): Promise<number> {
+  const graph = await dependencyGraphData(options.epic);
   console.log(formatJson(graph));
   return 0;
 }
 
 async function handleBlockedTasks(options: TaskOptions): Promise<number> {
-  const tasks = await blockedTasksData(options);
+  const tasks = await blockedTasksData(options.epic);
   console.log(formatJson(tasks));
   return 0;
 }
 
 async function handleReadyTasks(options: TaskOptions): Promise<number> {
-  const tasks = await readyTasksData(options);
+  const tasks = await readyTasksData(options.epic);
   console.log(formatJson(tasks));
   return 0;
 }
 
-function parseBatchTasks(options: TaskOptions): EpicModel["tasks"] {
+function parseBatchTasks(options: TaskOptions): Omit<TaskCreateOptions, "epic">[] {
   const tasks =
     typeof options.json === "string"
       ? JSON.parse(options.json)
@@ -291,22 +292,20 @@ function parseBatchTasks(options: TaskOptions): EpicModel["tasks"] {
         : [];
 
   return tasks.map((task: any) => ({
-    id: task.id || task.name?.toLowerCase().replace(/\s+/g, "-"),
     name: task.name,
     description: task.description,
-    status: task.status || "todo",
-    priority: task.priority || "medium",
-    assignee: task.assignee,
-    reviewer: task.reviewer,
-    type: task.type,
-    acceptanceCriteria: task.acceptanceCriteria,
-    dependencies: task.dependencies,
-    config: {
-      canRunInParallel: task.canRunInParallel ?? options.canRunInParallel,
-      requiresReview: task.requiresReview ?? options.requiresReview,
-      requiresTesting: task.requiresTesting ?? options.requiresTesting,
-      blocksOtherTasks: task.blocksOtherTasks ?? options.blocksOtherTasks,
-    },
+    status: task.status || options.status,
+    priority: task.priority || options.priority,
+    assignee: task.assignee ?? options.assignee,
+    reviewer: task.reviewer ?? options.reviewer,
+    type: task.type ?? options.type,
+    acceptanceCriteria: Array.isArray(task.acceptanceCriteria)
+      ? task.acceptanceCriteria.join(",")
+      : task.acceptanceCriteria,
+    dependsOn: Array.isArray(task.dependencies) ? task.dependencies.join(",") : task.dependencies,
+    canRunInParallel: task.canRunInParallel ?? options.canRunInParallel,
+    requiresReview: task.requiresReview ?? options.requiresReview,
+    requiresTesting: task.requiresTesting ?? options.requiresTesting,
+    blocksOtherTasks: task.blocksOtherTasks ?? options.blocksOtherTasks,
   }));
 }
-// @ts-nocheck

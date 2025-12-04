@@ -1,8 +1,8 @@
 import { EventEmitter } from "node:events";
 import path from "node:path";
+import type { ConstraintViolationError } from "@/constraints/core.js";
 import chalk from "chalk";
 import fs from "fs-extra";
-import type { ConstraintViolationError } from "./core.js";
 
 /**
  * Violation event data

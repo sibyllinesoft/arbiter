@@ -1,147 +1,116 @@
-This codebase is a sophisticated React application for a "Spec Driven Development" system. It relies heavily on **React Flow**, **Monaco Editor**, and **React Query**.
+Based on the source code provided, I have conducted a comprehensive architectural review of the Arbiter CLI.
 
-Overall, the code quality is high—it uses modern hooks, strong typing, and a consistent design system. However, due to the scale of features (visualizing CUE specs, managing projects, handling websockets, rendering complex diagrams), it suffers from **colocation bloat** and **duplicated normalization logic**.
+The codebase is sophisticated, featuring advanced concepts like sharded storage, constraint enforcement, and a plugin architecture. However, it suffers from significant "bloat" in specific modules, inconsistency in template handling, and tight coupling in generation logic.
 
-Here are specific opportunities to simplify, clarify, and organize the codebase.
+Here are the prioritized opportunities to clean up, organize, and improve maintainability.
 
----
+### 1. Deconstruct the `generate` Monolith
+**Target:** `src/services/generate/index.ts` (224 KB)
 
-### 1. Structural Reorganization: Feature-Based Architecture
-Currently, the structure is split by technical type (`components`, `hooks`, `pages`). As the app grows, this makes it hard to find related logic. I recommend moving to a **Feature-based** folder structure.
+This is the single largest maintainability risk. It currently handles file system logic, CUE parsing, language detection, test generation, infrastructure scaffolding, and GitHub syncing all in one file.
 
-**Current:**
+*   **The Fix: Strategy Pattern for Artifact Generation**
+    Break the generation logic into distinct "Artifact Generators" that implement a common interface.
+    *   **Create:** `src/services/generate/strategies/`
+    *   **Extract:**
+        *   `InfrastructureGenerator` (Terraform/K8s logic)
+        *   `TestGenerator` (Playwright/Unit test logic)
+        *   `DocumentationGenerator` (OpenAPI/Markdown logic)
+        *   `CIWorkflowGenerator` (GitHub Actions logic)
+    *   **Refactor:** The main `index.ts` should essentially be an iterator that loops through active strategies and calls `.generate(context)`.
+
+### 2. Unify Template Management
+**Target:** `src/language-plugins/*.ts` vs `src/templates/`
+
+There is a split personality in how code is generated.
+1.  **External Templates:** Used in `src/templates/**` (Handlebars/Mustache).
+2.  **Hardcoded Strings:** Massive string template literals inside `src/language-plugins/rust.ts`, `python.ts`, etc.
+
+**The Problem:** Hardcoded strings inside TypeScript files (like in `rust.ts` lines 400-1000+) offer no syntax highlighting, are hard to read, and bloat the bundle size.
+
+*   **The Fix:**
+    *   Move **ALL** hardcoded strings from `language-plugins/*.ts` into external `.hbs` or `.tpl` files within `src/templates/`.
+    *   The Language Plugins should strictly handle **logic** (determining *variable values* for the template context), not **content** (the code itself).
+
+### 3. Remove `@ts-nocheck` and Fix Types
+**Target:** `src/services/remove/index.ts`, `src/services/check-constrained/index.ts`, `src/services/epic/data.ts`, and others.
+
+Several core files start with `// @ts-nocheck`. This disables type safety entirely for those files, defeating the purpose of using TypeScript.
+
+*   **The Fix:**
+    *   Remove the directive and fix the underlying type errors.
+    *   Most errors appear to stem from loose typing on the CUE AST objects (treating `any` types as specific objects).
+    *   Define strict interfaces for the CUE AST responses in `src/cue/types.ts` instead of casting to `any`.
+
+### 4. Refactor CUE Manipulation
+**Target:** `src/cue/index.ts`
+
+The `CUEManipulator` attempts to parse CUE to JSON, modify the JSON, and serialize it back to CUE.
+*   **The Risk:** Round-tripping CUE -> JSON -> CUE destroys comments, custom formatting, and complex CUE features (like hidden fields or comprehensions) that aren't representable in JSON.
+*   **The Fix:**
+    *   **Short term:** If you must stick to JS, ensure the serializing layer is extremely robust.
+    *   **Long term (Recommended):** Switch "Add" commands to an **append-only** or **merge** strategy. Instead of parsing and rewriting `assembly.cue`, create new fragment files (e.g., `services/my-service.cue`) and let CUE's unification handle the merging at runtime. This is much safer and more "GitOps" friendly.
+
+### 5. Consolidate API Client Logic
+**Target:** `src/api-client.ts`
+
+The API client contains business logic (like `getProjectStructureConfig` containing fallback logic) mixed with low-level fetch logic (retries, auth headers).
+
+*   **The Fix:**
+    *   Keep `ApiClient` dumb. It should only handle Auth, Rate Limiting, and Fetching.
+    *   Move domain-specific API calls into "Repositories" or service layers.
+        *   `src/repositories/ProjectRepository.ts`
+        *   `src/repositories/FragmentRepository.ts`
+
+### 6. Simplify the Constraint/Monitoring System
+**Target:** `src/constraints/*.ts`
+
+The constraint system is very elaborate (event emitters, rate limit tracking, performance hooks). For a CLI tool running on a developer's machine, this adds significant complexity and startup time overhead.
+
+*   **The Fix:**
+    *   Lazy load the constraint system. Only initialize `globalConstraintEnforcer` if a specific flag (like `--agent-mode` or `--strict`) is passed.
+    *   If this CLI is intended to be run by AI Agents, keep it, but isolate it so it doesn't impact human developers running `arbiter init`.
+
+### 7. Standardize Service Architecture
+Currently, some commands are in `src/cli/*.ts` with logic inline, while others delegate to `src/services/*`.
+
+*   **The Fix:** Enforce a strict separation:
+    *   **CLI Layer (`src/cli/*`):** Only handles argument parsing (Commander.js), loading config, and printing to stdout/stderr.
+    *   **Service Layer (`src/services/*`):** Pure business logic. Should return typed objects/results, NOT print to console directly.
+    *   **Benefits:** This makes the code testable without spawning child processes and allows you to build a GUI or LSP on top of the services later.
+
+### 8. Directory Structure Cleanup
+The `src` directory is getting crowded. Suggested reorganization:
+
 ```text
 src/
-  components/
-    ServicesReport/
-    ClientsReport/
-    diagrams/
-    ...
-  hooks/
-  types/
+├── cli/                # Command definitions (Commander)
+├── core/               # Core business logic
+│   ├── config/         # Config loading/resolution
+│   ├── generation/     # The refactored generator strategies
+│   ├── cue/            # CUE interfacing
+│   └── constraints/    # Constraint system
+├── infrastructure/     # External concerns
+│   ├── api/            # API Client
+│   ├── fs/             # File system helpers
+│   └── git/            # Git detection
+├── templates/          # ALL template files (moved out of code)
+└── language-support/   # Renamed from language-plugins (logic only)
 ```
 
-**Proposed:**
-```text
-src/
-  features/
-    spec-visualization/    (Diagrams, Mermaid, ReactFlow wrappers)
-    project-management/    (Project lists, creation, import)
-    editor/                (Monaco, FileTree, File tabs)
-    catalog/               (ServicesReport, ClientsReport - unified)
-    activity/              (EventsReport, ActionLog)
-  shared/                  (Design System, generic hooks, utils)
-```
+### 9. Docker Logic Duplication
+**Target:** `src/language-plugins/*.ts` and `src/services/generate/compose.ts`
 
-### 2. Consolidate "Report" Components
-**The Problem:** `ServicesReport`, `ClientsReport`, `InfrastructureReport`, and `PackagesReport` contain 80% identical boilerplate code. They all:
-1. Fetch resolved specs.
-2. Normalize data (extract metadata, handle arrays).
-3. Manage "Add/Edit" modal states.
-4. Render an `EntityCatalog` (grid of cards).
+There is Dockerfile string generation logic inside every language plugin *and* inside the compose generator.
 
-**The Solution:** Create a generic `GenericCatalog` or `EntityExplorer` component.
+*   **The Fix:** Centralize Docker generation.
+    *   Create a `DockerGenerator` service.
+    *   Language plugins should provide metadata (e.g., "I need port 8080 and these build steps") rather than returning a full Dockerfile string.
+    *   The `DockerGenerator` takes that metadata and applies it to a standard Dockerfile template.
 
-**Refactoring Example:**
-Instead of separate components, create a configuration-driven page:
+### 10. Simplify `context.ts`
+**Target:** `src/cli/context.ts`
 
-```tsx
-// features/catalog/GenericCatalog.tsx
-interface CatalogConfig<T> {
-  entityType: string; // 'service' | 'client' | 'infrastructure'
-  fetcher: (projectId: string) => Promise<T[]>;
-  normalizer: (raw: any) => NormalizedItem;
-  cardComponent: React.FC<{ item: NormalizedItem }>;
-  modalComponent: React.FC<{ mode: 'create'|'edit' }>;
-}
+This file attempts to hydrate remote configuration and merge it with local config using global mutable state on the command object.
 
-export const GenericCatalog = ({ config, projectId }) => {
-  // ... Unified React Query logic and Modal state management here ...
-  // This deletes ~500 lines of duplicated state logic across the 5 reports
-}
-```
-
-### 3. Extract "Normalizers" into a Transformation Layer
-**The Problem:** Files like `components/ServicesReport/normalizers.ts` and `components/ClientsReport/normalizers.ts` perform heavy data massaging inside the component render cycle (via `useMemo`). They also duplicate logic for extracting "metadata", "display names", and "source paths".
-
-**The Solution:** Create a dedicated **Transformation Layer**.
-1. Create a class or utility set that takes raw CUE JSON output and standardizes it into a strict frontend interface *before* it reaches the React components.
-2. Move `shouldTreatAsInternalService`, `isLikelyCodePath`, etc., into a shared `spec-utils` library.
-
-### 4. Refactor the Monolithic API Service
-**The Problem:** `src/services/api.ts` is over 500 lines long and mixes concerns (Auth, GitHub, Project CRUD, Tunnels, Validation).
-
-**The Solution:** Split into domain-specific services.
-```typescript
-// services/index.ts
-export const api = {
-  auth: new AuthService(),
-  projects: new ProjectService(),
-  github: new GitHubService(),
-  spec: new SpecService(), // validation, freezing, resolution
-  system: new SystemService() // tunnels, environment
-};
-```
-
-### 5. Simplify `EventsReport` (The "God Switch")
-**The Problem:** `components/EventsReport/utils/eventSummary.ts` contains a massive switch statement handling text formatting for every possible event type. This breaks the Open-Closed principle.
-
-**The Solution:** Use a **Strategy Pattern** or a config object.
-
-```typescript
-// Refactored approach
-const EVENT_FORMATTERS: Record<EventType, (event: Event) => string> = {
-  fragment_created: (e) => `Added fragment ${e.data.path}...`,
-  validation_failed: (e) => `Validation failed: ${e.data.error_count} errors...`,
-  // ...
-};
-
-export const formatEventSummary = (event: Event) => {
-  const formatter = EVENT_FORMATTERS[event.event_type];
-  return formatter ? formatter(event) : summarizeGeneric(event.data);
-};
-```
-
-### 6. Unify Diagram Layout Engines
-**The Problem:** `ArchitectureDiagram`, `ArchitectureFlowDiagram`, and `TasksDiagram` utilize different ways to calculate layouts (Dagre vs React Flow's internal mechanics vs custom positioning).
-
-**The Solution:** Centralize the `DiagramLayoutEngine` (`src/utils/diagramLayout.ts`).
-Currently, this file exists but isn't used uniformly. Make all diagram components accept `nodes` and `edges`, and have a single hook `useAutoLayout(nodes, edges, algorithm)` that returns positioned nodes.
-
-### 7. Fix `ArchitectureDiagram/index.tsx` Complexity
-**The Problem:** This file is 22KB+ and handles:
-1. Data fetching.
-2. Recursive tree building.
-3. Complex grouping logic (Services vs Routes vs Infrastructure).
-4. Modal state management.
-
-**The Solution:**
-1. **Extract Data Logic:** Move `computeGroupedComponents` to a pure utility file `src/utils/spec-grouping.ts`.
-2. **Extract Modal Logic:** Create a `useArchitectureModals` hook.
-3. **Atomic Components:** `SourceGroup`, `RouteCardsSection`, etc., are good, but `index.tsx` should act as a clean orchestrator, not a logic dump.
-
-### 8. Standardization of Types
-**The Problem:** `types/api.ts` vs `types/ui.ts` vs component-level interfaces.
-There is an interface `NormalizedService` in `ServicesReport/types.ts` and similar interfaces in other reports.
-
-**The Solution:** Define a **Domain Model** for the frontend.
-Create a `types/domain.ts` that defines what a `Service`, `Client`, `Resource`, and `Dependency` look like within the UI, regardless of which report is displaying them.
-
-### 9. Design System Imports
-**The Problem:** Imports are inconsistent.
-Sometimes: `import Button from "@/design-system/components/Button"`
-Sometimes: `import { Button } from "@/design-system"`
-
-**The Solution:** Enforce strict barrel imports from `@/design-system`.
-Update `tsconfig.json` or ESLint to prevent deep imports into the design system folders. This makes refactoring the design system easier in the future.
-
-### 10. Delete Dead/Test Code
-There are files like `MonacoTest.tsx` and `MonacoTestApp.tsx` included in the source bundle. These should be moved to a `_playground` folder or deleted from the production source tree to reduce noise.
-
-### Summary of Action Plan
-
-1.  **Split `api.ts`** into domain services.
-2.  **Move `ServicesReport/normalizers.ts`** and similar logic to a shared `features/spec/transformers` directory.
-3.  **Refactor `EventsReport`** to use a config map instead of a switch statement.
-4.  **Create `useCatalog` hook** to abstract the fetching/filtering/modal logic shared by all Report pages.
-5.  **Standardize Diagramming**: Ensure `TasksDiagram` and `ArchitectureDiagram` share the same layout engine utility.
+*   **The Fix:** Make configuration immutable. Load it once at the entry point, resolve all remote/local merges, and pass the final `Config` object down to services. Avoid attaching config to the `Command` object which requires casting `(command as any).config`.

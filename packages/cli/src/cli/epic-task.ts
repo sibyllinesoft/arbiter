@@ -2,10 +2,10 @@
  * Epic and Task commands module - Epic and task management with dependency-driven execution
  */
 
+import { epicCommand, taskCommand } from "@/services/epic/commands.js";
+import type { EpicOptions, TaskOptions } from "@/services/epic/commands.js";
 import chalk from "chalk";
 import { Command } from "commander";
-import { epicCommand, taskCommand } from "../services/epic/commands.js";
-import type { EpicOptions, TaskOptions } from "../services/epic/commands.js";
 
 export function createEpicTaskCommands(addCmd: Command): void {
   // Epic commands as subcommands of add

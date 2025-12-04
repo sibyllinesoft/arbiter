@@ -12,8 +12,8 @@ import type {
   LanguagePlugin,
   ProjectConfig,
   ServiceConfig,
-} from "./index.js";
-import { TemplateResolver } from "./template-resolver.js";
+} from "@/language-support/index.js";
+import { TemplateResolver } from "@/language-support/template-resolver.js";
 
 export class GoPlugin implements LanguagePlugin {
   readonly name = "Go Plugin";
@@ -50,7 +50,7 @@ export class GoPlugin implements LanguagePlugin {
   private static resolveDefaultTemplateDirectories(): string[] {
     const moduleDir = path.dirname(fileURLToPath(import.meta.url));
     return [
-      path.resolve(moduleDir, "../templates/go"),
+      path.resolve(moduleDir, "@/templates/go"),
       path.resolve(moduleDir, "../../templates/go"),
     ];
   }
@@ -63,24 +63,24 @@ export class GoPlugin implements LanguagePlugin {
       case "api":
         files.push({
           path: `internal/handlers/${config.name.toLowerCase()}_handler.go`,
-          content: this.generateAPIHandler(config),
+          content: await this.generateAPIHandler(config),
         });
         files.push({
           path: `internal/routes/${config.name.toLowerCase()}_routes.go`,
-          content: this.generateRoutes(config),
+          content: await this.generateRoutes(config),
         });
         dependencies.push("github.com/gin-gonic/gin");
         break;
       case "service":
         files.push({
           path: `internal/services/${config.name.toLowerCase()}_service.go`,
-          content: this.generateBusinessService(config),
+          content: await this.generateBusinessService(config),
         });
         break;
       case "model":
         files.push({
           path: `internal/models/${config.name.toLowerCase()}.go`,
-          content: this.generateModel(config),
+          content: await this.generateModel(config),
         });
         dependencies.push("gorm.io/gorm");
         break;
@@ -241,373 +241,37 @@ export class GoPlugin implements LanguagePlugin {
     return { files };
   }
 
-  private generateAPIHandler(config: ServiceConfig): string {
+  private async generateAPIHandler(config: ServiceConfig): Promise<string> {
     const packageName = config.name.toLowerCase();
     const structName = this.toPascalCase(config.name);
 
-    return `package handlers
-
-import (
-	"net/http"
-	"strconv"
-
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
-
-	"your-module/internal/models"
-	"your-module/internal/services"
-)
-
-// ${structName}Handler handles HTTP requests for ${config.name}
-type ${structName}Handler struct {
-	service *services.${structName}Service
-	logger  *zap.Logger
-}
-
-// New${structName}Handler creates a new ${config.name} handler
-func New${structName}Handler(service *services.${structName}Service, logger *zap.Logger) *${structName}Handler {
-	return &${structName}Handler{
-		service: service,
-		logger:  logger,
-	}
-}
-
-// GetAll handles GET /${packageName}
-func (h *${structName}Handler) GetAll(c *gin.Context) {
-	h.logger.Info("Fetching all ${config.name} items")
-
-	items, err := h.service.GetAll(c.Request.Context())
-	if err != nil {
-		h.logger.Error("Failed to fetch ${config.name} items", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"data": items})
-}
-
-// GetByID handles GET /${packageName}/:id
-func (h *${structName}Handler) GetByID(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.ParseUint(idParam, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
-		return
-	}
-
-	h.logger.Info("Fetching ${config.name} by ID", zap.Uint64("id", id))
-
-	item, err := h.service.GetByID(c.Request.Context(), uint(id))
-	if err != nil {
-		if err == services.ErrNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "${config.name} not found"})
-			return
-		}
-		h.logger.Error("Failed to fetch ${config.name}", zap.Error(err), zap.Uint64("id", id))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"data": item})
-}
-
-// Create handles POST /${packageName}
-func (h *${structName}Handler) Create(c *gin.Context) {
-	var req models.Create${structName}Request
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	h.logger.Info("Creating new ${config.name}", zap.String("name", req.Name))
-
-	item, err := h.service.Create(c.Request.Context(), &req)
-	if err != nil {
-		h.logger.Error("Failed to create ${config.name}", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{"data": item})
-}
-
-// Update handles PUT /${packageName}/:id
-func (h *${structName}Handler) Update(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.ParseUint(idParam, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
-		return
-	}
-
-	var req models.Update${structName}Request
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	h.logger.Info("Updating ${config.name}", zap.Uint64("id", id))
-
-	item, err := h.service.Update(c.Request.Context(), uint(id), &req)
-	if err != nil {
-		if err == services.ErrNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "${config.name} not found"})
-			return
-		}
-		h.logger.Error("Failed to update ${config.name}", zap.Error(err), zap.Uint64("id", id))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"data": item})
-}
-
-// Delete handles DELETE /${packageName}/:id
-func (h *${structName}Handler) Delete(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.ParseUint(idParam, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
-		return
-	}
-
-	h.logger.Info("Deleting ${config.name}", zap.Uint64("id", id))
-
-	err = h.service.Delete(c.Request.Context(), uint(id))
-	if err != nil {
-		if err == services.ErrNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "${config.name} not found"})
-			return
-		}
-		h.logger.Error("Failed to delete ${config.name}", zap.Error(err), zap.Uint64("id", id))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "${config.name} deleted successfully"})
-}
-`;
+    return await this.templateResolver.renderTemplate("api-handler.tpl", {
+      packageName,
+      structName,
+      serviceName: config.name,
+    });
   }
 
-  private generateRoutes(config: ServiceConfig): string {
-    const packageName = config.name.toLowerCase();
-    const structName = this.toPascalCase(config.name);
-
-    return `package routes
-
-import (
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
-
-	"your-module/internal/handlers"
-	"your-module/internal/services"
-)
-
-// Setup${structName}Routes configures routes for ${config.name}
-func Setup${structName}Routes(router *gin.RouterGroup, service *services.${structName}Service, logger *zap.Logger) {
-	handler := handlers.New${structName}Handler(service, logger)
-
-	${packageName}Group := router.Group("/${packageName}")
-	{
-		${packageName}Group.GET("/", handler.GetAll)
-		${packageName}Group.GET("/:id", handler.GetByID)
-		${packageName}Group.POST("/", handler.Create)
-		${packageName}Group.PUT("/:id", handler.Update)
-		${packageName}Group.DELETE("/:id", handler.Delete)
-	}
-}
-`;
+  private async generateRoutes(config: ServiceConfig): Promise<string> {
+    return await this.templateResolver.renderTemplate("routes.tpl", {
+      ...config,
+      structName: this.toPascalCase(config.name),
+      name: config.name,
+    });
   }
 
-  private generateBusinessService(config: ServiceConfig): string {
-    const structName = this.toPascalCase(config.name);
-
-    return `package services
-
-import (
-	"context"
-	"errors"
-
-	"go.uber.org/zap"
-	"gorm.io/gorm"
-
-	"your-module/internal/models"
-)
-
-var (
-	// ErrNotFound is returned when a resource is not found
-	ErrNotFound = errors.New("resource not found")
-	
-	// ErrConflict is returned when a resource conflicts with existing data
-	ErrConflict = errors.New("resource conflict")
-)
-
-// ${structName}Service provides business logic for ${config.name} operations
-type ${structName}Service struct {
-	db     *gorm.DB
-	logger *zap.Logger
-}
-
-// New${structName}Service creates a new ${config.name} service
-func New${structName}Service(db *gorm.DB, logger *zap.Logger) *${structName}Service {
-	return &${structName}Service{
-		db:     db,
-		logger: logger,
-	}
-}
-
-// GetAll retrieves all ${config.name} items
-func (s *${structName}Service) GetAll(ctx context.Context) ([]*models.${structName}, error) {
-	var items []*models.${structName}
-	
-	if err := s.db.WithContext(ctx).Find(&items).Error; err != nil {
-		s.logger.Error("Failed to fetch all ${config.name} items", zap.Error(err))
-		return nil, err
-	}
-
-	return items, nil
-}
-
-// GetByID retrieves a ${config.name} by ID
-func (s *${structName}Service) GetByID(ctx context.Context, id uint) (*models.${structName}, error) {
-	var item models.${structName}
-	
-	if err := s.db.WithContext(ctx).First(&item, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
-		}
-		s.logger.Error("Failed to fetch ${config.name}", zap.Error(err), zap.Uint("id", id))
-		return nil, err
-	}
-
-	return &item, nil
-}
-
-// Create creates a new ${config.name}
-func (s *${structName}Service) Create(ctx context.Context, req *models.Create${structName}Request) (*models.${structName}, error) {
-	item := &models.${structName}{
-		Name:        req.Name,
-		Description: req.Description,
-		IsActive:    true,
-	}
-
-	if err := s.db.WithContext(ctx).Create(item).Error; err != nil {
-		s.logger.Error("Failed to create ${config.name}", zap.Error(err))
-		return nil, err
-	}
-
-	return item, nil
-}
-
-// Update updates an existing ${config.name}
-func (s *${structName}Service) Update(ctx context.Context, id uint, req *models.Update${structName}Request) (*models.${structName}, error) {
-	var item models.${structName}
-	
-	if err := s.db.WithContext(ctx).First(&item, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
-		}
-		return nil, err
-	}
-
-	// Update fields
-	if req.Name != "" {
-		item.Name = req.Name
-	}
-	if req.Description != nil {
-		item.Description = req.Description
-	}
-	if req.IsActive != nil {
-		item.IsActive = *req.IsActive
-	}
-
-	if err := s.db.WithContext(ctx).Save(&item).Error; err != nil {
-		s.logger.Error("Failed to update ${config.name}", zap.Error(err), zap.Uint("id", id))
-		return nil, err
-	}
-
-	return &item, nil
-}
-
-// Delete deletes a ${config.name} by ID
-func (s *${structName}Service) Delete(ctx context.Context, id uint) error {
-	result := s.db.WithContext(ctx).Delete(&models.${structName}{}, id)
-	if result.Error != nil {
-		s.logger.Error("Failed to delete ${config.name}", zap.Error(result.Error), zap.Uint("id", id))
-		return result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return ErrNotFound
-	}
-
-	return nil
-}
-`;
+  private async generateBusinessService(config: ServiceConfig): Promise<string> {
+    return await this.templateResolver.renderTemplate("service.tpl", {
+      ...config,
+      structName: this.toPascalCase(config.name),
+    });
   }
 
-  private generateModel(config: ServiceConfig): string {
-    const structName = this.toPascalCase(config.name);
-
-    return `package models
-
-import (
-	"time"
-
-	"gorm.io/gorm"
-)
-
-// ${structName} represents the ${config.name} model
-type ${structName} struct {
-	ID          uint           \`gorm:"primarykey" json:"id"\`
-	Name        string         \`gorm:"not null;index" json:"name" validate:"required,min=1,max=100"\`
-	Description *string        \`json:"description,omitempty" validate:"omitempty,max=500"\`
-	IsActive    bool           \`gorm:"default:true" json:"is_active"\`
-	CreatedAt   time.Time      \`json:"created_at"\`
-	UpdatedAt   time.Time      \`json:"updated_at"\`
-	DeletedAt   gorm.DeletedAt \`gorm:"index" json:"-"\`
-}
-
-// Create${structName}Request represents the request payload for creating a ${config.name}
-type Create${structName}Request struct {
-	Name        string  \`json:"name" validate:"required,min=1,max=100"\`
-	Description *string \`json:"description,omitempty" validate:"omitempty,max=500"\`
-}
-
-// Update${structName}Request represents the request payload for updating a ${config.name}
-type Update${structName}Request struct {
-	Name        string  \`json:"name,omitempty" validate:"omitempty,min=1,max=100"\`
-	Description *string \`json:"description,omitempty" validate:"omitempty,max=500"\`
-	IsActive    *bool   \`json:"is_active,omitempty"\`
-}
-
-// ${structName}Response represents the response payload for ${config.name}
-type ${structName}Response struct {
-	ID          uint      \`json:"id"\`
-	Name        string    \`json:"name"\`
-	Description *string   \`json:"description,omitempty"\`
-	IsActive    bool      \`json:"is_active"\`
-	CreatedAt   time.Time \`json:"created_at"\`
-	UpdatedAt   time.Time \`json:"updated_at"\`
-}
-
-// TableName specifies the table name for GORM
-func (${structName}) TableName() string {
-	return "${config.name.toLowerCase()}s"
-}
-
-// BeforeCreate is a GORM hook that runs before creating a record
-func (item *${structName}) BeforeCreate(tx *gorm.DB) (err error) {
-	// Add any pre-creation logic here
-	return nil
-}
-
-// BeforeUpdate is a GORM hook that runs before updating a record
-func (item *${structName}) BeforeUpdate(tx *gorm.DB) (err error) {
-	// Add any pre-update logic here
-	return nil
-}
-`;
+  private async generateModel(config: ServiceConfig): Promise<string> {
+    return await this.templateResolver.renderTemplate("model.tpl", {
+      ...config,
+      structName: this.toPascalCase(config.name),
+    });
   }
 
   private generateMiddleware(config: ServiceConfig): string {
@@ -656,98 +320,10 @@ require (
 
   private async generateMainApp(config: ProjectConfig): Promise<string> {
     const module = config.name.toLowerCase();
-    const databaseImport = config.database ? `\t"${module}/internal/database"\n` : "";
-    const databaseInit = config.database
-      ? `\t// Initialize database
-\tdb, err := database.Connect(cfg.DatabaseURL)
-\tif err != nil {
-\t\tzapLogger.Fatal("Failed to connect to database", zap.Error(err))
-\t}
-
-\t// Auto-migrate database schemas
-\tif err := database.Migrate(db); err != nil {
-\t\tzapLogger.Fatal("Failed to migrate database", zap.Error(err))
-\t}
-
-`
-      : "";
-    const serverDbArg = config.database ? "db, " : "";
-
-    const fallback = `package main
-
-import (
-	"context"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
-	"go.uber.org/zap"
-
-	"${module}/internal/config"
-	${config.database ? `"${module}/internal/database"` : ""}
-	"${module}/internal/logger"
-	"${module}/internal/server"
-)
-
-func main() {
-	// Initialize logger
-	zapLogger, err := logger.NewLogger()
-	if err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
-	}
-	defer zapLogger.Sync()
-
-	// Load configuration
-	cfg, err := config.Load()
-	if err != nil {
-		zapLogger.Fatal("Failed to load configuration", zap.Error(err))
-	}
-
-${databaseInit}
-
-	// Initialize server
-	srv := server.New(cfg, ${config.database ? "db, " : ""}zapLogger)
-
-	// Start server
-	go func() {
-		zapLogger.Info("Starting server", zap.String("address", cfg.Address))
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			zapLogger.Fatal("Failed to start server", zap.Error(err))
-		}
-	}()
-
-	// Wait for interrupt signal to gracefully shutdown the server
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	zapLogger.Info("Shutting down server...")
-
-	// Give outstanding requests a deadline for completion
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// Shutdown server
-	if err := srv.Shutdown(ctx); err != nil {
-		zapLogger.Fatal("Server forced to shutdown", zap.Error(err))
-	}
-
-	zapLogger.Info("Server exited")
-}
-`;
-    return await this.templateResolver.renderTemplate(
-      "cmd/main.go.tpl",
-      {
-        moduleName: module,
-        databaseImport,
-        databaseInit,
-        serverDbArg,
-      },
-      fallback,
-    );
+    return await this.templateResolver.renderTemplate("main.tpl", {
+      module,
+      database: Boolean(config.database),
+    });
   }
 
   private async generateConfig(config: ProjectConfig): Promise<string> {
@@ -1337,7 +913,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Run the application
-CMD ["./main"]
+CMD ["@/language-support/main"]
 `;
 
     return await this.templateResolver.renderTemplate("Dockerfile.tpl", {}, fallback);

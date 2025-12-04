@@ -2,9 +2,9 @@ import crypto from "node:crypto";
 import http from "node:http";
 import { stdin as input, stdout as output } from "node:process";
 import readline from "node:readline/promises";
+import { clearAuthSession, getAuthStorePath, saveAuthSession } from "@/auth-store.js";
+import type { AuthSession, CLIConfig } from "@/types.js";
 import chalk from "chalk";
-import { clearAuthSession, getAuthStorePath, saveAuthSession } from "../../auth-store.js";
-import type { AuthSession, CLIConfig } from "../../types.js";
 
 interface AuthCommandOptions {
   logout?: boolean;

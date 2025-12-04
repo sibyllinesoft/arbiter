@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { addDatabase } from "../services/add/subcommands/database";
+import { addDatabase } from "@/services/add/subcommands/database";
 
 const manipulator = {
   addDatabase: async (_c: string, name: string, cfg: any) => JSON.stringify({ name, cfg }),

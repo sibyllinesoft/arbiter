@@ -2,9 +2,9 @@ import { describe, expect, it, spyOn } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import * as cliIntegration from "../../constraints/cli-integration.js";
-import * as cue from "../../cue/index.js";
-import { statusCommand } from "../status/index.js";
+import * as cliIntegration from "@/constraints/cli-integration.js";
+import * as cue from "@/cue/index.js";
+import { statusCommand } from "@/services/status/index.js";
 
 const baseConfig = (dir: string) =>
   ({

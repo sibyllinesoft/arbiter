@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ensureProjectExists } from "../project";
+import { ensureProjectExists } from "@/utils/project";
 
 const baseConfig = {
   projectDir: "/tmp/demo",

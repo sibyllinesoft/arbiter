@@ -1,5 +1,5 @@
-import type { PackageManagerCommandSet } from "../../utils/package-manager.js";
-import type { BuildMatrix, ProjectLanguage } from "./types.js";
+import type { BuildMatrix, ProjectLanguage } from "@/services/integrate/types.js";
+import type { PackageManagerCommandSet } from "@/utils/package-manager.js";
 
 export function createGitHubPullRequestWorkflow(
   languages: ProjectLanguage[],

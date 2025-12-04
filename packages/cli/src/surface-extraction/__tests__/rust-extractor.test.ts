@@ -4,8 +4,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { extractRustSurface } from "@/surface-extraction/rust-extractor.js";
 import * as globModule from "glob";
-import { extractRustSurface } from "../rust-extractor.js";
 
 describe("extractRustSurface", () => {
   it("returns null when no Cargo files are present", async () => {

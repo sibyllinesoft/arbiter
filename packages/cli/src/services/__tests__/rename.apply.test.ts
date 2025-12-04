@@ -1,6 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import * as smart from "../../utils/smart-naming.js";
-import { renameCommand } from "../rename/index.js";
+import { renameCommand } from "@/services/rename/index.js";
+import * as smart from "@/utils/smart-naming.js";
 
 describe("renameCommand apply path", () => {
   it("applies renames when --force is set", async () => {

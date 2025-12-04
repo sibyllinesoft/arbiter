@@ -1,4 +1,4 @@
-import type { FlowConfig } from "../../../cue/index.js";
+import type { FlowConfig } from "@/cue/index.js";
 
 export interface FlowOptions {
   from?: string;

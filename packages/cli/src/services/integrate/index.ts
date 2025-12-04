@@ -1,14 +1,17 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { safeFileOperation } from "@/constraints/index.js";
+import { readAssemblyConfig } from "@/services/integrate/assembly.js";
+import { detectProjectLanguages } from "@/services/integrate/language-detector.js";
+import {
+  createGitHubMainWorkflow,
+  createGitHubPullRequestWorkflow,
+} from "@/services/integrate/workflow-builder.js";
+import type { CLIConfig, GitHubTemplatesConfig, IntegrateOptions } from "@/types.js";
+import { detectPackageManager, getPackageManagerCommands } from "@/utils/package-manager.js";
+import { UnifiedGitHubTemplateManager } from "@/utils/unified-github-template-manager.js";
 import chalk from "chalk";
 import * as YAML from "yaml";
-import { safeFileOperation } from "../../constraints/index.js";
-import type { CLIConfig, GitHubTemplatesConfig, IntegrateOptions } from "../../types.js";
-import { detectPackageManager, getPackageManagerCommands } from "../../utils/package-manager.js";
-import { UnifiedGitHubTemplateManager } from "../../utils/unified-github-template-manager.js";
-import { readAssemblyConfig } from "./assembly.js";
-import { detectProjectLanguages } from "./language-detector.js";
-import { createGitHubMainWorkflow, createGitHubPullRequestWorkflow } from "./workflow-builder.js";
 
 type FsModule = typeof fs;
 type TemplateManagerFactory = (config?: GitHubTemplatesConfig) => UnifiedGitHubTemplateManager;

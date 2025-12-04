@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { safeFileOperation } from "@/constraints/index.js";
 import chalk from "chalk";
 import yaml from "js-yaml";
-import { safeFileOperation } from "../../constraints/index.js";
 
 /**
  * Unified test harness for deterministic epic test execution

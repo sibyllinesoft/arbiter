@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { validateIdempotentEdits, withIdempotencyValidation } from "../idempotency.js";
+import { validateIdempotentEdits, withIdempotencyValidation } from "@/constraints/idempotency.js";
 
 describe("Idempotency helpers", () => {
   it("validates idempotent edit flow and returns consistent content", async () => {

@@ -3,8 +3,8 @@
  */
 
 import { describe, expect, it } from "bun:test";
+import { validateSpecification } from "@/validation/warnings.js";
 import type { AppSpec } from "@arbiter/shared";
-import { validateSpecification } from "../warnings.js";
 
 describe("Debug Spec Warnings", () => {
   it("should debug complete spec warnings", () => {

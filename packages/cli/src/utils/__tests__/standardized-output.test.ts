@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import { StandardizedOutputManager } from "@/utils/standardized-output";
 import fs from "fs-extra";
-import { StandardizedOutputManager } from "../standardized-output";
 
 const tmp = () => fs.mkdtemp(path.join(os.tmpdir(), "arbiter-out-"));
 

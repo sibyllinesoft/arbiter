@@ -2,8 +2,7 @@ import { createWriteStream } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import chalk from "chalk";
-import { safeFileOperation } from "../constraints/index.js";
+import { safeFileOperation } from "@/constraints/index.js";
 import {
   API_VERSION,
   type ExecutionReport,
@@ -14,7 +13,8 @@ import {
   type StandardizedOutput,
   type SurfaceOutput,
   type TraceOutput,
-} from "../types/output.js";
+} from "@/types/output.js";
+import chalk from "chalk";
 
 /**
  * Output utility class for managing standardized outputs
@@ -262,7 +262,7 @@ export function shouldUseAgentMode(options: any): boolean {
   return !!options.agentMode || !!options.ndjsonOutput;
 }
 
-export { API_VERSION } from "../types/output.js";
+export { API_VERSION } from "@/types/output.js";
 export type {
   ExecutionReport,
   JUnitTestSuite,
@@ -272,4 +272,4 @@ export type {
   StandardizedOutput,
   SurfaceOutput,
   TraceOutput,
-} from "../types/output.js";
+} from "@/types/output.js";

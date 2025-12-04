@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import { addClient } from "@/services/add/subcommands/client";
 import fs from "fs-extra";
-import { addClient } from "../services/add/subcommands/client";
 
 const manipulator = {
   addToSection: async (_c: string, _section: string, key: string, cfg: any) =>

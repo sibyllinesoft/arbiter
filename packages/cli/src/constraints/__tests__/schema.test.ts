@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test";
-import { ConstraintViolationError } from "../core.js";
+import { ConstraintViolationError } from "@/constraints/core.js";
 import {
   LATEST_API_VERSION,
   SchemaVersionValidator,
   VERSION_COMPATIBILITY,
   ensureLatestSchema,
   validateReadData,
-} from "../schema.js";
+} from "@/constraints/schema.js";
 
 const baseEnvelope = {
   apiVersion: LATEST_API_VERSION,
@@ -47,7 +47,7 @@ describe("Schema constraints", () => {
 
   it("decorator wraps method and enforces validation on write", async () => {
     class TestService {
-      @((await import("../schema.js")).withSchemaValidation("write"))
+      @((await import("@/constraints/schema.js")).withSchemaValidation("write"))
       async send() {
         return baseEnvelope;
       }

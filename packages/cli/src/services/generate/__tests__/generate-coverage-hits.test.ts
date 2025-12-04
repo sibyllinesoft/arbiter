@@ -1,9 +1,13 @@
 import { describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import {
+  __generateTesting,
+  collectClientTargets,
+  normalizeCapabilities,
+} from "@/services/generate/index.js";
 import type { AppSpec } from "@arbiter/shared";
 import fs from "fs-extra";
-import { __generateTesting, collectClientTargets, normalizeCapabilities } from "../index.js";
 
 describe("generate coverage spot checks", () => {
   it("covers capability normalization loop and multiple clients", () => {

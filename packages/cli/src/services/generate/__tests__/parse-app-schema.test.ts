@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { parseAppSchema } from "../index.js";
+import { parseAppSchema } from "@/services/generate/index.js";
 
 const baseSchema = {
   product: { name: "App" },

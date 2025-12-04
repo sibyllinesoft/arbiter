@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { DEFAULT_CONFIG, applyEnvironmentOverrides } from "../config";
-import type { CLIConfig } from "../types";
+import { DEFAULT_CONFIG, applyEnvironmentOverrides } from "@/config";
+import type { CLIConfig } from "@/types";
 
 const cloneConfig = (): CLIConfig => ({
   ...DEFAULT_CONFIG,

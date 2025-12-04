@@ -6,6 +6,71 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { promisify } from "node:util";
+import { ApiClient } from "@/api-client.js";
+import { DEFAULT_PROJECT_STRUCTURE } from "@/config.js";
+import { safeFileOperation } from "@/constraints/index.js";
+import type {
+  EndpointAssertionDefinition,
+  EndpointTestCaseDefinition,
+  EndpointTestGenerationConfig,
+  ProjectConfig as LanguageProjectConfig,
+  ServiceConfig as LanguageServiceConfig,
+} from "@/language-support/index.js";
+import {
+  generateDockerComposeArtifacts,
+  parseDockerComposeServices,
+} from "@/services/generate/compose.js";
+import type {
+  ClientGenerationContext,
+  ClientGenerationTarget,
+  ServiceGenerationContext,
+  ServiceGenerationTarget,
+} from "@/services/generate/contexts.js";
+import {
+  buildDefaultClientDockerArtifacts,
+  buildDefaultServiceDockerArtifacts,
+  generateClientDockerArtifacts,
+  generateServiceDockerArtifacts,
+  getPrimaryServicePort,
+} from "@/services/generate/docker-generator.js";
+import { handleGitHubSync } from "@/services/generate/github-sync.js";
+import {
+  ensureDirectory,
+  setActiveHookManager,
+  writeFileWithHooks,
+} from "@/services/generate/hook-executor.js";
+import { joinRelativePath, slugify, toPathSegments } from "@/services/generate/shared.js";
+import { CIWorkflowGenerator } from "@/services/generate/strategies/ci-workflow-generator.js";
+import { DocumentationGenerator } from "@/services/generate/strategies/documentation-generator.js";
+import { InfrastructureGenerator } from "@/services/generate/strategies/infrastructure-generator.js";
+import { TestGenerator } from "@/services/generate/strategies/test-generator.js";
+import {
+  configureTemplateOrchestrator,
+  generateComponent,
+  generateService,
+  getConfiguredLanguagePlugin,
+  initializeProject,
+} from "@/services/generate/template-orchestrator.js";
+import type { GenerateOptions } from "@/services/generate/types.js";
+import type {
+  CLIConfig,
+  CapabilitySpec,
+  GeneratorConfig,
+  GeneratorTestingConfig,
+  LanguageTestingConfig,
+  MasterTestRunnerConfig,
+  ProjectStructureConfig,
+} from "@/types.js";
+import { GenerationHookManager } from "@/utils/generation-hooks.js";
+import { createRepositoryConfig } from "@/utils/git-detection.js";
+import {
+  type PackageManagerCommandSet,
+  detectPackageManager,
+  getPackageManagerCommands,
+} from "@/utils/package-manager.js";
+import { resolveServiceArtifactType, resolveServiceWorkload } from "@/utils/service-metadata.js";
+import { ShardedCUEStorage } from "@/utils/sharded-storage.js";
+import { formatWarnings, validateSpecification } from "@/validation/warnings.js";
 import type {
   AppSpec,
   AssemblyConfig,
@@ -28,57 +93,7 @@ import type {
 import chalk from "chalk";
 import fs from "fs-extra";
 import * as YAML from "yaml";
-import { ApiClient } from "../../api-client.js";
-import { DEFAULT_PROJECT_STRUCTURE } from "../../config.js";
-import { safeFileOperation } from "../../constraints/index.js";
-import type {
-  EndpointAssertionDefinition,
-  EndpointTestCaseDefinition,
-  EndpointTestGenerationConfig,
-  ProjectConfig as LanguageProjectConfig,
-  ServiceConfig as LanguageServiceConfig,
-} from "../../language-plugins/index.js";
-import type {
-  CLIConfig,
-  CapabilitySpec,
-  GeneratorConfig,
-  GeneratorTestingConfig,
-  LanguageTestingConfig,
-  MasterTestRunnerConfig,
-  ProjectStructureConfig,
-} from "../../types.js";
-import { GenerationHookManager } from "../../utils/generation-hooks.js";
-import { createRepositoryConfig } from "../../utils/git-detection.js";
-import {
-  type PackageManagerCommandSet,
-  detectPackageManager,
-  getPackageManagerCommands,
-} from "../../utils/package-manager.js";
-import {
-  resolveServiceArtifactType,
-  resolveServiceWorkload,
-} from "../../utils/service-metadata.js";
-import { ShardedCUEStorage } from "../../utils/sharded-storage.js";
-import { formatWarnings, validateSpecification } from "../../validation/warnings.js";
-import { generateDockerComposeArtifacts, parseDockerComposeServices } from "./compose.js";
-import type {
-  ClientGenerationContext,
-  ClientGenerationTarget,
-  ServiceGenerationContext,
-  ServiceGenerationTarget,
-} from "./contexts.js";
-import { handleGitHubSync } from "./github-sync.js";
-import { ensureDirectory, setActiveHookManager, writeFileWithHooks } from "./hook-executor.js";
-import { joinRelativePath, slugify, toPathSegments } from "./shared.js";
-import {
-  configureTemplateOrchestrator,
-  generateComponent,
-  generateService,
-  getConfiguredLanguagePlugin,
-  initializeProject,
-} from "./template-orchestrator.js";
-import type { GenerateOptions } from "./types.js";
-export type { GenerateOptions } from "./types.js";
+export type { GenerateOptions } from "@/services/generate/types.js";
 
 export function normalizeCapabilities(input: any): Record<string, CapabilitySpec> | null {
   if (!input) {
@@ -538,7 +553,7 @@ ${proxyBlock}  },
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test-setup.ts'],
+    setupFiles: ['@/services/generate/src/test-setup.ts'],
   },
 });
 `;
@@ -953,15 +968,6 @@ async function generateAppArtifacts(
 
   const primaryClientTarget = clientTargets[0];
 
-  const endpointAssertionFiles = await generateEndpointAssertionTests(
-    appSpec,
-    outputDir,
-    options,
-    structure,
-    cliConfig,
-  );
-  files.push(...endpointAssertionFiles);
-
   const capabilityFeatureFiles = await generateCapabilityFeatures(
     appSpec,
     outputDir,
@@ -993,35 +999,30 @@ async function generateAppArtifacts(
   const toolingFiles = await generateToolingArtifacts(appSpec, outputDir, options, structure);
   files.push(...toolingFiles);
 
-  const docFiles = await generateDocumentationArtifacts(appSpec, outputDir, options, structure);
-  files.push(...docFiles);
-
-  const infraFiles = await generateInfrastructureArtifacts(
+  // Strategy-based artifact generators
+  const strategyContext = {
+    appSpec,
     configWithVersion,
     outputDir,
     options,
     structure,
-    appSpec,
-    primaryClientTarget,
     cliConfig,
     packageManager,
-  );
-  files.push(...infraFiles);
-
-  const workflowFiles = await generateCIWorkbehaviors(configWithVersion, outputDir, options);
-  files.push(...workflowFiles);
-
-  const testRunnerFiles = await generateMasterTestRunner(
-    appSpec,
-    outputDir,
-    options,
-    structure,
-    cliConfig,
-    testsWorkspaceRelative,
     clientTargets,
-    packageManager,
-  );
-  files.push(...testRunnerFiles);
+    testsWorkspaceRelative,
+  };
+
+  const strategies = [
+    new DocumentationGenerator(generateDocumentationArtifacts),
+    new InfrastructureGenerator(generateInfrastructureArtifacts),
+    new TestGenerator(generateEndpointAssertionTests, generateMasterTestRunner),
+    new CIWorkflowGenerator(generateCIWorkbehaviors),
+  ];
+
+  for (const strategy of strategies) {
+    const generated = await strategy.generate(strategyContext);
+    files.push(...generated);
+  }
 
   const workspaceManifestFiles = await generateWorkspaceManifest(
     appSpec,
@@ -1193,7 +1194,7 @@ function buildRouteComponentContent(
 
   if (!hasInteractiveFlow && !flowMetadata?.successTestId) {
     return `import type { FC } from 'react';
-import type { RouteDefinition } from './types';
+import type { RouteDefinition } from '@/services/generate/types';
 
 const ${componentName}: FC = () => {
   return (
@@ -1258,7 +1259,7 @@ ${actionButtons}
 
   return `import { useState } from 'react';
 import type { FC } from 'react';
-import type { RouteDefinition } from './types';
+import type { RouteDefinition } from '@/services/generate/types';
 
 const ${componentName}: FC = () => {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
@@ -1583,11 +1584,14 @@ async function generateUIComponents(
   const aggregatorPath = path.join(context.routesDir, "index.tsx");
   const aggregatorRelative = joinRelativePath(relativeRoot, "src", "routes", "index.tsx");
   const imports = routeDefinitions
-    .map((definition) => `import { ${definition.importName} } from './${definition.importName}';`)
+    .map(
+      (definition) =>
+        `import { ${definition.importName} } from '@/services/generate/${definition.importName}';`,
+    )
     .join("\n");
   const definitionsArray = routeDefinitions.map((definition) => definition.importName).join(", ");
 
-  const aggregatorContent = `import type { RouteObject } from 'react-router-dom';\nimport type { RouteDefinition } from './types';\n${imports ? `${imports}\n` : ""}\nconst definitions: RouteDefinition[] = [${definitionsArray}];\n\nconst toRouteObject = (definition: RouteDefinition): RouteObject => {\n  const View = definition.Component;\n  return {\n    path: definition.path,\n    element: <View />,\n    children: definition.children?.map(toRouteObject),\n  };\n};\n\nexport const routes: RouteObject[] = definitions.map(toRouteObject);\nexport type { RouteDefinition } from './types';\n`;
+  const aggregatorContent = `import type { RouteObject } from 'react-router-dom';\nimport type { RouteDefinition } from '@/services/generate/types';\n${imports ? `${imports}\n` : ""}\nconst definitions: RouteDefinition[] = [${definitionsArray}];\n\nconst toRouteObject = (definition: RouteDefinition): RouteObject => {\n  const View = definition.Component;\n  return {\n    path: definition.path,\n    element: <View />,\n    children: definition.children?.map(toRouteObject),\n  };\n};\n\nexport const routes: RouteObject[] = definitions.map(toRouteObject);\nexport type { RouteDefinition } from '@/services/generate/types';\n`;
 
   await writeFileWithHooks(aggregatorPath, aggregatorContent, options);
   files.push(aggregatorRelative);
@@ -1928,7 +1932,7 @@ const stripePort = ${stripePortInit};
 const baseURL = process.env.E2E_BASE_URL ?? \`http://127.0.0.1:\${webPort}\`;
 
 export default defineConfig({
-  testDir: './behaviors',
+  testDir: '@/services/generate/behaviors',
   timeout: 120_000,
   expect: {
     timeout: 10_000,
@@ -2883,7 +2887,7 @@ function generateDefaultFlowTest(flow: any, locators: Record<string, string>): s
   }
 
   return `import { test, expect } from '@playwright/test';
-import { loc } from '../support/locators';
+import { loc } from '@/services/support/locators';
 
 test.describe('${flow.id}', () => {${preconditionsBlock}
   test('${flow.id} flow', async ({ page }) => {
@@ -3870,145 +3874,6 @@ async function generateServiceStructures(
   return files;
 }
 
-interface DockerTemplateSelection {
-  dockerfile?: string;
-  dockerignore?: string;
-}
-
-async function generateServiceDockerArtifacts(
-  serviceTarget: ServiceGenerationTarget,
-  serviceSpec: any,
-  options: GenerateOptions,
-  cliConfig: CLIConfig,
-  _structure: ProjectStructureConfig,
-  packageManager: PackageManagerCommandSet,
-): Promise<string[]> {
-  const language = serviceTarget.language;
-  const context = serviceTarget.context;
-  const override = resolveDockerTemplateSelection(cliConfig, "service", language);
-
-  const defaults = buildDefaultServiceDockerArtifacts(
-    language,
-    serviceTarget,
-    serviceSpec,
-    packageManager,
-  );
-
-  if (!override && !defaults) {
-    return [];
-  }
-
-  const dockerfileContent = override?.dockerfile
-    ? await loadDockerTemplateContent(override.dockerfile, cliConfig)
-    : defaults?.dockerfile;
-
-  const dockerignoreContent = override?.dockerignore
-    ? await loadDockerTemplateContent(override.dockerignore, cliConfig)
-    : defaults?.dockerignore;
-
-  const written: string[] = [];
-
-  if (dockerfileContent) {
-    const dockerfilePath = path.join(context.root, "Dockerfile");
-    await writeFileWithHooks(dockerfilePath, ensureTrailingNewline(dockerfileContent), options);
-    written.push("Dockerfile");
-  }
-
-  if (dockerignoreContent) {
-    const dockerignorePath = path.join(context.root, ".dockerignore");
-    await writeFileWithHooks(dockerignorePath, ensureTrailingNewline(dockerignoreContent), options);
-    written.push(".dockerignore");
-  }
-
-  return written;
-}
-
-async function generateClientDockerArtifacts(
-  clientTarget: ClientGenerationTarget,
-  appSpec: AppSpec,
-  options: GenerateOptions,
-  cliConfig: CLIConfig,
-  packageManager: PackageManagerCommandSet,
-): Promise<string[]> {
-  const language = appSpec.config?.language?.toLowerCase() || "typescript";
-  const override = resolveDockerTemplateSelection(cliConfig, "client", language);
-  const defaults = buildDefaultClientDockerArtifacts(
-    language,
-    clientTarget,
-    appSpec,
-    packageManager,
-  );
-
-  if (!override && !defaults) {
-    return [];
-  }
-
-  const dockerfileContent = override?.dockerfile
-    ? await loadDockerTemplateContent(override.dockerfile, cliConfig)
-    : defaults?.dockerfile;
-
-  const dockerignoreContent = override?.dockerignore
-    ? await loadDockerTemplateContent(override.dockerignore, cliConfig)
-    : defaults?.dockerignore;
-
-  const written: string[] = [];
-
-  if (dockerfileContent) {
-    const dockerfilePath = path.join(clientTarget.context.root, "Dockerfile");
-    await writeFileWithHooks(dockerfilePath, ensureTrailingNewline(dockerfileContent), options);
-    written.push("Dockerfile");
-  }
-
-  if (dockerignoreContent) {
-    const dockerignorePath = path.join(clientTarget.context.root, ".dockerignore");
-    await writeFileWithHooks(dockerignorePath, ensureTrailingNewline(dockerignoreContent), options);
-    written.push(".dockerignore");
-  }
-
-  return written;
-}
-
-function resolveDockerTemplateSelection(
-  cliConfig: CLIConfig,
-  kind: "service" | "client",
-  identifier: string,
-): DockerTemplateSelection | null {
-  const dockerConfig = cliConfig.generator?.docker;
-  if (!dockerConfig) {
-    return null;
-  }
-
-  const normalizedId = identifier.toLowerCase();
-  const defaults =
-    kind === "service" ? dockerConfig.defaults?.service : dockerConfig.defaults?.client;
-  const catalog = kind === "service" ? dockerConfig.services : dockerConfig.clients;
-
-  let selected: DockerTemplateSelection | undefined = defaults ? { ...defaults } : undefined;
-
-  if (catalog) {
-    let entry: DockerTemplateSelection | undefined = catalog[normalizedId] ?? catalog[identifier];
-
-    if (!entry) {
-      for (const [key, value] of Object.entries(catalog)) {
-        if (key.toLowerCase() === normalizedId) {
-          entry = value;
-          break;
-        }
-      }
-    }
-
-    if (entry) {
-      selected = { ...(selected ?? {}), ...entry };
-    }
-  }
-
-  if (!selected) {
-    return null;
-  }
-
-  return selected;
-}
-
 async function generateServiceInfrastructureArtifacts(
   serviceTarget: ServiceGenerationTarget,
   serviceSpec: any,
@@ -4335,347 +4200,6 @@ function ensureTrailingNewline(content: string): string {
   return content.endsWith("\n") ? content : `${content}\n`;
 }
 
-function buildDefaultServiceDockerArtifacts(
-  language: string,
-  target: ServiceGenerationTarget,
-  serviceSpec: any,
-  packageManager: PackageManagerCommandSet,
-): DockerTemplateSelection | null {
-  switch (language) {
-    case "typescript":
-    case "javascript":
-      return buildTypeScriptServiceDockerArtifacts(serviceSpec, packageManager);
-    case "python":
-      return buildPythonServiceDockerArtifacts(serviceSpec);
-    case "go":
-      return buildGoServiceDockerArtifacts(serviceSpec);
-    case "rust":
-      return buildRustServiceDockerArtifacts(serviceSpec, target);
-    default:
-      console.log(
-        chalk.dim(
-          `    Skipping Dockerfile generation for unsupported service language '${language}'.`,
-        ),
-      );
-      return null;
-  }
-}
-
-function buildDefaultClientDockerArtifacts(
-  language: string,
-  _target: ClientGenerationTarget,
-  _appSpec: AppSpec,
-  packageManager: PackageManagerCommandSet,
-): DockerTemplateSelection | null {
-  switch (language) {
-    case "typescript":
-    case "javascript":
-      return buildTypeScriptClientDockerArtifacts(packageManager);
-    default:
-      console.log(
-        chalk.dim(
-          `    Skipping client Dockerfile generation for unsupported language '${language}'.`,
-        ),
-      );
-      return null;
-  }
-}
-
-function getPrimaryServicePort(serviceSpec: any, fallback: number): number {
-  const ports = Array.isArray(serviceSpec?.ports) ? serviceSpec.ports : [];
-  if (ports.length === 0) {
-    return fallback;
-  }
-
-  const portEntry = ports[0];
-  const candidate = Number(portEntry?.targetPort ?? portEntry?.port);
-  return Number.isFinite(candidate) && candidate > 0 ? candidate : fallback;
-}
-
-function buildTypeScriptServiceDockerArtifacts(
-  serviceSpec: any,
-  packageManager: PackageManagerCommandSet,
-): DockerTemplateSelection {
-  const port = getPrimaryServicePort(serviceSpec, 3000);
-  const setupLines: string[] = [];
-  switch (packageManager.name) {
-    case "pnpm":
-      setupLines.push("RUN corepack enable pnpm");
-      break;
-    case "yarn":
-      setupLines.push("RUN corepack enable yarn");
-      break;
-    case "bun":
-      setupLines.push("RUN curl -fsSL https://bun.sh/install | bash");
-      setupLines.push("ENV BUN_INSTALL=/root/.bun");
-      setupLines.push("ENV PATH=$BUN_INSTALL/bin:$PATH");
-      break;
-    default:
-      break;
-  }
-
-  const installCommand = (() => {
-    switch (packageManager.name) {
-      case "pnpm":
-        return "pnpm install --frozen-lockfile";
-      case "yarn":
-        return "yarn install --frozen-lockfile";
-      case "bun":
-        return "bun install";
-      default:
-        return "npm install";
-    }
-  })();
-
-  const pruneCommand = (() => {
-    switch (packageManager.name) {
-      case "npm":
-        return "npm prune --production";
-      case "pnpm":
-        return "pnpm prune --prod";
-      default:
-        return undefined;
-    }
-  })();
-
-  const dockerfile = [
-    "# syntax=docker/dockerfile:1",
-    "FROM node:20-bullseye AS base",
-    "WORKDIR /usr/src/app",
-    ...setupLines,
-    "COPY package*.json ./",
-    `RUN ${installCommand}`,
-    "",
-    "COPY . .",
-    `RUN ${packageManager.run("build")}`,
-    pruneCommand ? `RUN ${pruneCommand}` : "",
-    "",
-    "ENV NODE_ENV=production",
-    `ENV PORT=${port}`,
-    `EXPOSE ${port}`,
-    "",
-    'CMD ["node", "dist/index.js"]',
-  ]
-    .filter((line) => line !== "")
-    .join("\n");
-
-  const dockerignore = `node_modules
-dist
-coverage
-.turbo
-.cache
-.git
-tests
-*.log
-.env*
-Dockerfile
-.dockerignore
-`;
-
-  return { dockerfile, dockerignore };
-}
-
-function buildPythonServiceDockerArtifacts(serviceSpec: any): DockerTemplateSelection {
-  const port = getPrimaryServicePort(serviceSpec, 8000);
-
-  const dockerfile = `# syntax=docker/dockerfile:1
-FROM python:3.11-slim AS runtime
-
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-WORKDIR /app
-
-COPY requirements*.txt ./
-RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
-
-COPY . .
-
-ENV PORT=${port}
-EXPOSE ${port}
-
-CMD ["/bin/sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port \${PORT:-${port}}"]
-`;
-
-  const dockerignore = `__pycache__
-*.pyc
-*.pyo
-.venv
-.mypy_cache
-.pytest_cache
-tests
-.git
-.env*
-Dockerfile
-.dockerignore
-`;
-
-  return { dockerfile, dockerignore };
-}
-
-function buildGoServiceDockerArtifacts(serviceSpec: any): DockerTemplateSelection {
-  const port = getPrimaryServicePort(serviceSpec, 8080);
-
-  const dockerfile = `# syntax=docker/dockerfile:1
-FROM golang:1.21-alpine AS build
-WORKDIR /src
-
-COPY go.mod go.sum* ./
-RUN go mod download
-
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/service ./...
-
-FROM alpine:3.19
-WORKDIR /app
-RUN adduser -D -g '' appuser
-USER appuser
-
-COPY --from=build /bin/service ./service
-
-ENV PORT=${port}
-EXPOSE ${port}
-
-CMD ["./service"]
-`;
-
-  const dockerignore = `bin
-pkg
-.git
-tests
-coverage
-Dockerfile
-.dockerignore
-`;
-
-  return { dockerfile, dockerignore };
-}
-
-function buildRustServiceDockerArtifacts(
-  serviceSpec: any,
-  target: ServiceGenerationTarget,
-): DockerTemplateSelection {
-  const port = getPrimaryServicePort(serviceSpec, 3000);
-  const binaryName = target.slug;
-  const context = target.context;
-
-  const dockerfile = `# syntax=docker/dockerfile:1
-FROM rust:1.74 AS build
-WORKDIR /usr/src/app
-
-COPY Cargo.toml Cargo.lock* ./
-RUN mkdir -p src && echo "fn main() {}" > src/main.rs
-RUN cargo fetch
-
-COPY . .
-RUN cargo build --release
-
-FROM debian:bookworm-slim
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-
-COPY --from=build /usr/src/app/target/release/${binaryName} /usr/local/bin/${binaryName}
-
-ENV PORT=${port}
-EXPOSE ${port}
-
-CMD ["${binaryName}"]
-`;
-
-  const dockerignore = `target
-**/*.rs.bk
-.git
-tests
-Dockerfile
-.dockerignore
-`;
-
-  return { dockerfile, dockerignore };
-}
-
-function buildTypeScriptClientDockerArtifacts(
-  packageManager: PackageManagerCommandSet,
-): DockerTemplateSelection {
-  const port = 4173;
-  const setupLines: string[] = [];
-  switch (packageManager.name) {
-    case "pnpm":
-      setupLines.push("RUN corepack enable pnpm");
-      break;
-    case "yarn":
-      setupLines.push("RUN corepack enable yarn");
-      break;
-    case "bun":
-      setupLines.push("RUN curl -fsSL https://bun.sh/install | bash");
-      setupLines.push("ENV BUN_INSTALL=/root/.bun");
-      setupLines.push("ENV PATH=$BUN_INSTALL/bin:$PATH");
-      break;
-    default:
-      break;
-  }
-
-  const installCommand = (() => {
-    switch (packageManager.name) {
-      case "pnpm":
-        return "pnpm install --frozen-lockfile";
-      case "yarn":
-        return "yarn install --frozen-lockfile";
-      case "bun":
-        return "bun install";
-      default:
-        return "npm install";
-    }
-  })();
-
-  const previewArgs = (() => {
-    switch (packageManager.name) {
-      case "pnpm":
-        return ["pnpm", "run", "preview", "--", "--host", "0.0.0.0", "--port", String(port)];
-      case "yarn":
-        return ["yarn", "preview", "--host", "0.0.0.0", "--port", String(port)];
-      case "bun":
-        return ["bun", "run", "preview", "--", "--host", "0.0.0.0", "--port", String(port)];
-      default:
-        return ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", String(port)];
-    }
-  })();
-
-  const dockerfile = [
-    "# syntax=docker/dockerfile:1",
-    "FROM node:20-bullseye",
-    "WORKDIR /usr/src/app",
-    ...setupLines,
-    "COPY package*.json ./",
-    `RUN ${installCommand}`,
-    "",
-    "COPY . .",
-    `RUN ${packageManager.run("build")}`,
-    "",
-    "ENV NODE_ENV=production",
-    `ENV PORT=${port}`,
-    `EXPOSE ${port}`,
-    "",
-    `CMD [${previewArgs.map((token) => `"${token}"`).join(", ")}]`,
-  ]
-    .filter((line) => line !== "")
-    .join("\n");
-
-  const dockerignore = `node_modules
-dist
-.turbo
-.cache
-coverage
-tests
-.git
-.env*
-Dockerfile
-.dockerignore
-`;
-
-  return { dockerfile, dockerignore };
-}
-
 /**
  * Generate language-specific files
  */
@@ -4863,7 +4387,7 @@ async function generateTypeScriptFiles(
 
   const indexContent = `import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import { registerRoutes } from './routes/index.js';
+import { registerRoutes } from '@/services/generate/routes/index.js';
 
 async function bootstrap() {
   const app = Fastify({ logger: true });
@@ -5802,7 +5326,7 @@ function getRunCommand(language: string, buildTool?: string): string {
     case "go":
       return "go run main.go";
     case "shell":
-      return "./src/PLACEHOLDER";
+      return "@/services/generate/src/PLACEHOLDER";
     default:
       return 'echo "Run command not defined"';
   }

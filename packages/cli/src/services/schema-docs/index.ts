@@ -10,8 +10,8 @@ import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
 
-import { DocumentationGenerator } from "../../docs/documentation-generator.js";
-import { EnhancedCUEParser } from "../../docs/enhanced-cue-parser.js";
+import { DocumentationGenerator } from "@/docs/documentation-generator.js";
+import { EnhancedCUEParser } from "@/docs/enhanced-cue-parser.js";
 
 export interface SchemaDocsCommandOptions {
   input?: string;

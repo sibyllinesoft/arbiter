@@ -28,7 +28,7 @@ describe("initCommand", () => {
   });
 
   it("creates a basic template project with config and readme", async () => {
-    const { initCommand } = await import("../index.js");
+    const { initCommand } = await import("@/services/init/index.js");
     const targetDir = path.join(tmpDir, "demo");
 
     const code = await initCommand("demo", { template: "basic", directory: targetDir } as any);
@@ -42,7 +42,7 @@ describe("initCommand", () => {
   });
 
   it("warns when directory already exists without force", async () => {
-    const { initCommand } = await import("../index.js");
+    const { initCommand } = await import("@/services/init/index.js");
     const targetDir = path.join(tmpDir, "existing");
     await fs.ensureDir(targetDir);
     const log = spyOn(console, "log").mockReturnValue();
@@ -54,7 +54,7 @@ describe("initCommand", () => {
   });
 
   it("throws on unknown template", async () => {
-    const { initCommand } = await import("../index.js");
+    const { initCommand } = await import("@/services/init/index.js");
 
     const code = await initCommand("demo", {
       template: "does-not-exist",
@@ -64,10 +64,10 @@ describe("initCommand", () => {
   });
 
   it("prints available presets for unknown preset id", async () => {
-    mock.module("../../api-client.js", () => ({
+    mock.module("@/services/api-client.js", () => ({
       ApiClient: class MockApiClient {},
     }));
-    mock.module("../../utils/progress.js", () => ({
+    mock.module("@/services/utils/progress.js", () => ({
       withProgress: async (_opts: any, fn: any) => fn(),
     }));
 
@@ -83,14 +83,14 @@ describe("initCommand", () => {
   });
 
   it("creates project via preset using ApiClient", async () => {
-    mock.module("../../../api-client.js", () => ({
+    mock.module("@/api-client.js", () => ({
       ApiClient: class MockApiClient {
         async createProject() {
           return { success: true } as any;
         }
       },
     }));
-    mock.module("../../../utils/progress.js", () => ({
+    mock.module("@/utils/progress.js", () => ({
       withProgress: async (_opts: any, fn: any) => fn(),
     }));
 

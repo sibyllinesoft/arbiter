@@ -1,9 +1,9 @@
 import { EventEmitter } from "node:events";
+import { __cliIntegrationTesting } from "@/constraints/cli-integration.js";
+import { ConstraintViolationError } from "@/constraints/core.js";
+import { globalConstraintMonitor } from "@/constraints/monitoring.js";
+import { createCUEManipulator } from "@/cue/index.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createCUEManipulator } from "../../cue/index.js";
-import { __cliIntegrationTesting } from "../cli-integration.js";
-import { ConstraintViolationError } from "../core.js";
-import { globalConstraintMonitor } from "../monitoring.js";
 
 describe("cli constraint integration helpers", () => {
   afterEach(() => {
@@ -143,7 +143,9 @@ describe("cli constraint integration helpers", () => {
 
       expect(constraintSystem.generateComplianceReport).toHaveBeenCalled();
       expect(monitor.generateReport).toHaveBeenCalled();
-      expect(monitor.exportData).toHaveBeenCalledWith("./constraint-data-export.json");
+      expect(monitor.exportData).toHaveBeenCalledWith(
+        "@/constraints/__tests__/constraint-data-export.json",
+      );
       expect(consoleLog).toHaveBeenCalled();
 
       // cleanup listeners to avoid leaking between tests

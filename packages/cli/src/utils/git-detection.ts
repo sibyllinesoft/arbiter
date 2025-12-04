@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
+import type { GitHubRepo } from "@/types.js";
 import chalk from "chalk";
-import type { GitHubRepo } from "../types.js";
 
 export interface GitRemoteInfo {
   owner: string;

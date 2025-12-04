@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { addCache } from "../services/add/subcommands/cache";
+import { addCache } from "@/services/add/subcommands/cache";
 
 const manipulator = {
   addService: async (_c: string, name: string, cfg: any) => JSON.stringify({ name, cfg }),

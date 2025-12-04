@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { GitHubSyncClient } from "../github-sync.js";
+import { GitHubSyncClient } from "@/utils/github-sync.js";
 
 describe("GitHubSyncClient mapSemanticLabels empty input", () => {
   it("applies defaults and prefixes even without semantic labels", () => {

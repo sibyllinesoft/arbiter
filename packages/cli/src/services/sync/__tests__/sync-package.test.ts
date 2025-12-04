@@ -2,14 +2,14 @@ import { describe, expect, it, spyOn } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import * as constraints from "../../../constraints/index.js";
+import * as constraints from "@/constraints/index.js";
 import {
   applyArbiterUpdates,
   applyPackageChanges,
   reportPotentialChanges,
   syncPackageJson,
-} from "../index.js";
-import * as syncHelpers from "../index.js";
+} from "@/services/sync/index.js";
+import * as syncHelpers from "@/services/sync/index.js";
 
 describe("sync package.json flow", () => {
   it("applies arbiter updates and records conflicts when not forced", () => {

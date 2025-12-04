@@ -1,9 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
-import fs from "fs-extra";
-import { safeFileOperation } from "../../constraints/index.js";
-import { GoPlugin } from "../go.js";
+import { safeFileOperation } from "@/constraints/index.js";
+import { GoPlugin } from "@/language-support/go.js";
 import {
   type BuildConfig,
   type ComponentConfig,
@@ -17,10 +16,11 @@ import {
   initializeProject,
   registerPlugin,
   registry,
-} from "../index.js";
-import { PythonPlugin } from "../python.js";
-import { RustPlugin } from "../rust.js";
-import { TypeScriptPlugin } from "../typescript.js";
+} from "@/language-support/index.js";
+import { PythonPlugin } from "@/language-support/python.js";
+import { RustPlugin } from "@/language-support/rust.js";
+import { TypeScriptPlugin } from "@/language-support/typescript.js";
+import fs from "fs-extra";
 
 describe("Language Plugin System", () => {
   describe("LanguageRegistry", () => {

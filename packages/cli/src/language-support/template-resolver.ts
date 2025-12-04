@@ -1,5 +1,5 @@
 import path from "node:path";
-import { TemplateOrchestrator, templateOrchestrator } from "../templates/index.js";
+import { TemplateOrchestrator, templateOrchestrator } from "@/templates/index.js";
 
 export interface TemplateResolverOptions {
   language: string;

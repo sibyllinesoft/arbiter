@@ -5,7 +5,7 @@ import {
   isInternalService,
   resolveServiceArtifactType,
   resolveServiceWorkload,
-} from "../service-metadata.js";
+} from "@/utils/service-metadata.js";
 
 describe("service metadata helpers", () => {
   it("detects workloads from multiple legacy fields", () => {
@@ -31,7 +31,7 @@ describe("service metadata helpers", () => {
     expect(isInternalService(undefined)).toBe(true);
     expect(isInternalService({ type: "external" })).toBe(false);
     expect(isInternalService({ image: "nginx" })).toBe(false);
-    expect(isInternalService({ sourceDirectory: "./svc" })).toBe(true);
+    expect(isInternalService({ sourceDirectory: "@/utils/__tests__/svc" })).toBe(true);
 
     expect(ensureWorkload({ workload: "deployment" }, "job")).toBe("deployment");
     expect(ensureWorkload({}, "job")).toBe("job");

@@ -2,11 +2,11 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, spyOn
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { DEFAULT_PROJECT_STRUCTURE } from "@/config.js";
+import { safeFileOperation } from "@/constraints/index.js";
+import { generateCommand } from "@/services/generate/index.js";
+import type { CLIConfig } from "@/types.js";
 import * as YAML from "yaml";
-import { DEFAULT_PROJECT_STRUCTURE } from "../config.js";
-import { safeFileOperation } from "../constraints/index.js";
-import { generateCommand } from "../services/generate/index.js";
-import type { CLIConfig } from "../types.js";
 
 function buildConfig(projectDir: string): CLIConfig {
   return {
@@ -121,7 +121,7 @@ describe("Generate command workflows", () => {
   }
 
   it("creates modular workflow jobs for application and services", async () => {
-    await writeSpec([cueService("api", "typescript", "./services/api")].join("\n"));
+    await writeSpec([cueService("api", "typescript", "@/__tests__/services/api")].join("\n"));
 
     const exitCode = await generateCommand({ outputDir: ".", force: true }, config);
     expect(exitCode).toBe(0);
@@ -134,7 +134,7 @@ describe("Generate command workflows", () => {
   });
 
   it("updates workflows idempotently while preserving manual jobs", async () => {
-    await writeSpec([cueService("api", "typescript", "./services/api")].join("\n"));
+    await writeSpec([cueService("api", "typescript", "@/__tests__/services/api")].join("\n"));
 
     let exitCode = await generateCommand({ outputDir: ".", force: true }, config);
     expect(exitCode).toBe(0);
@@ -160,8 +160,8 @@ describe("Generate command workflows", () => {
     // Add a new Python service and regenerate
     await writeSpec(
       [
-        cueService("api", "typescript", "./services/api"),
-        cueService("reporting", "python", "./services/reporting"),
+        cueService("api", "typescript", "@/__tests__/services/api"),
+        cueService("reporting", "python", "@/__tests__/services/reporting"),
       ].join("\n"),
     );
 
@@ -174,7 +174,9 @@ describe("Generate command workflows", () => {
     expect(updatedWorkflow).toContain('echo "manual job"');
 
     // Remove the original TypeScript service and ensure it is dropped
-    await writeSpec([cueService("reporting", "python", "./services/reporting")].join("\n"));
+    await writeSpec(
+      [cueService("reporting", "python", "@/__tests__/services/reporting")].join("\n"),
+    );
 
     exitCode = await generateCommand({ outputDir: ".", force: true }, config);
     expect(exitCode).toBe(0);

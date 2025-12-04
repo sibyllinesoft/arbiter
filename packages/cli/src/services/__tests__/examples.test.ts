@@ -2,8 +2,8 @@ import { describe, expect, it, spyOn } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { Config } from "../../config.js";
-import { examplesCommand } from "../examples/index.js";
+import type { Config } from "@/config.js";
+import { examplesCommand } from "@/services/examples/index.js";
 
 const baseConfig: Config = {
   apiUrl: "http://localhost",

@@ -3,12 +3,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import * as core from "../core.js";
-import * as filesystem from "../filesystem.js";
-import * as idempotency from "../idempotency.js";
-import { ConstraintSystem, createConstraintSystem } from "../index.js";
-import * as sandbox from "../sandbox.js";
-import * as schema from "../schema.js";
+import * as core from "@/constraints/core.js";
+import * as filesystem from "@/constraints/filesystem.js";
+import * as idempotency from "@/constraints/idempotency.js";
+import { ConstraintSystem, createConstraintSystem } from "@/constraints/index.js";
+import * as sandbox from "@/constraints/sandbox.js";
+import * as schema from "@/constraints/schema.js";
 
 const baseConfig: any = {
   apiUrl: "http://localhost",

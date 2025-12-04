@@ -1,11 +1,11 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import path from "node:path";
-import { registry as languageRegistry } from "../../language-plugins/index.js";
-import type { CLIConfig } from "../../types.js";
+import { registry as languageRegistry } from "@/language-support/index.js";
 import {
   configureTemplateOrchestrator,
   getConfiguredLanguagePlugin,
-} from "../generate/template-orchestrator.js";
+} from "@/services/generate/template-orchestrator.js";
+import type { CLIConfig } from "@/types.js";
 
 describe("template orchestrator helpers", () => {
   it("configures language registry with resolved overrides", () => {
@@ -27,7 +27,7 @@ describe("template orchestrator helpers", () => {
       },
       generator: {
         templateOverrides: {
-          typescript: ["./templates/ts"],
+          typescript: ["@/services/__tests__/templates/ts"],
         },
       },
     };

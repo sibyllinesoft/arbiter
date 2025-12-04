@@ -1,8 +1,8 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import * as addSvc from "../../services/add/index.js";
-import { createAddCommands } from "../add.js";
+import { createAddCommands } from "@/cli/add.js";
+import * as addSvc from "@/services/add/index.js";
 
 const baseConfig: any = {
   apiUrl: "https://api",

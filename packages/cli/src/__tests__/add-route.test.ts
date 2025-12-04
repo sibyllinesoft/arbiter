@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { addRoute } from "../services/add/subcommands/route";
+import { addRoute } from "@/services/add/subcommands/route";
 
 describe("addRoute helper", () => {
   const fakeManipulator = {

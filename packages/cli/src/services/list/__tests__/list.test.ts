@@ -2,7 +2,7 @@ import { describe, expect, it, spyOn } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { __listTesting, listCommand } from "../index.js";
+import { __listTesting, listCommand } from "@/services/list/index.js";
 
 const baseConfig: any = {
   localMode: true,

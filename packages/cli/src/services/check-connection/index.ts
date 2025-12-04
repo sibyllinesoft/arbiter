@@ -1,8 +1,8 @@
+import { ApiClient } from "@/api-client.js";
+import { loadConfig } from "@/config.js";
+import { ConnectionValidator } from "@/connection-validator.js";
 import chalk from "chalk";
 import { Command } from "commander";
-import { ApiClient } from "../../api-client.js";
-import { loadConfig } from "../../config.js";
-import { ConnectionValidator } from "../../connection-validator.js";
 
 /**
  * Command to check server connectivity and diagnose connection issues

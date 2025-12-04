@@ -2,9 +2,9 @@ import * as childProcess from "node:child_process";
 import { EventEmitter } from "node:events";
 import os from "node:os";
 import path from "node:path";
+import { __generateTesting } from "@/services/generate/index.js";
 import fs from "fs-extra";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { __generateTesting } from "../index.js";
 
 describe("parseAssemblyFile", () => {
   let tempDir: string;

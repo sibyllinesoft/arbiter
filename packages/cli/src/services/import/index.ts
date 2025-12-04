@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { safeFileOperation } from "@/constraints/index.js";
 import chalk from "chalk";
-import { safeFileOperation } from "../../constraints/index.js";
 
 export interface ImportOptions {
   global?: boolean;

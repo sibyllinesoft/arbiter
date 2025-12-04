@@ -5,9 +5,9 @@
  */
 
 import path from "path";
+import { safeFileOperation } from "@/constraints/index.js";
+import { ParsedField, ParsedSchema, ParsedType } from "@/docs/schema-parser.js";
 import fs from "fs-extra";
-import { safeFileOperation } from "../constraints/index.js";
-import { ParsedField, ParsedSchema, ParsedType } from "./schema-parser.js";
 
 export interface GeneratorOptions {
   outputDir: string;

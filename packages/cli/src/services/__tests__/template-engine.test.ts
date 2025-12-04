@@ -4,12 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 
-import * as templates from "../../templates/index.js";
 import {
   executeTemplate,
   validateTemplateExists,
   validateTemplateExistsSync,
-} from "../add/template-engine.js";
+} from "@/services/add/template-engine.js";
+import * as templates from "@/templates/index.js";
 
 describe("template engine helpers", () => {
   it("accepts known template aliases", async () => {

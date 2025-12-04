@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import type { APISurface, APISymbol, SurfaceOptions } from "@/surface-extraction/types.js";
+import { calculateStatistics } from "@/surface-extraction/utils.js";
 import chalk from "chalk";
 import { glob } from "glob";
-import type { APISurface, APISymbol, SurfaceOptions } from "./types.js";
-import { calculateStatistics } from "./utils.js";
 
 export async function extractGoSurface(
   options: SurfaceOptions,
@@ -52,7 +52,7 @@ export async function extractGoSurface(
 
 async function extractGoWithGoTools(options: SurfaceOptions): Promise<APISurface | null> {
   return new Promise((resolve, reject) => {
-    const child = spawn("go", ["list", "-json", "./..."], { stdio: "pipe" });
+    const child = spawn("go", ["list", "-json", "@/surface-extraction/..."], { stdio: "pipe" });
     let output = "";
     let errorOutput = "";
 

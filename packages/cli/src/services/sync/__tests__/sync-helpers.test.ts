@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import * as constraints from "../../../constraints/index.js";
+import * as constraints from "@/constraints/index.js";
 import {
   calculateChecksum,
   deepMerge,
@@ -11,7 +11,7 @@ import {
   generateChangeSet,
   validateIdempotency,
   writeFileSafely,
-} from "../index.js";
+} from "@/services/sync/index.js";
 
 describe("sync helpers", () => {
   it("detects manifest files that exist", async () => {

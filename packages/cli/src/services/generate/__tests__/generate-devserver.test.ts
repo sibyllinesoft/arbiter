@@ -1,9 +1,9 @@
 import os from "node:os";
 import path from "node:path";
+import { __generateTesting } from "@/services/generate/index.js";
 import type { AppSpec } from "@arbiter/shared";
 import fs from "fs-extra";
 import { afterEach, describe, expect, it } from "vitest";
-import { __generateTesting } from "../index.js";
 
 describe("enhanceClientDevServer", () => {
   const originalCwd = process.cwd();

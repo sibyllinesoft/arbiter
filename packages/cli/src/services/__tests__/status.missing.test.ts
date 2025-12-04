@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { statusCommand } from "../status/index.js";
+import { statusCommand } from "@/services/status/index.js";
 
 describe("statusCommand missing local spec", () => {
   it("returns error when no assembly is present", async () => {

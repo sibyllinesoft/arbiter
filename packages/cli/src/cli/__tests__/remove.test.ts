@@ -1,8 +1,8 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import * as remover from "../../services/remove/index.js";
-import { createRemoveCommands } from "../remove.js";
+import { createRemoveCommands } from "@/cli/remove.js";
+import * as remover from "@/services/remove/index.js";
 
 const baseConfig = {
   apiUrl: "https://api",

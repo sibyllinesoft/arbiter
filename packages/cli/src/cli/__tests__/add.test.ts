@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test";
+import { createAddCommands } from "@/cli/add";
 import { Command } from "commander";
-import { createAddCommands } from "../add";
 
 // Helper to capture process.exit calls
 const originalExit = process.exit;

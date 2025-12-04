@@ -13,9 +13,9 @@
 
 import * as os from "node:os";
 import path from "node:path";
+import { safeFileOperation } from "@/constraints/index.js";
 import { CueRunner } from "@arbiter/cue-runner";
 import fs from "fs-extra";
-import { safeFileOperation } from "../constraints/index.js";
 
 /**
  * Platform-specific service types for popular cloud providers
@@ -584,6 +584,51 @@ export class CUEManipulator {
       return await this.serialize(ast, content);
     } catch {
       return content;
+    }
+  }
+
+  /**
+   * Generic removal helper used by CLI commands.
+   */
+  async removeDeclaration(
+    content: string,
+    options: {
+      type: string;
+      identifier?: string;
+      method?: string;
+      service?: string;
+      id?: string;
+    },
+  ): Promise<string> {
+    const target = options.identifier ?? options.id ?? "";
+    const normalizedType = options.type.toLowerCase();
+
+    switch (normalizedType) {
+      case "service":
+        return await this.removeService(content, target);
+      case "endpoint":
+        if (options.service && target) {
+          return await this.removeEndpoint(content, options.service, target, options.method);
+        }
+        return content;
+      case "route":
+        return await this.removeRoute(content, { id: options.id ?? target, path: target });
+      case "flow":
+        return await this.removeFlow(content, target);
+      case "database":
+        return await this.removeFromSection(content, "databases", target);
+      case "package":
+        return await this.removeFromSection(content, "packages", target);
+      case "tool":
+        return await this.removeFromSection(content, "tools", target);
+      case "frontend":
+        return await this.removeFromSection(content, "frontends", target);
+      case "capability":
+        return await this.removeFromSection(content, "capabilities", target);
+      case "cache":
+        return await this.removeFromSection(content, "caches", target);
+      default:
+        return await this.removeFromSection(content, normalizedType, target);
     }
   }
 

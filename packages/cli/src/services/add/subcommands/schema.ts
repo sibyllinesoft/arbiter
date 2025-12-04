@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
+import { safeFileOperation } from "@/constraints/index.js";
 import chalk from "chalk";
 import fs from "fs-extra";
-import { safeFileOperation } from "../../../constraints/index.js";
 
 interface SchemaOptions {
   example?: string;
@@ -91,7 +91,7 @@ export async function convertJsonSchemaRulesToCue(
 
     return {
       cue: cueSource.trim(),
-      cueFile: path.join("./schemas", cueFileName),
+      cueFile: path.join("@/services/add/subcommands/schemas", cueFileName),
     };
   } finally {
     await fs.remove(tempDir);

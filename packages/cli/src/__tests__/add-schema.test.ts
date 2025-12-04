@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { addSchema } from "../services/add/subcommands/schema";
+import { addSchema } from "@/services/add/subcommands/schema";
 
 const manipulator = {
   addToSection: async (_c: string, section: string, key: string, value: any) =>

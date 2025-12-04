@@ -1,8 +1,8 @@
 import os from "node:os";
 import path from "node:path";
+import { __generateTesting, createClientTarget } from "@/services/generate/index.js";
 import fs from "fs-extra";
 import { describe, expect, it } from "vitest";
-import { __generateTesting, createClientTarget } from "../index.js";
 
 const baseStructure = {
   clientsDirectory: "clients",

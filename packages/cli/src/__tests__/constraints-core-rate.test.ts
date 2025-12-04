@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ConstraintEnforcer } from "../constraints/core";
+import { ConstraintEnforcer } from "@/constraints/core";
 
 describe("ConstraintEnforcer rate limiting", () => {
   it("allows operations under infinite rate limit", () => {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import { FileSystemConstraints } from "@/constraints/filesystem";
 import fs from "fs-extra";
-import { FileSystemConstraints } from "../constraints/filesystem";
 
 describe("filesystem constraints", () => {
   it("validates an existing file path", async () => {

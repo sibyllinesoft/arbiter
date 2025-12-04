@@ -36,7 +36,7 @@ describe("generateCommand early branches", () => {
       'product: { name: "Two" }\n',
     );
 
-    const { generateCommand } = await import("../index.js");
+    const { generateCommand } = await import("@/services/generate/index.js");
     const code = await generateCommand({}, { ...baseConfig, projectDir: tmp } as any);
 
     expect(code).toBe(1);
@@ -51,7 +51,7 @@ describe("generateCommand early branches", () => {
       'product: { name: "WarnApp" }\nconfig: { language: "typescript" }\nui: { routes: [] }\nflows: []\n',
     );
 
-    vi.mock("../../validation/warnings.js", () => ({
+    vi.mock("@/services/validation/warnings.js", () => ({
       validateSpecification: vi.fn().mockReturnValue({ hasErrors: false, hasWarnings: true }),
       formatWarnings: () => "warn",
     }));

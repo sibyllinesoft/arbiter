@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { executeCommand } from "../execute/index.js";
+import { executeCommand } from "@/services/execute/index.js";
 
 async function inTempWorkspace(run: (dir: string) => Promise<void>) {
   const tmp = await mkdtemp(path.join(os.tmpdir(), "arbiter-exec-"));

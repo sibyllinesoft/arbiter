@@ -1,13 +1,13 @@
 import path from "node:path";
+import { ApiClient } from "@/api-client.js";
+import type { Config } from "@/config.js";
+import { getCueManipulator } from "@/constraints/cli-integration.js";
+import { validateCUE } from "@/cue/index.js";
+import { formatJson, formatStatusTable, formatYaml } from "@/utils/formatting.js";
+import { withProgress } from "@/utils/progress.js";
 import chalk from "chalk";
 import fs from "fs-extra";
 import jsyaml from "js-yaml";
-import { ApiClient } from "../../api-client.js";
-import type { Config } from "../../config.js";
-import { getCueManipulator } from "../../constraints/cli-integration.js";
-import { validateCUE } from "../../cue/index.js";
-import { formatJson, formatStatusTable, formatYaml } from "../../utils/formatting.js";
-import { withProgress } from "../../utils/progress.js";
 
 export interface StatusOptions {
   detailed?: boolean;

@@ -1,20 +1,17 @@
 import path from "node:path";
+import type { ClientGenerationContext } from "@/services/generate/contexts.js";
+import { ensureDirectory, writeFileWithHooks } from "@/services/generate/hook-executor.js";
+import { joinRelativePath, slugify, toPathSegments } from "@/services/generate/shared.js";
+import type { GenerateOptions } from "@/services/generate/types.js";
+import type { ProjectStructureConfig } from "@/types.js";
+import type { PackageManagerCommandSet } from "@/utils/package-manager.js";
+import { resolveServiceArtifactType, resolveServiceWorkload } from "@/utils/service-metadata.js";
 import type {
   DeploymentConfig,
   ServiceConfig as DeploymentServiceConfig,
   ServiceDeploymentOverride,
 } from "@arbiter/shared";
 import fs from "fs-extra";
-import type { ProjectStructureConfig } from "../../types.js";
-import type { PackageManagerCommandSet } from "../../utils/package-manager.js";
-import {
-  resolveServiceArtifactType,
-  resolveServiceWorkload,
-} from "../../utils/service-metadata.js";
-import type { ClientGenerationContext } from "./contexts.js";
-import { ensureDirectory, writeFileWithHooks } from "./hook-executor.js";
-import { joinRelativePath, slugify, toPathSegments } from "./shared.js";
-import type { GenerateOptions } from "./types.js";
 
 type ComposeServiceConfig = DeploymentServiceConfig & {
   resolvedBuildContext?: string;
@@ -470,7 +467,7 @@ COPY --from=builder /app/target/release/${service.name} /usr/local/bin/${service
 ENTRYPOINT ["/usr/local/bin/${service.name}"]`;
     default:
       return `FROM ${service.image || "alpine:3.19"}
-CMD ["./start.sh"]`;
+CMD ["@/services/generate/start.sh"]`;
   }
 }
 

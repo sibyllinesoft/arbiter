@@ -1,5 +1,4 @@
 import { describe, expect, it } from "bun:test";
-import chalk from "chalk";
 import {
   createTextProgressBar,
   formatComponentTable,
@@ -14,7 +13,8 @@ import {
   formatValidationTable,
   formatWarningDetails,
   formatYaml,
-} from "../formatting.js";
+} from "@/utils/formatting.js";
+import chalk from "chalk";
 
 const sampleResult = (overrides: Partial<any> = {}) => ({
   file: "file.cue",

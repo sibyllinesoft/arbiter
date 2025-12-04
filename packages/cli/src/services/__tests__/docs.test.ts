@@ -2,8 +2,8 @@ import { describe, expect, it, spyOn } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { CLIConfig } from "../../types.js";
-import { docsCommand, docsGenerateCommand } from "../docs/index.js";
+import { docsCommand, docsGenerateCommand } from "@/services/docs/index.js";
+import type { CLIConfig } from "@/types.js";
 
 const baseConfig = (projectDir: string): CLIConfig => ({
   apiUrl: "http://localhost",

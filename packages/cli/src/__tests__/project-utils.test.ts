@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { deriveProjectName } from "../utils/project";
+import { deriveProjectName } from "@/utils/project";
 
 describe("project utils", () => {
   it("derives project name from directory", () => {

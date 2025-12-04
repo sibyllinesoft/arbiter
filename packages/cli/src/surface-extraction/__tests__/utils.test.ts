@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { calculateStatistics } from "../utils.js";
+import { calculateStatistics } from "@/surface-extraction/utils.js";
 
 describe("surface extraction utils", () => {
   it("calculates counts by visibility and type", () => {

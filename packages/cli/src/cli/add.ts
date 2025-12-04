@@ -2,10 +2,10 @@
  * Add commands module - Modular specification builder
  */
 
+import type { AddOptions } from "@/services/add/index.js";
+import { runAddCommand } from "@/services/add/index.js";
 import chalk from "chalk";
 import { Command } from "commander";
-import type { AddOptions } from "../services/add/index.js";
-import { runAddCommand } from "../services/add/index.js";
 
 export function createAddCommands(program: Command): Command {
   const addCmd = program

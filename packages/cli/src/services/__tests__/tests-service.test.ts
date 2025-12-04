@@ -2,7 +2,7 @@ import { describe, expect, it, spyOn } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { coverCommand, scaffoldCommand } from "../tests/index.js";
+import { coverCommand, scaffoldCommand } from "@/services/tests/index.js";
 
 describe("tests service", () => {
   const config = {} as any;

@@ -2,8 +2,8 @@ import { describe, expect, it, spyOn } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import * as smartNaming from "../../utils/smart-naming.js";
-import { versionPlanCommand, versionReleaseCommand } from "../version/index.js";
+import { versionPlanCommand, versionReleaseCommand } from "@/services/version/index.js";
+import * as smartNaming from "@/utils/smart-naming.js";
 
 const baseConfig = { projectName: "demo" } as any;
 

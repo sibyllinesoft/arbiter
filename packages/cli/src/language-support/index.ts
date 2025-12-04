@@ -251,11 +251,11 @@ export async function generateBuildConfig(
   return plugin.generateBuildConfig(config);
 }
 
-import { GoPlugin } from "./go.js";
-import { PythonPlugin } from "./python.js";
-import { RustPlugin } from "./rust.js";
+import { GoPlugin } from "@/language-support/go.js";
+import { PythonPlugin } from "@/language-support/python.js";
+import { RustPlugin } from "@/language-support/rust.js";
 // Import and register all plugins
-import { TypeScriptPlugin } from "./typescript.js";
+import { TypeScriptPlugin } from "@/language-support/typescript.js";
 
 // Auto-register plugins
 registerPlugin(new TypeScriptPlugin());

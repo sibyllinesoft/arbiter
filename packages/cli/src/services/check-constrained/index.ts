@@ -1,13 +1,7 @@
-// @ts-nocheck
 import path from "node:path";
-import { translateCueErrors } from "@arbiter/shared";
-import chalk from "chalk";
-import fs from "fs-extra";
-import { glob } from "glob";
-import { ApiClient } from "../../api-client.js";
-import { ConstraintViolationError, getGlobalConstraintSystem } from "../../constraints/index.js";
-import { validateCUE } from "../../cue/index.js";
-import type { CLIConfig, CheckOptions, ValidationResult } from "../../types.js";
+import { ConstraintViolationError, getGlobalConstraintSystem } from "@/constraints/index.js";
+import { validateCUE } from "@/cue/index.js";
+import type { CLIConfig, CheckOptions, ValidationResult } from "@/types.js";
 import {
   formatErrorDetails,
   formatFileSize,
@@ -15,8 +9,18 @@ import {
   formatSummary,
   formatValidationTable,
   formatWarningDetails,
-} from "../../utils/formatting.js";
-import { withProgress } from "../../utils/progress.js";
+} from "@/utils/formatting.js";
+import { ProgressBar } from "@/utils/progress.js";
+import { translateCueErrors } from "@arbiter/shared";
+import chalk from "chalk";
+import fs from "fs-extra";
+import { glob } from "glob";
+
+interface ConstrainedCheckOptions extends CheckOptions {
+  quiet?: boolean;
+  sync?: boolean;
+  format?: "table" | "json";
+}
 
 const MAX_OPERATION_TIME_MS = 10_000;
 const MAX_PAYLOAD_BYTES = 5 * 1024 * 1024;
@@ -28,7 +32,7 @@ const REQUEST_DELAY_MS = 0;
  */
 export async function checkCommandConstrained(
   patterns: string[],
-  options: CheckOptions,
+  options: ConstrainedCheckOptions,
   config: CLIConfig,
 ): Promise<number> {
   const structuredOutput = options.format === "json";
@@ -37,19 +41,15 @@ export async function checkCommandConstrained(
   try {
     return await constraintSystem.executeWithConstraints(
       "check",
-      {
-        sandbox: "check",
-        maxOperationTimeMs: MAX_OPERATION_TIME_MS,
-        maxPayloadBytes: MAX_PAYLOAD_BYTES,
-        requestDelayMs: REQUEST_DELAY_MS,
-      },
+      { sandbox: "check" },
       async () => await runCheckWithConstraints(patterns, options, config, structuredOutput),
+      { maxOperationTimeMs: MAX_OPERATION_TIME_MS },
     );
   } catch (error) {
     if (error instanceof ConstraintViolationError) {
-      console.error(chalk.red("Constraint violation:"));
-      for (const violation of error.violations) {
-        console.error(`  • ${violation.rule} - ${violation.message}`);
+      console.error(chalk.red("Constraint violation:"), error.constraint);
+      if (error.details) {
+        console.error(chalk.dim(JSON.stringify(error.details, null, 2)));
       }
       return 2;
     }
@@ -64,14 +64,16 @@ export async function checkCommandConstrained(
 
 async function runCheckWithConstraints(
   patterns: string[],
-  options: CheckOptions,
+  options: ConstrainedCheckOptions,
   config: CLIConfig,
   structuredOutput: boolean,
 ): Promise<number> {
-  const apiClient = new ApiClient(config);
+  const cwd = config.projectDir || process.cwd();
+  const resolvedPatterns = patterns.length > 0 ? patterns : ["**/*.cue"];
 
-  // Expand glob patterns to file list
-  const files = await glob(patterns, {
+  const files = await glob(resolvedPatterns, {
+    cwd,
+    absolute: true,
     ignore: ["**/node_modules/**", "**/.git/**", "**/.arbiter/**"],
   });
 
@@ -81,67 +83,63 @@ async function runCheckWithConstraints(
   }
 
   const results: ValidationResult[] = [];
-  const totalFiles = files.length;
   let totalErrors = 0;
   let totalWarnings = 0;
   let payloadBytes = 0;
 
-  const progress = withProgress("Validating", totalFiles);
+  const progress = new ProgressBar({ title: "Validating", total: files.length });
 
   for (const file of files) {
+    const start = Date.now();
     const content = await fs.readFile(file, "utf-8");
     payloadBytes += Buffer.byteLength(content);
 
     // Enforce payload size limit
     if (payloadBytes > MAX_PAYLOAD_BYTES) {
       throw new ConstraintViolationError(
-        "MAX_PAYLOAD_SIZE",
-        `Payload exceeds ${MAX_PAYLOAD_BYTES} bytes`,
-        [
-          {
-            rule: "MAX_PAYLOAD_SIZE",
-            message: `Total payload size ${formatFileSize(payloadBytes)} exceeds limit`,
-          },
-        ],
+        "maxPayloadSize",
+        formatFileSize(payloadBytes),
+        formatFileSize(MAX_PAYLOAD_BYTES),
+        { fileCount: results.length + 1, file },
       );
     }
 
     const validation = await validateCUE(content);
-    const translatedErrors = translateCueErrors(validation.errors);
+    const translated = validation.errors.flatMap((message) => translateCueErrors(message));
+
+    const errors = translated.map((error) => ({
+      line: 0,
+      column: 0,
+      message: error.friendlyMessage,
+      severity: "error" as const,
+      category: error.category,
+    }));
+
+    const status: ValidationResult["status"] =
+      validation.valid && errors.length === 0 ? "valid" : "invalid";
 
     const result: ValidationResult = {
-      file,
-      valid: validation.valid,
-      errors: translatedErrors,
-      warnings: validation.warnings || [],
-      durationMs: validation.durationMs,
-      sizeBytes: Buffer.byteLength(content),
+      file: path.relative(cwd, file) || path.basename(file),
+      status,
+      errors,
+      warnings: [],
+      processingTime: Date.now() - start,
     };
 
     results.push(result);
-    totalErrors += translatedErrors.length;
-    totalWarnings += result.warnings?.length || 0;
+    totalErrors += errors.length;
+    totalWarnings += result.warnings.length;
 
-    progress.increment();
+    progress.increment(1, result.file);
     await new Promise((resolve) => setTimeout(resolve, REQUEST_DELAY_MS));
   }
 
-  progress.stop();
+  progress.complete("Validation complete");
 
   if (structuredOutput) {
     console.log(formatJson(results));
   } else {
     console.log(formatValidationTable(results));
-    console.log(
-      formatSummary({
-        files: totalFiles,
-        errors: totalErrors,
-        warnings: totalWarnings,
-        durationMs: results.reduce((sum, r) => sum + (r.durationMs || 0), 0),
-        totalSizeBytes: payloadBytes,
-      }),
-    );
-
     if (totalWarnings > 0 && !options.quiet) {
       console.log("\nWarnings:");
       console.log(formatWarningDetails(results));
@@ -151,23 +149,12 @@ async function runCheckWithConstraints(
       console.log("\nErrors:");
       console.log(formatErrorDetails(results));
     }
-  }
 
-  // If requested, sync validated files to server
-  if (options.sync) {
-    console.log(chalk.blue("\n🔄 Syncing validated files to Arbiter server..."));
-    for (const result of results) {
-      const relativePath = path.relative(process.cwd(), result.file);
-      const content = await fs.readFile(result.file, "utf-8");
-      const syncResult = await apiClient.syncFile(relativePath, content);
-      if (!syncResult.success) {
-        console.error(chalk.red(`Failed to sync ${relativePath}: ${syncResult.error}`));
-      } else if (!structuredOutput) {
-        console.log(chalk.green(`Synced ${relativePath}`));
-      }
-    }
+    console.log(
+      formatSummary(results),
+      chalk.dim(`\nProcessed ${files.length} files, ${formatFileSize(payloadBytes)} total`),
+    );
   }
 
   return totalErrors > 0 ? 1 : 0;
 }
-// @ts-nocheck

@@ -2,17 +2,17 @@
  * Generation commands module - Code generation, documentation, and examples
  */
 
+import { requireCommandConfig } from "@/cli/context.js";
+import { loadConfigWithGitDetection } from "@/config.js";
+import { docsCommand, docsGenerateCommand } from "@/services/docs/index.js";
+import { examplesCommand } from "@/services/examples/index.js";
+import { executeCommand } from "@/services/execute/index.js";
+import { explainCommand } from "@/services/explain/index.js";
+import { generateCommand as runGenerateCommand } from "@/services/generate/index.js";
+import { renameCommand, showNamingHelp } from "@/services/rename/index.js";
+import type { GenerateOptions } from "@/types.js";
 import chalk from "chalk";
 import { Command } from "commander";
-import { loadConfigWithGitDetection } from "../config.js";
-import { docsCommand, docsGenerateCommand } from "../services/docs/index.js";
-import { examplesCommand } from "../services/examples/index.js";
-import { executeCommand } from "../services/execute/index.js";
-import { explainCommand } from "../services/explain/index.js";
-import { generateCommand as runGenerateCommand } from "../services/generate/index.js";
-import { renameCommand, showNamingHelp } from "../services/rename/index.js";
-import type { GenerateOptions } from "../types.js";
-import { requireCommandConfig } from "./context.js";
 
 export function createGenerationCommands(program: Command): void {
   // Generate command (with integrated docs functionality)
@@ -52,7 +52,7 @@ export function createGenerationCommands(program: Command): void {
   docsCmd
     .command("schema")
     .description("generate schema documentation from project specifications")
-    .option("--output <dir>", "documentation output directory", "./docs")
+    .option("--output <dir>", "documentation output directory", "@/cli/docs")
     .option("--format <format>", "output format (markdown, html)", "markdown")
     .option("--include-examples", "generate example files alongside documentation")
     .action(async (options, command) => {
@@ -72,7 +72,7 @@ export function createGenerationCommands(program: Command): void {
   docsCmd
     .command("api")
     .description("generate API documentation from specifications")
-    .option("--output <dir>", "documentation output directory", "./docs")
+    .option("--output <dir>", "documentation output directory", "@/cli/docs")
     .option("--format <format>", "output format (openapi, markdown)", "openapi")
     .option("--include-examples", "include request/response examples")
     .action(async (options, command) => {
@@ -92,7 +92,7 @@ export function createGenerationCommands(program: Command): void {
   docsCmd
     .command("cli")
     .description("generate comprehensive CLI reference documentation")
-    .option("--output <dir>", "documentation output directory", "./docs")
+    .option("--output <dir>", "documentation output directory", "@/cli/docs")
     .option("--formats <formats>", "output formats (markdown,html,json)", "markdown")
     .option("--include-examples", "include usage examples")
     .option("--include-internal", "include internal/hidden commands")
@@ -120,7 +120,7 @@ export function createGenerationCommands(program: Command): void {
   program
     .command("examples <type>")
     .description("generate example projects by profile or language type")
-    .option("--output <dir>", "output directory for examples", "./examples")
+    .option("--output <dir>", "output directory for examples", "@/cli/examples")
     .option("--profile <name>", "specific profile to generate (library, cli, service)")
     .option("--language <lang>", "specific language to generate (typescript, python, rust, go)")
     .option("--force", "overwrite existing examples")

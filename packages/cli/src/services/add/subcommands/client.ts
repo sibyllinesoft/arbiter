@@ -1,7 +1,7 @@
 import path from "node:path";
+import { parseTags } from "@/services/add/shared.js";
+import { executeTemplate, validateTemplateExists } from "@/services/add/template-engine.js";
 import fs from "fs-extra";
-import { parseTags } from "../shared.js";
-import { executeTemplate, validateTemplateExists } from "../template-engine.js";
 
 interface ClientTemplateOptions {
   language?: string;

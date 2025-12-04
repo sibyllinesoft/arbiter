@@ -6,7 +6,7 @@ import {
   extractTestId,
   humanizeTestId,
   sanitizeTestId,
-} from "../index.js";
+} from "@/services/generate/index.js";
 
 describe("generate helpers - flow metadata", () => {
   it("derives flow metadata including root, actions, success, and API interactions", () => {

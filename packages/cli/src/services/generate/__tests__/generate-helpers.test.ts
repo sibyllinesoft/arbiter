@@ -1,6 +1,6 @@
+import { __generateTesting } from "@/services/generate/index.js";
 import type { AppSpec } from "@arbiter/shared";
 import { describe, expect, it } from "vitest";
-import { __generateTesting } from "../index.js";
 
 describe("generate helper utilities", () => {
   it("determines path ownership from declared paths and flows", () => {

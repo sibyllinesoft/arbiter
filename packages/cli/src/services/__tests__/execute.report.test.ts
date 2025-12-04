@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { DryRunExecutionStrategy, PlanExecutor, ReportGenerator } from "../execute/index.js";
+import {
+  DryRunExecutionStrategy,
+  PlanExecutor,
+  ReportGenerator,
+} from "@/services/execute/index.js";
 
 const samplePlan = {
   epicId: "epic-1",

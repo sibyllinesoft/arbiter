@@ -1,13 +1,13 @@
 import { describe, expect, it } from "bun:test";
 import path from "node:path";
 
-import { DEFAULT_PROJECT_STRUCTURE } from "../../../config.js";
+import { DEFAULT_PROJECT_STRUCTURE } from "@/config.js";
 import {
   collectClientTargets,
   createClientTarget,
   createServiceTarget,
   toRelativePath,
-} from "../index.js";
+} from "@/services/generate/index.js";
 
 const structure = { ...DEFAULT_PROJECT_STRUCTURE };
 

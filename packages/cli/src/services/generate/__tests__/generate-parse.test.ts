@@ -1,8 +1,8 @@
 import os from "node:os";
 import path from "node:path";
+import { __generateTesting, parseAppSchema } from "@/services/generate/index.js";
 import fs from "fs-extra";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { __generateTesting, parseAppSchema } from "../index.js";
 
 let originalCwd: string;
 

@@ -2,8 +2,8 @@ import { describe, expect, it, spyOn } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import * as constraints from "../../../constraints/index.js";
-import { syncCargoToml } from "../index.js";
+import * as constraints from "@/constraints/index.js";
+import { syncCargoToml } from "@/services/sync/index.js";
 
 describe("sync cargo", () => {
   it("adds arbiter metadata when missing", async () => {

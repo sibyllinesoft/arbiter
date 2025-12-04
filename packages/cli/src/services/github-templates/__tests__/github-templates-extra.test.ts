@@ -3,9 +3,9 @@ import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import * as constraints from "../../../constraints/index.js";
-import * as manager from "../../../utils/unified-github-template-manager.js";
-import { githubTemplatesCommand } from "../index.js";
+import * as constraints from "@/constraints/index.js";
+import { githubTemplatesCommand } from "@/services/github-templates/index.js";
+import * as manager from "@/utils/unified-github-template-manager.js";
 
 const baseConfig: any = {
   projectDir: process.cwd(),

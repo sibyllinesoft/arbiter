@@ -14,8 +14,8 @@ import type {
   LanguageTestingConfig,
   ProjectConfig,
   ServiceConfig,
-} from "./index.js";
-import { TemplateResolver } from "./template-resolver.js";
+} from "@/language-support/index.js";
+import { TemplateResolver } from "@/language-support/template-resolver.js";
 
 type FrameworkOption = "vite" | "nextjs";
 type StylingOption = "css-modules" | "tailwind" | "styled-components";
@@ -210,7 +210,7 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
     files.push({
       path: `src/components/${config.name}/index.ts`,
-      content: `export { ${config.name} } from './${config.name}';\nexport type { ${config.name}Props } from './types';`,
+      content: `export { ${config.name} } from '@/language-support/${config.name}';\nexport type { ${config.name}Props } from '@/language-support/types';`,
     });
 
     return {
@@ -218,7 +218,7 @@ export class TypeScriptPlugin implements LanguagePlugin {
       dependencies,
       instructions: [
         `Component ${config.name} created successfully`,
-        `Import with: import { ${config.name} } from "./components/${config.name}";`,
+        `Import with: import { ${config.name} } from "@/language-support/components/${config.name}";`,
       ],
     };
   }
@@ -315,7 +315,7 @@ export class TypeScriptPlugin implements LanguagePlugin {
     const content = await this.runtime.templateResolver.renderTemplate(
       "project/vite/vite.config.ts.tpl",
       templateContext,
-      `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 3000,\n  },\n  build: {\n    target: 'es2022',\n    sourcemap: true${templateContext.additionalBuildConfig}\n  },\n  test: {\n    globals: true,\n    environment: 'jsdom',\n    setupFiles: ['./src/test-setup.ts'],\n  },\n});\n`,
+      `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 3000,\n  },\n  build: {\n    target: 'es2022',\n    sourcemap: true${templateContext.additionalBuildConfig}\n  },\n  test: {\n    globals: true,\n    environment: 'jsdom',\n    setupFiles: ['@/language-support/src/test-setup.ts'],\n  },\n});\n`,
     );
 
     const files: GeneratedFile[] = [{ path: "vite.config.ts", content }];
@@ -328,11 +328,11 @@ export class TypeScriptPlugin implements LanguagePlugin {
           tsconfig: "",
           tsconfigBuild: JSON.stringify(
             {
-              extends: "./tsconfig.json",
+              extends: "@/language-support/tsconfig.json",
               compilerOptions: {
                 noEmit: false,
                 declaration: true,
-                outDir: "./dist",
+                outDir: "@/language-support/dist",
               },
               exclude: ["src/**/*.test.ts", "src/**/*.test.tsx"],
             },
@@ -346,11 +346,11 @@ export class TypeScriptPlugin implements LanguagePlugin {
         },
         JSON.stringify(
           {
-            extends: "./tsconfig.json",
+            extends: "@/language-support/tsconfig.json",
             compilerOptions: {
               noEmit: false,
               declaration: true,
-              outDir: "./dist",
+              outDir: "@/language-support/dist",
             },
             exclude: ["src/**/*.test.ts", "src/**/*.test.tsx"],
           },
@@ -368,7 +368,7 @@ export class TypeScriptPlugin implements LanguagePlugin {
   private static resolveDefaultTemplateDirectories(): string[] {
     const moduleDir = path.dirname(fileURLToPath(import.meta.url));
     return [
-      path.resolve(moduleDir, "../templates/typescript"),
+      path.resolve(moduleDir, "@/templates/typescript"),
       path.resolve(moduleDir, "../../templates/typescript"),
     ];
   }
@@ -384,8 +384,12 @@ export class TypeScriptPlugin implements LanguagePlugin {
     return {
       componentName: config.name,
       componentDescription: config.type === "page" ? "Page component" : "Reusable UI component",
-      propsImport: hasProps ? `import type { ${config.name}Props } from './types';` : "",
-      cssImport: config.styles ? `import styles from './${config.name}.module.css';` : "",
+      propsImport: hasProps
+        ? `import type { ${config.name}Props } from '@/language-support/types';`
+        : "",
+      cssImport: config.styles
+        ? `import styles from '@/language-support/${config.name}.module.css';`
+        : "",
       propsParam: hasProps ? `props: ${config.name}Props` : "",
       containerClass: config.styles ? " className={styles.container}" : "",
       propsInterface,
@@ -452,50 +456,45 @@ export class TypeScriptPlugin implements LanguagePlugin {
     const viteConfig = await this.runtime.templateResolver.renderTemplate(
       "project/vite/vite.config.ts.tpl",
       context,
-      `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 3000,\n  },\n  build: {\n    target: 'es2022',\n    sourcemap: true${context.additionalBuildConfig}\n  },\n  test: {\n    globals: true,\n    environment: 'jsdom',\n    setupFiles: ['./src/test-setup.ts'],\n  },\n});\n`,
     );
+
     files.push({ path: "vite.config.ts", content: viteConfig });
 
     const tsconfigContent = await this.runtime.templateResolver.renderTemplate(
       "project/vite/tsconfig.json.tpl",
       context,
-      tsconfig,
     );
     files.push({ path: "tsconfig.json", content: tsconfigContent });
 
     const tsconfigBuildContent = await this.runtime.templateResolver.renderTemplate(
       "project/vite/tsconfig.build.json.tpl",
       context,
-      tsconfigBuild,
     );
     files.push({ path: "tsconfig.build.json", content: tsconfigBuildContent });
 
     const tsconfigNodeContent = await this.runtime.templateResolver.renderTemplate(
       "project/vite/tsconfig.node.json.tpl",
       context,
-      tsconfigNode,
     );
     files.push({ path: "tsconfig.node.json", content: tsconfigNodeContent });
+
     files.push({ path: ".eslintrc.cjs", content: this.createViteEslintConfig() });
 
     const appContent = await this.runtime.templateResolver.renderTemplate(
       "project/vite/App.tsx.tpl",
       context,
-      `import { BrowserRouter } from 'react-router-dom';\nimport { Suspense } from 'react';\nimport { routes } from './routes';\nimport { AppRoutes } from './routes/AppRoutes';\nimport './App.css';\n\nexport function App() {\n  return (\n    <BrowserRouter>\n      <Suspense fallback={<div>Loading...</div>}>\n        <AppRoutes routes={routes} />\n      </Suspense>\n    </BrowserRouter>\n  );\n}\n\nexport default App;\n`,
     );
     files.push({ path: "src/App.tsx", content: appContent });
 
     const mainContent = await this.runtime.templateResolver.renderTemplate(
       "project/vite/main.tsx.tpl",
       context,
-      `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport { App } from './App';\nimport './index.css';\n\nReactDOM.createRoot(document.getElementById('root')!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);\n`,
     );
     files.push({ path: "src/main.tsx", content: mainContent });
 
     const indexHtml = await this.runtime.templateResolver.renderTemplate(
       "project/vite/index.html.tpl",
       context,
-      `<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <link rel="icon" type="image/svg+xml" href="/vite.svg" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${config.name}</title>\n  </head>\n  <body>\n    <div id="root"></div>\n    <script type="module" src="/src/main.tsx"></script>\n  </body>\n</html>\n`,
     );
     files.push({ path: "index.html", content: indexHtml });
 
@@ -504,21 +503,18 @@ export class TypeScriptPlugin implements LanguagePlugin {
     const testSetup = await this.runtime.templateResolver.renderTemplate(
       "project/vite/test-setup.ts.tpl",
       context,
-      `import '@testing-library/jest-dom';\n`,
     );
     files.push({ path: "src/test-setup.ts", content: testSetup });
 
     const appCss = await this.runtime.templateResolver.renderTemplate(
       "project/vite/App.css.tpl",
       context,
-      `:root {\n  color-scheme: light dark;\n  font-family: system-ui, sans-serif;\n}\n\nbody {\n  margin: 0;\n}\n`,
     );
     files.push({ path: "src/App.css", content: appCss });
 
     const indexCss = await this.runtime.templateResolver.renderTemplate(
       "project/vite/index.css.tpl",
       context,
-      `:root {\n  color-scheme: light dark;\n  font-family: system-ui, sans-serif;\n}\n\nbody {\n  margin: 0;\n}\n`,
     );
     files.push({ path: "src/index.css", content: indexCss });
 
@@ -526,6 +522,12 @@ export class TypeScriptPlugin implements LanguagePlugin {
       ...dependencies.map(([name, version]) => `${name}@${version}`),
       ...devDependencies.map(([name, version]) => `${name}@${version}`),
     ];
+
+    return {
+      files,
+      dependencies: dependencyList,
+      scripts: this.createViteScripts(),
+    };
 
     return {
       files,
@@ -579,7 +581,7 @@ export class TypeScriptPlugin implements LanguagePlugin {
     const layoutContent = await this.runtime.templateResolver.renderTemplate(
       "project/nextjs/app/layout.tsx.tpl",
       context,
-      `import './globals.css';\nimport type { Metadata } from 'next';\n\nexport const metadata: Metadata = {\n  title: '${context.projectName}',\n  description: '${context.projectDescription}',\n};\n\nexport default function RootLayout({ children }: { children: React.ReactNode }) {\n  return (\n    <html lang="en">\n      <body>{children}</body>\n    </html>\n  );\n}\n`,
+      `import '@/language-support/globals.css';\nimport type { Metadata } from 'next';\n\nexport const metadata: Metadata = {\n  title: '${context.projectName}',\n  description: '${context.projectDescription}',\n};\n\nexport default function RootLayout({ children }: { children: React.ReactNode }) {\n  return (\n    <html lang="en">\n      <body>{children}</body>\n    </html>\n  );\n}\n`,
     );
     files.push({ path: "app/layout.tsx", content: layoutContent });
 
@@ -872,17 +874,17 @@ beforeAll(async () => {
         noFallthroughCasesInSwitch: true,
       },
       include: ["src"],
-      references: [{ path: "./tsconfig.node.json" }],
+      references: [{ path: "@/language-support/tsconfig.node.json" }],
     };
   }
 
   private createViteBuildTsconfig(): Record<string, unknown> {
     return {
-      extends: "./tsconfig.json",
+      extends: "@/language-support/tsconfig.json",
       compilerOptions: {
         noEmit: false,
         declaration: true,
-        outDir: "./dist",
+        outDir: "@/language-support/dist",
       },
       exclude: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     };

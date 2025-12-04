@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { addLoadBalancer } from "../services/add/subcommands/load-balancer";
+import { addLoadBalancer } from "@/services/add/subcommands/load-balancer";
 
 const manipulator = {
   parse: async () => ({ services: { api: {} } }),

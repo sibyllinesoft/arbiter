@@ -4,8 +4,8 @@
  * Professional template focused on technical details, constraints, and implementation guidance.
  */
 
-import { Templates } from "../documentation-generator.js";
-import { ParsedField, ParsedSchema, ParsedType } from "../schema-parser.js";
+import { Templates } from "@/docs/documentation-generator.js";
+import { ParsedField, ParsedSchema, ParsedType } from "@/docs/schema-parser.js";
 
 export const technicalTemplate: Partial<Templates> = {
   markdownHeader: (title: string) => `# ${title}

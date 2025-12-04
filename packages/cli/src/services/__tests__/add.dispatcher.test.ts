@@ -3,11 +3,11 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { ApiClient } from "../../api-client.js";
-import * as cue from "../../constraints/cli-integration.js";
-import * as cueValidate from "../../cue/index.js";
-import { runAddCommand } from "../add/index.js";
-import * as routeModule from "../add/subcommands/route.js";
+import { ApiClient } from "@/api-client.js";
+import * as cue from "@/constraints/cli-integration.js";
+import * as cueValidate from "@/cue/index.js";
+import { runAddCommand } from "@/services/add/index.js";
+import * as routeModule from "@/services/add/subcommands/route.js";
 
 describe("runAddCommand dispatcher", () => {
   it("initializes local assembly when missing and runs subcommand", async () => {

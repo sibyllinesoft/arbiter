@@ -3,6 +3,7 @@
  * Provides CLI interface for version compatibility validation and migration
  */
 
+import { LATEST_API_VERSION, VERSION_COMPATIBILITY } from "@/constraints/schema.js";
 import {
   CURRENT_VERSIONS,
   type CompatibilityResult,
@@ -16,7 +17,6 @@ import {
   validateVersionSet,
 } from "@arbiter/shared";
 import { z } from "zod";
-import { LATEST_API_VERSION, VERSION_COMPATIBILITY } from "../../constraints/schema.js";
 
 // =============================================================================
 // COMMAND SCHEMAS

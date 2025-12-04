@@ -1,3 +1,3 @@
-export * from "./types.js";
-export * from "./data.js";
-export * from "./commands.js";
+export * from "@/services/epic/types.js";
+export * from "@/services/epic/data.js";
+export * from "@/services/epic/commands.js";

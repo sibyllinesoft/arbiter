@@ -3,7 +3,7 @@ import {
   LATEST_API_VERSION,
   exportResultSchema,
   validationResultSchema,
-} from "../constraints/schema";
+} from "@/constraints/schema";
 
 describe("constraints/schema validation schemas", () => {
   it("accepts supported apiVersion", () => {

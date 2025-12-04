@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 
-import { type Epic, type ShardedCUEStorage, type Task } from "../../utils/sharded-storage.js";
 import {
   blockedTasksData,
   completeTaskData,
@@ -16,7 +15,8 @@ import {
   readyTasksData,
   updateEpicData,
   updateTaskData,
-} from "../epic/data.js";
+} from "@/services/epic/data.js";
+import { type Epic, type ShardedCUEStorage, type Task } from "@/utils/sharded-storage.js";
 
 const baseEpic: Epic = {
   id: "epic-1",

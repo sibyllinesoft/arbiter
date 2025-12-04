@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import { requireCommandConfig } from "@/cli/context";
 import { Command } from "commander";
-import { requireCommandConfig } from "../context";
 
 describe("cli context helpers", () => {
   it("walks up command tree to find config", () => {

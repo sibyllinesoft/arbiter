@@ -2,25 +2,25 @@
  * Project commands module - Project management and validation
  */
 
-import chalk from "chalk";
-import { Command } from "commander";
-import { runCheckCommand } from "../services/check/index.js";
-import { diffCommand } from "../services/diff/index.js";
-import { initCommand, listAll, listPresets, listTemplates } from "../services/init/index.js";
-import { listCommand } from "../services/list/index.js";
-import { importSpec } from "../services/spec-import/index.js";
-import { statusCommand } from "../services/status/index.js";
-import { surfaceCommand } from "../services/surface/index.js";
-import { watchCommand } from "../services/watch/index.js";
-import type { SurfaceLanguage } from "../surface-extraction/types.js";
+import { requireCommandConfig } from "@/cli/context.js";
+import { runCheckCommand } from "@/services/check/index.js";
+import { diffCommand } from "@/services/diff/index.js";
+import { initCommand, listAll, listPresets, listTemplates } from "@/services/init/index.js";
+import { listCommand } from "@/services/list/index.js";
+import { importSpec } from "@/services/spec-import/index.js";
+import { statusCommand } from "@/services/status/index.js";
+import { surfaceCommand } from "@/services/surface/index.js";
+import { watchCommand } from "@/services/watch/index.js";
+import type { SurfaceLanguage } from "@/surface-extraction/types.js";
 import type {
   CheckOptions,
   HealthResponse,
   InitOptions,
   SurfaceOptions,
   WatchOptions,
-} from "../types.js";
-import { requireCommandConfig } from "./context.js";
+} from "@/types.js";
+import chalk from "chalk";
+import { Command } from "commander";
 
 export function createProjectCommands(program: Command): void {
   // Init command
@@ -282,7 +282,7 @@ export function createProjectCommands(program: Command): void {
           throw new Error("Configuration not loaded");
         }
 
-        const ApiClient = (await import("../api-client.js")).ApiClient;
+        const ApiClient = (await import("@/api-client.js")).ApiClient;
         const apiClient = new ApiClient(config);
         const timeout = options.timeout ? Number.parseInt(options.timeout, 10) : config.timeout;
 

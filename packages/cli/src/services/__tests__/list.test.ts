@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 
+import { ApiClient } from "@/api-client.js";
+import * as cueIntegration from "@/constraints/cli-integration.js";
+import { listCommand } from "@/services/list/index.js";
+import * as formatting from "@/utils/formatting.js";
+import * as progress from "@/utils/progress.js";
 import fs from "fs-extra";
-import { ApiClient } from "../../api-client.js";
-import * as cueIntegration from "../../constraints/cli-integration.js";
-import * as formatting from "../../utils/formatting.js";
-import * as progress from "../../utils/progress.js";
-import { listCommand } from "../list/index.js";
 
 const baseConfig: any = {
   apiUrl: "https://api",

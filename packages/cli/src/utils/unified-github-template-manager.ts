@@ -12,10 +12,8 @@
 
 import os from "node:os";
 import path from "node:path";
-import fs from "fs-extra";
-import Handlebars from "handlebars";
-import { GitHubTemplateAssetStrategy } from "../templates/github-assets.js";
-import { TemplateOrchestrator, templateOrchestrator } from "../templates/index.js";
+import { GitHubTemplateAssetStrategy } from "@/templates/github-assets.js";
+import { TemplateOrchestrator, templateOrchestrator } from "@/templates/index.js";
 import type {
   GitHubFieldValidation,
   GitHubFileTemplateRef,
@@ -27,9 +25,11 @@ import type {
   GitHubTemplateSetSource,
   GitHubTemplatesConfig,
   IssueSpec,
-} from "../types.js";
-import { validateIssue } from "../types.js";
-import type { Epic, Task } from "./sharded-storage.js";
+} from "@/types.js";
+import { validateIssue } from "@/types.js";
+import type { Epic, Task } from "@/utils/sharded-storage.js";
+import fs from "fs-extra";
+import Handlebars from "handlebars";
 
 /** Generated template following exact issue schema specification */
 export interface GeneratedTemplate extends IssueSpec {

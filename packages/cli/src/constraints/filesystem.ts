@@ -1,6 +1,6 @@
 import path from "node:path";
+import { ConstraintViolationError, globalConstraintEnforcer } from "@/constraints/core.js";
 import fs from "fs-extra";
-import { ConstraintViolationError, globalConstraintEnforcer } from "./core.js";
 
 /**
  * File system operation types that must be constrained

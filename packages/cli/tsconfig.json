@@ -60,6 +60,9 @@
       ],
       "@/config": [
         "./src/config.ts"
+      ],
+      "@/language-support/*": [
+        "./src/language-support/*"
       ]
     }
   },

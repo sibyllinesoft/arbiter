@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
+import { GitHubSyncClient } from "@/utils/github-sync.js";
+import type { GitHubIssue } from "@/utils/github-sync.js";
 import fs from "fs-extra";
-import { GitHubSyncClient } from "../utils/github-sync.js";
-import type { GitHubIssue } from "../utils/github-sync.js";
 
 const originalCwd = process.cwd();
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "arbiter-ghsync-"));

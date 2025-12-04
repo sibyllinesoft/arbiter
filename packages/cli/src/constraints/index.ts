@@ -1,38 +1,38 @@
 import { EventEmitter } from "node:events";
-import chalk from "chalk";
-import type { CLIConfig } from "../types.js";
 import {
   ConstraintViolationError,
   type Constraints,
   DEFAULT_CONSTRAINTS,
   constrainedOperation,
   globalConstraintEnforcer,
-} from "./core.js";
+} from "@/constraints/core.js";
 import {
   type FileSystemOperation,
   bundleStandalone,
   copyStandalone,
   globalFileSystemConstraints,
   safeFileOperation,
-} from "./filesystem.js";
+} from "@/constraints/filesystem.js";
 import {
   type IdempotentOperation,
   globalIdempotencyValidator,
   validateIdempotentEdits,
   withIdempotencyValidation,
-} from "./idempotency.js";
+} from "@/constraints/idempotency.js";
 import {
   type SandboxValidator,
   type SandboxedOperation,
   createSandboxValidator,
   initializeSandboxConfig,
-} from "./sandbox.js";
+} from "@/constraints/sandbox.js";
 import {
   LATEST_API_VERSION,
   ensureLatestSchema,
   globalSchemaValidator,
   validateReadData,
-} from "./schema.js";
+} from "@/constraints/schema.js";
+import type { CLIConfig } from "@/types.js";
+import chalk from "chalk";
 
 /**
  * Comprehensive constraint violation summary

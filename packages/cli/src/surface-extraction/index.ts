@@ -1,9 +1,9 @@
-import { extractBashSurface } from "./bash-extractor.js";
-import { extractGoSurface } from "./go-extractor.js";
-import { extractPythonSurface } from "./python-extractor.js";
-import { extractRustSurface } from "./rust-extractor.js";
-import type { APISurface, SurfaceLanguage, SurfaceOptions } from "./types.js";
-import { extractTypeScriptSurface } from "./typescript-extractor.js";
+import { extractBashSurface } from "@/surface-extraction/bash-extractor.js";
+import { extractGoSurface } from "@/surface-extraction/go-extractor.js";
+import { extractPythonSurface } from "@/surface-extraction/python-extractor.js";
+import { extractRustSurface } from "@/surface-extraction/rust-extractor.js";
+import type { APISurface, SurfaceLanguage, SurfaceOptions } from "@/surface-extraction/types.js";
+import { extractTypeScriptSurface } from "@/surface-extraction/typescript-extractor.js";
 
 export type SurfaceExtractorFn = (
   options: SurfaceOptions,

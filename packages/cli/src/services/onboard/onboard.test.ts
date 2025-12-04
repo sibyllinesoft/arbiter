@@ -3,7 +3,7 @@ import os from "os";
 import path from "path";
 import fs from "fs-extra";
 
-import { generateInitialSpec } from "./index.js";
+import { generateInitialSpec } from "@/services/onboard/index.js";
 
 describe("generateInitialSpec", () => {
   const tempDirs: string[] = [];

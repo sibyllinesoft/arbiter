@@ -1,6 +1,6 @@
 import path from "node:path";
-import type { ApiClient } from "../api-client.js";
-import type { CLIConfig } from "../types.js";
+import type { ApiClient } from "@/api-client.js";
+import type { CLIConfig } from "@/types.js";
 
 /**
  * Ensure a project exists on the Arbiter service, creating it if needed.

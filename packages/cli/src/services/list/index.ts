@@ -1,12 +1,11 @@
-// @ts-nocheck
 import path from "node:path";
+import { ApiClient } from "@/api-client.js";
+import { getCueManipulator } from "@/constraints/cli-integration.js";
+import type { CLIConfig } from "@/types.js";
+import { formatComponentTable, formatJson, formatYaml } from "@/utils/formatting.js";
+import { withProgress } from "@/utils/progress.js";
 import chalk from "chalk";
 import fs from "fs-extra";
-import { ApiClient } from "../../api-client.js";
-import { getCueManipulator } from "../../constraints/cli-integration.js";
-import type { CLIConfig } from "../../types.js";
-import { formatComponentTable, formatJson, formatYaml } from "../../utils/formatting.js";
-import { withProgress } from "../../utils/progress.js";
 
 export interface ListOptions {
   format?: "table" | "json" | "yaml";
@@ -153,33 +152,42 @@ async function loadLocalAssemblySpec(_config: CLIConfig): Promise<any | null> {
   }
 }
 
-function buildComponentsFromSpec(spec: any, type: ValidType): any[] {
+function buildComponentsFromSpec(spec: Record<string, any>, type: ValidType): any[] {
   switch (type) {
     case "service":
-      return Object.entries(spec?.services ?? {}).map(([name, service]) => ({
-        name,
-        type,
-        language: service?.language || "unknown",
-        endpoints: Object.keys(service?.endpoints ?? {}),
-      }));
+      return Object.entries((spec?.services ?? {}) as Record<string, any>).map(
+        ([name, service]) => {
+          const svc = service as Record<string, any>;
+          return {
+            name,
+            type,
+            language: svc.language || "unknown",
+            endpoints: Object.keys(svc.endpoints ?? {}),
+          };
+        },
+      );
     case "client":
-      return Object.entries(spec?.modules ?? {})
-        .filter(([, module]: [string, any]) => module?.metadata?.type === "frontend")
-        .map(([name, module]) => ({
-          name,
-          type,
-          language: module?.language || "unknown",
-          framework: module?.metadata?.framework || "unknown",
-        }));
+      return Object.entries((spec?.modules ?? {}) as Record<string, any>)
+        .filter(([, module]) => (module as any)?.metadata?.type === "frontend")
+        .map(([name, module]) => {
+          const mod = module as Record<string, any>;
+          return {
+            name,
+            type,
+            language: mod.language || "unknown",
+            framework: mod.metadata?.framework || "unknown",
+          };
+        });
     case "endpoint":
-      return Object.entries(spec?.paths ?? {}).flatMap(([service, paths]: [string, any]) =>
-        Object.entries(paths || {}).map(([endpointPath, handlers]: [string, any]) => ({
-          name: `${service}${endpointPath}`,
-          service,
-          path: endpointPath,
-          methods: Object.keys(handlers || {}),
-          type,
-        })),
+      return Object.entries((spec?.paths ?? {}) as Record<string, any>).flatMap(
+        ([service, paths]) =>
+          Object.entries((paths as Record<string, any>) || {}).map(([endpointPath, handlers]) => ({
+            name: `${service}${endpointPath}`,
+            service,
+            path: endpointPath,
+            methods: Object.keys(handlers || {}),
+            type,
+          })),
       );
     case "route":
       return (spec?.ui?.routes ?? []).map((route: any) => ({
@@ -195,29 +203,45 @@ function buildComponentsFromSpec(spec: any, type: ValidType): any[] {
         type,
       }));
     case "schema":
-      return Object.entries(spec?.schemas ?? {}).map(([name, schema]) => ({
-        name,
-        type,
-        references: Object.keys(schema?.references ?? {}),
-      }));
+      return Object.entries((spec?.schemas ?? {}) as Record<string, any>).map(([name, schema]) => {
+        const schemaObj = schema as Record<string, any>;
+        return {
+          name,
+          type,
+          references: Object.keys(schemaObj.references ?? {}),
+        };
+      });
     case "database":
-      return Object.entries(spec?.databases ?? {}).map(([name, database]) => ({
-        name,
-        type,
-        engine: database?.engine || "unknown",
-      }));
+      return Object.entries((spec?.databases ?? {}) as Record<string, any>).map(
+        ([name, database]) => {
+          const db = database as Record<string, any>;
+          return {
+            name,
+            type,
+            engine: db.engine || "unknown",
+          };
+        },
+      );
     case "package":
-      return Object.entries(spec?.packages ?? spec?.modules ?? {}).map(([name, pkg]) => ({
-        name,
-        type,
-        language: pkg?.language || "unknown",
-      }));
+      return Object.entries(
+        ((spec?.packages ?? spec?.modules ?? {}) as Record<string, any>) || {},
+      ).map(([name, pkg]) => {
+        const pkgData = pkg as Record<string, any>;
+        return {
+          name,
+          type,
+          language: pkgData.language || "unknown",
+        };
+      });
     case "tool":
-      return Object.entries(spec?.tools ?? {}).map(([name, tool]) => ({
-        name,
-        type,
-        commands: tool?.commands || [],
-      }));
+      return Object.entries((spec?.tools ?? {}) as Record<string, any>).map(([name, tool]) => {
+        const toolData = tool as Record<string, any>;
+        return {
+          name,
+          type,
+          commands: toolData.commands || [],
+        };
+      });
     case "infrastructure":
       return (spec?.infrastructure?.containers ?? []).map((container: any) => ({
         name: container.name,
@@ -226,27 +250,38 @@ function buildComponentsFromSpec(spec: any, type: ValidType): any[] {
         image: container.image,
       }));
     case "contract":
-      return Object.entries(spec?.contracts?.workflows ?? {}).map(([name, contract]) => ({
-        name,
-        type,
-        operations: Object.keys(contract?.operations ?? {}),
-      }));
+      return Object.entries((spec?.contracts?.workflows ?? {}) as Record<string, any>).map(
+        ([name, contract]) => {
+          const contractData = contract as Record<string, any>;
+          return {
+            name,
+            type,
+            operations: Object.keys(contractData.operations ?? {}),
+          };
+        },
+      );
     case "flow":
       return Object.entries(
         spec?.processes ?? spec?.domain?.processes ?? spec?.domain?.stateMachines ?? {},
-      ).map(([name, flow]) => ({
-        name,
-        type,
-        states: Object.keys(flow?.states ?? {}),
-      }));
-    case "capability":
-      return Object.entries(spec?.modules ?? {})
-        .filter(([, module]: [string, any]) => module?.type === "capability")
-        .map(([name, module]) => ({
+      ).map(([name, flow]) => {
+        const flowData = flow as Record<string, any>;
+        return {
           name,
           type,
-          description: module?.description || "",
-        }));
+          states: Object.keys(flowData.states ?? {}),
+        };
+      });
+    case "capability":
+      return Object.entries((spec?.modules ?? {}) as Record<string, any>)
+        .filter(([, module]) => (module as any)?.type === "capability")
+        .map(([name, module]) => {
+          const mod = module as Record<string, any>;
+          return {
+            name,
+            type,
+            description: mod.description || "",
+          };
+        });
     default:
       return [];
   }
@@ -258,4 +293,3 @@ export const __listTesting = {
   loadLocalAssemblySpec,
   VALID_TYPES,
 };
-// @ts-nocheck

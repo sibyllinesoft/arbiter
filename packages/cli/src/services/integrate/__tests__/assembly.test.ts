@@ -5,7 +5,7 @@ import {
   parseAssemblyConfig,
   parseBuildMatrix,
   parseVersionArray,
-} from "../assembly.js";
+} from "@/services/integrate/assembly.js";
 
 describe("integrate assembly helpers", () => {
   it("parses assembly content with explicit build matrix", () => {

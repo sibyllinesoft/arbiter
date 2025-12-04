@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { addEndpoint } from "../services/add/subcommands/endpoint";
+import { addEndpoint } from "@/services/add/subcommands/endpoint";
 
 const manipulator = {
   parse: async (_c: string) => ({ services: { api: {} } }),

@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import type { APISurface, APISymbol, SurfaceOptions } from "@/surface-extraction/types.js";
+import { calculateStatistics } from "@/surface-extraction/utils.js";
 import chalk from "chalk";
 import { glob } from "glob";
-import type { APISurface, APISymbol, SurfaceOptions } from "./types.js";
-import { calculateStatistics } from "./utils.js";
 
 type PythonExtractionCommand = {
   readonly name: string;
