@@ -232,7 +232,9 @@ function buildComponentsFromSpec(spec: any, type: ValidType): any[] {
         operations: Object.keys(contract?.operations ?? {}),
       }));
     case "flow":
-      return Object.entries(spec?.domain?.stateMachines ?? {}).map(([name, flow]) => ({
+      return Object.entries(
+        spec?.processes ?? spec?.domain?.processes ?? spec?.domain?.stateMachines ?? {},
+      ).map(([name, flow]) => ({
         name,
         type,
         states: Object.keys(flow?.states ?? {}),

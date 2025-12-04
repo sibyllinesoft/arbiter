@@ -18,8 +18,11 @@ export class WebSocketHandler {
     const upgradeHeader = request.headers.get("upgrade");
     const connectionHeader = request.headers.get("connection");
 
+    // Support both legacy (/events) and new (/ws) paths used by the client
+    const isEventsPath = pathname === "/events" || pathname === "/ws";
+
     const isUpgrade =
-      pathname === "/events" &&
+      isEventsPath &&
       upgradeHeader?.toLowerCase() === "websocket" &&
       connectionHeader?.toLowerCase().includes("upgrade");
 

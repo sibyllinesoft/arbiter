@@ -487,13 +487,12 @@ async function syncEntityWithProject(
   name: string,
   options: Record<string, any>,
 ): Promise<void> {
-  if (!["service", "database"].includes(subcommand)) {
-    return;
-  }
+  const entityType = mapSubcommandToEntityType(subcommand);
+  if (!entityType) return;
 
   const projectId = await ensureProjectExists(client, config);
 
-  switch (subcommand) {
+  switch (entityType) {
     case "service":
       await upsertServiceEntity(client, projectId, name, options);
       console.log(chalk.dim(`🗄️  Synced service "${name}" with project catalog`));
@@ -503,7 +502,8 @@ async function syncEntityWithProject(
       console.log(chalk.dim(`🗄️  Synced database "${name}" with project catalog`));
       break;
     default:
-      break;
+      await upsertGenericEntity(client, projectId, entityType, name, options);
+      console.log(chalk.dim(`🗄️  Synced ${entityType} "${name}" with project catalog`));
   }
 }
 
@@ -557,10 +557,33 @@ async function upsertDatabaseEntity(
   }
 }
 
+async function upsertGenericEntity(
+  client: ApiClient,
+  projectId: string,
+  type: string,
+  name: string,
+  options: Record<string, any>,
+): Promise<void> {
+  const artifactId = await findExistingArtifactId(client, projectId, type, name);
+  const values = buildGenericEntityValues(type, name, options);
+
+  if (artifactId) {
+    const result = await client.updateProjectEntity(projectId, artifactId, { type, values });
+    if (!result.success) {
+      throw new Error(result.error || `Failed to update ${type} "${name}" in project catalog`);
+    }
+  } else {
+    const result = await client.createProjectEntity(projectId, { type, values });
+    if (!result.success) {
+      throw new Error(result.error || `Failed to register ${type} "${name}" in project catalog`);
+    }
+  }
+}
+
 async function findExistingArtifactId(
   client: ApiClient,
   projectId: string,
-  type: "service" | "database",
+  type: string,
   name: string,
 ): Promise<string | null> {
   const projectResult = await client.getProject(projectId);
@@ -573,13 +596,27 @@ async function findExistingArtifactId(
     return null;
   }
 
-  const collectionKey = type === "service" ? "services" : "databases";
+  // Prefer artifacts if available
+  const artifacts = Array.isArray(projectResult.data?.resolved?.artifacts)
+    ? projectResult.data.resolved.artifacts
+    : [];
+
+  const target = normalizeName(name);
+
+  const artifactMatch = artifacts.find(
+    (a: any) => normalizeName(a?.name) === target && (a?.type || "").toLowerCase() === type,
+  );
+  if (artifactMatch?.id) return artifactMatch.id as string;
+
+  // Fallback to spec collections for specific types
+  const collectionKey = mapEntityTypeToSpecCollection(type);
+  if (!collectionKey) return null;
+
   const collection = spec[collectionKey] as Record<string, any> | undefined;
   if (!collection || typeof collection !== "object") {
     return null;
   }
 
-  const target = name.trim().toLowerCase();
   for (const entry of Object.values(collection)) {
     if (!entry || typeof entry !== "object") continue;
     const entryNameRaw =
@@ -610,6 +647,32 @@ async function findExistingArtifactId(
   }
 
   return null;
+}
+
+function mapEntityTypeToSpecCollection(type: string): string | null {
+  switch (type) {
+    case "service":
+      return "services";
+    case "database":
+      return "databases";
+    case "package":
+      return "components"; // packages live under components.packages but resolved flatten; handled via artifacts mostly
+    case "tool":
+    case "frontend":
+    case "infrastructure":
+      return "components";
+    case "route":
+      return "ui"; // handled separately elsewhere; artifacts cover main cases
+    default:
+      return null;
+  }
+}
+
+function normalizeName(value: unknown): string {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, "-");
 }
 
 function buildServiceEntityValues(
@@ -652,4 +715,53 @@ function buildDatabaseEntityValues(
     values.type = options.type.trim();
   }
   return values;
+}
+
+function buildGenericEntityValues(
+  type: string,
+  name: string,
+  options: Record<string, any>,
+): Record<string, unknown> {
+  const values: Record<string, unknown> = { name };
+
+  if (options?.path) values.path = options.path;
+  if (options?.description) values.description = options.description;
+  if (options?.id) values.id = options.id;
+
+  switch (type) {
+    case "route":
+      values.path = options.path ?? name;
+      values.id = options.id ?? name;
+      break;
+    case "flow":
+      values.id = options.id ?? name;
+      break;
+    case "capability":
+      values.id = options.id ?? name;
+      break;
+    default:
+      break;
+  }
+
+  return values;
+}
+
+function mapSubcommandToEntityType(subcommand: string): string | null {
+  const normalized = subcommand.trim().toLowerCase();
+  const map: Record<string, string> = {
+    service: "service",
+    database: "database",
+    package: "package",
+    tool: "tool",
+    frontend: "frontend",
+    "load-balancer": "infrastructure",
+    cache: "database",
+    route: "route",
+    flow: "flow",
+    capability: "capability",
+    epic: "epic",
+    task: "task",
+  };
+
+  return map[normalized] || null;
 }

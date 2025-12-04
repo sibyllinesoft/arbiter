@@ -254,6 +254,12 @@ export class DockerPlugin implements ImporterPlugin {
         : data.filePath;
       const root = hasCompose ? path.basename(relativeFilePath) : path.dirname(relativeFilePath);
 
+      const buildPaths = this.resolveBuildPaths(
+        data.composeServiceConfig,
+        path.dirname(data.filePath),
+        projectRoot,
+      );
+
       const dockerMetadata: Record<string, unknown> = {};
       if (data.composeServiceConfig) {
         dockerMetadata.composeService = data.composeServiceConfig;
@@ -278,6 +284,15 @@ export class DockerPlugin implements ImporterPlugin {
         if (composeConfig.build !== undefined) {
           metadata.dockerBuild = composeConfig.build;
         }
+      }
+
+      if (buildPaths.buildContextRel) {
+        metadata.buildContext = buildPaths.buildContextRel;
+        dockerMetadata.buildContext = buildPaths.buildContextRel;
+      }
+      if (buildPaths.dockerfileRel) {
+        metadata.dockerfilePath = buildPaths.dockerfileRel;
+        dockerMetadata.dockerfilePath = buildPaths.dockerfileRel;
       }
 
       if (data.dockerfileContent) {
@@ -312,5 +327,39 @@ export class DockerPlugin implements ImporterPlugin {
     }
 
     return artifacts;
+  }
+
+  private resolveBuildPaths(
+    buildConfig: any,
+    composeDir: string,
+    projectRoot: string,
+  ): { buildContextRel?: string; dockerfileRel?: string } {
+    let buildContextAbs: string | undefined;
+    let dockerfileAbs: string | undefined;
+
+    if (typeof buildConfig === "string") {
+      buildContextAbs = path.resolve(composeDir, buildConfig);
+      dockerfileAbs = path.join(buildContextAbs, "Dockerfile");
+    } else if (buildConfig && typeof buildConfig === "object") {
+      const contextVal = buildConfig.context;
+      const dockerfileVal = buildConfig.dockerfile;
+
+      buildContextAbs =
+        typeof contextVal === "string" ? path.resolve(composeDir, contextVal) : composeDir;
+
+      if (typeof dockerfileVal === "string") {
+        dockerfileAbs = path.resolve(buildContextAbs, dockerfileVal);
+      } else {
+        dockerfileAbs = path.join(buildContextAbs, "Dockerfile");
+      }
+    }
+
+    const rel = (abs?: string) =>
+      abs ? path.relative(projectRoot, abs).replace(/\\/g, "/") : undefined;
+
+    return {
+      buildContextRel: rel(buildContextAbs),
+      dockerfileRel: rel(dockerfileAbs),
+    };
   }
 }

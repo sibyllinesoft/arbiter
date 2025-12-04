@@ -13,7 +13,6 @@ export function loadConfig(): ServerConfig {
       host: "0.0.0.0",
       database_path: "arbiter.db",
       spec_workdir: path.join(process.cwd(), ".spec-workdir"),
-      cue_binary_path: "cue",
       jq_binary_path: "jq",
       auth_required: false,
       rate_limit: { max_tokens: 10, refill_rate: 1, window_ms: 10000 },

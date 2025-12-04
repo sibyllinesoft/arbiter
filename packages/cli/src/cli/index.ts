@@ -114,8 +114,3 @@ For detailed help: arbiter <command> --help
 );
 
 export default program;
-
-// If this file is run directly, parse arguments
-if (import.meta.url === `file://${process.argv[1]}`) {
-  program.parse();
-}

@@ -3,6 +3,8 @@
  */
 import { createHash } from "node:crypto";
 import { isAbsolute, normalize, resolve, sep } from "node:path";
+import { CueRunner } from "@arbiter/cue-runner";
+import { runSafeCommand } from "./lib/ProcessManager";
 import type { ExternalToolResult, ProblemDetails, RateLimitBucket } from "./types.ts";
 
 /**
@@ -35,27 +37,11 @@ export async function executeCommand(
   const timeoutMs = options.timeout ?? 10000; // 10s default
 
   try {
-    const proc = Bun.spawn([command, ...args], {
+    const { stdout, stderr, exitCode } = await runSafeCommand([command, ...args], {
       cwd: options.cwd,
       env: { ...process.env, ...options.env },
-      stdout: "pipe",
-      stderr: "pipe",
+      timeoutMs,
     });
-
-    // Set up timeout
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        proc.kill();
-        reject(new Error(`Command timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
-    });
-
-    // Wait for process to complete or timeout
-    const _result = await Promise.race([proc.exited, timeoutPromise]);
-
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
-    const exitCode = proc.exitCode ?? 1;
     const duration = Date.now() - startTime;
 
     return {
@@ -82,7 +68,6 @@ export async function executeCommand(
  */
 export async function formatCUE(
   content: string,
-  cueBinaryPath = "cue",
 ): Promise<{ formatted: string; success: boolean; error?: string }> {
   // Write content to temporary file
   const tempFile = `/tmp/temp_${generateId()}.cue`;
@@ -90,9 +75,8 @@ export async function formatCUE(
   try {
     await Bun.write(tempFile, content);
 
-    const result = await executeCommand(cueBinaryPath, ["fmt", tempFile], {
-      timeout: 5000,
-    });
+    const runner = new CueRunner({ cwd: "/tmp" });
+    const result = await runner.fmt([tempFile]);
 
     if (result.success) {
       const formatted = await Bun.file(tempFile).text();

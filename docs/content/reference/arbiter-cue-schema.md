@@ -6,7 +6,6 @@ This page is the raw schema reference; it mirrors the types defined in `spec/sch
 **TL;DR (context):** Treat the CUE spec as a _single source of truth_ across four
 layers—**Domain → Contracts → Capabilities → Execution**—compiled into a
 deterministic IR. Keep frameworks as _adapters_, lock generation with
-`codegen.profile`+`templateHash`, and enforce compatibility gates. The result:
 reproducible scaffolds, migrations, APIs, infra, tests, and ops from one spec.
 
 ---
@@ -19,20 +18,17 @@ reproducible scaffolds, migrations, APIs, infra, tests, and ops from one spec.
 
 ### Schema Entities
 
-**Runtime & Development**
-- [Runtime](#runtime)
 
 **Domain Modeling**
 - [Entity](#entity)
-- [ValueObject](#valueobject)
 - [Field](#field)
 - [DomainEvent](#domainevent)
-- [StateMachine](#statemachine)
+- [Process](#process)
 - [Validator](#validator)
 - [Index](#index)
 
 **Contracts**
-- [WorkflowContract](#workflowcontract)
+- [Operation](#workflowcontract)
 - [SchemaDef](#schemadef)
 - [Message](#message)
 - [CompatPolicy](#compatpolicy)
@@ -51,13 +47,7 @@ reproducible scaffolds, migrations, APIs, infra, tests, and ops from one spec.
 **Deployment & Infrastructure**
 - [Deployment](#deployment)
 - [Ingress](#ingress)
-- [Volume](#volume)
-- [Network](#network)
 
-**Code Generation**
-- [Codegen](#codegen)
-
----
 
 ## Schema Overview
 
@@ -68,7 +58,6 @@ defined compatibility rules) from the spec.
 
 - Model _what_ the system means (Domain), _how it communicates_ (Contracts),
   _what a service does_ (Capabilities), and _how it runs_ (Execution).
-- Deterministic codegen via profiles, template hashing, stable component IDs,
   and artifact digests.
 - Validation/compat passes that detect breaking changes and require semver bumps
   or explicit migrations.
@@ -87,49 +76,43 @@ arbiterSpec: {
     description: string | *""
     repository?: string
     license?:    string           // SPDX
-    team?:       string
-  }
+      }
 
-  runtime: #Runtime              // Runtime defaults (overridable per service)
-  kind?: "library" | "application" | "service" | "tool"
+  // Domain vocabulary
+  entities?:    {[Name=string]: #Entity}
+  events?:      {[Name=string]: #DomainEvent}
+  processes?:   {[Name=string]: #Process}
+  invariants?:  [...#Invariant]
 
-  domain?: {
-    entities?:      {[Name=string]: #Entity}
-    valueObjects?:  {[Name=string]: #ValueObject}
-    events?:        {[Name=string]: #DomainEvent}
-    stateMachines?: {[Name=string]: #StateMachine}
-    invariants?:    [...#Invariant]
-  }
-
+  // Contracts & schemas
+  operations?: {[Name=string]: #Operation}
   contracts?: {
-    workflows?: {[Name=string]: #WorkflowContract}
     schemas?:   {[Name=string]: #SchemaDef}
     compat?:    #CompatPolicy
   }
 
-  services: {[ServiceName=string]: #Service}
+  // APIs & UI
+  resources?: {[Name=string]: {...}}        // replaces components/paths/ui/locators}       // OpenAPI-style (legacy)
+  flows?: [...#Flow]
 
-  deployments?: {[Env=string]: #Deployment}
+  // Runtime surfaces
+  services?: {[ServiceName=string]: #Service}
+  clients?:  {[ClientName=string]: {...}}
+  environments?: {[Env=string]: #Deployment}
 
-  volumes?:  {[VolumeName=string]: #Volume}
-  networks?: {[NetworkName=string]: #Network}
-
-  codegen?: #Codegen
+  // Observability/ops
+  testability?: #Testability
+  ops?: #Ops
+  security?: _
+  performance?: _
 }
 ```
 
 ---
-
-## Runtime
-
-Defines the execution runtime, language toolchain, and development environment configuration for the project.
-
 ### Schema
 
 ```cue
-#Runtime: {
   language:       "typescript" | "python" | "rust" | "go" | "javascript" | "java" | "csharp"  // Programming language
-  version:        string              // Language/runtime version (e.g., "20.11.1", "3.11")
   packageManager: "pnpm" | "npm" | "yarn" | "pip" | "poetry" | "cargo" | "go" | "maven" | "gradle"  // Package manager
   framework?:     string              // Framework hint for adapter selection (e.g., "fastify", "fastapi", "axum", "gin")
   linter?:        string              // Linter tool (e.g., "eslint", "ruff", "clippy")
@@ -169,7 +152,6 @@ Defines the execution runtime, language toolchain, and development environment c
 : The primary programming language for the project. This drives template selection during code generation and determines which language-specific tooling is available.
 
 **`version`** (required)
-: The specific version of the language or runtime. Format varies by language:
   - Node.js/TypeScript: `"20.11.1"`, `"18.x"`
   - Python: `"3.11"`, `"3.12"`
   - Go: `"1.21"`, `"1.22"`
@@ -204,7 +186,6 @@ Defines the execution runtime, language toolchain, and development environment c
 
 ```cue
 // TypeScript project with Fastify, using pnpm and modern tooling
-runtime: {
   language:       "typescript"
   version:        "20.11.1"
   packageManager: "pnpm"
@@ -242,7 +223,6 @@ runtime: {
 
 ```cue
 // Python project with FastAPI, using Poetry
-runtime: {
   language:       "python"
   version:        "3.11"
   packageManager: "poetry"
@@ -261,7 +241,6 @@ runtime: {
 
 ```cue
 // Rust project with Axum
-runtime: {
   language:       "rust"
   version:        "1.75"
   packageManager: "cargo"
@@ -275,7 +254,7 @@ runtime: {
 
 ## Domain Modeling: Optional but Powerful
 
-> **TL;DR for smaller projects:** Domain modeling (Entities, ValueObjects, DomainEvents, StateMachines) provides powerful benefits for large, complex systems—rich validation, event sourcing, state management, and cross-service data consistency. However, **for smaller projects or rapid prototyping**, you can absolutely skip straight to defining [Services](#service), endpoints, and infrastructure, and still get most of Arbiter's value. The domain layer is optional; start simple and add it when complexity demands it.
+> **TL;DR for smaller projects:** Domain modeling (Entities, DomainEvents, Processes) provides powerful benefits for large, complex systems—rich validation, event sourcing, state management, and cross-service data consistency. However, **for smaller projects or rapid prototyping**, you can absolutely skip straight to defining [Services](#service), endpoints, and infrastructure, and still get most of Arbiter's value. The domain layer is optional; start simple and add it when complexity demands it.
 >
 > **Impatient?** [Jump to Services & Capabilities →](#service)
 
@@ -481,12 +460,11 @@ Defines a deployable service unit, either internal (built from source) or extern
     url?:        string                       // External source URL
   }
   workload?: "deployment" | "statefulset" | "daemonset" | "job" | "cronjob"  // Kubernetes workload type
-  runtime?: #Runtime                          // Runtime override (inherits from root if omitted)
   image?: string                              // Prebuilt container image reference
 
   // Capabilities: what this service does
   implements?: {
-    apis?:      [...string]                   // Contract references (contracts.workflows.<name>)
+    apis?:      [...string]                   // Contract references (operations.<name>)
     models?:    [...string]                   // Domain entities/VOs owned by this service
     publishes?: [...{
       channel: string                         // Event channel name
@@ -502,12 +480,10 @@ Defines a deployable service unit, either internal (built from source) or extern
 
   capabilities?: [...#Capability]             // Service capabilities (HTTP server, worker, etc.)
 
-  // Execution & runtime configuration
   ports?: [...int]                            // Exposed ports
   replicas?: int & >=1 | *1                   // Number of replicas
   healthCheck?: #HealthCheck                  // Health check configuration
   config?:      #ServiceConfig                // Environment, files, secrets
-  volumes?:     [...#VolumeMount]             // Volume mounts
   resources?:   #ResourceRequirements         // CPU/memory requests and limits
 
   // Dependencies grouped by type
@@ -567,14 +543,12 @@ Defines a deployable service unit, either internal (built from source) or extern
   - `"job"`: One-time tasks
   - `"cronjob"`: Scheduled tasks
 
-**`runtime`** (optional)
-: Service-specific runtime override. Inherits from root `arbiterSpec.runtime` if omitted.
 
 **`image`** (optional)
 : Prebuilt container image reference. Use for services with custom build processes or external images.
 
 **`implements.apis`** (optional)
-: List of contract references this service implements. Each entry should reference `contracts.workflows.<InterfaceName>`.
+: List of contract references this service implements. Each entry should reference `operations.<InterfaceName>`.
 
 **`implements.models`** (optional)
 : List of domain entities/value objects primarily owned by this service. Used for code generation and migration planning.
@@ -633,7 +607,7 @@ services: {
 
     capabilities: [{
       kind:        "httpServer"
-      contractRef: "contracts.workflows.InvoiceWorkflow"
+      contractRef: "operations"
       adapter: {
         name:    "fastify"
         version: "4.x"
@@ -727,7 +701,7 @@ services: {
           module:   "./handlers/get-invoice.ts"
           function: "handler"
         }
-        implements: "contracts.workflows.InvoiceWorkflow.operations.getInvoice"
+        implements: "operations.getInvoice"
       }
       createInvoice: {
         path:    "/invoices"
@@ -737,7 +711,7 @@ services: {
           module:   "./handlers/create-invoice.ts"
           function: "handler"
         }
-        implements: "contracts.workflows.InvoiceWorkflow.operations.createInvoice"
+        implements: "operations.createInvoice"
         middleware: [{
           module:   "./middleware/validate-invoice.ts"
           function: "validateInvoiceData"
@@ -814,7 +788,7 @@ services: {
       }]
       services: [{
         target:      "EmailService"
-        contractRef: "contracts.workflows.EmailAPI"
+        contractRef: "operations.EmailAPI"
       }]
     }
 
@@ -833,33 +807,13 @@ services: {
 
 ---
 
-## WorkflowContract
+## Operation
 
 Defines a transport-agnostic interface contract specifying operations (RPC/HTTP) and messages (pub/sub) with versioning and compatibility rules.
 
 ### Schema
 
 ```cue
-#WorkflowContract: {
-  version: string                             // Semantic version for compatibility tracking
-  summary?: string                            // Brief contract description
-  description?: string                        // Detailed contract documentation (markdown)
-  operations: {
-    [Operation=string]: {
-      summary?: string                        // Operation summary
-      input?:  #SchemaDef | string            // Input schema (inline or reference)
-      output?: #SchemaDef | string            // Output schema (inline or reference)
-      errors?: {[Name=string]: #SchemaDef | string}  // Error responses by name
-      idempotent?: bool | *false              // Idempotency guarantee
-      notes?: string                          // Additional operation notes
-    }
-  }
-  messages?: {
-    publishes?:   {[Channel=string]: #Message}  // Events published by this contract
-    subscribes?:  {[Channel=string]: #Message}  // Events consumed by this contract
-  }
-}
-```
 
 ### Field Details
 
@@ -878,7 +832,7 @@ Defines a transport-agnostic interface contract specifying operations (RPC/HTTP)
 **`operations.<name>.input`** (optional)
 : Input schema for the operation. Can be:
   - Inline `#SchemaDef` object
-  - String reference to `domain.entities.<Name>`, `domain.valueObjects.<Name>`, or `contracts.schemas.<Name>`
+  - String reference to `domain.entities.<Name>` or `contracts.schemas.<Name>`
 
 **`operations.<name>.output`** (optional)
 : Output schema for the operation. Follows same reference rules as `input`.
@@ -899,7 +853,7 @@ Defines a transport-agnostic interface contract specifying operations (RPC/HTTP)
 
 ```cue
 contracts: {
-  workflows: {
+  workbehaviors: {
     InvoiceAPI: {
       version: "2024-12-01"
       summary: "Invoice management API"
@@ -1079,7 +1033,7 @@ contracts: {
 ```cue
 // Simpler contract example
 contracts: {
-  workflows: {
+  workbehaviors: {
     HealthAPI: {
       version: "1.0.0"
       summary: "Health check API"
@@ -1155,15 +1109,13 @@ Defines environment-specific deployment configuration including target platform,
 
   compose?: {
     version?:     "3.8" | "3.9"                   // Docker Compose version
-    networks?:    {[string]: {...}}               // Compose networks
-    volumes?:     {[string]: {...}}               // Compose volumes
     profiles?:    [...string]                     // Compose profiles
     environment?: {[string]: string}              // Global environment vars
   }
 
   strategies?: {
-    blueGreen?: bool                              // Enable blue/green deployments
-    canary?:    bool                              // Enable canary deployments
+    blueGreen?: bool                              // Enable blue/green environments
+    canary?:    bool                              // Enable canary environments
     rolling?:   bool                              // Enable rolling updates
     recreate?:  bool                              // Use recreate strategy
   }
@@ -1230,7 +1182,7 @@ Defines environment-specific deployment configuration including target platform,
 : Named ingress resources for external traffic routing. Typically includes TLS configuration and path-based routing.
 
 **`cluster`** (optional)
-: Kubernetes cluster configuration. Required for `target: "kubernetes"` deployments.
+: Kubernetes cluster configuration. Required for `target: "kubernetes"` environments.
 
 **`compose`** (optional)
 : Docker Compose configuration for local development. Generated when `testing.artifacts` includes `"compose"`.
@@ -1268,18 +1220,14 @@ Defines environment-specific deployment configuration including target platform,
 ### Example
 
 ```cue
-deployments: {
+environments: {
   // Local development environment
   development: {
     target: "compose"
     compose: {
       version: "3.9"
-      networks: {
-        app-network: {
-          driver: "bridge"
         }
       }
-      volumes: {
         postgres-data: {}
         redis-data: {}
       }
@@ -1305,11 +1253,6 @@ deployments: {
         }
       }
     }
-
-    observability: {
-      logs: {
-        level: "debug"
-      }
       tracing: {
         sampler: "always"  // Trace everything in dev
       }
@@ -1328,7 +1271,6 @@ deployments: {
 
     ingress: {
       main: {
-        host: "api-staging.example.com"
         tls: {
           secretName: "tls-staging"
           issuer:     "letsencrypt-staging"
@@ -1367,12 +1309,6 @@ deployments: {
         }
       }
     }
-
-    observability: {
-      logs: {
-        level:  "info"
-        schema: "json"
-      }
       metrics: {
         counters: [
           "http_requests_total",
@@ -1418,7 +1354,6 @@ deployments: {
 
     ingress: {
       main: {
-        host: "api.example.com"
         tls: {
           secretName: "tls-prod"
           issuer:     "letsencrypt-prod"
@@ -1465,12 +1400,6 @@ deployments: {
         }
       }
     }
-
-    observability: {
-      logs: {
-        level:  "warn"
-        schema: "json"
-      }
       metrics: {
         counters: [
           "http_requests_total",
@@ -1516,12 +1445,12 @@ deployments: {
         {
           from:        "APIGateway"
           to:          "InvoiceAPI"
-          contractRef: "contracts.workflows.InvoiceAPI"
+          contractRef: "operations.InvoiceAPI"
         },
         {
           from:        "InvoiceAPI"
           to:          "PaymentAPI"
-          contractRef: "contracts.workflows.PaymentAPI"
+          contractRef: "operations.PaymentAPI"
         }
       ]
       dataClassifications: {
@@ -1576,10 +1505,6 @@ deployments: {
 
 ---
 
-## Codegen
-
-Controls code generation determinism, template selection, and artifact fingerprinting to enable reproducible builds and compatibility tracking.
-
 ### Schema
 
 ```cue
@@ -1630,7 +1555,6 @@ Controls code generation determinism, template selection, and artifact fingerpri
 ### Example
 
 ```cue
-codegen: {
   profile:      "ts-fastify-postgres-k8s@1"
   generator:    "arbiter/gen@1.6.2"
   templateHash: "sha256:a3f2b8c1d9e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0"
@@ -1658,7 +1582,6 @@ codegen: {
 
 ```cue
 // Python project with FastAPI
-codegen: {
   profile:      "python-fastapi-postgres-compose@1"
   generator:    "arbiter/gen@1.6.2"
   templateHash: "sha256:b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3"
@@ -1667,7 +1590,6 @@ codegen: {
 
 ```cue
 // Rust project with strict compatibility
-codegen: {
   profile:      "rust-axum-postgres-k8s@2"
   generator:    "arbiter/gen@2.0.0"
   templateHash: "sha256:c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4"
@@ -1697,10 +1619,10 @@ Arbiter enforces the following validation rules to ensure spec consistency and e
 
 **Rule**: All references must resolve to valid definitions.
 
-- Every `capability.contractRef` must reference an existing `contracts.workflows.<Interface>`
-- Every `implements.apis` entry must reference a `contracts.workflows.<Interface>`
+- Every `capability.contractRef` must reference an existing `operations.<Interface>`
+- Every `implements.apis` entry must reference a `operations.<Interface>`
 - Every `publishes`/`subscribes` channel must exist in the contract's `messages` section
-- Schema references (strings in contracts) must resolve to `domain.entities`, `domain.valueObjects`, or `contracts.schemas`
+- Schema references (strings in contracts) must resolve to `domain.entities` or `contracts.schemas`
 
 **Example violation**:
 ```cue
@@ -1716,7 +1638,7 @@ services: {
 **Fix**:
 ```cue
 contracts: {
-  workflows: {
+  workbehaviors: {
     NonExistentContract: {  // ✅ Define the contract
       version: "1.0.0"
       operations: {...}
@@ -1732,7 +1654,7 @@ contracts: {
 **Example violation**:
 ```cue
 contracts: {
-  workflows: {
+  workbehaviors: {
     API: {
       operations: {
         get: {
@@ -1805,7 +1727,6 @@ domain: {
 
 **Rule**: Breaking changes require version bumps or migration allowances.
 
-Changes flagged by `codegen.compat.breakingRules` require:
 - `meta.version` semver bump (major version for breaking changes)
 - OR a `migrations` block with `allowBreak: true`
 
@@ -1821,7 +1742,7 @@ Changes flagged by `codegen.compat.breakingRules` require:
 ```cue
 // Version 1.0.0
 contracts: {
-  workflows: {
+  workbehaviors: {
     API: {
       version: "1.0.0"
       operations: {
@@ -1834,7 +1755,7 @@ contracts: {
 
 // Version still 1.0.0 - ❌ Breaking change without version bump
 contracts: {
-  workflows: {
+  workbehaviors: {
     API: {
       version: "1.0.0"  // Should be "2.0.0"
       operations: {
@@ -1853,7 +1774,7 @@ meta: {
 }
 
 contracts: {
-  workflows: {
+  workbehaviors: {
     API: {
       version: "2.0.0"
       operations: {
@@ -1866,11 +1787,9 @@ contracts: {
 
 ### 5. Determinism Requirements
 
-**Rule**: For full codegen, profile + generator + templateHash must be present.
 
 **Example violation**:
 ```cue
-codegen: {
   profile: "ts-fastify-postgres-k8s@1"
   // ❌ Missing generator and templateHash
 }
@@ -1878,7 +1797,6 @@ codegen: {
 
 **Fix**:
 ```cue
-codegen: {
   profile:      "ts-fastify-postgres-k8s@1"
   generator:    "arbiter/gen@1.6.2"
   templateHash: "sha256:abc123..."
@@ -1907,7 +1825,7 @@ services: {
 
 **Fix (deployment override)**:
 ```cue
-deployments: {
+environments: {
   production: {
     services: {
       API: {
@@ -1931,7 +1849,7 @@ deployments: {
 **Example violation**:
 ```cue
 domain: {
-  stateMachines: {
+  processes: {
     Invoice: {
       states: ["draft", "pending", "paid"]
       initial: "created"  // ❌ "created" not in states
@@ -1947,7 +1865,7 @@ domain: {
 **Fix**:
 ```cue
 domain: {
-  stateMachines: {
+  processes: {
     Invoice: {
       states: ["draft", "pending", "paid", "cancelled"]  // ✅ Include all states
       initial: "draft"  // ✅ Valid initial state
@@ -1968,112 +1886,9 @@ domain: {
 
 ---
 
-## ValueObject
+## ValueObject (removed)
 
-Represents an immutable data structure without identity. Value objects are compared by their attributes rather than identity, making them ideal for money, addresses, coordinates, and other value-based concepts.
-
-### Schema
-
-```cue
-#ValueObject: {
-  fields: {[FieldName=string]: #Field}       // Field definitions (same as Entity)
-}
-```
-
-### Field Details
-
-**`fields`** (required)
-: Map of field definitions using the same `#Field` schema as entities. The key difference from entities is that value objects:
-  - Have no primary key or identity
-  - Are immutable (changes create new instances)
-  - Are compared by value equality
-  - Cannot be referenced by other entities (must be embedded or serialized)
-
-### Example
-
-```cue
-// Money value object
-domain: {
-  valueObjects: {
-    Money: {
-      fields: {
-        amount: {
-          type:        "decimal"
-          description: "Monetary amount"
-          validators: [{
-            name:    "min:0"
-            message: "Amount cannot be negative"
-          }]
-        }
-        currency: {
-          type:        "string"
-          description: "ISO 4217 currency code"
-          validators: [{
-            name:    "regex:^[A-Z]{3}$"
-            message: "Must be 3-letter uppercase currency code"
-          }]
-        }
-      }
-    }
-  }
-}
-```
-
-```cue
-// Address value object
-domain: {
-  valueObjects: {
-    Address: {
-      fields: {
-        street: {
-          type:        "string"
-          description: "Street address"
-        }
-        city: {
-          type:        "string"
-          description: "City name"
-        }
-        state: {
-          type:        "string"
-          optional:    true
-          description: "State/province code"
-        }
-        postalCode: {
-          type:        "string"
-          description: "Postal/ZIP code"
-        }
-        country: {
-          type:        "string"
-          description: "ISO 3166-1 alpha-2 country code"
-          validators: [{
-            name: "regex:^[A-Z]{2}$"
-          }]
-        }
-      }
-    }
-  }
-}
-```
-
-```cue
-// DateRange value object
-domain: {
-  valueObjects: {
-    DateRange: {
-      fields: {
-        startDate: {
-          type:        "timestamp"
-          description: "Range start date (inclusive)"
-        }
-        endDate: {
-          type:        "timestamp"
-          description: "Range end date (inclusive)"
-        }
-      }
-    }
-  }
-}
-```
+Value objects are no longer a first-class schema concept. Model immutable structures directly as `Entity` fields or embedded records. Migrate existing `valueObjects` blocks to inline schema definitions.
 
 ---
 
@@ -2481,14 +2296,14 @@ domain: {
 
 ---
 
-## StateMachine
+## Process
 
 Defines valid states and transitions for an entity, enforcing business rules and workflow constraints at the schema level.
 
 ### Schema
 
 ```cue
-#StateMachine: {
+#Process: {
   states: [...string]                  // Valid states
   initial: string                      // Initial state
   transitions: [...{
@@ -2520,9 +2335,9 @@ Defines valid states and transitions for an entity, enforcing business rules and
 ### Example
 
 ```cue
-// Invoice state machine
+// Invoice process
 domain: {
-  stateMachines: {
+  processes: {
     Invoice: {
       states: ["draft", "pending", "paid", "cancelled", "refunded"]
       initial: "draft"
@@ -2565,9 +2380,9 @@ domain: {
 ```
 
 ```cue
-// Order fulfillment state machine
+// Order fulfillment process
 domain: {
-  stateMachines: {
+  processes: {
     Order: {
       states: ["received", "confirmed", "processing", "shipped", "delivered", "returned"]
       initial: "received"
@@ -2609,7 +2424,7 @@ domain: {
 ```cue
 // Simple approval workflow
 domain: {
-  stateMachines: {
+  processes: {
     Document: {
       states: ["draft", "submitted", "approved", "rejected"]
       initial: "draft"
@@ -2803,7 +2618,7 @@ messages: {
 ```cue
 // Pub/sub contract
 contracts: {
-  workflows: {
+  workbehaviors: {
     PaymentEvents: {
       version: "1.0.0"
 
@@ -2938,7 +2753,7 @@ Defines a dependency relationship between services, allowing explicit declaratio
   version?:     string                 // Semver constraint (e.g., ">=15", "^1.2.0")
   kind?:        string                 // Specific technology (postgres, redis, envoy)
   optional?:    bool | *false          // Whether dependency is required
-  contractRef?: string                 // Contract reference (e.g., "contracts.workflows.InvoiceAPI")
+  contractRef?: string                 // Contract reference (e.g., "operations.InvoiceAPI")
   description?: string                 // Dependency description
 }
 ```
@@ -2968,7 +2783,7 @@ Defines a dependency relationship between services, allowing explicit declaratio
 : Whether the service can start without this dependency. Optional dependencies typically provide enhanced functionality but aren't required for core operations.
 
 **`contractRef`** (optional)
-: Reference to the contract this dependency implements. Format: `"contracts.workflows.<ContractName>"`. Used for type-safe client generation.
+: Reference to the contract this dependency implements. Format: `"operations.<ContractName>"`. Used for type-safe client generation.
 
 **`description`** (optional)
 : Human-readable description of why this dependency exists and how it's used.
@@ -2981,7 +2796,7 @@ dependencies: {
   services: [{
     name:        "payment-service"
     target:      "PaymentAPI"
-    contractRef: "contracts.workflows.PaymentAPI"
+    contractRef: "operations.PaymentAPI"
     version:     "^2.0.0"
     description: "Payment processing service for order completion"
   }]
@@ -3005,7 +2820,7 @@ dependencies: {
 dependencies: {
   services: [{
     target:      "AuthService"
-    contractRef: "contracts.workflows.AuthAPI"
+    contractRef: "operations.AuthAPI"
   }]
 
   databases: [{
@@ -3028,7 +2843,7 @@ dependencies: {
 
   external: [{
     name:        "stripe-api"
-    contractRef: "contracts.workflows.StripeAPI"
+    contractRef: "operations.StripeAPI"
     version:     "2024-01-01"
     description: "Stripe payment gateway"
   }]
@@ -3050,7 +2865,6 @@ Defines a service capability, specifying how it exposes functionality (HTTP serv
   adapter?: {
     name:     string                          // Framework/adapter name
     version?: string                          // Adapter version
-    options?: {...}                           // Adapter-specific options
   }
   features?: {
     auth?: {
@@ -3083,13 +2897,12 @@ Defines a service capability, specifying how it exposes functionality (HTTP serv
   - `"cli"` - Command-line interface
 
 **`contractRef`** (optional)
-: Reference to the contract this capability implements. Format: `"contracts.workflows.<ContractName>"`.
+: Reference to the contract this capability implements. Format: `"operations.<ContractName>"`.
 
 **`adapter`** (optional)
 : Framework adapter configuration:
   - `name`: Framework name (fastify, express, fastapi, axum, gin, etc.)
   - `version`: Framework version constraint
-  - `options`: Framework-specific configuration
 
 **`features.auth`** (optional)
 : Authentication configuration:
@@ -3117,11 +2930,10 @@ Defines a service capability, specifying how it exposes functionality (HTTP serv
 // HTTP server capability
 capabilities: [{
   kind:        "httpServer"
-  contractRef: "contracts.workflows.InvoiceAPI"
+  contractRef: "operations.InvoiceAPI"
   adapter: {
     name:    "fastify"
     version: "4.x"
-    options: {
       logger: true
       trustProxy: true
     }
@@ -3150,11 +2962,10 @@ capabilities: [{
 // Queue consumer capability
 capabilities: [{
   kind:        "queueConsumer"
-  contractRef: "contracts.workflows.OrderEvents"
+  contractRef: "operations.OrderEvents"
   adapter: {
     name: "nats"
     version: "2.x"
-    options: {
       durableName: "order-processor"
       maxAckPending: 100
     }
@@ -3178,12 +2989,12 @@ capabilities: [{
 capabilities: [
   {
     kind:        "httpServer"
-    contractRef: "contracts.workflows.UserAPI"
+    contractRef: "operations.UserAPI"
     adapter: {name: "fastify"}
   },
   {
     kind:        "worker"
-    contractRef: "contracts.workflows.BackgroundJobs"
+    contractRef: "operations.BackgroundJobs"
     adapter: {name: "bullmq"}
   }
 ]
@@ -3223,7 +3034,7 @@ Defines a named HTTP endpoint with path, methods, handler, and middleware config
 : Handler reference. See [HandlerRef](#handlerref).
 
 **`implements`** (required)
-: Contract operation this endpoint implements. Format: `"contracts.workflows.<Contract>.operations.<Operation>"`.
+: Contract operation this endpoint implements. Format: `"operations.<Contract>.operations.<Operation>"`.
 
 **`middleware`** (optional)
 : Ordered list of middleware to apply to requests. Executed in array order.
@@ -3242,7 +3053,7 @@ endpoints: {
       module:   "./handlers/get-invoice.ts"
       function: "handler"
     }
-    implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
+    implements: "operations.InvoiceAPI.operations.getInvoice"
   }
 }
 ```
@@ -3258,7 +3069,7 @@ endpoints: {
       module:   "./handlers/create-invoice.ts"
       function: "createHandler"
     }
-    implements: "contracts.workflows.InvoiceAPI.operations.createInvoice"
+    implements: "operations.InvoiceAPI.operations.createInvoice"
     middleware: [
       {
         module:   "./middleware/validate-schema.ts"
@@ -3286,7 +3097,7 @@ endpoints: {
       service:  "InvoiceService"
       endpoint: "getInvoice"
     }
-    implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
+    implements: "operations.InvoiceAPI.operations.getInvoice"
     middleware: [{
       module:   "./middleware/auth.ts"
       function: "requireAuth"
@@ -3477,7 +3288,7 @@ middleware: [
 
 ## HealthCheck
 
-Defines health check configuration for service liveness and readiness probes, critical for reliable deployments in Kubernetes and other orchestration platforms.
+Defines health check configuration for service liveness and readiness probes, critical for reliable environments in Kubernetes and other orchestration platforms.
 
 ### Schema
 
@@ -3622,7 +3433,6 @@ config: {
       default: "false"
     }
     DATABASE_URL: {
-      value:    "postgres://localhost:5432/db"
       required: true
     }
   }
@@ -3792,7 +3602,6 @@ Defines ingress (external HTTP/HTTPS traffic routing) configuration for exposing
 
 ```cue
 #Ingress: {
-  host:  string                                             // Hostname for the ingress
   tls?:  {
     secretName: string                                      // TLS certificate secret name
     issuer?:    string                                      // Certificate issuer (e.g., letsencrypt)
@@ -3806,7 +3615,6 @@ Defines ingress (external HTTP/HTTPS traffic routing) configuration for exposing
 
 ### Field Details
 
-**`host`** (required)
 : Fully qualified domain name for the ingress (e.g., `"api.example.com"`, `"app.staging.example.com"`).
 
 **`tls`** (optional)
@@ -3823,7 +3631,6 @@ Defines ingress (external HTTP/HTTPS traffic routing) configuration for exposing
 // Simple HTTP ingress
 ingress: {
   main: {
-    host: "api.example.com"
     paths: {
       "/": {
         serviceName: "API"
@@ -3838,7 +3645,6 @@ ingress: {
 // HTTPS ingress with automatic cert
 ingress: {
   secure: {
-    host: "api.example.com"
     tls: {
       secretName: "api-tls"
       issuer:     "letsencrypt-prod"
@@ -3857,7 +3663,6 @@ ingress: {
 // Path-based routing
 ingress: {
   gateway: {
-    host: "services.example.com"
     tls: {
       secretName: "services-tls"
       issuer:     "letsencrypt-prod"
@@ -3884,7 +3689,6 @@ ingress: {
 // Multiple ingress (different domains)
 ingress: {
   api: {
-    host: "api.example.com"
     tls: {secretName: "api-tls", issuer: "letsencrypt-prod"}
     paths: {
       "/": {serviceName: "API", servicePort: 3000}
@@ -3892,7 +3696,6 @@ ingress: {
   }
 
   admin: {
-    host: "admin.example.com"
     tls: {secretName: "admin-tls", issuer: "letsencrypt-prod"}
     paths: {
       "/": {serviceName: "AdminPanel", servicePort: 8080}
@@ -3900,7 +3703,6 @@ ingress: {
   }
 
   staging: {
-    host: "api-staging.example.com"
     tls: {secretName: "staging-tls", issuer: "letsencrypt-staging"}
     paths: {
       "/": {serviceName: "API", servicePort: 3000}
@@ -3909,71 +3711,16 @@ ingress: {
 }
 ```
 
----
 
-## Volume
-
-Defines persistent or temporary storage volumes for services, including persistent volume claims, config maps, and secrets.
-
-### Schema
-
-```cue
-#Volume: {
-  type:          "persistentVolumeClaim" | "configMap" | "secret" | "emptyDir"  // Volume type
-  size?:         string                                   // Volume size (for PVC)
-  storageClass?: string                                   // Storage class (for PVC)
-  accessModes?:  [...string]                              // Access modes (for PVC)
-  items?:        [...{
-    key:  string                                          // Item key
-    path: string                                          // Mount path
-    mode?: int                                            // File permissions
-  }]
-  labels?:       {[string]: string}                       // Kubernetes labels
-  annotations?:  {[string]: string}                       // Kubernetes annotations
-}
-```
-
-### Field Details
-
-**`type`** (required)
-: Volume type:
-  - `"persistentVolumeClaim"` - Persistent storage (databases, file uploads, etc.)
-  - `"configMap"` - Configuration data from Kubernetes ConfigMap
-  - `"secret"` - Sensitive data from Kubernetes Secret
-  - `"emptyDir"` - Temporary storage (cleared on pod restart)
-
-**`size`** (optional, required for persistentVolumeClaim)
-: Volume size (e.g., `"10Gi"`, `"100Gi"`, `"1Ti"`).
-
-**`storageClass`** (optional)
-: Storage class name for dynamic provisioning (e.g., `"ssd"`, `"standard"`, `"gp3"`).
-
-**`accessModes`** (optional)
-: How the volume can be mounted:
-  - `"ReadWriteOnce"` - Single node read/write
-  - `"ReadOnlyMany"` - Multiple nodes read-only
-  - `"ReadWriteMany"` - Multiple nodes read/write
-
-**`items`** (optional, for configMap/secret)
-: Specific items to mount from the configMap or secret.
-
-**`labels`** (optional)
-: Kubernetes labels for organization and selection.
-
-**`annotations`** (optional)
-: Kubernetes annotations for metadata.
 
 ### Example
 
 ```cue
 // Persistent volume claim
-volumes: {
   database-data: {
-    type:         "persistentVolumeClaim"
     size:         "100Gi"
     storageClass: "ssd"
     accessModes:  ["ReadWriteOnce"]
-    labels: {
       app:       "postgres"
       component: "database"
     }
@@ -3983,7 +3730,6 @@ volumes: {
 
 ```cue
 // Config map volume
-volumes: {
   app-config: {
     type: "configMap"
     items: [{
@@ -4001,7 +3747,6 @@ volumes: {
 
 ```cue
 // Secret volume
-volumes: {
   tls-certs: {
     type: "secret"
     items: [{
@@ -4019,7 +3764,6 @@ volumes: {
 
 ```cue
 // Temporary volume
-volumes: {
   cache: {
     type: "emptyDir"
     annotations: {
@@ -4031,16 +3775,13 @@ volumes: {
 
 ```cue
 // Multiple volumes
-volumes: {
   postgres-data: {
-    type:         "persistentVolumeClaim"
     size:         "50Gi"
     storageClass: "fast-ssd"
     accessModes:  ["ReadWriteOnce"]
   }
 
   uploads: {
-    type:         "persistentVolumeClaim"
     size:         "200Gi"
     storageClass: "standard"
     accessModes:  ["ReadWriteMany"]
@@ -4055,135 +3796,3 @@ volumes: {
   }
 }
 ```
-
----
-
-## Network
-
-Defines network configuration for service communication, typically used in Docker Compose deployments.
-
-### Schema
-
-```cue
-#Network: {
-  type:     "internal" | "external"       // Network visibility
-  driver?:  string                        // Network driver
-  options?: {[string]: string}            // Driver-specific options
-  labels?:  {[string]: string}            // Network labels
-}
-```
-
-### Field Details
-
-**`type`** (required)
-: Network visibility:
-  - `"internal"` - Isolated network for service-to-service communication
-  - `"external"` - Network accessible from outside the stack
-
-**`driver`** (optional)
-: Network driver type:
-  - `"bridge"` - Default driver for single-host networks
-  - `"overlay"` - Multi-host networks (Docker Swarm)
-  - `"host"` - Use host's network stack
-  - `"none"` - No networking
-
-**`options`** (optional)
-: Driver-specific configuration options. Varies by driver.
-
-**`labels`** (optional)
-: Labels for organization and metadata.
-
-### Example
-
-```cue
-// Internal bridge network (default)
-networks: {
-  app-network: {
-    type:   "internal"
-    driver: "bridge"
-  }
-}
-```
-
-```cue
-// External network (connects to existing network)
-networks: {
-  shared-network: {
-    type: "external"
-  }
-}
-```
-
-```cue
-// Network with custom options
-networks: {
-  backend: {
-    type:   "internal"
-    driver: "bridge"
-    options: {
-      "com.docker.network.bridge.name":            "arbiter-backend"
-      "com.docker.network.bridge.enable_icc":      "true"
-      "com.docker.network.bridge.enable_ip_masquerade": "true"
-    }
-    labels: {
-      environment: "production"
-      project:     "arbiter"
-    }
-  }
-}
-```
-
-```cue
-// Multiple networks (network segmentation)
-networks: {
-  frontend: {
-    type:   "internal"
-    driver: "bridge"
-    labels: {
-      tier: "frontend"
-    }
-  }
-
-  backend: {
-    type:   "internal"
-    driver: "bridge"
-    labels: {
-      tier: "backend"
-    }
-  }
-
-  database: {
-    type:   "internal"
-    driver: "bridge"
-    options: {
-      "com.docker.network.bridge.enable_icc": "false"  // Restrict inter-container communication
-    }
-    labels: {
-      tier:     "database"
-      security: "restricted"
-    }
-  }
-
-  monitoring: {
-    type:   "external"
-    labels: {
-      tier: "monitoring"
-    }
-  }
-}
-```
-
----
-
-## Contributing
-
-When adding new schema entities to this reference:
-
-1. **Add TOC entry** in the Table of Contents under the appropriate category
-2. **Create section** with entity name as H2 heading
-3. **Brief description** explaining what the entity represents and its purpose
-4. **Schema box** with CUE definition including inline comments after each field
-5. **Field Details** section with detailed explanation of each field using the `**`field`**` format
-6. **Examples** section with at least 2-3 practical examples showing common use cases
-
-This pattern ensures consistency, completeness, and clarity for all schema entity documentation.

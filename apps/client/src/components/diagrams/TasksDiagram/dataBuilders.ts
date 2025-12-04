@@ -1,4 +1,5 @@
 import type { ArtifactCardMetaRow } from "@/components/ArtifactCard";
+import { layoutReactFlow } from "@/utils/reactFlowLayout";
 import { Flag, GitBranch, Layers, User, Workflow } from "lucide-react";
 import React from "react";
 import { type Edge, MarkerType, type Node } from "reactflow";
@@ -96,13 +97,11 @@ export const buildTaskFlowData = (
     });
   });
 
-  const horizontalSpacing = 240;
-
   group.tasks.forEach((task, index) => {
     nodes.push({
       id: task.nodeId,
       type: "task",
-      position: { x: index * horizontalSpacing, y: 0 },
+      position: { x: 0, y: 0 },
       data: {
         task,
         isSelected: task.nodeId === selectedTaskId,
@@ -146,8 +145,14 @@ export const buildTaskFlowData = (
     });
   });
 
+  const { nodes: layoutedNodes } = layoutReactFlow(nodes, edges, {
+    layout: "flow",
+    defaultSize: { width: 220, height: 140 },
+    direction: "LR",
+  });
+
   return {
-    nodes,
+    nodes: layoutedNodes,
     edges,
     missingDependencies: Array.from(new Set(missingDependencies)),
   };

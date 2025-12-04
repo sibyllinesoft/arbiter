@@ -1,9 +1,9 @@
 import { ArtifactCard } from "@/components/ArtifactCard";
 import { ARTIFACT_PANEL_BODY_CLASS, ARTIFACT_PANEL_CLASS } from "@/components/ArtifactPanel";
+import { TYPE_ICON_STYLES } from "@/features/spec/utils/serviceConstants";
 import { clsx } from "clsx";
 import { ChevronDown, ChevronUp, Navigation, Plus } from "lucide-react";
 import React, { useState } from "react";
-import { TYPE_ICON_STYLES } from "../constants";
 import type { NormalizedEndpointCard, NormalizedService } from "../types";
 
 interface ServiceCardProps {

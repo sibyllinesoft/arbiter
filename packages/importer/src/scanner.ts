@@ -8,6 +8,8 @@ import { spawn } from "child_process";
 import * as path from "path";
 import * as fs from "fs-extra";
 import { glob } from "glob";
+import { ArtifactClassifier } from "./detection/classifier";
+import { buildDirectoryContexts } from "./detection/context-aggregator";
 import {
   AnalysisConfiguration,
   AnalysisStatistics,
@@ -636,6 +638,12 @@ export class ScannerRunner {
     fileIndex: FileIndex,
   ): Promise<InferredArtifact[]> {
     const projectMetadata = await this.generateProjectMetadata(fileIndex);
+    const directoryContexts = buildDirectoryContexts(
+      evidence,
+      fileIndex,
+      this.config.projectRoot ?? fileIndex.root,
+    );
+    const classifier = new ArtifactClassifier();
     this.debug(`Generated project metadata for ${projectMetadata.name}`);
 
     const allArtifacts: InferredArtifact[] = [];
@@ -645,6 +653,8 @@ export class ScannerRunner {
       projectRoot: this.config.projectRoot,
       fileIndex,
       allEvidence: evidence,
+      directoryContexts,
+      classifier,
       options: this.config.inferenceOptions,
       cache: this.cache,
       projectMetadata,
@@ -1000,6 +1010,14 @@ export class ScannerRunner {
       const secondaryDocker = secondaryMetadata.docker as Record<string, unknown>;
 
       Object.assign(primaryDocker, secondaryDocker);
+    }
+
+    // Preserve build context/dockerfile path if the primary lacked them
+    if (!mergedMetadata.buildContext && typeof secondaryMetadata.buildContext === "string") {
+      mergedMetadata.buildContext = secondaryMetadata.buildContext;
+    }
+    if (!mergedMetadata.dockerfilePath && typeof secondaryMetadata.dockerfilePath === "string") {
+      mergedMetadata.dockerfilePath = secondaryMetadata.dockerfilePath;
     }
 
     // Merge tags

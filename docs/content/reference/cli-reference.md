@@ -25,20 +25,10 @@ curl -L https://github.com/arbiter-framework/arbiter/releases/latest/download/ar
 chmod +x arbiter
 ```
 
-### CUE dependency
+### CUE runtime
 
-Arbiter shells out to the official [`cue`](https://cuelang.org/docs/install/)
-binary for every command that reads or writes `.cue` files. Install CUE v0.9 or
-newer and keep it on your `PATH`:
-
-- macOS: `brew install cue-lang/tap/cue`
-- Linux: download the release tarball from GitHub or
-  `go install cuelang.org/go/cmd/cue@latest`
-- Windows: `winget install cue-lang.cue` or `choco install cue`
-
-Confirm your environment with `cue version`. When the binary lives outside the
-default `PATH`, expose it via a wrapper script before running `arbiter`
-commands.
+The CLI now runs CUE through the bundled `cuelang-js` WASM runtime—no external
+`cue` binary or `cue_binary_path` setting is required.
 
 ## Table of Contents
 

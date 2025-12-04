@@ -23,7 +23,7 @@
       components?: { schemas?: #AppSpec.components.schemas }
       paths?:    #AppSpec.paths
       testability?: #AppSpec.testability
-      stateModels?: #AppSpec.stateModels
+      processes?: #AppSpec.processes
     }
 
     #CompletionProfile: {

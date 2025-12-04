@@ -39,6 +39,11 @@ export function ProjectView() {
   useEffect(() => {
     if (project) {
       setCurrentProject(project);
+      // Keep tab badges in sync with project entity counts (even when tab content isn't mounted yet)
+      const servicesCount = project.entities?.services;
+      if (typeof servicesCount === "number") {
+        setTabBadges((prev) => ({ ...prev, services: servicesCount }));
+      }
     }
   }, [project, setCurrentProject]);
 

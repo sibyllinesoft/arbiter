@@ -4,7 +4,7 @@
 
 export interface VersionSet {
   arbiter: string;
-  cue: string;
+  cue: string; // tracks embedded cuelang-js runtime version
   node?: string;
   [key: string]: string | undefined;
 }
@@ -36,7 +36,7 @@ export interface CompatibilityResult {
 
 export const CURRENT_VERSIONS: VersionSet = {
   arbiter: "1.0.0",
-  cue: "0.6.0",
+  cue: "1.3.1", // cuelang-js version bundled (no external CUE binary required)
   node: "20.0.0",
 };
 

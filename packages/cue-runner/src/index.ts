@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import cue from "cuelang-js";
 
 export interface ExternalToolResult {
   success: boolean;
@@ -19,7 +19,6 @@ export interface CueDiagnostic {
 }
 
 export interface CueRunnerOptions {
-  cueBinaryPath?: string;
   cwd: string;
   timeoutMs?: number;
   env?: NodeJS.ProcessEnv;
@@ -40,13 +39,11 @@ export interface CueExportResult {
 }
 
 export class CueRunner {
-  private readonly cueBinaryPath: string;
   private readonly cwd: string;
   private readonly timeoutMs: number;
   private readonly env?: NodeJS.ProcessEnv;
 
   constructor(options: CueRunnerOptions) {
-    this.cueBinaryPath = options.cueBinaryPath ?? "cue";
     this.cwd = options.cwd;
     this.timeoutMs = options.timeoutMs ?? 10_000;
     this.env = options.env;
@@ -101,64 +98,51 @@ export class CueRunner {
 
   private async runCueCommand(args: string[]): Promise<ExternalToolResult> {
     const start = Date.now();
+    const cmd = args[0];
+    const rest = args.slice(1);
 
-    return new Promise<ExternalToolResult>((resolve) => {
-      let stdout = "";
-      let stderr = "";
-      let settled = false;
-      let timedOut = false;
+    let stdout = "";
+    let stderr = "";
+    let exitCode = 0;
+    let timedOut = false;
 
-      const child = spawn(this.cueBinaryPath, args, {
-        cwd: this.cwd,
-        env: { ...process.env, ...this.env },
-        stdio: ["ignore", "pipe", "pipe"],
-      });
+    const timeout = setTimeout(() => {
+      timedOut = true;
+    }, this.timeoutMs);
 
-      const timeout = setTimeout(() => {
-        timedOut = true;
-        child.kill("SIGTERM");
-      }, this.timeoutMs);
+    try {
+      const prevCwd = process.cwd();
+      process.chdir(this.cwd);
+      try {
+        const flags =
+          cmd === "export" ? { "--out": "json" } : cmd === "fmt" || cmd === "vet" ? {} : {};
+        const result = await cue(cmd, rest, flags);
+        if (typeof result === "string") {
+          stdout = result;
+        } else if (result && typeof result === "object") {
+          stdout = (result as any).stdout ?? "";
+          stderr = (result as any).stderr ?? "";
+          exitCode = typeof (result as any).code === "number" ? (result as any).code : 0;
+        }
+      } finally {
+        process.chdir(prevCwd);
+      }
+    } catch (error: any) {
+      exitCode = -1;
+      stdout = typeof error?.stdout === "string" ? error.stdout : "";
+      stderr = typeof error?.stderr === "string" ? error.stderr : (error?.message ?? String(error));
+    } finally {
+      clearTimeout(timeout);
+    }
 
-      child.stdout?.on("data", (chunk) => {
-        stdout += chunk.toString();
-      });
-
-      child.stderr?.on("data", (chunk) => {
-        stderr += chunk.toString();
-      });
-
-      const finalize = (exitCode: number) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        resolve({
-          success: !timedOut && exitCode === 0,
-          exitCode,
-          stdout: stdout.trim(),
-          stderr: stderr.trim(),
-          durationMs: Date.now() - start,
-          timedOut,
-        });
-      };
-
-      child.on("error", (error) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        resolve({
-          success: false,
-          exitCode: -1,
-          stdout: stdout.trim(),
-          stderr: error instanceof Error ? error.message : String(error),
-          durationMs: Date.now() - start,
-          timedOut,
-        });
-      });
-
-      child.on("close", (code) => {
-        finalize(typeof code === "number" ? code : -1);
-      });
-    });
+    return {
+      success: !timedOut && exitCode === 0,
+      exitCode,
+      stdout: String(stdout).trim(),
+      stderr: String(stderr).trim(),
+      durationMs: Date.now() - start,
+      timedOut,
+    };
   }
 
   private parseDiagnostics(stderr: string): CueDiagnostic[] {

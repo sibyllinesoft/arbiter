@@ -6,6 +6,7 @@ import { clsx } from "clsx";
 
 import { AppProvider } from "./contexts/AppContext";
 import { ProjectProvider } from "./contexts/ProjectContext";
+import { WebSocketProvider } from "./contexts/WebSocketContext";
 // Providers
 import { QueryProvider } from "./providers/QueryProvider";
 
@@ -161,58 +162,60 @@ function App() {
       <QueryProvider>
         <AppProvider>
           <ProjectProvider>
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <AuthGate>
-                    <LandingPage />
-                  </AuthGate>
+            <WebSocketProvider>
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <AuthGate>
+                      <LandingPage />
+                    </AuthGate>
+                  }
+                />
+                <Route
+                  path="/project/:projectId"
+                  element={
+                    <AuthGate>
+                      <ProjectView />
+                    </AuthGate>
+                  }
+                />
+                <Route path="/oauth/callback" element={<OAuthCallback />} />
+              </Routes>
+              <ToastContainer
+                position="bottom-right"
+                autoClose={2000}
+                hideProgressBar={false}
+                newestOnTop={true}
+                closeOnClick={true}
+                rtl={false}
+                pauseOnFocusLoss={false}
+                draggable={false}
+                pauseOnHover={false}
+                limit={5}
+                theme={isDark ? "dark" : "light"}
+                toastClassName={(context) =>
+                  clsx(
+                    context?.defaultClassName,
+                    "graphite-toast",
+                    isDark ? "graphite-toast-dark" : "graphite-toast-light",
+                  )
+                }
+                bodyClassName={(context) =>
+                  clsx(
+                    context?.defaultClassName,
+                    "graphite-toast-body",
+                    isDark ? "graphite-toast-body-dark" : "graphite-toast-body-light",
+                  )
+                }
+                progressClassName={(context) =>
+                  clsx(
+                    context?.defaultClassName,
+                    isDark ? "graphite-toast-progress-dark" : "graphite-toast-progress-light",
+                  )
                 }
               />
-              <Route
-                path="/project/:projectId"
-                element={
-                  <AuthGate>
-                    <ProjectView />
-                  </AuthGate>
-                }
-              />
-              <Route path="/oauth/callback" element={<OAuthCallback />} />
-            </Routes>
-            <ToastContainer
-              position="bottom-right"
-              autoClose={2000}
-              hideProgressBar={false}
-              newestOnTop={true}
-              closeOnClick={true}
-              rtl={false}
-              pauseOnFocusLoss={false}
-              draggable={false}
-              pauseOnHover={false}
-              limit={5}
-              theme={isDark ? "dark" : "light"}
-              toastClassName={(context) =>
-                clsx(
-                  context?.defaultClassName,
-                  "graphite-toast",
-                  isDark ? "graphite-toast-dark" : "graphite-toast-light",
-                )
-              }
-              bodyClassName={(context) =>
-                clsx(
-                  context?.defaultClassName,
-                  "graphite-toast-body",
-                  isDark ? "graphite-toast-body-dark" : "graphite-toast-body-light",
-                )
-              }
-              progressClassName={(context) =>
-                clsx(
-                  context?.defaultClassName,
-                  isDark ? "graphite-toast-progress-dark" : "graphite-toast-progress-light",
-                )
-              }
-            />
+            </WebSocketProvider>
           </ProjectProvider>
         </AppProvider>
       </QueryProvider>

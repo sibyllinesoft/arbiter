@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { Network } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -6,9 +5,17 @@ import { toast } from "react-toastify";
 
 import { useTabBadgeUpdater } from "@/contexts/TabBadgeContext";
 import { Button } from "@/design-system";
-import { useResolvedSpec, useUiOptionCatalog } from "@/hooks/api-hooks";
+import {
+  createExternalArtifactCard,
+  normalizeContainersAsExternalCards,
+  normalizeService,
+} from "@/features/spec/transformers/services";
+import { buildEndpointDraftIdentifier } from "@/features/spec/utils/services";
+import { useProject } from "@/hooks/api-hooks";
+import { useCatalog } from "@/hooks/useCatalog";
 import { useProjectEntityPersistence } from "@/hooks/useProjectEntityPersistence";
 import { apiService } from "@/services/api";
+import type { ResolvedSpecResponse } from "@/types/api";
 import { ArtifactCard } from "../ArtifactCard";
 import AddEntityModal from "../modals/AddEntityModal";
 import EndpointModal from "../modals/EndpointModal";
@@ -24,28 +31,22 @@ import {
   buildServiceInitialValues,
 } from "./builders";
 import { ServiceCard } from "./components/ServiceCard";
-import {
-  createExternalArtifactCard,
-  normalizeContainersAsExternalCards,
-  normalizeService,
-} from "./normalizers";
 import type {
   ExternalArtifactCard,
   NormalizedEndpointCard,
   NormalizedService,
   ServicesReportProps,
 } from "./types";
-import { buildEndpointDraftIdentifier } from "./utils";
 
 export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, className }) => {
-  const { data, isLoading, isError, error } = useResolvedSpec(projectId);
-  const queryClient = useQueryClient();
+  const catalog = useCatalog<ResolvedSpecResponse>(projectId);
+  const { data, isLoading, isError, error } = catalog;
+  const { data: projectData } = useProject(projectId);
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
   const [isCreatingService, setIsCreatingService] = useState(false);
-  const { data: uiOptionCatalogData } = useUiOptionCatalog();
   const uiOptionCatalog = useMemo<UiOptionCatalog>(
-    () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(uiOptionCatalogData ?? {}) }),
-    [uiOptionCatalogData],
+    () => catalog.uiOptionCatalog,
+    [catalog.uiOptionCatalog],
   );
   const [addEndpointState, setAddEndpointState] = useState<{
     open: boolean;
@@ -65,11 +66,10 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
   }>({ open: false, service: null, mode: "edit", artifactId: null });
 
   const refreshResolved = useCallback(
-    async (_options: { silent?: boolean } = {}) => {
-      if (!projectId) return;
-      await queryClient.invalidateQueries({ queryKey: ["resolved-spec", projectId] });
+    async (options: { silent?: boolean } = {}) => {
+      await catalog.refresh(options);
     },
-    [projectId, queryClient],
+    [catalog],
   );
 
   const { persistEntity } = useProjectEntityPersistence({
@@ -372,12 +372,18 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
   const resolvedProject = (data?.resolved as { project?: { entities?: Record<string, unknown> } })
     ?.project;
   const resolvedEntities = resolvedProject?.entities as Record<string, unknown> | undefined;
+  const projectServiceCount =
+    typeof projectData?.entities?.services === "number"
+      ? (projectData.entities.services as number)
+      : null;
   const resolvedServiceCount =
     typeof resolvedEntities?.["services"] === "number"
       ? (resolvedEntities["services"] as number)
       : null;
   const serviceCount =
-    isLoading || isError ? null : (resolvedServiceCount ?? internalServices.length);
+    isLoading || isError
+      ? null
+      : (projectServiceCount ?? resolvedServiceCount ?? internalServices.length);
 
   useEffect(() => {
     if (!projectId) {

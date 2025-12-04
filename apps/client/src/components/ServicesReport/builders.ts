@@ -1,6 +1,6 @@
 import type { FieldValue } from "@/components/modals/entityTypes";
+import { buildEnvironmentMap } from "@/features/spec/transformers/services";
 import type { KeyValueEntry } from "@amalto/key-value-editor";
-import { buildEnvironmentMap } from "./normalizers";
 import type { ExternalArtifactCard, NormalizedEndpointCard, NormalizedService } from "./types";
 
 export const buildEndpointInitialValues = (

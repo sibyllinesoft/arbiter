@@ -1,10 +1,19 @@
 import Badge from "@/components/Badge";
 import { clsx } from "clsx";
-import React from "react";
+import React, { useEffect } from "react";
 import type { TabItem, TabsProps } from "../../types/ui";
 
 export function Tabs({ activeTab, onTabChange, tabs, className }: TabsProps) {
-  const activeTabContent = tabs.find((tab) => tab.id === activeTab)?.content;
+  const fallbackTabId = tabs[0]?.id;
+  const effectiveActiveTab = tabs.some((tab) => tab.id === activeTab) ? activeTab : fallbackTabId;
+  const activeTabContent = tabs.find((tab) => tab.id === effectiveActiveTab)?.content;
+
+  // If the persisted tab id no longer exists, snap to the first available tab
+  useEffect(() => {
+    if (activeTab !== effectiveActiveTab && effectiveActiveTab) {
+      onTabChange(effectiveActiveTab);
+    }
+  }, [activeTab, effectiveActiveTab, onTabChange]);
 
   return (
     <div className={clsx("flex flex-col h-full min-h-0", className)}>
@@ -13,7 +22,7 @@ export function Tabs({ activeTab, onTabChange, tabs, className }: TabsProps) {
           <TabHeader
             key={tab.id}
             tab={tab}
-            isActive={tab.id === activeTab}
+            isActive={tab.id === effectiveActiveTab}
             onClick={() => !tab.disabled && onTabChange(tab.id)}
           />
         ))}

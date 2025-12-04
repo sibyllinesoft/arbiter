@@ -409,7 +409,7 @@ function determinePathOwnership(appSpec: AppSpec): Map<string, string> {
     isTypeScriptServiceLanguage(svc?.language as string | undefined),
   );
 
-  for (const flow of appSpec.flows ?? []) {
+  for (const flow of appSpec.behaviors ?? []) {
     for (const step of flow.steps ?? []) {
       const api = step.expect_api;
       if (!api?.path || ownership.has(api.path)) {
@@ -828,28 +828,22 @@ export function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): Conf
       name: "Unknown App",
     },
     config: cueData.config,
-    ui: cueData.ui || {
-      routes: [],
-    },
-    flows: cueData.flows || [],
+    resources: cueData.resources ?? cueData.components ?? [],
+    behaviors: cueData.behaviors || [],
     services: cueData.services,
-    domain: cueData.domain,
     capabilities: normalizeCapabilities(cueData.capabilities),
-    locators: cueData.locators || {},
     tests: cueData.tests,
     epics: cueData.epics,
     docs: cueData.docs,
     security: cueData.security,
     performance: cueData.performance,
     observability: cueData.observability,
-    environments: cueData.environments,
+    environments: cueData.environments ?? cueData.deployments,
     data: cueData.data,
     metadata: cueData.metadata,
-    components: cueData.components,
-    paths: cueData.paths,
     testability: cueData.testability,
     ops: cueData.ops,
-    stateModels: cueData.stateModels,
+    processes: cueData.processes ?? cueData.stateModels,
   };
 
   const config: ConfigWithVersion = {
@@ -880,10 +874,9 @@ async function fallbackParseAssembly(assemblyPath: string): Promise<ConfigWithVe
   const appSpec: AppSpec = {
     product: { name: productName },
     config: { language },
-    ui: { routes: [] },
-    locators: {},
-    flows: [],
-    capabilities: null,
+    resources: [],
+    behaviors: [],
+    capabilities: {},
   };
 
   const config: ConfigWithVersion = {
@@ -934,7 +927,7 @@ async function generateAppArtifacts(
       files.push(...locatorFiles);
     }
 
-    if (appSpec.flows.length > 0) {
+    if (appSpec.behaviors.length > 0) {
       const { files: testFiles, workspaceDir } = await generateFlowBasedTests(
         appSpec,
         outputDir,
@@ -977,7 +970,7 @@ async function generateAppArtifacts(
   );
   files.push(...capabilityFeatureFiles);
 
-  if (appSpec.components || appSpec.paths) {
+  if (appSpec.resources || appSpec.paths) {
     const apiFiles = await generateAPISpecifications(appSpec, outputDir, options, structure);
     files.push(...apiFiles);
   }
@@ -1015,7 +1008,7 @@ async function generateAppArtifacts(
   );
   files.push(...infraFiles);
 
-  const workflowFiles = await generateCIWorkflows(configWithVersion, outputDir, options);
+  const workflowFiles = await generateCIWorkbehaviors(configWithVersion, outputDir, options);
   files.push(...workflowFiles);
 
   const testRunnerFiles = await generateMasterTestRunner(
@@ -1066,7 +1059,7 @@ function deriveFlowRouteMetadata(appSpec: AppSpec): Map<string, FlowRouteMetadat
     return matchedRoute.id;
   };
 
-  for (const flow of appSpec.flows || []) {
+  for (const flow of appSpec.behaviors || []) {
     const routeId = resolveRouteId(flow.id);
     if (!metadata.has(routeId)) {
       metadata.set(routeId, {
@@ -1412,14 +1405,14 @@ function deriveServiceEndpointsFromFlows(
   serviceSlug: string,
   serviceSpec: any,
 ): RouteBindingInput[] {
-  if (!appSpec?.flows) {
+  if (!appSpec?.behaviors) {
     return [];
   }
 
   const results: RouteBindingInput[] = [];
   const serviceOriginal = serviceName;
 
-  for (const flow of appSpec.flows) {
+  for (const flow of appSpec.behaviors) {
     for (const step of flow.steps ?? []) {
       const api = step.expect_api;
       if (!api?.path) continue;
@@ -1620,7 +1613,7 @@ export function AppRoutes({ routes }: AppRoutesProps) {
 }
 
 /**
- * Generate test cases based on app flows
+ * Generate test cases based on app behaviors
  */
 /* v8 ignore start */
 async function generateFlowBasedTests(
@@ -1632,7 +1625,7 @@ async function generateFlowBasedTests(
 ): Promise<{ files: string[]; workspaceDir?: string }> {
   const files: string[] = [];
 
-  console.log(chalk.blue("🧪 Generating tests from flows..."));
+  console.log(chalk.blue("🧪 Generating tests from behaviors..."));
 
   // Determine language for test generation
   const language = clientTarget?.config?.language || appSpec.config?.language || "typescript";
@@ -1655,18 +1648,18 @@ async function generateFlowBasedTests(
     relativeWorkspace.trim().length > 0
       ? toPathSegments(relativeWorkspace)
       : defaultWorkspaceSegments;
-  const flowsDir = path.join(workspaceRoot, "flows");
-  if (!fs.existsSync(flowsDir) && !options.dryRun) {
-    fs.mkdirSync(flowsDir, { recursive: true });
+  const behaviorsDir = path.join(workspaceRoot, "behaviors");
+  if (!fs.existsSync(behaviorsDir) && !options.dryRun) {
+    fs.mkdirSync(behaviorsDir, { recursive: true });
   }
 
-  for (const flow of appSpec.flows) {
+  for (const flow of appSpec.behaviors) {
     const testContent = generateDefaultFlowTest(flow, appSpec.locators);
 
     const testFileName = `${flow.id.replace(/:/g, "_")}.test.ts`;
-    const testPath = path.join(flowsDir, testFileName);
+    const testPath = path.join(behaviorsDir, testFileName);
     await writeFileWithHooks(testPath, testContent, options);
-    files.push(joinRelativePath(...workspaceSegments, "flows", testFileName));
+    files.push(joinRelativePath(...workspaceSegments, "behaviors", testFileName));
   }
 
   const workspaceFiles = await scaffoldPlaywrightWorkspace(
@@ -1691,7 +1684,7 @@ async function scaffoldPlaywrightWorkspace(
   clientTarget: ClientGenerationTarget | undefined,
   structure: ProjectStructureConfig,
 ): Promise<string[]> {
-  if (!appSpec.flows || appSpec.flows.length === 0) {
+  if (!appSpec.behaviors || appSpec.behaviors.length === 0) {
     return [];
   }
 
@@ -1935,7 +1928,7 @@ const stripePort = ${stripePortInit};
 const baseURL = process.env.E2E_BASE_URL ?? \`http://127.0.0.1:\${webPort}\`;
 
 export default defineConfig({
-  testDir: './flows',
+  testDir: './behaviors',
   timeout: 120_000,
   expect: {
     timeout: 10_000,
@@ -3032,7 +3025,7 @@ function escapeTemplateLiteral(value: any): string {
 }
 
 /**
- * Generate API specifications from components and paths
+ * Generate API specifications from resources
  */
 async function generateAPISpecifications(
   appSpec: AppSpec,
@@ -3054,11 +3047,11 @@ async function generateAPISpecifications(
   }
 
   // Generate API services using language plugin if available
-  if (plugin?.capabilities?.api && appSpec.components) {
+  if (plugin?.capabilities?.api && appSpec.resources) {
     console.log(chalk.blue(`🚀 Generating ${language} API services using ${plugin.name}...`));
 
     // Generate services for each component that has API methods
-    for (const [componentName, component] of Object.entries(appSpec.components || {})) {
+    for (const [componentName, component] of Object.entries(appSpec.resources || {})) {
       if (component.methods && component.methods.length > 0) {
         const serviceConfig: LanguageServiceConfig = {
           name: componentName,
@@ -3108,15 +3101,16 @@ async function generateAPISpecifications(
       components: { schemas: {} as Record<string, any> },
     };
 
-    // Add component schemas if available
-    if (appSpec.components?.schemas) {
+    // Add component schemas if available (legacy compatibility: resources.schemas)
+    const resourceSchemas = (appSpec.resources as any)?.schemas;
+    if (resourceSchemas && typeof resourceSchemas === "object") {
       openApiSpec.components.schemas = Object.fromEntries(
-        Object.entries(appSpec.components.schemas).map(([name, schema]) => [
+        Object.entries(resourceSchemas as Record<string, any>).map(([name, schema]) => [
           name,
           {
             type: "object",
-            example: schema.example,
-            ...(schema.examples && { examples: schema.examples }),
+            example: (schema as any).example,
+            ...((schema as any).examples && { examples: (schema as any).examples }),
           },
         ]),
       );
@@ -3355,15 +3349,15 @@ async function generateModuleArtifacts(
 ): Promise<string[]> {
   const files: string[] = [];
 
-  if (!appSpec.components && !appSpec.domain && !appSpec.stateModels) {
+  if (!appSpec.resources && !appSpec.processes && !appSpec.stateModels) {
     return files;
   }
 
   const packagesRoot = path.join(outputDir, structure.packagesDirectory);
   await ensureDirectory(packagesRoot, options);
 
-  if (appSpec.components) {
-    for (const [componentName, componentSpec] of Object.entries(appSpec.components)) {
+  if (appSpec.resources) {
+    for (const [componentName, componentSpec] of Object.entries(appSpec.resources)) {
       const fileName = `${componentName}.json`;
       const filePath = path.join(packagesRoot, fileName);
       await writeFileWithHooks(filePath, JSON.stringify(componentSpec, null, 2), options);
@@ -3371,20 +3365,11 @@ async function generateModuleArtifacts(
     }
   }
 
-  if (appSpec.domain) {
-    const domainPath = path.join(packagesRoot, "domain.json");
-    await writeFileWithHooks(domainPath, JSON.stringify(appSpec.domain, null, 2), options);
-    files.push(joinRelativePath(structure.packagesDirectory, "domain.json"));
-  }
-
-  if (appSpec.stateModels) {
-    const stateModelsPath = path.join(packagesRoot, "state-models.json");
-    await writeFileWithHooks(
-      stateModelsPath,
-      JSON.stringify(appSpec.stateModels, null, 2),
-      options,
-    );
-    files.push(joinRelativePath(structure.packagesDirectory, "state-models.json"));
+  const processes = appSpec.processes ?? appSpec.stateModels;
+  if (processes) {
+    const processesPath = path.join(packagesRoot, "processes.json");
+    await writeFileWithHooks(processesPath, JSON.stringify(processes, null, 2), options);
+    files.push(joinRelativePath(structure.packagesDirectory, "processes.json"));
   }
 
   return files;
@@ -3443,11 +3428,11 @@ ${appSpec.product.description || "Auto-generated documentation overview."}
   await writeFileWithHooks(overviewPath, overviewSections.join("\n"), options);
   files.push(joinRelativePath(structure.docsDirectory, "overview.md"));
 
-  if (appSpec.flows.length > 0) {
-    const flowsPath = path.join(docsRoot, "flows.md");
-    const flowsContent = ["# User Flows", ""]
+  if (appSpec.behaviors.length > 0) {
+    const behaviorsPath = path.join(docsRoot, "behaviors.md");
+    const behaviorsContent = ["# User Flows", ""]
       .concat(
-        appSpec.flows.map((flow) => {
+        appSpec.behaviors.map((flow) => {
           const steps = flow.steps
             ?.map((step: any, idx: number) => `  ${idx + 1}. ${JSON.stringify(step)}`)
             .join("\n");
@@ -3456,8 +3441,8 @@ ${appSpec.product.description || "Auto-generated documentation overview."}
       )
       .join("\n");
 
-    await writeFileWithHooks(flowsPath, flowsContent, options);
-    files.push(joinRelativePath(structure.docsDirectory, "flows.md"));
+    await writeFileWithHooks(behaviorsPath, behaviorsContent, options);
+    files.push(joinRelativePath(structure.docsDirectory, "behaviors.md"));
   }
 
   return files;
@@ -3508,7 +3493,7 @@ async function generateInfrastructureArtifacts(
   const files: string[] = [];
   const cueData = (configWithVersion as any)._fullCueData;
 
-  if (!cueData?.deployments && !cueData?.services) {
+  if (!cueData?.environments && !cueData?.deployments && !cueData?.services) {
     return files;
   }
 
@@ -3713,7 +3698,7 @@ ${appSpec.ui.routes.map((route) => `- **${route.path}** (${route.id}): ${route.c
 
 ## Flows
 
-${appSpec.flows.map((flow) => `- **${flow.id}**: ${flow.steps.length} steps`).join("\n")}
+${appSpec.behaviors.map((flow) => `- **${flow.id}**: ${flow.steps.length} steps`).join("\n")}
 
 ## Development Workflow
 
@@ -5402,12 +5387,12 @@ const ARBITER_APP_JOB_ID = "arbiter_app";
 const ARBITER_SERVICE_JOB_PREFIX = "arbiter_service_";
 
 /**
- * Generate or update GitHub Actions workflows based on the current specification.
+ * Generate or update GitHub Actions workbehaviors based on the current specification.
  *
  * The workflow writer is idempotent and only manages Arbiter-owned jobs,
  * allowing teams to add or customise additional jobs without losing changes.
  */
-async function generateCIWorkflows(
+async function generateCIWorkbehaviors(
   configWithVersion: ConfigWithVersion,
   outputDir: string,
   options: GenerateOptions,
@@ -5419,7 +5404,7 @@ async function generateCIWorkflows(
     return files;
   }
 
-  const workflowDir = path.join(outputDir, ".github", "workflows");
+  const workflowDir = path.join(outputDir, ".github", "workbehaviors");
   await ensureDirectory(workflowDir, options);
 
   const workflowPath = path.join(workflowDir, "ci.yml");
@@ -5520,7 +5505,7 @@ async function generateCIWorkflows(
   }
 
   await writeFileWithHooks(workflowPath, serializedWorkflow, options);
-  files.push(".github/workflows/ci.yml");
+  files.push(".github/workbehaviors/ci.yml");
 
   return files;
 }
@@ -5934,8 +5919,8 @@ function parseDeploymentServices(assemblyConfig: any): {
   // Use the full CUE data if available
   const cueData = assemblyConfig._fullCueData || assemblyConfig;
 
-  // Extract cluster configuration from environment-scoped deployments
-  const deployments = cueData?.deployments;
+  // Extract cluster configuration from environment-scoped environments/deployments
+  const deployments = cueData?.environments ?? cueData?.deployments;
   if (deployments && typeof deployments === "object") {
     const entries = Object.entries(deployments as Record<string, DeploymentConfig>);
     const match =
@@ -7351,7 +7336,7 @@ async function emitSpecificationFromService(config: CLIConfig): Promise<void> {
 async function emitShardedSpecifications(apiClient: ApiClient): Promise<void> {
   try {
     // Try to get any additional sharded files (services, endpoints, etc.)
-    const shardTypes = ["services", "endpoints", "schemas", "flows"];
+    const shardTypes = ["services", "endpoints", "schemas", "behaviors"];
 
     for (const shardType of shardTypes) {
       const shardPath = path.resolve(".arbiter", `${shardType}.cue`);

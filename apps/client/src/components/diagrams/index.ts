@@ -1,5 +1,6 @@
 // Core Data Visualization
 export { DataViewer } from "./DataViewer";
+export { default as ArchitectureFlowDiagram } from "./ArchitectureFlowDiagram";
 
 // CUE Visualization Components
 export { CueViewer } from "./CueViewer";

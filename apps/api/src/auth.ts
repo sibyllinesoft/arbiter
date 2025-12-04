@@ -73,10 +73,54 @@ interface OAuthIntegrationAdapter {
   stop(): Promise<void>;
 }
 
+interface TokenRecord {
+  userId: string;
+  projectAccess: string[];
+}
+
+class HybridTokenStore {
+  private memory = new Map<string, TokenRecord>();
+
+  constructor(private kvBinding?: any) {}
+
+  add(token: string, record: TokenRecord): void {
+    this.memory.set(token, record);
+    if (this.kvBinding?.put) {
+      void this.kvBinding.put(token, JSON.stringify(record), { expirationTtl: 60 * 60 * 24 * 30 });
+    }
+  }
+
+  async get(token: string): Promise<TokenRecord | null> {
+    const cached = this.memory.get(token);
+    if (cached) return cached;
+
+    if (this.kvBinding?.get) {
+      try {
+        const raw = await this.kvBinding.get(token);
+        if (raw) {
+          const parsed =
+            typeof raw === "string" ? (JSON.parse(raw) as TokenRecord) : (raw as TokenRecord);
+          this.memory.set(token, parsed);
+          return parsed;
+        }
+      } catch (error) {
+        logger.warn("Failed to read token from KV", { error });
+      }
+    }
+
+    return null;
+  }
+
+  delete(token: string): void {
+    this.memory.delete(token);
+    if (this.kvBinding?.delete) {
+      void this.kvBinding.delete(token);
+    }
+  }
+}
+
 export class AuthService {
-  private validTokens: Set<string> = new Set();
-  private tokenToUserMap: Map<string, string> = new Map();
-  private userProjectAccess: Map<string, string[]> = new Map();
+  private tokenStore: HybridTokenStore;
   private oauthService: OAuthService | null = null;
   private authorizationServer: AuthorizationServer | null = null;
   private oauthProvider: OAuthProvider | null = null;
@@ -85,6 +129,14 @@ export class AuthService {
   private tokenEpochIssuedAt: number | null;
 
   constructor(private config: ServerConfig) {
+    const globalAny = globalThis as any;
+    const kvBinding =
+      globalAny?.AUTH_TOKENS ??
+      globalAny?.env?.AUTH_TOKENS ??
+      globalAny?.__bindings__?.AUTH_TOKENS ??
+      null;
+    this.tokenStore = new HybridTokenStore(kvBinding);
+
     const epochFromEnv = (process.env.AUTH_TOKEN_EPOCH || "").trim();
     if (epochFromEnv.length > 0) {
       this.tokenEpochId = epochFromEnv;
@@ -118,7 +170,7 @@ export class AuthService {
     }
 
     // Fail-safe: Ensure no dev tokens in production
-    if (process.env.NODE_ENV === "production" && this.validTokens.has("dev-token")) {
+    if (process.env.NODE_ENV === "production" && process.env.DEV_AUTH_TOKEN) {
       throw new Error("SECURITY ERROR: Development tokens detected in production environment!");
     }
   }
@@ -127,46 +179,28 @@ export class AuthService {
    * Add a valid token with user and project access
    */
   addToken(token: string, userId: string, projectAccess: string[] = []): void {
-    this.validTokens.add(token);
-    this.tokenToUserMap.set(token, userId);
-    this.userProjectAccess.set(userId, projectAccess);
-
-    logger.info("Token added for user", {
-      userId,
-      projectCount: projectAccess.length,
-    });
+    this.tokenStore.add(token, { userId, projectAccess });
+    logger.info("Token added for user", { userId, projectCount: projectAccess.length });
   }
 
   /**
    * Remove a token
    */
   removeToken(token: string): void {
-    const userId = this.tokenToUserMap.get(token);
-
-    this.validTokens.delete(token);
-    this.tokenToUserMap.delete(token);
-
-    if (userId) {
-      this.userProjectAccess.delete(userId);
-      logger.info("Token removed for user", { userId });
-    }
+    this.tokenStore.delete(token);
   }
 
   /**
    * Validate token and return auth context
    */
-  validateToken(token: string): AuthContext | null {
-    if (!this.validTokens.has(token)) {
-      return null;
-    }
-
-    const userId = this.tokenToUserMap.get(token);
-    const projectAccess = userId ? (this.userProjectAccess.get(userId) ?? []) : [];
+  async validateToken(token: string): Promise<AuthContext | null> {
+    const record = await this.tokenStore.get(token);
+    if (!record) return null;
 
     return {
       token,
-      user_id: userId,
-      project_access: projectAccess,
+      user_id: record.userId,
+      project_access: record.projectAccess,
     };
   }
 
@@ -203,7 +237,7 @@ export class AuthService {
       return null;
     }
 
-    return this.validateToken(token);
+    return await this.validateToken(token);
   }
 
   /**

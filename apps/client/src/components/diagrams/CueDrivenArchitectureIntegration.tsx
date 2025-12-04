@@ -65,13 +65,14 @@ export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureInt
           flows: resolved.flows || resolved.spec?.flows,
           capabilities: resolved.capabilities || resolved.spec?.capabilities,
           paths: resolved.paths,
-          stateModels: resolved.stateModels || resolved.states,
+          processes: resolved.processes || resolved.stateModels || resolved.states,
           locators: resolved.locators,
+          resources: resolved.resources || resolved.spec?.resources,
+          infrastructure: resolved.infrastructure || resolved.spec?.infrastructure,
 
           // v1 schema elements (services from spec)
           services: resolved.services || resolved.spec?.services,
-          deployment: resolved.deployment || resolved.deployments?.production,
-          deployments: resolved.deployments,
+          environments: resolved.environments || resolved.deployments,
         };
 
         setCueData(architectureData);

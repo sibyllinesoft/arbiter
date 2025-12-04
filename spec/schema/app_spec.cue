@@ -4,7 +4,7 @@
     import "strings"
 
     // Top-level “AppSpec” schema. All fragments unify into this shape under /spec/app.
-    #AppSpec: {
+  #AppSpec: {
       product: {
         name:   #Human
         goals?: [...#Human]
@@ -16,50 +16,17 @@
         }
       }
 
-      // Domain vocabulary & permissions (optional but recommended)
-      domain?: {
-        enums?: { [#Slug]: [...#Slug] }                // e.g., InvoiceStatus: ["DRAFT","APPROVED","SENT"]
-        permissions?: { [#Cap]: [...#Role] }           // e.g., approve: ["manager","admin"]
-      }
-
       // Capability definitions with behavioural specifications
       capabilities?: { [#Slug]: #CapabilitySpec }
 
-      // Data/APIs: simple schema map with examples; can be projected to OpenAPI
-      components?: {
-        schemas?: {
-          [Name=~"^[A-Z][A-Za-z0-9]*$"]: {
-            example: _
-            examples?: [..._]
-            rules?: _
-          }
-        }
-      }
-      paths?: {                                   // OpenAPI-style HTTP operations
-        [#URLPath]: {
-          get?:    #HttpOperation
-          post?:   #HttpOperation
-          put?:    #HttpOperation
-          patch?:  #HttpOperation
-          delete?: #HttpOperation
-        }
-      }
+      // Generic resources (supersedes components/paths/ui)
+      resources?: { [#Slug]: _ }
 
-      // UI surface
-      ui: {
-        routes: [...{
-          id:           #RouteID
-          path:         #URLPath
-          capabilities: [...#Cap] & minItems(1)
-          components?:  [...#Human]
-        }] & minItems(1)
-      }
+      // Operations (formerly contracts.workflows.<name>.operations.*)
+      operations?: { [#Slug]: #Operation }
 
-      // Stable mapping from domain locator tokens to selectors
-      locators: { [#LocatorToken]: #CssSelector } & minFields(1)
-
-      // Flows & oracles
-      flows: [...#Flow] & minItems(1)
+      // Behaviors & oracles (formerly flows)
+      behaviors: [...#Flow] & minItems(1)
 
       // Determinism hooks for tests
       testability?: {
@@ -79,8 +46,8 @@
         security?:      { auth?: #Slug, scopes?: [...#Slug] }
       }
 
-      // Optional per-view state machines (XState-like)
-      stateModels?: { [#Slug]: #FSM }
+      // Optional per-view processes (formerly state machines)
+      processes?: { [#Slug]: #FSM }
     }
 
     // ---------- Flow grammar ----------
@@ -144,10 +111,10 @@
       example?: _
     }
 
-    #HttpOperation: {
-      operationId?: string
-      summary?: #Human
-      description?: string
+    #Operation: {
+      id?: string
+      version?: string
+      description?: #Human
       tags?: [...#Slug]
       deprecated?: bool
       parameters?: [...#HttpParameter]

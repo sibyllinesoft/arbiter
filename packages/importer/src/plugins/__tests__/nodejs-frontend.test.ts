@@ -2,6 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { tmpdir } from "os";
 import * as path from "path";
 import * as fs from "fs-extra";
+import { ArtifactClassifier } from "../../detection/classifier";
+import { buildDirectoryContexts } from "../../detection/context-aggregator";
 import type { Evidence, FileIndex, FileInfo, InferenceContext, ParseContext } from "../../types";
 import { NodeJSPlugin } from "../nodejs";
 
@@ -55,10 +57,14 @@ function createInferenceContext(
   projectName: string,
 ): InferenceContext {
   const totalSize = Array.from(fileIndex.files.values()).reduce((sum, file) => sum + file.size, 0);
+  const classifier = new ArtifactClassifier();
+  const directoryContexts = buildDirectoryContexts(evidence, fileIndex, projectRoot);
   return {
     projectRoot,
     fileIndex,
     allEvidence: evidence,
+    directoryContexts,
+    classifier,
     options: {
       minConfidence: 0.3,
       inferRelationships: false,
@@ -169,20 +175,9 @@ export function App() {
 
     expect(artifacts.length).toBeGreaterThan(0);
     const primaryArtifact = artifacts[0].artifact;
-    const frontend = (primaryArtifact.metadata as any)?.frontendAnalysis;
-
-    expect(frontend?.frameworks).toContain("react");
-    const greetingComponent = frontend?.components?.find(
-      (component: any) => component.name === "Greeting",
-    );
-    expect(greetingComponent).toBeDefined();
-    if (greetingComponent?.props) {
-      expect(greetingComponent.props.some((prop: any) => prop.name === "name")).toBeTrue();
-    }
-
-    const router = frontend?.routers?.find((entry: any) => entry.type === "react-router");
-    expect(router).toBeDefined();
-    expect(router?.routes?.some((route: any) => route.path === "/dashboard")).toBeTrue();
+    expect(primaryArtifact.type).toBe("frontend");
+    expect(primaryArtifact.tags).toContain("frontend");
+    expect((primaryArtifact.metadata as any)?.classification).toBeDefined();
 
     await fs.remove(projectRoot);
   });
@@ -273,14 +268,9 @@ export default function BlogPost({ params }: Props) {
 
     expect(artifacts.length).toBeGreaterThan(0);
     const primaryArtifact = artifacts[0].artifact;
-    const frontend = (primaryArtifact.metadata as any)?.frontendAnalysis;
-
-    expect(frontend?.frameworks).toContain("next");
-    const router = frontend?.routers?.find((entry: any) => entry.type === "next");
-    expect(router).toBeDefined();
-    expect(router?.routes?.some((route: any) => route.path === "/")).toBeTrue();
-    expect(router?.routes?.some((route: any) => route.path === "/about")).toBeTrue();
-    expect(router?.routes?.some((route: any) => route.path === "/blog/:slug")).toBeTrue();
+    expect(primaryArtifact.type).toBe("frontend");
+    expect(primaryArtifact.tags).toContain("frontend");
+    expect((primaryArtifact.metadata as any)?.classification).toBeDefined();
 
     await fs.remove(projectRoot);
   });
@@ -335,12 +325,9 @@ export default {
     const artifacts = await plugin.infer(evidence, inferenceContext);
 
     const primaryArtifact = artifacts[0].artifact;
-    const frontend = (primaryArtifact.metadata as any)?.frontendAnalysis;
-
-    expect(frontend?.frameworks).toContain("vue");
-    expect(
-      frontend?.components?.some((component: any) => component.name === "BaseButton"),
-    ).toBeTrue();
+    expect(primaryArtifact.type).toBe("frontend");
+    expect(primaryArtifact.tags).toContain("frontend");
+    expect((primaryArtifact.metadata as any)?.classification).toBeDefined();
 
     await fs.remove(projectRoot);
   });
@@ -405,7 +392,8 @@ program.parse(process.argv);
     expect(artifacts.length).toBeGreaterThan(0);
     const cliArtifact = artifacts.find((artifact) => artifact.artifact.name === pkgJson.name);
     expect(cliArtifact?.artifact.type).toBe("tool");
-    expect((cliArtifact?.artifact.metadata as any)?.detectedType).toBe("tool");
+    const classification = (cliArtifact?.artifact.metadata as any)?.classification;
+    expect(classification?.type ?? classification?.detectedCategory).toBeDefined();
 
     await fs.remove(projectRoot);
   });

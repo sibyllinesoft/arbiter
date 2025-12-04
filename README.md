@@ -316,21 +316,9 @@ npm install -g @sibyllinesoft/arbiter-cli
 
 - **Bun** >= 1.0.0 - Primary runtime ([install](https://bun.sh))
 - **Node.js** >= 18.0.0 - For standalone CLI
-- **CUE** v0.9.x or newer - For validation and generation ([install](https://cuelang.org/docs/install/))
+- **CUE runtime** - Bundled via `cuelang-js` (no external `cue` binary required)
 
-### Installation Methods for CUE
-
-- **macOS**: `brew install cue-lang/tap/cue`
-- **Linux**: Download from [GitHub releases](https://github.com/cue-lang/cue/releases) or `go install cuelang.org/go/cmd/cue@latest`
-- **Windows**: `winget install cue-lang.cue` or `choco install cue`
-
-Verify installation:
-```bash
-cue version
-# cue version v0.9.x
-```
-
-**Important**: The `cue` binary must be on your `PATH`. Commands like `arbiter add`, `arbiter generate`, and `arbiter check` will fail with "cue binary not found" otherwise.
+**Note**: We now run CUE commands through the embedded WASM runtime. You no longer need to install the `cue` CLI or set `cue_binary_path`.
 
 ## 📚 Documentation
 

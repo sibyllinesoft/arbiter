@@ -90,7 +90,7 @@ const nestedNavItems: SidebarNavItem[] = [
         badge: "8",
       },
       {
-        id: "deployments",
+        id: "environments",
         label: "Deployments",
         icon: <Zap className="h-4 w-4" />,
       },

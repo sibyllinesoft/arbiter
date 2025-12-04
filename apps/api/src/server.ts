@@ -14,6 +14,7 @@ import { Hono } from "hono";
 import { AuthService } from "./auth";
 import { loadConfig } from "./config";
 import { SpecWorkbenchDB } from "./db";
+import { AppError } from "./errors";
 import { EventService } from "./events";
 import { SpecEngine } from "./specEngine";
 import { tunnelManager } from "./tunnel-manager";
@@ -125,6 +126,9 @@ export class SpecWorkbenchServer {
     });
 
     this.httpApp.onError((err, c) => {
+      if (err instanceof AppError) {
+        return c.json({ error: err.message, details: err.details }, err.status);
+      }
       return this.handleRequestError(err, c.req.method, new URL(c.req.url).pathname);
     });
   }
@@ -145,50 +149,13 @@ export class SpecWorkbenchServer {
       async fetch(request: Request, server: any) {
         console.log("[FETCH] Request received:", request.method, request.url);
 
-        // Check for WebSocket upgrade requests explicitly
+        // Check for WebSocket upgrade requests using handler (supports /events and /ws)
         const url = new URL(request.url);
-        if (
-          url.pathname === "/events" &&
-          request.headers.get("upgrade")?.toLowerCase() === "websocket"
-        ) {
-          logger.info("[SERVER] WebSocket upgrade request detected", {
-            pathname: url.pathname,
-            headers: {
-              upgrade: request.headers.get("upgrade"),
-              connection: request.headers.get("connection"),
-              origin: request.headers.get("origin"),
-            },
-          });
-
-          // Handle authentication here before upgrade
-          const authContext = await self.auth.authenticateRequest(request.headers);
-
-          logger.info("[SERVER] WebSocket auth result", {
-            hasAuth: !!authContext,
-            authContext: authContext || "NO_AUTH",
-          });
-
-          if (!authContext) {
-            logger.warn("[SERVER] WebSocket auth failed - rejecting upgrade");
-            return new Response("Unauthorized", { status: 401 });
+        if (self.wsHandler.isWebSocketUpgrade(url.pathname, request)) {
+          const upgradeResult = await self.wsHandler.handleUpgrade(request, server);
+          if (upgradeResult?.response) {
+            return upgradeResult.response;
           }
-
-          // Perform the upgrade with auth context
-          const upgraded = server.upgrade(request, {
-            data: {
-              connectionId: "",
-              authContext,
-            },
-          });
-
-          logger.info("[SERVER] WebSocket upgrade result", {
-            upgraded: upgraded ? "SUCCESS" : "FAILED",
-          });
-
-          if (!upgraded) {
-            return new Response("WebSocket upgrade failed", { status: 400 });
-          }
-
           return undefined; // Successful upgrade, no response needed
         }
 
@@ -424,21 +391,32 @@ class ProcessMonitor {
   }
 
   private setupProcessMonitoring() {
-    // Log process health every 10 seconds
+    // Health logging can be noisy; keep it disabled by default.
+    // Enable by setting ARBITER_HEALTH_LOG_INTERVAL_MS to a positive number.
+    const intervalMs = Number(process.env.ARBITER_HEALTH_LOG_INTERVAL_MS ?? "0");
+    if (intervalMs <= 0) {
+      return;
+    }
+
     this.healthInterval = setInterval(() => {
       if (!this.isShuttingDown) {
         this.logProcessHealth();
       }
-    }, 10000);
+    }, intervalMs);
   }
 
   private setupMemoryMonitoring() {
-    // Check memory usage every 10 seconds
+    // Memory monitoring remains enabled but can be tuned/disabled via env.
+    const intervalMs = Number(process.env.ARBITER_MEMORY_LOG_INTERVAL_MS ?? "10000");
+    if (intervalMs <= 0) {
+      return;
+    }
+
     this.memoryInterval = setInterval(() => {
       if (!this.isShuttingDown) {
         this.checkMemoryUsage();
       }
-    }, 10000);
+    }, intervalMs);
   }
 
   private setupUncaughtExceptionHandling() {

@@ -3,8 +3,13 @@ import type {
   ExternalArtifactCard,
   NormalizedClient,
   NormalizedClientView,
-} from "./types";
-import { coerceDisplayValue, extractTypeLabel, resolveSourcePath, slugify } from "./utils";
+} from "@/components/ClientsReport/types";
+import {
+  coerceDisplayValue,
+  extractTypeLabel,
+  resolveSourcePath,
+  slugify,
+} from "@/features/spec/utils/clients";
 
 export const extractClientViews = (raw: any): NormalizedClientView[] => {
   const analysis = raw?.metadata?.frontendAnalysis;

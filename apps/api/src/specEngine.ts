@@ -424,7 +424,6 @@ export class SpecEngine {
 
   private createCueRunner(projectId: string): CueRunner {
     return new CueRunner({
-      cueBinaryPath: this.config.cue_binary_path,
       cwd: this.getFragmentsDir(projectId),
       timeoutMs: this.config.external_tool_timeout_ms,
     });
@@ -492,7 +491,7 @@ export class SpecEngine {
   async formatFragment(
     content: string,
   ): Promise<{ formatted: string; success: boolean; error?: string }> {
-    return formatCUE(content, this.config.cue_binary_path);
+    return formatCUE(content);
   }
 
   /**

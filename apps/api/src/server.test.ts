@@ -17,7 +17,6 @@ describe("SpecWorkbenchServer", () => {
       host: "localhost",
       database_path: ":memory:", // In-memory database for tests
       spec_workdir: "/tmp/test-workdir",
-      cue_binary_path: "cue",
       jq_binary_path: "jq",
       auth_required: false,
       rate_limit: {
@@ -65,7 +64,6 @@ describe("Configuration", () => {
       host: "localhost",
       database_path: "./spec_workbench.db",
       spec_workdir: "./workdir",
-      cue_binary_path: "cue",
       jq_binary_path: "jq",
       auth_required: true,
       rate_limit: {

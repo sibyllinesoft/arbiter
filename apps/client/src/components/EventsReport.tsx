@@ -1,7 +1,8 @@
 import { useTabBadgeUpdater } from "@/contexts/TabBadgeContext";
 import { useProjectEvents } from "@/hooks/api-hooks";
-import { useWebSocket } from "@/hooks/useWebSocket";
+import { useWebSocketEvent } from "@/hooks/useWebSocket";
 import { apiService } from "@/services/api";
+import type { NormalizedWebSocketEvent } from "@/services/websocket";
 import type { Event } from "@/types/api";
 import {
   ChevronDown,
@@ -1257,7 +1258,6 @@ function EventGroupCard({
 
 export function EventsReport({ projectId }: EventsReportProps) {
   const { data, isLoading, isError, refetch } = useProjectEvents(projectId);
-  const { lastMessage } = useWebSocket(projectId, { autoReconnect: true });
 
   const [eventLog, setEventLog] = useState<Event[]>([]);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -1318,74 +1318,66 @@ export function EventsReport({ projectId }: EventsReportProps) {
     });
   }, [data]);
 
-  useEffect(() => {
-    if (!lastMessage || lastMessage.type !== "event") return;
+  const handleRealtimeEvent = useCallback(
+    (message: NormalizedWebSocketEvent) => {
+      const targetProjectId = message.projectId ?? projectId ?? undefined;
+      if (projectId && targetProjectId && targetProjectId !== projectId) {
+        return;
+      }
 
-    const payloadCandidate =
-      (lastMessage as { payload?: unknown }).payload ?? (lastMessage as { data?: unknown }).data;
+      const raw = message.event;
+      const eventId = coerceToString(raw.id);
+      const eventType = message.type;
 
-    if (!payloadCandidate || typeof payloadCandidate !== "object") {
-      return;
-    }
+      if (!eventId || !eventType) {
+        return;
+      }
 
-    const payload = payloadCandidate as Record<string, unknown>;
-    const readString = (key: string): string | undefined => coerceToString(payload[key]);
+      const createdAt =
+        coerceToString(raw.created_at) ?? coerceToString(raw.timestamp) ?? new Date().toISOString();
 
-    const eventProjectIdValue =
-      readString("project_id") ??
-      readString("projectId") ??
-      coerceToString((lastMessage as unknown as Record<string, unknown>).projectId);
+      const rawData = raw.data;
+      const isActiveRaw = (raw as Record<string, unknown>)["is_active"];
+      const revertedAtRaw = (raw as Record<string, unknown>)["reverted_at"];
 
-    if (eventProjectIdValue && projectId && eventProjectIdValue !== projectId) {
-      return;
-    }
+      const eventData: Event = {
+        id: eventId,
+        project_id: String(targetProjectId ?? projectId ?? ""),
+        event_type: eventType as Event["event_type"],
+        data: rawData && typeof rawData === "object" ? (rawData as Record<string, unknown>) : {},
+        is_active:
+          typeof isActiveRaw === "boolean"
+            ? isActiveRaw
+            : typeof isActiveRaw === "string"
+              ? isActiveRaw === "true"
+              : true,
+        reverted_at:
+          typeof revertedAtRaw === "string" && revertedAtRaw.trim() ? revertedAtRaw : null,
+        created_at: createdAt,
+      };
 
-    const eventId = readString("id");
-    const eventType = readString("event_type") ?? readString("type");
-    if (!eventId || !eventType) {
-      return;
-    }
-
-    const createdAt =
-      readString("created_at") ?? readString("timestamp") ?? new Date().toISOString();
-
-    const rawData = payload["data"];
-    const isActiveRaw = payload["is_active"];
-    const revertedAtRaw = payload["reverted_at"];
-
-    const eventData: Event = {
-      id: eventId,
-      project_id: String(eventProjectIdValue ?? projectId),
-      event_type: eventType as Event["event_type"],
-      data: rawData && typeof rawData === "object" ? (rawData as Record<string, unknown>) : {},
-      is_active:
-        typeof isActiveRaw === "boolean"
-          ? isActiveRaw
-          : typeof isActiveRaw === "string"
-            ? isActiveRaw === "true"
-            : true,
-      reverted_at: typeof revertedAtRaw === "string" && revertedAtRaw.trim() ? revertedAtRaw : null,
-      created_at: createdAt,
-    };
-
-    setEventLog((prev) => {
-      let updated = prev;
-      if (eventData.event_type === "entity_restored") {
-        const restoredFromId = coerceToString(eventData.data?.restored_from_event_id);
-        if (restoredFromId) {
-          updated = prev.map((item) =>
-            item.id === restoredFromId ? { ...item, is_active: false } : item,
-          );
+      setEventLog((prev) => {
+        let updated = prev;
+        if (eventData.event_type === "entity_restored") {
+          const restoredFromId = coerceToString(eventData.data?.restored_from_event_id);
+          if (restoredFromId) {
+            updated = prev.map((item) =>
+              item.id === restoredFromId ? { ...item, is_active: false } : item,
+            );
+          }
         }
-      }
-      if (updated.some((event) => event.id === eventId)) {
-        return sortEventsDesc(updated);
-      }
-      return sortEventsDesc([eventData, ...updated]);
-    });
+        if (updated.some((event) => event.id === eventId)) {
+          return sortEventsDesc(updated);
+        }
+        return sortEventsDesc([eventData, ...updated]);
+      });
 
-    refetch();
-  }, [lastMessage, projectId, refetch]);
+      refetch();
+    },
+    [projectId, refetch],
+  );
+
+  useWebSocketEvent("*", handleRealtimeEvent);
 
   const groupedEvents = useMemo(() => {
     const lookupFromMap = (eventId: string) => eventById.get(eventId);

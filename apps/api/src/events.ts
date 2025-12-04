@@ -94,13 +94,6 @@ export class EventService {
       }
 
       this.connections.delete(connectionId);
-
-      // Reduced logging - only log if debug level enabled
-      // logger.info("WebSocket connection closed", {
-      //   connectionId,
-      //   userId: connection.authContext.user_id,
-      //   totalConnections: this.connections.size,
-      // });
     }
   }
 
@@ -171,9 +164,9 @@ export class EventService {
     if (!connection) return;
 
     const { data } = message;
-    const action = data.action as string;
-    const projectId = data.project_id as string;
-    const channel = data.channel as string;
+    const action = data?.action as string;
+    const projectId = data?.project_id as string;
+    const channel = data?.channel as string;
 
     switch (action) {
       case "subscribe":
@@ -320,6 +313,35 @@ export class EventService {
     logger.info("Broadcasted global event", {
       channel: "tunnel-logs",
       subscriberCount: this.globalSubscribers.size,
+      successCount,
+      errorCount,
+    });
+
+    return { successCount, errorCount };
+  }
+
+  /**
+   * Broadcast to ALL connected WebSocket clients
+   * Used for global events like project_created, project_deleted that affect all users
+   */
+  public async broadcastToAll(
+    message: WebSocketMessage,
+  ): Promise<{ successCount: number; errorCount: number }> {
+    if (this.connections.size === 0) {
+      logger.debug("No connections for broadcast to all");
+      return { successCount: 0, errorCount: 0 };
+    }
+
+    const allConnectionIds = new Set(this.connections.keys());
+    const { successCount, errorCount } = await this.broadcastToSubscribers(
+      allConnectionIds,
+      message,
+      "all",
+    );
+
+    logger.info("Broadcasted to all connections", {
+      eventType: message.data?.event_type,
+      connectionCount: this.connections.size,
       successCount,
       errorCount,
     });
@@ -515,7 +537,8 @@ export class EventService {
     await this.publishToNats(projectId, event, specHash);
 
     // Check for WebSocket subscribers
-    if (!this.hasProjectSubscribers(projectId)) {
+    const hasSubscribers = this.hasProjectSubscribers(projectId);
+    if (!hasSubscribers) {
       logger.debug("No WebSocket subscribers for project", { projectId });
       return persistedEvent;
     }

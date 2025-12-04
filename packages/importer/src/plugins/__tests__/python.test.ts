@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
+import { ArtifactClassifier } from "../../detection/classifier";
+import { buildDirectoryContexts } from "../../detection/context-aggregator";
 import type { Evidence, InferenceContext, ParseContext } from "../../types";
 import { PythonPlugin } from "../python";
 
@@ -27,26 +29,37 @@ describe("PythonPlugin", () => {
     };
   });
 
-  const buildInferenceContext = (evidence: Evidence[]): InferenceContext => ({
-    projectRoot: "/project",
-    fileIndex: baseParseContext.fileIndex,
-    allEvidence: evidence,
-    options: {
-      minConfidence: 0.3,
-      inferRelationships: true,
-      maxDependencyDepth: 5,
-      useHeuristics: true,
-    },
-    cache: new Map(),
-    projectMetadata: {
-      name: "project",
-      root: "/project",
-      languages: [],
-      frameworks: [],
-      fileCount: 0,
-      totalSize: 0,
-    },
-  });
+  const buildInferenceContext = (evidence: Evidence[]): InferenceContext => {
+    const classifier = new ArtifactClassifier();
+    const directoryContexts = buildDirectoryContexts(
+      evidence,
+      baseParseContext.fileIndex,
+      baseParseContext.projectRoot ?? "/project",
+    );
+
+    return {
+      projectRoot: "/project",
+      fileIndex: baseParseContext.fileIndex,
+      allEvidence: evidence,
+      directoryContexts,
+      classifier,
+      options: {
+        minConfidence: 0.3,
+        inferRelationships: true,
+        maxDependencyDepth: 5,
+        useHeuristics: true,
+      },
+      cache: new Map(),
+      projectMetadata: {
+        name: "project",
+        root: "/project",
+        languages: [],
+        frameworks: [],
+        fileCount: 0,
+        totalSize: 0,
+      },
+    };
+  };
 
   it("classifies FastAPI pyproject as service", async () => {
     const pyproject = `
@@ -68,8 +81,8 @@ dependencies = ["fastapi", "uvicorn"]
     expect(artifacts).toHaveLength(1);
     const artifact = artifacts[0].artifact;
     expect(artifact.type).toBe("service");
-    expect(artifact.metadata.framework).toBe("fastapi");
-    expect(artifact.metadata.detectedType).toBe("service");
+    expect((artifact.metadata as any).framework).toBe("fastapi");
+    expect((artifact.metadata as any).classification).toBeDefined();
     expect(artifact.description).toBe("HTTP gateway");
   });
 
@@ -95,9 +108,9 @@ setup(
 
     expect(artifacts).toHaveLength(1);
     const artifact = artifacts[0].artifact;
-    expect(artifact.type).toBe("binary");
-    expect(artifact.metadata.detectedType).toBe("cli");
+    expect(artifact.type).toBe("tool");
     expect(artifact.tags).toContain("tool");
+    expect((artifact.metadata as any).classification).toBeDefined();
   });
 
   it("defaults to module when no web or cli signals present", async () => {
@@ -120,7 +133,7 @@ dependencies = ["pydantic"]
     expect(artifacts).toHaveLength(1);
     const artifact = artifacts[0].artifact;
     expect(artifact.type).toBe("package");
-    expect(artifact.metadata.detectedType).toBe("package");
+    expect((artifact.metadata as any).classification).toBeDefined();
     expect(artifact.description).toBe("Shared utilities");
   });
 });

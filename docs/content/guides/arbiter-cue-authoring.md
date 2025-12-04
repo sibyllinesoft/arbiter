@@ -3,13 +3,13 @@
 Use this guide when writing or reviewing Arbiter specs. For every field and type, refer to the [schema reference](../reference/arbiter-cue-schema.md); this page keeps the “how to author” guidance separate from the type dump.
 
 ## Quick authoring checklist
-1. Define `meta` (name, version, repository) and `runtime.language` early.
-2. Model domain types using **schemas** with types (Entity, Value, Request, Response, Event) and **state machines** before wiring services.
+1. Define `meta` (name, version, repository) early; language/framework now lives with each service or client.
+2. Model domain types using **schemas** with types (Entity, Value, Request, Response, Event) and **processes** before wiring services.
 3. Define schema fields, validation rules, and relationships using **CUE syntax** for type-safe, expressive definitions.
 4. Add contracts under `contracts.workflows` with **SLA/Performance requirements** upfront, and define operations/schemas using **CUE syntax**.
 5. Declare services in `services.<name>` with `language`, `serviceType`/`workload`, and grouped dependencies (`dependencies.services`, `dependencies.databases`, etc.).
-6. Use `deployments.<environment>` for runtime settings; the legacy singular `deployment` key is no longer supported.
-7. Lock determinism with `codegen.profile` and `codegen.templateHash` when cutting releases.
+6. Use `environments.<environment>` for execution settings; the legacy singular `deployment` key is no longer supported.
+7. Lock determinism by pinning generators/templates in your build pipeline (no root `codegen` key required).
 
 ## Working with Schemas
 
@@ -62,9 +62,9 @@ Contracts define how systems communicate. When defining contracts:
 7. Description (markdown)
 
 ## Compatibility notes
-- **`deployment` vs `deployments`:** Use `deployments.<env>` only; the singular `deployment` key has been removed.
+- **`deployment` vs `environments`:** Use `environments.<env>` only; the singular `deployment` key has been removed.
 - **Schema evolution:** Breaking changes should bump `meta.version` and add compatibility details under `contracts.compat`.
-- **Overrides:** Per-service overrides beat global runtime defaults; keep overrides minimal to reduce drift between services.
+- **Overrides:** Keep per-service hints minimal to reduce drift between environments.
 - **Schema types:** Use the unified Schema concept with type selection rather than treating entities/valueObjects as completely separate domain concepts.
 
 ## Validation & tooling

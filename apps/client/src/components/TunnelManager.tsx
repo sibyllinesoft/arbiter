@@ -2,6 +2,7 @@
  * Tunnel Manager Component - Manages Cloudflare tunnel lifecycle
  */
 
+import { useWebSocketEvent, useWebSocketInstance } from "@/hooks/useWebSocket";
 import {
   AlertCircle,
   CheckCircle,
@@ -39,12 +40,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
   const [logs, setLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
-  const [ws, setWs] = useState<WebSocket | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttemptsRef = useRef(0);
-  const maxReconnectAttempts = 5;
-  const baseReconnectDelay = 1000;
+  const client = useWebSocketInstance();
 
   const isTunnelRunning = tunnelInfo?.status === "running";
 
@@ -102,98 +98,46 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
     loadInitialStatus();
   }, [loadInitialStatus]);
 
-  // WebSocket for real-time tunnel logs
+  // Subscribe to real-time tunnel logs via shared WebSocket client
   useEffect(() => {
-    if (!tunnelInfo || tunnelInfo.status !== "running") {
-      // Close WS if not needed
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      setWs(null);
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-      reconnectAttemptsRef.current = 0;
-      return;
+    if (tunnelInfo?.status === "running") {
+      setLogs((prev) => [...prev, "Tunnel log stream connected"]);
+      client.send({
+        type: "event",
+        data: { action: "subscribe", channel: "tunnel-logs" },
+      });
+      return () => {
+        client.send({
+          type: "event",
+          data: { action: "unsubscribe", channel: "tunnel-logs" },
+        });
+      };
     }
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/events`;
+    // Ensure we unsubscribe when tunnel stops
+    client.send({
+      type: "event",
+      data: { action: "unsubscribe", channel: "tunnel-logs" },
+    });
+    return undefined;
+  }, [client, tunnelInfo?.status]);
 
-    const connect = () => {
-      const socket = new WebSocket(wsUrl);
-      wsRef.current = socket;
-      setWs(socket);
+  const handleTunnelEvent = useCallback(
+    (event: { type: string; payload: unknown }) => {
+      if (tunnelInfo?.status !== "running") return;
+      const payload = event.payload as Record<string, unknown>;
+      const line =
+        typeof payload?.log === "string"
+          ? payload.log
+          : typeof payload === "string"
+            ? payload
+            : JSON.stringify(payload ?? {});
+      setLogs((prev) => [...prev, line]);
+    },
+    [tunnelInfo?.status],
+  );
 
-      socket.onopen = () => {
-        setLogs((prev) => [...prev, "Tunnel log stream connected"]);
-        reconnectAttemptsRef.current = 0;
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = null;
-        }
-
-        // Subscribe to tunnel logs
-        const subscriptionMessage = {
-          type: "event",
-          data: {
-            action: "subscribe",
-            channel: "tunnel-logs",
-          },
-        };
-        socket.send(JSON.stringify(subscriptionMessage));
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          if (message.type === "event" && message.data.event_type === "tunnel_log") {
-            setLogs((prev) => [...prev, message.data.log]);
-          } else if (message.type === "event" && message.data.event_type === "tunnel_error") {
-            setLogs((prev) => [...prev, message.data.log]);
-          }
-        } catch (e) {
-          console.error("Failed to parse WS message", e);
-        }
-      };
-
-      socket.onclose = (event) => {
-        const reason = event.reason ? `: ${event.reason}` : "";
-        setLogs((prev) => [...prev, `Tunnel log stream closed (${event.code}${reason})`]);
-        wsRef.current = null;
-        setWs(null);
-
-        if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
-          const delay = baseReconnectDelay * Math.pow(2, reconnectAttemptsRef.current);
-          reconnectAttemptsRef.current++;
-          setLogs((prev) => [
-            ...prev,
-            `Reconnecting to tunnel logs in ${delay}ms (attempt ${reconnectAttemptsRef.current})`,
-          ]);
-          reconnectTimeoutRef.current = setTimeout(connect, delay);
-        }
-      };
-
-      socket.onerror = (error) => {
-        console.error("Tunnel logs WS error", error);
-        socket.close();
-      };
-    };
-
-    connect();
-
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-    };
-  }, [tunnelInfo?.status]);
+  useWebSocketEvent(["tunnel_log", "tunnel_error"], handleTunnelEvent);
 
   // Auto-scroll logs when new log added and visible
   const logsRef = useRef<HTMLDivElement>(null);

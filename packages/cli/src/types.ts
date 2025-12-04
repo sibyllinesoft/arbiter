@@ -388,13 +388,28 @@ export interface AppSpec {
   performance?: any;
   observability?: any;
   environments?: any;
+  enums?: Record<string, string[]>;
+  permissions?: Record<string, string[]>;
   locators?: any;
   data?: any;
   metadata?: Record<string, unknown>;
   components?: any;
   paths?: any;
   testability?: any;
+  processes?: any;
+  operations?: Record<string, any>;
+  /**
+   * @deprecated use processes
+   */
   stateModels?: any;
+  /**
+   * @deprecated use environments
+   */
+  deployments?: any;
+  /**
+   * @deprecated use environments
+   */
+  deployment?: any;
 }
 
 /**

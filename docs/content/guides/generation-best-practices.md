@@ -36,6 +36,6 @@ Short, opinionated guidance for getting reliable Arbiter outputs.
 
 ## Common Anti-Patterns to Avoid
 - Burying business logic inside templates instead of context preparation.
-- Mixing environment-specific values into templates; keep env in `deployments.<env>` and pass via context.
+- Mixing environment-specific values into templates; keep env in `environments.<env>` and pass via context.
 - Massive “god” templates with duplicate blocks—split into partials/layouts.
 - Skipping CLI validation and relying on manual edits; always regenerate via the CLI.

@@ -69,6 +69,15 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
     }
   };
 
+  const handleSettingsProject = (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation();
+    const project = projects?.find((p) => p.id === projectId);
+    if (project) {
+      setCurrentProject(project);
+      navigate(`/project/${projectId}`);
+    }
+  };
+
   const allTabs = useUnifiedTabs({ project: currentProject });
 
   // Enable real-time updates for current project (if any)
@@ -193,6 +202,7 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
               currentProject={currentProject}
               onSelectProject={handleSelectProject}
               onDeleteProject={handleDeleteProject}
+              onSettingsProject={handleSettingsProject}
               getProjectStatus={getProjectStatus}
               isLoading={projectsLoading}
             />

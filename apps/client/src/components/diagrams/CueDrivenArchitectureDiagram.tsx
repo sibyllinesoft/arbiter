@@ -185,8 +185,11 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
 
     switch (diagramType) {
       case "user_journey":
-        filteredComponents = parsed.components.filter((c) =>
-          ["route", "capability"].includes(c.type),
+        filteredComponents = parsed.components.filter(
+          (c) =>
+            c.type === "capability" ||
+            c.type === "route" ||
+            (c.type === "resource" && (c.kind === "view" || c.layer === "presentation")),
         );
         filteredConnections = parsed.connections.filter((c) =>
           ["user_navigation", "user_interaction", "capability_usage"].includes(c.type),
@@ -194,8 +197,13 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
         break;
 
       case "service_topology":
-        filteredComponents = parsed.components.filter((c) =>
-          ["service", "api_endpoint", "external_system"].includes(c.type),
+        filteredComponents = parsed.components.filter(
+          (c) =>
+            c.type === "service" ||
+            c.type === "external_system" ||
+            c.type === "api_endpoint" ||
+            (c.type === "resource" &&
+              (c.kind === "endpoint" || c.kind === "api_endpoint" || c.layer === "service")),
         );
         filteredConnections = parsed.connections.filter((c) =>
           ["api_call", "dependency"].includes(c.type),
@@ -210,13 +218,17 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
         break;
 
       case "state_diagram":
-        filteredComponents = parsed.components.filter((c) => c.type === "state_machine");
+        filteredComponents = parsed.components.filter((c) => c.type === "process");
         filteredConnections = parsed.connections.filter((c) => c.type === "state_transition");
         break;
 
       case "api_surface":
-        filteredComponents = parsed.components.filter((c) =>
-          ["api_endpoint", "service"].includes(c.type),
+        filteredComponents = parsed.components.filter(
+          (c) =>
+            c.type === "service" ||
+            c.type === "api_endpoint" ||
+            (c.type === "resource" &&
+              (c.kind === "endpoint" || c.kind === "api_endpoint" || c.layer === "service")),
         );
         filteredConnections = parsed.connections.filter((c) => c.type === "api_call");
         break;
@@ -354,7 +366,9 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
         "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z",
       api_endpoint:
         "M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z",
-      state_machine: "M4 12a8 8 0 018-8V0l4 4-4 4V4a6 6 0 100 12 6 6 0 000-12z",
+      resource:
+        "M6 3h9l3 3v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1zm8 6H7v2h7V9zm0 4H7v2h7v-2zm-1-9v2h3l-3-2z",
+      process: "M4 12a8 8 0 018-8V0l4 4-4 4V4a6 6 0 100 12 6 6 0 000-12z",
       external_system:
         "M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5z",
       flow: "M9 5v2h6V5H9zm0 4v2h6V9H9zm0 4v2h6v-2H9zm0 4v2h6v-2H9z",

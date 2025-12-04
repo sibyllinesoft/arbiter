@@ -36,7 +36,7 @@ const spec = {
     },
   },
   domain: {
-    stateMachines: {
+    processes: {
       checkout: { states: { start: {}, done: {} } },
     },
   },

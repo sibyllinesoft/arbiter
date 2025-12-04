@@ -119,8 +119,9 @@ export class IRGenerator {
    * Generate FSM IR for XState - from TODO.md specification
    */
   private generateFsmIR(resolved: Record<string, unknown>): Record<string, unknown> {
-    // Handle both CUE format (states) and legacy format (stateModels)
+    // Handle both CUE format (states/processes) and legacy format (stateModels)
     const stateModels =
+      (resolved.processes as Record<string, any>) ||
       (resolved.states as Record<string, any>) ||
       (resolved.stateModels as Record<string, any>) ||
       {};

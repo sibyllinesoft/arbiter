@@ -7,7 +7,7 @@ to modeling and deploying cloud-native applications.
 
 ## Overview
 
-Arbiter generates Kubernetes deployments as part of its comprehensive full-stack
+Arbiter generates Kubernetes environments as part of its comprehensive full-stack
 code generation. This tutorial covers:
 
 1. **Modeling Applications**: Define your application using Arbiter's application schema
@@ -354,8 +354,8 @@ kubectl apply -f generated/kubernetes/
 # Or deploy to a specific environment
 kubectl apply -f generated/kubernetes/ -n my-microservices-prod
 
-# Verify deployments
-kubectl get deployments -n my-microservices-prod
+# Verify environments
+kubectl get environments -n my-microservices-prod
 kubectl get services -n my-microservices-prod
 kubectl get pods -n my-microservices-prod
 ```
@@ -378,7 +378,7 @@ kubectl get ingress -n my-microservices-prod
 
 ## Advanced Configuration
 
-### Environment-Specific Deployments
+### Environment-Specific Environments
 
 Arbiter supports multiple environment configurations. You can define staging,
 production, and development environments:
@@ -722,7 +722,7 @@ deployment that:
 
 1. **Reduces Boilerplate**: Generate comprehensive Kubernetes manifests from
    concise CUE specifications
-2. **Ensures Consistency**: All deployments follow the same patterns and best
+2. **Ensures Consistency**: All environments follow the same patterns and best
    practices
 3. **Improves Maintainability**: Single source of truth for your application
    architecture

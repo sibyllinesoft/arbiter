@@ -6,8 +6,15 @@ import { toast } from "react-toastify";
 
 import { useTabBadgeUpdater } from "@/contexts/TabBadgeContext";
 import { Button } from "@/design-system";
-import { useResolvedSpec, useUiOptionCatalog } from "@/hooks/api-hooks";
+import {
+  createExternalArtifactCard,
+  isManualClient,
+  normalizeClient,
+} from "@/features/spec/transformers/clients";
+import { coerceDisplayValue, slugify } from "@/features/spec/utils/clients";
+import { useCatalog } from "@/hooks/useCatalog";
 import { apiService } from "@/services/api";
+import type { ResolvedSpecResponse } from "@/types/api";
 import ArtifactCard from "../ArtifactCard";
 import AddEntityModal from "../modals/AddEntityModal";
 import {
@@ -16,21 +23,19 @@ import {
   type UiOptionCatalog,
 } from "../modals/entityTypes";
 import { ClientCard } from "./components/ClientCard";
-import { createExternalArtifactCard, isManualClient, normalizeClient } from "./normalizers";
 import type { ClientsReportProps, NormalizedClient, NormalizedClientView } from "./types";
-import { coerceDisplayValue, slugify } from "./utils";
 
 const noop = () => {};
 
 export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) => {
-  const { data, isLoading, isError, error } = useResolvedSpec(projectId);
+  const catalog = useCatalog<ResolvedSpecResponse>(projectId);
+  const { data, isLoading, isError, error } = catalog;
   const queryClient = useQueryClient();
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
-  const { data: uiOptionCatalogData } = useUiOptionCatalog();
   const uiOptionCatalog = useMemo<UiOptionCatalog>(
-    () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(uiOptionCatalogData ?? {}) }),
-    [uiOptionCatalogData],
+    () => catalog.uiOptionCatalog,
+    [catalog.uiOptionCatalog],
   );
   const [addViewState, setAddViewState] = useState<{
     open: boolean;
@@ -42,15 +47,10 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
   const [isCreatingView, setIsCreatingView] = useState(false);
 
   const refreshResolved = useCallback(
-    async (_options: { silent?: boolean } = {}) => {
-      if (!projectId) return;
-      await queryClient.invalidateQueries({ queryKey: ["resolved-spec", projectId] });
-      await queryClient.refetchQueries({
-        queryKey: ["resolved-spec", projectId],
-        type: "active",
-      });
+    async (options: { silent?: boolean } = {}) => {
+      await catalog.refresh(options);
     },
-    [projectId, queryClient],
+    [catalog],
   );
 
   const handleOpenAddClient = useCallback(() => {

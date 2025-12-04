@@ -1,4 +1,4 @@
-import { PATH_PRIORITY_CANDIDATES } from "./constants";
+import { PATH_PRIORITY_CANDIDATES } from "./serviceConstants";
 
 export const slugify = (value: string): string =>
   value

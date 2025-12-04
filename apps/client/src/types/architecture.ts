@@ -7,17 +7,22 @@ export interface ArchitecturalElement {
   id: string;
   name: string;
   type: ElementType;
-  description?: string;
+  /**
+   * Fine-grained classification for simplified schema (e.g. queue, proxy, database, endpoint, view).
+   */
+  kind?: string;
+  description?: string | undefined;
   metadata?: Record<string, any>;
 }
 
 export type ElementType =
   | "service"
   | "component"
+  | "resource" // Collapsed endpoints/views
   | "route"
   | "flow"
   | "capability"
-  | "state_machine"
+  | "process"
   | "api_endpoint"
   | "external_system"
   | "data_store";
@@ -164,15 +169,21 @@ export type DiagramType =
 export interface CueArchitectureData {
   // v1 schema elements
   services?: Record<string, any>;
-  deployment?: any;
-  deployments?: Record<string, any>;
+  resources?: Record<string, any> | any[];
+  infrastructure?: Record<string, any>;
+  environments?: Record<string, any>;
 
   // application schema elements
   product?: any;
   ui?: { routes: any[] };
+  behaviors?: any[];
   flows?: any[];
   capabilities?: Record<string, any>;
   paths?: Record<string, any>;
+  processes?: Record<string, any>;
+  /**
+   * @deprecated use processes
+   */
   stateModels?: Record<string, any>;
   locators?: Record<string, string>;
 

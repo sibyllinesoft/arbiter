@@ -300,7 +300,6 @@ export interface ServerConfig {
     };
   };
   spec_workdir: string;
-  cue_binary_path: string;
   jq_binary_path: string;
   auth_required: boolean;
   rate_limit: {

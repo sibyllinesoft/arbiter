@@ -193,7 +193,7 @@ diagram_types:
     input_format: "YAML pipeline specification"
     output: "Interactive Mermaid flowchart"
     
-  state_machines:
+  processes:
     use_cases:
       - "Application state management"
       - "User authentication flows"

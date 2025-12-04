@@ -308,8 +308,7 @@ export interface DeploymentConfig {
 
 export interface AssemblyConfig {
   config: {
-    language: string;
-    kind: string;
+    language?: string;
     buildTool?: string;
   };
   metadata: {
@@ -317,6 +316,10 @@ export interface AssemblyConfig {
     description?: string;
     version: string;
   };
+  environments?: Record<string, DeploymentConfig>;
+  /**
+   * @deprecated use environments
+   */
   deployments?: Record<string, DeploymentConfig>;
   services: Record<string, ServiceConfig>;
 }
@@ -750,35 +753,74 @@ export interface CapabilitySpec {
 export interface AppSpec {
   product: ProductSpec;
   config?: {
-    language?: string;
     [key: string]: any;
   };
-  domain?: DomainSpec;
   capabilities?: Record<Slug, CapabilitySpec>;
-  components?: ComponentsSpec;
-  /**
-   * HTTP/API path definitions grouped by owning service.
-   */
-  paths?: Record<string, Record<URLPath, PathSpec>>;
-  ui: UISpec;
-  locators: Record<LocatorToken, CssSelector>;
-  flows: FlowSpec[];
+  resources?: Record<string, any> | any[];
+  operations?: Record<string, OperationSpec>;
+  behaviors: FlowSpec[];
   services?: Record<string, ServiceConfig>;
   clients?: Record<string, ClientConfig>;
-  deployment?: DeploymentConfig;
-  deployments?: Record<string, DeploymentConfig>;
+  environments?: Record<string, DeploymentConfig>;
   testability?: TestabilitySpec;
   ops?: OpsSpec;
+  processes?: Record<Slug, FSMSpec>;
+  /**
+   * @deprecated use processes
+   */
   stateModels?: Record<Slug, FSMSpec>;
+  /**
+   * @deprecated use environments
+   */
+  deployments?: Record<string, DeploymentConfig>;
+  /**
+   * @deprecated use environments
+   */
+  deployment?: DeploymentConfig;
+  /**
+   * @deprecated use resources
+   */
+  components?: ComponentsSpec;
+  /**
+   * @deprecated use resources
+   */
+  paths?: Record<string, Record<URLPath, PathSpec>>;
+  /**
+   * @deprecated use resources
+   */
+  ui?: UISpec;
+  /**
+   * @deprecated use resources
+   */
+  locators?: Record<LocatorToken, CssSelector>;
+  /**
+   * @deprecated use resources
+   */
+  enums?: Record<Slug, Slug[]>;
+  /**
+   * @deprecated use resources
+   */
+  permissions?: Record<Cap, Role[]>;
   tests?: any[];
   epics?: any[];
   docs?: any;
   security?: any;
   performance?: any;
   observability?: any;
-  environments?: any;
   data?: any;
   metadata?: Record<string, unknown>;
+}
+
+export interface OperationSpec {
+  id?: string;
+  version?: string;
+  description?: string;
+  tags?: string[];
+  deprecated?: boolean;
+  parameters?: any[];
+  requestBody?: any;
+  responses: Record<string, any>;
+  assertions?: any;
 }
 
 // Schema version detection and configuration

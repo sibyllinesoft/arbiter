@@ -19,7 +19,6 @@ describe("Database Coverage Tests", () => {
       host: "localhost",
       database_path: TEST_DB_PATH,
       spec_workdir: TEST_DIR,
-      cue_binary_path: "cue",
       jq_binary_path: "jq",
       auth_required: false,
       rate_limit: {
@@ -318,7 +317,6 @@ describe("Database Coverage Tests", () => {
         host: "localhost",
         database_path: path.join(TEST_DIR, "close-test.db"),
         spec_workdir: TEST_DIR,
-        cue_binary_path: "cue",
         jq_binary_path: "jq",
         auth_required: false,
         rate_limit: { max_tokens: 100, refill_rate: 10, window_ms: 60000 },
@@ -336,7 +334,6 @@ describe("Database Coverage Tests", () => {
         host: "localhost",
         database_path: path.join(TEST_DIR, "health-failure.db"),
         spec_workdir: TEST_DIR,
-        cue_binary_path: "cue",
         jq_binary_path: "jq",
         auth_required: false,
         rate_limit: { max_tokens: 100, refill_rate: 10, window_ms: 60000 },

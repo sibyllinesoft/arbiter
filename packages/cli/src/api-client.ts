@@ -909,6 +909,97 @@ export class ApiClient {
   }
 
   /**
+   * Deletes a project entity (artifact) by ID.
+   */
+  async deleteProjectEntity(projectId: string, artifactId: string): Promise<CommandResult<any>> {
+    try {
+      await this.enforceRateLimit();
+
+      const response = await this.fetch(`/api/projects/${projectId}/entities/${artifactId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `Failed to delete project entity: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data,
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error deleting project entity: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
+  /**
+   * Convenience helper: delete all project entities of a given type and name.
+   * Useful as a fallback when artifact IDs aren’t known.
+   */
+  async deleteProjectEntitiesByName(
+    projectId: string,
+    type: string,
+    name: string,
+  ): Promise<{ deleted: string[]; failed: string[] }> {
+    const deleted: string[] = [];
+    const failed: string[] = [];
+
+    const projectResult = await this.getProject(projectId);
+    if (!projectResult.success) {
+      return { deleted, failed };
+    }
+
+    const resolved = projectResult.data?.resolved;
+    const artifacts: any[] = Array.isArray(resolved?.artifacts) ? resolved.artifacts : [];
+    const target = name.trim().toLowerCase();
+    const typeNorm = type.trim().toLowerCase();
+
+    // Consider both artifacts list and spec.services keys (handles cases where artifacts missing)
+    const matches: { id?: string; artifactId?: string }[] = [];
+
+    for (const a of artifacts) {
+      if (
+        (a?.type || "").toLowerCase() === typeNorm &&
+        typeof a?.name === "string" &&
+        a.name.trim().toLowerCase() === target
+      ) {
+        matches.push(a);
+      }
+    }
+
+    const specServices = resolved?.spec?.services;
+    if (typeNorm === "service" && specServices && typeof specServices === "object") {
+      for (const [key, val] of Object.entries(specServices)) {
+        if (key.trim().toLowerCase() !== target) continue;
+        if (val && typeof val === "object") {
+          matches.push(val as any);
+        }
+      }
+    }
+
+    for (const m of matches) {
+      const id = (m as any).id || (m as any).artifactId;
+      if (!id) continue;
+      const res = await this.deleteProjectEntity(projectId, id);
+      if (res.success) deleted.push(id);
+      else failed.push(id);
+    }
+
+    return { deleted, failed };
+  }
+
+  /**
    * Fetches aggregate project status details from the API.
    *
    * @returns Command result describing the overall project status.

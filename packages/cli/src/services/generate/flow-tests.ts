@@ -52,7 +52,7 @@ async function scaffoldPlaywrightWorkspace(
   clientTarget: ClientGenerationTarget | undefined,
   structure: ProjectStructureConfig,
 ): Promise<string[]> {
-  if (!appSpec.flows || appSpec.flows.length === 0) {
+  if (!appSpec.behaviors || appSpec.behaviors.length === 0) {
     return [];
   }
 
@@ -219,7 +219,7 @@ export async function generateFlowBasedTests(
 ): Promise<{ files: string[]; workspaceDir?: string }> {
   const files: string[] = [];
 
-  console.log(chalk.blue("🧪 Generating tests from flows..."));
+  console.log(chalk.blue("🧪 Generating tests from behaviors..."));
 
   const language = clientTarget?.config?.language || appSpec.config?.language || "typescript";
   const plugin = getConfiguredLanguagePlugin(language);
@@ -241,18 +241,18 @@ export async function generateFlowBasedTests(
     relativeWorkspace.trim().length > 0
       ? toPathSegments(relativeWorkspace)
       : defaultWorkspaceSegments;
-  const flowsDir = path.join(workspaceRoot, "flows");
+  const flowsDir = path.join(workspaceRoot, "behaviors");
   if (!fs.existsSync(flowsDir) && !options.dryRun) {
     fs.mkdirSync(flowsDir, { recursive: true });
   }
 
-  for (const flow of appSpec.flows) {
+  for (const flow of appSpec.behaviors) {
     const testContent = generateDefaultFlowTest(flow, appSpec.locators);
 
     const testFileName = `${flow.id.replace(/:/g, "_")}.test.ts`;
     const testPath = path.join(flowsDir, testFileName);
     await writeFileWithHooks(testPath, testContent, options);
-    files.push(joinRelativePath(...workspaceSegments, "flows", testFileName));
+    files.push(joinRelativePath(...workspaceSegments, "behaviors", testFileName));
   }
 
   const workspaceFiles = await scaffoldPlaywrightWorkspace(

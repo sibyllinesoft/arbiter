@@ -143,7 +143,7 @@ describe("ApiService", () => {
       }),
     );
 
-    vi.spyOn(service as any, "handleAuthRedirect").mockResolvedValue(undefined);
+    vi.spyOn(service.auth as any, "handleAuthRedirect").mockResolvedValue(undefined);
 
     await expect(service.getProject("project-1")).rejects.toMatchObject({
       message: "Missing permission",

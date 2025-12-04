@@ -59,7 +59,7 @@ export const useUiStore = zukeeper(
 
     return {
       leftTab: "source",
-      rightTab: "flow",
+      rightTab: "architecture",
       isDark: initialDark,
       setLeftTab: (tab: LeftTab) => set({ leftTab: tab }),
       setRightTab: (tab: RightTab) => set({ rightTab: tab }),

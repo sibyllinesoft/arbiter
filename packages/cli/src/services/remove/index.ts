@@ -8,6 +8,7 @@ import { getCueManipulator } from "../../constraints/cli-integration.js";
 import { safeFileOperation } from "../../constraints/index.js";
 import { validateCUE } from "../../cue/index.js";
 import type { CLIConfig } from "../../types.js";
+import { ensureProjectExists } from "../../utils/project.js";
 
 export interface RemoveOptions {
   verbose?: boolean;
@@ -133,6 +134,51 @@ export async function removeCommand(
       if (options.verbose) {
         console.log(chalk.dim("🔄 Synced updated assembly to server."));
       }
+
+      // Keep project catalog in sync for any supported entity removals
+      const entityType = mapSubcommandToEntityType(subcommand);
+      if (entityType) {
+        try {
+          const projectId = await ensureProjectExists(apiClient, config);
+          // Always attempt deletion by ID first, then by name to ensure event emission.
+          const artifactId = await findArtifactId(apiClient, projectId, entityType, target);
+          if (artifactId) {
+            const deleteResult = await apiClient.deleteProjectEntity(projectId, artifactId);
+            if (!deleteResult.success) {
+              console.error(
+                chalk.yellow("⚠️  Removed locally, but failed to delete remote entity:"),
+                deleteResult.error,
+              );
+            } else if (options.verbose) {
+              console.log(chalk.dim(`🗑️  Removed remote ${entityType} entity (${artifactId}).`));
+            }
+          }
+
+          const byNameResult = await apiClient.deleteProjectEntitiesByName(
+            projectId,
+            entityType,
+            target,
+          );
+          if (byNameResult.deleted.length > 0 && options.verbose) {
+            console.log(
+              chalk.dim(
+                `🗑️  Removed ${byNameResult.deleted.length} remote ${entityType} artifact(s) by name (${target}).`,
+              ),
+            );
+          } else if (!artifactId && byNameResult.deleted.length === 0 && options.verbose) {
+            console.log(
+              chalk.dim(
+                `ℹ️  No matching remote ${entityType} entity found (name: ${target}), skipping entity delete.`,
+              ),
+            );
+          }
+        } catch (syncError) {
+          console.error(
+            chalk.yellow("⚠️  Local removal succeeded, but remote entity sync failed:"),
+            syncError instanceof Error ? syncError.message : String(syncError),
+          );
+        }
+      }
     }
 
     return 0;
@@ -143,5 +189,88 @@ export async function removeCommand(
     );
     return 1;
   }
+}
+
+/**
+ * Map remove subcommand names to project entity types
+ */
+function mapSubcommandToEntityType(subcommand: string): string | null {
+  const normalized = subcommand.trim().toLowerCase();
+  const map: Record<string, string> = {
+    service: "service",
+    database: "database",
+    package: "package",
+    tool: "tool",
+    frontend: "frontend",
+    "load-balancer": "infrastructure",
+    cache: "database", // treat cache services as database-like artifacts (redis, etc.)
+    route: "route",
+    flow: "flow",
+    capability: "capability",
+    epic: "epic",
+    task: "task",
+  };
+
+  return map[normalized] || null;
+}
+
+/**
+ * Find an artifact ID by name/type in the project catalog using resolved artifacts first,
+ * then falling back to spec collections for routes/flows/capabilities.
+ */
+async function findArtifactId(
+  client: ApiClient,
+  projectId: string,
+  type: string,
+  name: string,
+): Promise<string | null> {
+  const projectResult = await client.getProject(projectId);
+  if (!projectResult.success) return null;
+
+  const resolved = projectResult.data?.resolved ?? projectResult.data;
+  const artifacts: any[] = Array.isArray(resolved?.artifacts) ? resolved.artifacts : [];
+
+  const target = normalizeName(name);
+
+  // 1) Prefer artifacts list (works for service/database/package/tool/frontend/infrastructure/etc.)
+  const artifactMatch = artifacts.find(
+    (a) => normalizeName(a?.name) === target && (a?.type || "").toLowerCase() === type,
+  );
+  if (artifactMatch?.id) return artifactMatch.id as string;
+
+  // 2) Fallback to spec collections for route/flow/capability (non-artifact types)
+  const spec = resolved?.spec;
+  if (!spec || typeof spec !== "object") return null;
+
+  switch (type) {
+    case "route": {
+      const routes: any[] = Array.isArray(spec.ui?.routes) ? spec.ui.routes : [];
+      const match = routes.find((r) => normalizeName(r?.name || r?.id || r?.path) === target);
+      return match?.id || null;
+    }
+    case "flow": {
+      const flows: any[] = Array.isArray(spec.flows) ? spec.flows : [];
+      const match = flows.find((f) => normalizeName(f?.id || f?.name) === target);
+      return match?.id || null;
+    }
+    case "capability": {
+      const caps = spec.capabilities || {};
+      for (const [capId, cap] of Object.entries(caps)) {
+        if (normalizeName(capId) === target || normalizeName((cap as any).name) === target) {
+          return capId;
+        }
+      }
+      return null;
+    }
+    default:
+      return null;
+  }
+}
+
+function normalizeName(value: unknown): string {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, "-");
 }
 // @ts-nocheck

@@ -1,9 +1,3 @@
-/**
- * API service for backend communication
- */
-
-import type { UIOptionCatalog } from "@arbiter/shared";
-
 import type {
   CreateFragmentRequest,
   CreateFragmentResponse,
@@ -18,497 +12,187 @@ import type {
   ResolvedSpecResponse,
   ValidationRequest,
   ValidationResponse,
-} from "../types/api";
-import { createLogger } from "../utils/logger";
-
-const log = createLogger("API");
-
-export interface ApiServiceOptions {
-  baseUrl?: string;
-}
-
-export const AUTH_TOKEN_STORAGE_KEY = "arbiter:authToken";
-export const AUTH_TOKEN_EPOCH_STORAGE_KEY = "arbiter:authTokenEpoch";
-
-export class ApiError extends Error {
-  status: number;
-  details?: ProblemDetails | undefined;
-
-  constructor(message: string, status: number, details?: ProblemDetails | undefined) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.details = details;
-  }
-}
-
-export interface EnvironmentInfo {
-  runtime: "cloudflare" | "node";
-  cloudflareTunnelSupported: boolean;
-}
-
-export interface AuthMetadataResponse {
-  enabled: boolean;
-  provider?: string | null;
-  authorizationEndpoint?: string | null;
-  tokenEndpoint?: string | null;
-  clientId?: string | null;
-  scopes?: string[];
-  redirectUri?: string | null;
-  reason?: string;
-  tokenEpoch?: string | null;
-}
-
-export interface ProjectStructureSettings {
-  appsDirectory: string;
-  packagesDirectory: string;
-  servicesDirectory: string;
-  docsDirectory: string;
-  testsDirectory: string;
-  infraDirectory: string;
-  packageRelative?: {
-    docsDirectory?: boolean;
-    testsDirectory?: boolean;
-    infraDirectory?: boolean;
-  };
-}
-
-interface UiOptionsResponse {
-  success: boolean;
-  options?: UIOptionCatalog;
-  diagnostics?: string[];
-}
-
-interface ProjectStructureResponse {
-  success: boolean;
-  projectStructure: ProjectStructureSettings;
-}
-
-interface ProjectEventsResponse {
-  success: boolean;
-  events: Event[];
-  head_event: Event | null;
-  head_event_id: string | null;
-  dangling_event_ids: string[];
-}
-
-interface SetEventHeadResponse {
-  success: boolean;
-  head_event: Event | null;
-  head_event_id: string | null;
-  reactivated_event_ids: string[];
-  deactivated_event_ids: string[];
-}
-
-interface RevertEventsResponse {
-  success: boolean;
-  head_event: Event | null;
-  head_event_id: string | null;
-  reverted_event_ids: string[];
-}
-
-type TunnelSetupResponse = {
-  success: boolean;
-  tunnel?: {
-    tunnelId: string;
-    tunnelName: string;
-    hostname: string;
-    url: string;
-    configPath: string;
-    status: "running" | "stopped";
-    hookId?: string;
-  };
-  logs?: string[];
-  error?: string;
-};
-
-export interface OAuthTokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in?: number;
-  scope?: string;
-  refresh_token?: string;
-  user_id?: string;
-}
-
-interface OAuthTokenExchangeResponse {
-  success: boolean;
-  message?: string;
-  token: OAuthTokenResponse;
-  authContext?: {
-    user_id?: string | null;
-    project_access?: string[];
-  } | null;
-}
+} from "@/types/api";
+import type { UIOptionCatalog } from "@arbiter/shared";
+import {
+  AUTH_TOKEN_EPOCH_STORAGE_KEY,
+  AUTH_TOKEN_STORAGE_KEY,
+  type AuthMetadataResponse,
+  AuthService,
+  type OAuthTokenExchangeResponse,
+  type OAuthTokenResponse,
+} from "./api/auth";
+import { ApiClient, ApiError, type ApiServiceOptions } from "./api/client";
+import { FragmentService } from "./api/fragments";
+import { GitHubService } from "./api/github";
+import { ImportService } from "./api/imports";
+import {
+  type ProjectEventsResponse,
+  ProjectService,
+  type RevertEventsResponse,
+  type SetEventHeadResponse,
+} from "./api/projects";
+import { SpecService } from "./api/spec";
+import {
+  type EnvironmentInfo,
+  type ProjectStructureResponse,
+  type ProjectStructureSettings,
+  SystemService,
+} from "./api/system";
+import { TunnelService, type TunnelSetupResponse } from "./api/tunnels";
 
 export class ApiService {
-  static readonly OAUTH_PENDING_STORAGE_KEY = "arbiter:oauthPending";
-
-  private baseUrl: string;
-  private defaultHeaders: Record<string, string | undefined> = {
-    "Content-Type": "application/json",
-  };
-  private authMetadata?: AuthMetadataResponse | null;
-  private authMetadataPromise: Promise<AuthMetadataResponse | null> | null = null;
+  static readonly OAUTH_PENDING_STORAGE_KEY = AuthService.OAUTH_PENDING_STORAGE_KEY;
+  readonly client: ApiClient;
+  readonly auth: AuthService;
+  readonly projects: ProjectService;
+  readonly fragments: FragmentService;
+  readonly spec: SpecService;
+  readonly tunnels: TunnelService;
+  readonly imports: ImportService;
+  readonly github: GitHubService;
+  readonly system: SystemService;
 
   constructor(options: ApiServiceOptions = {}) {
-    const envBaseUrl =
-      typeof import.meta !== "undefined" &&
-      import.meta.env &&
-      typeof import.meta.env.VITE_API_URL === "string" &&
-      import.meta.env.VITE_API_URL.length > 0
-        ? import.meta.env.VITE_API_URL
-        : "";
-    this.baseUrl = options.baseUrl ?? envBaseUrl;
+    this.client = new ApiClient(options);
+    this.auth = new AuthService(this.client);
+    this.projects = new ProjectService(this.client);
+    this.fragments = new FragmentService(this.client);
+    this.spec = new SpecService(this.client);
+    this.tunnels = new TunnelService(this.client);
+    this.imports = new ImportService(this.client);
+    this.github = new GitHubService(this.client);
+    this.system = new SystemService(this.client);
   }
 
-  private buildRequestConfig(
-    endpoint: string,
-    options: RequestInit = {},
-  ): { url: string; config: RequestInit } {
-    const url = `${this.baseUrl}${endpoint}`;
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...Object.fromEntries(
-          Object.entries({ ...this.defaultHeaders, ...options.headers }).filter(
-            ([, v]) => v !== undefined,
-          ),
-        ),
-      } as HeadersInit,
-    };
-    return { url, config };
+  // Compatibility wrappers
+  getProjects(): Promise<Project[]> {
+    return this.projects.getProjects();
   }
 
-  private async parseErrorDetails(response: Response): Promise<ProblemDetails | undefined> {
-    try {
-      return await response.json();
-    } catch {
-      // Ignore JSON parsing errors for error details
-      return undefined;
-    }
+  getProject(projectId: string): Promise<Project> {
+    return this.projects.getProject(projectId);
   }
 
-  private createApiError(response: Response, errorDetails?: ProblemDetails): ApiError {
-    return new ApiError(
-      errorDetails?.detail || `HTTP ${response.status}: ${response.statusText}`,
-      response.status,
-      errorDetails,
-    );
-  }
-
-  private shouldReturnEmptyResponse(response: Response): boolean {
-    return response.status === 204 || response.headers.get("content-length") === "0";
-  }
-
-  private async handleErrorResponse(response: Response): Promise<never> {
-    const errorDetails = await this.parseErrorDetails(response);
-    throw this.createApiError(response, errorDetails);
-  }
-
-  private async parseResponseData<T>(response: Response): Promise<T> {
-    if (this.shouldReturnEmptyResponse(response)) {
-      return {} as T;
-    }
-    return await response.json();
-  }
-
-  private handleNetworkError(error: unknown): never {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    throw new ApiError(
-      `Network error: ${error instanceof Error ? error.message : "Unknown error"}`,
-      0,
-    );
-  }
-
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const { url, config } = this.buildRequestConfig(endpoint, options);
-
-    try {
-      const response = await fetch(url, config);
-
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          await this.handleAuthRedirect();
-        }
-        return await this.handleErrorResponse(response);
-      }
-
-      return await this.parseResponseData<T>(response);
-    } catch (error) {
-      return this.handleNetworkError(error);
-    }
-  }
-
-  // Project endpoints
-  async getProjects(): Promise<Project[]> {
-    const response = await this.request<{ projects: Project[] }>("/api/projects");
-    return response.projects;
-  }
-
-  async getProject(projectId: string): Promise<Project> {
-    return this.request<Project>(`/api/projects/${projectId}`);
-  }
-
-  async getProjectEvents(
+  getProjectEvents(
     projectId: string,
     options: { limit?: number; includeDangling?: boolean; since?: string } = {},
   ): Promise<ProjectEventsResponse> {
-    const params = new URLSearchParams();
-
-    if (options.limit) {
-      params.set("limit", String(options.limit));
-    }
-
-    if (options.since) {
-      params.set("since", options.since);
-    }
-
-    if (options.includeDangling === false) {
-      params.set("includeDangling", "false");
-    }
-
-    const queryString = params.toString() ? `?${params.toString()}` : "";
-
-    return this.request<ProjectEventsResponse>(`/api/projects/${projectId}/events${queryString}`);
+    return this.projects.getProjectEvents(projectId, options);
   }
 
-  async setProjectEventHead(
+  setProjectEventHead(
     projectId: string,
     headEventId: string | null,
   ): Promise<SetEventHeadResponse> {
-    return this.request<SetEventHeadResponse>(`/api/projects/${projectId}/events/head`, {
-      method: "POST",
-      body: JSON.stringify({ head_event_id: headEventId }),
-    });
+    return this.projects.setProjectEventHead(projectId, headEventId);
   }
 
-  async revertProjectEvents(projectId: string, eventIds: string[]): Promise<RevertEventsResponse> {
-    return this.request<RevertEventsResponse>(`/api/projects/${projectId}/events/revert`, {
-      method: "POST",
-      body: JSON.stringify({ event_ids: eventIds }),
-    });
+  revertProjectEvents(projectId: string, eventIds: string[]): Promise<RevertEventsResponse> {
+    return this.projects.revertProjectEvents(projectId, eventIds);
   }
 
-  async getEnvironmentInfo(): Promise<EnvironmentInfo> {
-    return this.request<EnvironmentInfo>("/api/environment");
+  createProject(name: string, path?: string, presetId?: string): Promise<Project> {
+    return this.projects.createProject(name, path, presetId);
   }
 
-  async getProjectStructureSettings(): Promise<ProjectStructureResponse> {
-    return this.request<ProjectStructureResponse>("/api/config/project-structure");
+  deleteProject(projectId: string): Promise<void> {
+    return this.projects.deleteProject(projectId);
   }
 
-  async getUiOptionCatalog(): Promise<UIOptionCatalog> {
-    const response = await this.request<UiOptionsResponse>("/api/config/ui-options");
-    return (response.options ?? {}) as UIOptionCatalog;
-  }
-
-  private normalizeEntityValues(values: Record<string, unknown>): Record<string, unknown> {
-    return Object.fromEntries(
-      Object.entries(values).map(([key, value]) => {
-        if (Array.isArray(value)) {
-          return [key, value];
-        }
-        if (value && typeof value === "object") {
-          return [key, value];
-        }
-        if (typeof value === "number" || typeof value === "boolean") {
-          return [key, value];
-        }
-        return [key, typeof value === "string" ? value : String(value ?? "")];
-      }),
-    );
-  }
-
-  async createProjectEntity(
+  createProjectEntity(
     projectId: string,
     payload: { type: string; values: Record<string, unknown> },
   ) {
-    const normalizedValues = this.normalizeEntityValues(payload.values);
-
-    return this.request(`/api/projects/${projectId}/entities`, {
-      method: "POST",
-      body: JSON.stringify({
-        type: payload.type,
-        values: normalizedValues,
-      }),
-    });
+    return this.projects.createProjectEntity(projectId, payload);
   }
 
-  async updateProjectEntity(
+  updateProjectEntity(
     projectId: string,
     artifactId: string,
     payload: { type: string; values: Record<string, unknown> },
   ) {
-    if (!artifactId) {
-      throw new Error("artifactId is required to update a project entity");
-    }
-
-    const normalizedValues = this.normalizeEntityValues(payload.values);
-
-    return this.request(`/api/projects/${projectId}/entities/${artifactId}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        type: payload.type,
-        values: normalizedValues,
-      }),
-    });
+    return this.projects.updateProjectEntity(projectId, artifactId, payload);
   }
 
-  async deleteProjectEntity(projectId: string, artifactId: string): Promise<void> {
-    if (!artifactId) {
-      throw new Error("artifactId is required to delete a project entity");
-    }
-    await this.request<void>(`/api/projects/${projectId}/entities/${artifactId}`, {
-      method: "DELETE",
-    });
+  deleteProjectEntity(projectId: string, artifactId: string): Promise<void> {
+    return this.projects.deleteProjectEntity(projectId, artifactId);
   }
 
-  async restoreProjectEntity(
+  restoreProjectEntity(
     projectId: string,
     artifactId: string,
     payload: { snapshot: Record<string, unknown>; eventId?: string | null },
   ): Promise<void> {
-    if (!artifactId) {
-      throw new Error("artifactId is required to restore a project entity");
-    }
-    if (!payload?.snapshot || typeof payload.snapshot !== "object") {
-      throw new Error("snapshot is required to restore a project entity");
-    }
-    await this.request<void>(`/api/projects/${projectId}/entities/${artifactId}/restore`, {
-      method: "POST",
-      body: JSON.stringify({
-        snapshot: payload.snapshot,
-        eventId: payload.eventId ?? undefined,
-      }),
-    });
+    return this.projects.restoreProjectEntity(projectId, artifactId, payload);
   }
 
-  async updateProjectStructureSettings(
-    settings: Partial<ProjectStructureSettings>,
-  ): Promise<ProjectStructureResponse> {
-    return this.request<ProjectStructureResponse>("/api/config/project-structure", {
-      method: "PUT",
-      body: JSON.stringify(settings),
-    });
+  getFragments(projectId: string): Promise<Fragment[]> {
+    return this.fragments.getFragments(projectId);
   }
 
-  async createProject(name: string, path?: string, presetId?: string): Promise<Project> {
-    return this.request<Project>("/api/projects", {
-      method: "POST",
-      body: JSON.stringify(
-        Object.fromEntries(
-          Object.entries({ name, path, presetId }).filter(([, value]) => value !== undefined),
-        ),
-      ),
-    });
+  getFragment(projectId: string, fragmentId: string): Promise<Fragment> {
+    return this.fragments.getFragment(projectId, fragmentId);
   }
 
-  async deleteProject(projectId: string): Promise<void> {
-    await this.request<void>(`/api/projects/${projectId}`, {
-      method: "DELETE",
-    });
-  }
-
-  // Fragment endpoints
-  async getFragments(projectId: string): Promise<Fragment[]> {
-    return this.request<Fragment[]>(`/api/fragments?projectId=${projectId}`);
-  }
-
-  async getFragment(projectId: string, fragmentId: string): Promise<Fragment> {
-    return this.request<Fragment>(`/api/fragments/${fragmentId}?projectId=${projectId}`);
-  }
-
-  async createFragment(
+  createFragment(
     projectId: string,
     request: CreateFragmentRequest,
   ): Promise<CreateFragmentResponse> {
-    return this.request<CreateFragmentResponse>(`/api/fragments?projectId=${projectId}`, {
-      method: "POST",
-      body: JSON.stringify(request),
-    });
+    return this.fragments.createFragment(projectId, request);
   }
 
-  async updateFragment(projectId: string, fragmentId: string, content: string): Promise<Fragment> {
-    return this.request<Fragment>(`/api/fragments/${fragmentId}?projectId=${projectId}`, {
-      method: "PUT",
-      body: JSON.stringify({ content }),
-    });
+  updateFragment(projectId: string, fragmentId: string, content: string): Promise<Fragment> {
+    return this.fragments.updateFragment(projectId, fragmentId, content);
   }
 
-  async deleteFragment(projectId: string, fragmentId: string): Promise<void> {
-    await this.request<void>(`/api/fragments/${fragmentId}?projectId=${projectId}`, {
-      method: "DELETE",
-    });
+  deleteFragment(projectId: string, fragmentId: string): Promise<void> {
+    return this.fragments.deleteFragment(projectId, fragmentId);
   }
 
-  // Validation endpoints
-  async validateProject(
-    projectId: string,
-    request: ValidationRequest = {},
-  ): Promise<ValidationResponse> {
-    return this.request<ValidationResponse>("/api/validate", {
-      method: "POST",
-      body: JSON.stringify({ projectId, ...request }),
-    });
+  validateProject(projectId: string, request: ValidationRequest = {}): Promise<ValidationResponse> {
+    return this.spec.validateProject(projectId, request);
   }
 
-  // Resolved spec endpoints
-  async getResolvedSpec(projectId: string): Promise<ResolvedSpecResponse> {
-    const response = await this.request<{
-      success: boolean;
-      projectId: string;
-      resolved: Record<string, unknown>;
-    }>(`/api/resolved?projectId=${projectId}`);
-
-    // Transform response to match expected interface
-    return {
-      spec_hash: "generated", // The API doesn't return this field
-      resolved: response.resolved,
-      last_updated: new Date().toISOString(),
-    };
+  getResolvedSpec(projectId: string): Promise<ResolvedSpecResponse> {
+    return this.spec.getResolvedSpec(projectId);
   }
 
-  // IR (Intermediate Representation) endpoints
-  async getIR(projectId: string, kind: IRKind): Promise<IRResponse> {
-    if (!kind) {
-      throw new Error("IRKind is required");
-    }
-    return this.request<IRResponse>(`/api/ir/${kind}?projectId=${projectId}`);
+  getIR(projectId: string, kind: IRKind): Promise<IRResponse> {
+    return this.spec.getIR(projectId, kind);
   }
 
-  async getAllIRs(projectId: string): Promise<Record<IRKind, IRResponse>> {
-    const kinds: IRKind[] = ["flow", "fsm", "view", "site"];
-    const irs: Record<IRKind, IRResponse> = {} as Record<IRKind, IRResponse>;
-
-    // Sequential requests with small delays to avoid rate limiting
-    for (const kind of kinds) {
-      try {
-        const ir = await this.getIR(projectId, kind);
-        irs[kind] = ir;
-      } catch (error) {
-        log.warn(`Failed to load IR for ${kind}:`, error);
-      }
-
-      // Add small delay between requests to avoid overwhelming rate limiter
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-
-    return irs;
+  getAllIRs(projectId: string): Promise<Record<IRKind, IRResponse>> {
+    return this.spec.getAllIRs(projectId);
   }
 
-  // Version freezing endpoints
-  async freezeVersion(projectId: string, request: FreezeRequest): Promise<FreezeResponse> {
-    return this.request<FreezeResponse>("/api/freeze", {
-      method: "POST",
-      body: JSON.stringify({ projectId, ...request }),
-    });
+  freezeVersion(projectId: string, request: FreezeRequest): Promise<FreezeResponse> {
+    return this.spec.freezeVersion(projectId, request);
   }
 
-  // Cloudflare tunnel management methods (v2 API)
-  async getTunnelStatus(): Promise<{
+  getEnvironmentInfo(): Promise<EnvironmentInfo> {
+    return this.system.getEnvironmentInfo();
+  }
+
+  getProjectStructureSettings(): Promise<ProjectStructureResponse> {
+    return this.system.getProjectStructureSettings();
+  }
+
+  updateProjectStructureSettings(
+    settings: Partial<ProjectStructureSettings>,
+  ): Promise<ProjectStructureResponse> {
+    return this.system.updateProjectStructureSettings(settings);
+  }
+
+  getUiOptionCatalog(): Promise<UIOptionCatalog> {
+    return this.system.getUiOptionCatalog();
+  }
+
+  healthCheck(): Promise<{ status: string; timestamp: string }> {
+    return this.system.healthCheck();
+  }
+
+  getTunnelStatus(): Promise<{
     success: boolean;
     tunnel?: {
       tunnelId: string;
@@ -520,67 +204,54 @@ export class ApiService {
     } | null;
     error?: string;
   }> {
-    return this.request("/api/tunnel/status");
+    return this.tunnels.getTunnelStatus();
   }
 
-  async setupTunnel(config: {
+  setupTunnel(config: {
     zone: string;
     subdomain?: string;
     localPort?: number;
   }): Promise<TunnelSetupResponse> {
-    return this.request("/api/tunnel/setup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(config),
-    });
+    return this.tunnels.setupTunnel(config);
   }
 
-  // Legacy startTunnel for backwards compatibility
-  async startTunnel(): Promise<TunnelSetupResponse> {
-    return this.setupTunnel({
-      zone: "sibylline.dev",
-      localPort: 5050,
-    });
+  startTunnel(): Promise<TunnelSetupResponse> {
+    return this.tunnels.startTunnel();
   }
 
-  async stopTunnel(): Promise<{
+  stopTunnel(): Promise<{
     success: boolean;
     message?: string;
     error?: string;
   }> {
-    return this.request("/api/tunnel/stop", {
-      method: "POST",
-    });
+    return this.tunnels.stopTunnel();
   }
 
-  async teardownTunnel(): Promise<{
+  teardownTunnel(): Promise<{
     success: boolean;
     message?: string;
     error?: string;
   }> {
-    return this.request("/api/tunnel/teardown", {
-      method: "POST",
-    });
+    return this.tunnels.teardownTunnel();
   }
 
-  async getTunnelPreflight(): Promise<{
+  getTunnelPreflight(): Promise<{
     success: boolean;
     zones?: string[];
     error?: string;
   }> {
-    return this.request("/api/tunnel/preflight");
+    return this.tunnels.getTunnelPreflight();
   }
 
-  async getTunnelLogs(): Promise<{
+  getTunnelLogs(): Promise<{
     success: boolean;
     logs?: string;
     error?: string;
   }> {
-    return this.request("/api/tunnel/logs");
+    return this.tunnels.getTunnelLogs();
   }
 
-  // Import scanning methods
-  async scanGitUrl(gitUrl: string): Promise<{
+  scanGitUrl(gitUrl: string): Promise<{
     success: boolean;
     tempPath?: string;
     files?: string[];
@@ -597,14 +268,10 @@ export class ApiService {
     projectName?: string;
     error?: string;
   }> {
-    return this.request("/api/import/scan-git", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gitUrl }),
-    });
+    return this.imports.scanGitUrl(gitUrl);
   }
 
-  async scanLocalPath(directoryPath: string): Promise<{
+  scanLocalPath(directoryPath: string): Promise<{
     success: boolean;
     path?: string;
     files?: string[];
@@ -619,25 +286,18 @@ export class ApiService {
     };
     error?: string;
   }> {
-    return this.request("/api/import/scan-local", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ directoryPath }),
-    });
+    return this.imports.scanLocalPath(directoryPath);
   }
 
-  async cleanupImport(tempId: string): Promise<{
+  cleanupImport(tempId: string): Promise<{
     success: boolean;
     message?: string;
     error?: string;
   }> {
-    return this.request(`/api/import/cleanup/${tempId}`, {
-      method: "DELETE",
-    });
+    return this.imports.cleanupImport(tempId);
   }
 
-  // GitHub API methods
-  async getGitHubUserRepos(): Promise<{
+  getGitHubUserRepos(): Promise<{
     success: boolean;
     repositories?: Array<{
       id: number;
@@ -660,10 +320,10 @@ export class ApiService {
     }>;
     error?: string;
   }> {
-    return this.request("/api/github/user/repos");
+    return this.github.getGitHubUserRepos();
   }
 
-  async getGitHubUserOrgs(): Promise<{
+  getGitHubUserOrgs(): Promise<{
     success: boolean;
     organizations?: Array<{
       login: string;
@@ -674,10 +334,10 @@ export class ApiService {
     }>;
     error?: string;
   }> {
-    return this.request("/api/github/user/orgs");
+    return this.github.getGitHubUserOrgs();
   }
 
-  async getGitHubOrgRepos(org: string): Promise<{
+  getGitHubOrgRepos(org: string): Promise<{
     success: boolean;
     repositories?: Array<{
       id: number;
@@ -700,175 +360,50 @@ export class ApiService {
     }>;
     error?: string;
   }> {
-    return this.request(`/api/github/orgs/${org}/repos`);
+    return this.github.getGitHubOrgRepos(org);
   }
 
-  // Health check
-  async healthCheck(): Promise<{ status: string; timestamp: string }> {
-    return this.request<{ status: string; timestamp: string }>("/health");
-  }
-
-  // Set authentication token
   setAuthToken(token: string) {
-    this.defaultHeaders.Authorization = `Bearer ${token}`;
+    this.auth.setAuthToken(token);
   }
 
-  // Remove authentication token
   clearAuthToken() {
-    delete this.defaultHeaders.Authorization;
+    this.auth.clearAuthToken();
   }
 
-  async exchangeOAuthCode(
+  exchangeOAuthCode(
     code: string,
     options: { redirectUri?: string; codeVerifier?: string } = {},
   ): Promise<OAuthTokenExchangeResponse> {
-    const body = {
-      code,
-      redirectUri: options.redirectUri,
-      codeVerifier: options.codeVerifier,
-    };
-
-    return this.request<OAuthTokenExchangeResponse>("/api/auth/token", {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+    return this.auth.exchangeOAuthCode(code, options);
   }
 
-  async startOAuthFlow(): Promise<void> {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const metadata = await this.getAuthMetadata();
-    if (!metadata?.enabled) {
-      throw new Error("OAuth is not enabled.");
-    }
-
-    if (!metadata.authorizationEndpoint) {
-      throw new Error("OAuth authorization endpoint unavailable.");
-    }
-
-    try {
-      window.sessionStorage.setItem(ApiService.OAUTH_PENDING_STORAGE_KEY, "1");
-    } catch {
-      // ignore
-    }
-
-    window.location.href = this.buildAuthorizeUrl(metadata);
+  startOAuthFlow(): Promise<void> {
+    return this.auth.startOAuthFlow();
   }
 
-  async loadAuthMetadata(options: { force?: boolean } = {}): Promise<AuthMetadataResponse | null> {
-    if (options.force) {
-      this.authMetadata = null;
-      this.authMetadataPromise = null;
-    }
-    return this.getAuthMetadata();
-  }
-
-  private buildAuthorizeUrl(metadata: AuthMetadataResponse): string {
-    const authorizeUrl = new URL(metadata.authorizationEndpoint!);
-    const clientId = metadata.clientId ?? "dev-cli";
-    authorizeUrl.searchParams.set("client_id", clientId);
-
-    const redirectUri =
-      metadata.redirectUri ??
-      (typeof window !== "undefined"
-        ? `${window.location.origin}/oauth/callback`
-        : "http://localhost:3000/oauth/callback");
-    authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-    authorizeUrl.searchParams.set("response_type", "code");
-
-    const scopes =
-      metadata.scopes && metadata.scopes.length > 0 ? metadata.scopes : ["read", "write"];
-    authorizeUrl.searchParams.set("scope", scopes.join(" "));
-
-    const statePayload = {
-      returnTo: typeof window !== "undefined" ? window.location.href : "/",
-      timestamp: Date.now(),
-    };
-    const stateEncoded =
-      typeof window !== "undefined" && typeof window.btoa === "function"
-        ? window.btoa(JSON.stringify(statePayload))
-        : JSON.stringify(statePayload);
-    authorizeUrl.searchParams.set("state", stateEncoded);
-
-    return authorizeUrl.toString();
-  }
-
-  private async handleAuthRedirect(): Promise<void> {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    try {
-      if (window.location.pathname.startsWith("/oauth/callback")) {
-        return;
-      }
-
-      const metadata = await this.getAuthMetadata();
-      if (!metadata?.enabled || !metadata.authorizationEndpoint) {
-        return;
-      }
-
-      try {
-        window.sessionStorage.setItem(ApiService.OAUTH_PENDING_STORAGE_KEY, "1");
-      } catch {
-        // ignore
-      }
-
-      try {
-        window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
-      } catch {
-        // ignore
-      }
-      try {
-        window.localStorage.removeItem(AUTH_TOKEN_EPOCH_STORAGE_KEY);
-      } catch {
-        // ignore
-      }
-      this.clearAuthToken();
-
-      window.location.href = this.buildAuthorizeUrl(metadata);
-    } catch (error) {
-      console.warn("Failed to initiate OAuth redirect", error);
-    }
-  }
-
-  private async getAuthMetadata(): Promise<AuthMetadataResponse | null> {
-    if (this.authMetadata) {
-      return this.authMetadata;
-    }
-
-    if (this.authMetadataPromise) {
-      return this.authMetadataPromise;
-    }
-
-    this.authMetadataPromise = (async () => {
-      try {
-        const response = await fetch(`${this.baseUrl}/api/auth/metadata`, {
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-        });
-
-        if (!response.ok) {
-          return null;
-        }
-
-        const metadata = (await response.json()) as AuthMetadataResponse;
-        this.authMetadata = metadata;
-        return metadata;
-      } catch (error) {
-        console.warn("Failed to fetch auth metadata", error);
-        return null;
-      } finally {
-        this.authMetadataPromise = null;
-      }
-    })();
-
-    return this.authMetadataPromise;
+  loadAuthMetadata(options: { force?: boolean } = {}): Promise<AuthMetadataResponse | null> {
+    return this.auth.loadAuthMetadata(options);
   }
 }
 
-// Export singleton instance
 export const apiService = new ApiService();
 
-// Export utilities
+export const api = {
+  auth: apiService.auth,
+  projects: apiService.projects,
+  fragments: apiService.fragments,
+  spec: apiService.spec,
+  tunnels: apiService.tunnels,
+  imports: apiService.imports,
+  github: apiService.github,
+  system: apiService.system,
+};
+
+export type { ApiServiceOptions };
+export type { AuthMetadataResponse, OAuthTokenExchangeResponse, OAuthTokenResponse };
+export type { ProjectEventsResponse, RevertEventsResponse, SetEventHeadResponse };
+export type { EnvironmentInfo, ProjectStructureSettings, ProjectStructureResponse };
+export type { TunnelSetupResponse };
+export type { ProblemDetails };
+export { ApiError, AUTH_TOKEN_STORAGE_KEY, AUTH_TOKEN_EPOCH_STORAGE_KEY };

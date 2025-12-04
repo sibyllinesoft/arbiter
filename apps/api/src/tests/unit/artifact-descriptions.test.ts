@@ -13,7 +13,6 @@ describe("Artifact description persistence", () => {
       host: "localhost",
       database_path: ":memory:",
       spec_workdir: `/tmp/artifact-description-test-${Date.now()}`,
-      cue_binary_path: "cue",
       jq_binary_path: "jq",
       auth_required: false,
       rate_limit: {

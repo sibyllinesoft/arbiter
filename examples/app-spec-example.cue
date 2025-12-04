@@ -778,7 +778,7 @@ package examples
 	deployment: deployments.production
 
 	// 12. STATE MODELS - Complex UI flow state machines
-	stateModels: {
+	processes: {
 		invoice_editor: {
 			id: "invoice_editor"
 			initial: "editing"

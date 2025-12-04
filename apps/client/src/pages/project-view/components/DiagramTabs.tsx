@@ -9,7 +9,12 @@ import InfrastructureReport from "@/components/InfrastructureReport";
 import PackagesReport from "@/components/PackagesReport";
 import SchemasReport from "@/components/SchemasReport";
 import ToolsReport from "@/components/ToolsReport";
-import { ArchitectureReport, EventsReport, ServicesReport, TasksReport } from "@/components/index";
+import {
+  ArchitectureFlowReport,
+  EventsReport,
+  ServicesReport,
+  TasksReport,
+} from "@/components/index";
 import type { Project } from "@/types/api";
 import { DiagramPlaceholder } from "./DiagramPlaceholder";
 
@@ -19,7 +24,10 @@ interface DiagramTabsProps {
 }
 
 export function useDiagramTabs({ project, tabBadges }: DiagramTabsProps) {
-  const serviceCount = tabBadges?.services ?? project?.entities?.services;
+  // Prefer the canonical project entity counts (kept in sync via WebSocket + React Query)
+  // so the Services tab chip matches the project list badge. Fall back to in-tab updates
+  // only if the project entity counts are missing.
+  const serviceCount = project?.entities?.services ?? tabBadges?.services;
   const taskCount = tabBadges?.tasks;
   const eventCount = tabBadges?.events;
   const schemaCount = tabBadges?.schemas;
@@ -33,9 +41,9 @@ export function useDiagramTabs({ project, tabBadges }: DiagramTabsProps) {
   const diagramTabs = [
     {
       id: "architecture",
-      label: "Sources",
+      label: "Architecture",
       content: project ? (
-        <ArchitectureReport projectId={project.id} />
+        <ArchitectureFlowReport projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="System Architecture" />
       ),

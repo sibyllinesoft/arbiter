@@ -107,7 +107,6 @@ describe("AuthService SuperTokens OAuth integration", () => {
       host: "localhost",
       database_path: ":memory:",
       spec_workdir: "/tmp/spec-workbench",
-      cue_binary_path: "cue",
       jq_binary_path: "jq",
       auth_required: true,
       rate_limit: { max_tokens: 10, refill_rate: 1, window_ms: 1000 },

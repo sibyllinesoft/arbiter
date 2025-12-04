@@ -35,21 +35,22 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:5050",
         changeOrigin: true,
-        ws: true,
       },
       "/events": {
-        target: "http://localhost:5050",
+        target: "ws://localhost:5050",
         changeOrigin: true,
         ws: true,
+        rewriteWsOrigin: true,
       },
       "/health": {
         target: "http://localhost:5050",
         changeOrigin: true,
       },
       "/ws": {
-        target: "http://localhost:5050",
+        target: "ws://localhost:5050",
         changeOrigin: true,
         ws: true,
+        rewriteWsOrigin: true,
       },
     },
   },

@@ -1,12 +1,16 @@
-import { type EnvironmentMap, mergeEnvironmentSources } from "@/utils/environment";
-import { Boxes, Folder, Languages, Network, Workflow } from "lucide-react";
 import type {
   ExternalArtifactCard,
   NormalizedEndpointCard,
   NormalizedService,
   ServiceMetadataItem,
-} from "./types";
-import { collectPorts, deriveArtifactIdFromRaw, resolveSourcePath } from "./utils";
+} from "@/components/ServicesReport/types";
+import {
+  collectPorts,
+  deriveArtifactIdFromRaw,
+  resolveSourcePath,
+} from "@/features/spec/utils/services";
+import { type EnvironmentMap, mergeEnvironmentSources } from "@/utils/environment";
+import { Boxes, Folder, Languages, Network, Workflow } from "lucide-react";
 
 export const buildEnvironmentMap = (raw: any): EnvironmentMap => {
   if (!raw || typeof raw !== "object") {

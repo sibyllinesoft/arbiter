@@ -6,6 +6,9 @@
  * collection stages, and artifact manifests generated when scanning projects.
  */
 
+import type { ArtifactClassifier } from "./detection/classifier";
+import type { DirectoryContext } from "./detection/context-aggregator";
+
 // ============================================================================
 // Core Plugin Interface
 // ============================================================================
@@ -82,6 +85,10 @@ export interface InferenceContext {
   fileIndex: FileIndex;
   /** All evidence collected from all plugins */
   allEvidence: Evidence[];
+  /** Evidence and file information grouped by directory */
+  directoryContexts: Map<string, DirectoryContext>;
+  /** Shared classifier used by plugins to map signals to artifact types */
+  classifier: ArtifactClassifier;
   /** Configuration options for inference */
   options: InferenceOptions;
   /** Cache for expensive operations */

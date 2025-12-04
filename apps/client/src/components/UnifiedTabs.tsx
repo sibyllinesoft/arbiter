@@ -4,7 +4,13 @@
 
 import React from "react";
 import type { Project } from "../types/api";
-import { ArchitectureReport, ClientsReport, EventsReport, ServicesReport, TasksReport } from "./";
+import {
+  ArchitectureFlowReport,
+  ClientsReport,
+  EventsReport,
+  ServicesReport,
+  TasksReport,
+} from "./";
 import CapabilitiesReport from "./CapabilitiesReport";
 import ContractsReport from "./ContractsReport";
 import FlowsReport from "./FlowsReport";
@@ -54,9 +60,9 @@ export function useUnifiedTabs({ project, tabBadges }: UnifiedTabsProps) {
   const allTabs = [
     {
       id: "architecture",
-      label: "Sources",
+      label: "Architecture",
       content: project ? (
-        <ArchitectureReport projectId={project.id} />
+        <ArchitectureFlowReport projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="System Architecture" />
       ),

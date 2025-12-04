@@ -41,7 +41,7 @@ describe("list command", () => {
       tools: { gen: { commands: ["build"] } },
       infrastructure: { containers: [{ name: "svc", scope: "dev", image: "img" }] },
       contracts: { workflows: { contract1: { operations: { op1: {} } } } },
-      domain: { stateMachines: { flow1: { states: { start: {} } } } },
+      domain: { processes: { flow1: { states: { start: {} } } } },
     };
 
     expect(__listTesting.buildComponentsFromSpec(spec, "service")[0].endpoints).toContain(

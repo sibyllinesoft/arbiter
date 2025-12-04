@@ -2,6 +2,8 @@
  * Tests for the Rust Plugin
  */
 
+import { ArtifactClassifier } from "../../detection/classifier";
+import { buildDirectoryContexts } from "../../detection/context-aggregator";
 import type { Evidence, InferenceContext, ParseContext } from "../../types";
 import { RustPlugin } from "../rust";
 
@@ -11,6 +13,38 @@ describe("RustPlugin", () => {
   beforeEach(() => {
     plugin = new RustPlugin();
   });
+
+  const buildInferenceContext = (evidence: Evidence[], projectRoot = "/test"): InferenceContext => {
+    const fileIndex = {
+      root: projectRoot,
+      files: new Map(),
+      directories: new Map(),
+      timestamp: Date.now(),
+    };
+
+    return {
+      projectRoot,
+      fileIndex,
+      allEvidence: evidence,
+      directoryContexts: buildDirectoryContexts(evidence, fileIndex, projectRoot),
+      classifier: new ArtifactClassifier(),
+      options: {
+        minConfidence: 0.3,
+        inferRelationships: true,
+        maxDependencyDepth: 5,
+        useHeuristics: true,
+      },
+      cache: new Map(),
+      projectMetadata: {
+        name: "test",
+        root: projectRoot,
+        languages: [],
+        frameworks: [],
+        fileCount: 0,
+        totalSize: 0,
+      },
+    };
+  };
 
   describe("supports", () => {
     it("should support Cargo.toml files", () => {
@@ -154,23 +188,7 @@ async fn main() {
         metadata: { timestamp: Date.now(), fileSize: 100 },
       };
 
-      const context: InferenceContext = {
-        projectRoot: "/test",
-        fileIndex: {
-          root: "/test",
-          files: new Map(),
-          directories: new Map(),
-          timestamp: Date.now(),
-        },
-        allEvidence: [cargoEvidence, binaryEvidence],
-        options: {
-          minConfidence: 0.3,
-          inferRelationships: true,
-          maxDependencyDepth: 5,
-          useHeuristics: true,
-        },
-        cache: new Map(),
-      };
+      const context = buildInferenceContext([cargoEvidence, binaryEvidence]);
 
       const artifacts = await plugin.infer([cargoEvidence, binaryEvidence], context);
 
@@ -213,23 +231,7 @@ async fn main() {
         metadata: { timestamp: Date.now(), fileSize: 100 },
       };
 
-      const context: InferenceContext = {
-        projectRoot: "/test",
-        fileIndex: {
-          root: "/test",
-          files: new Map(),
-          directories: new Map(),
-          timestamp: Date.now(),
-        },
-        allEvidence: [cargoEvidence, mainEvidence],
-        options: {
-          minConfidence: 0.3,
-          inferRelationships: true,
-          maxDependencyDepth: 5,
-          useHeuristics: true,
-        },
-        cache: new Map(),
-      };
+      const context = buildInferenceContext([cargoEvidence, mainEvidence]);
 
       const artifacts = await plugin.infer([cargoEvidence, mainEvidence], context);
 
@@ -259,23 +261,7 @@ async fn main() {
         metadata: { timestamp: Date.now(), fileSize: 100 },
       };
 
-      const context: InferenceContext = {
-        projectRoot: "/test",
-        fileIndex: {
-          root: "/test",
-          files: new Map(),
-          directories: new Map(),
-          timestamp: Date.now(),
-        },
-        allEvidence: [cargoEvidence],
-        options: {
-          minConfidence: 0.3,
-          inferRelationships: true,
-          maxDependencyDepth: 5,
-          useHeuristics: true,
-        },
-        cache: new Map(),
-      };
+      const context = buildInferenceContext([cargoEvidence]);
 
       const artifacts = await plugin.infer([cargoEvidence], context);
 
@@ -310,23 +296,7 @@ async fn main() {
         metadata: { timestamp: Date.now(), fileSize: 100 },
       };
 
-      const context: InferenceContext = {
-        projectRoot: "/workspace/smith",
-        fileIndex: {
-          root: "/workspace/smith",
-          files: new Map(),
-          directories: new Map(),
-          timestamp: Date.now(),
-        },
-        allEvidence: [cargoEvidence],
-        options: {
-          minConfidence: 0.3,
-          inferRelationships: true,
-          maxDependencyDepth: 5,
-          useHeuristics: true,
-        },
-        cache: new Map(),
-      };
+      const context = buildInferenceContext([cargoEvidence], "/workspace/smith");
 
       const artifacts = await plugin.infer([cargoEvidence], context);
 

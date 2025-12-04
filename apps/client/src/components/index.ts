@@ -8,6 +8,7 @@ export { SourceEditor } from "./SourceEditor";
 // Report Components
 export { FlowReport } from "./FlowReport";
 export { ArchitectureReport } from "./ArchitectureReport";
+export { default as ArchitectureFlowReport } from "./ArchitectureFlowReport";
 export { ArtifactCard } from "./ArtifactCard";
 export { ServicesReport } from "./ServicesReport";
 export { ClientsReport } from "./ClientsReport";

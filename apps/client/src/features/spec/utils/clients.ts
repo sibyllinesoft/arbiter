@@ -1,4 +1,4 @@
-import { PATH_PRIORITY_CANDIDATES } from "./constants";
+import { PATH_PRIORITY_CANDIDATES } from "./clientConstants";
 
 export const coerceDisplayValue = (raw: unknown): string | null => {
   if (typeof raw !== "string") return null;

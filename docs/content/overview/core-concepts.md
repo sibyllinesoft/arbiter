@@ -215,10 +215,10 @@ Try `arbiter generate service InvoiceService` to emit a Fastify skeleton plus do
 
 The **Execution** layer specifies where and how your services run in production.
 
-### Environment-Scoped Deployments
+### Environment-Scoped Environments
 
-- **Describe environments declaratively**: `deployments.development`,
-  `deployments.production`, etc., capture targets (Compose, Kubernetes,
+- **Describe environments declaratively**: `environments.development`,
+  `environments.production`, etc., capture targets (Compose, Kubernetes,
   serverless) and per-service overrides (replicas, env vars, resources).
 - **Model shared infrastructure as services** by setting `type: "external"` and
   attaching `resource` metadata (database/cache/queue). Dependencies then point
@@ -239,7 +239,7 @@ The **Execution** layer specifies where and how your services run in production.
 2. **Describe shared resources as services** with `type: "external" + resource`
    metadata so dependencies remain explicit.
 3. **Attach overrides per environment** (replicas, env vars, annotations) in
-   `deployments.<env>.services` instead of scattering them through manifests.
+   `environments.<env>.services` instead of scattering them through manifests.
 4. **Promote the plan** using `arbiter generate` to emit
    Terraform/Helm/Compose manifests that inherit those exact constraints.
 
@@ -247,7 +247,7 @@ The **Execution** layer specifies where and how your services run in production.
 
 1. **Capture intent** – extend the Domain layer with the next InvoicePro concept (for example, `UsageBasedBilling`) and its events in one PR.
 2. **Expose collaboration points** – add HTTP/event contracts that describe how finance, collections, and analytics teams consume the billing data.
-3. **Define execution ownership** – introduce a `BillingService` capability, wire it to contracts, declare its dependencies (databases, caches) as services, and describe the env-specific overrides in `deployments`.
+3. **Define execution ownership** – introduce a `BillingService` capability, wire it to contracts, declare its dependencies (databases, caches) as services, and describe the env-specific overrides in `environments`.
 4. **Generate and review** – run `arbiter generate --dry-run` to see code, docs, and deployment manifests that all reflect the spec, then merge when stakeholders sign off.
 
 Following this loop turns the layered model into a tutorial every new InvoicePro product slice can follow.
@@ -289,7 +289,7 @@ modify.
 1. **Start with Domain**: Define your core business entities and rules
 2. **Add Contracts**: Specify how systems will communicate
 3. **Define Capabilities**: Declare what services will do
-4. **Configure Execution**: Specify deployments, environment overrides, and service dependencies
+4. **Configure Execution**: Specify environments, environment overrides, and service dependencies
 
 ### Iterative Development
 
@@ -362,7 +362,7 @@ codegen: {
 - **Start Stateful in the Spec, Not the Runtime**: express dependencies,
   configs, and service source locations declaratively so you can change the
   actual architecture later without rewriting your spec.
-- **Model Environments Explicitly**: use `deployments.<env>` to describe how
+- **Model Environments Explicitly**: use `environments.<env>` to describe how
   each environment overrides replicas, env vars, or ingress. Keeping this in the
   spec prevents drift between dev/stage/prod.
 - **Document External Touchpoints**: when referencing APIs, SaaS systems, or

@@ -11,30 +11,15 @@ import {
   InferenceContext,
   InferredArtifact,
   ParseContext,
-  Provenance,
 } from "../types";
-
-// Go framework detection lists
-const GO_WEB_FRAMEWORKS = ["gin", "echo", "fiber", "chi", "mux", "goji", "iris", "revel"];
-
-const GO_CLI_FRAMEWORKS = ["cobra", "cli", "urfave/cli", "mitchellh/cli"];
-
-const GO_JOB_FRAMEWORKS = ["cron", "gocron", "gronx"];
-
-const GO_DATABASE_DRIVERS = [
-  "gorm",
-  "sqlx",
-  "go-sql-driver/mysql",
-  "lib/pq",
-  "redis/go-redis",
-  "mongo-driver/mongo",
-];
 
 export interface GoData extends Record<string, unknown> {
   name: string;
   description: string;
   type: string;
   filePath: string;
+  dependencies?: string[];
+  goVersion?: string;
 }
 
 export class GoPlugin implements ImporterPlugin {
@@ -90,7 +75,6 @@ export class GoPlugin implements ImporterPlugin {
   // Parse go.mod
   private parseGoMod(filePath: string, content: string, baseId: string): Evidence[] {
     const evidence: Evidence[] = [];
-    let goMod;
 
     try {
       // Simple parsing for go.mod
@@ -104,18 +88,20 @@ export class GoPlugin implements ImporterPlugin {
         : path.basename(path.dirname(filePath));
       const goVersion = goLine ? goLine.replace("go ", "").trim() : "1.0";
 
-      const deps = requireLines.map((line) => {
-        const parts = line.trim().split(" ");
-        return parts[0].replace("\t", "");
-      });
-
-      const inferredType = this.determineGoType(deps);
+      const deps = requireLines
+        .map((line) => {
+          const parts = line.trim().split(" ");
+          return parts[0].replace("\t", "");
+        })
+        .filter(Boolean);
 
       const goData: GoData = {
         name: moduleName,
         description: "Go package",
-        type: inferredType,
+        type: "package",
         filePath,
+        dependencies: deps,
+        goVersion,
       };
 
       evidence.push({
@@ -141,21 +127,49 @@ export class GoPlugin implements ImporterPlugin {
   ): InferredArtifact[] {
     const goData = goModEvidence.data as unknown as GoData;
     const name = goData.name;
+    const projectRoot = context.projectRoot ?? context.fileIndex.root ?? "";
+    const dir = path.dirname(goModEvidence.filePath);
+    const relativeDir = this.normalize(path.relative(projectRoot, dir)) || ".";
+    const dirCtx =
+      context.directoryContexts.get(relativeDir) || context.directoryContexts.get(".") || undefined;
+
+    const dependencies = (goData.dependencies ?? []).map((d) => d.toLowerCase());
+    const filePatterns = dirCtx?.filePatterns ?? [];
+    const hasDocker = Boolean(dirCtx?.hasDockerfile || dirCtx?.hasComposeService);
+    const dockerBuild = dirCtx?.dockerBuild;
+
+    const classification = context.classifier.classify({
+      dependencies,
+      filePatterns,
+      scripts: {},
+      language: "go",
+      hasDocker,
+      hasBinaryEntry: this.hasCmdEntrypoint(filePatterns),
+    });
+
+    let inferredType = this.applyHeuristics(classification.type, filePatterns, hasDocker);
     const artifacts: InferredArtifact[] = [];
 
     const artifact = {
-      id: `go-${goData.type}-${name}`,
-      type: goData.type as any,
+      id: `go-${inferredType}-${name}`,
+      type: inferredType as any,
       name,
       description: goData.description,
-      tags: ["go", goData.type],
+      tags: Array.from(new Set<string>(["go", inferredType, ...classification.tags])),
       metadata: {
         sourceFile: goData.filePath,
-        root: path.dirname(goData.filePath),
+        root: relativeDir === "." ? "" : relativeDir,
         manifest: "go.mod",
         language: "go",
+        goVersion: goData.goVersion,
+        classification,
       },
     };
+
+    if (dockerBuild) {
+      artifact.metadata.buildContext = this.toRelative(projectRoot, dockerBuild.buildContext);
+      artifact.metadata.dockerfilePath = this.toRelative(projectRoot, dockerBuild.dockerfile);
+    }
 
     artifacts.push({
       artifact,
@@ -172,15 +186,26 @@ export class GoPlugin implements ImporterPlugin {
     return artifacts;
   }
 
-  private determineGoType(deps: string[]): string {
-    const hasWeb = deps.some((d) => GO_WEB_FRAMEWORKS.some((f) => d.includes(f)));
-    const hasCli = deps.some((d) => GO_CLI_FRAMEWORKS.some((f) => d.includes(f)));
-    const hasJob = deps.some((d) => GO_JOB_FRAMEWORKS.some((f) => d.includes(f)));
+  private hasCmdEntrypoint(filePatterns: string[]): boolean {
+    return filePatterns.some((pattern) => pattern.startsWith("cmd/") || pattern === "cmd");
+  }
 
-    if (hasWeb) return "service";
-    if (hasCli) return "binary";
-    if (hasJob) return "job";
-    return "package";
+  private applyHeuristics(baseType: string, filePatterns: string[], hasDocker: boolean): string {
+    if (hasDocker && baseType === "package") return "service";
+    if (this.hasCmdEntrypoint(filePatterns) && baseType === "package") return "binary";
+    const hasWeb = filePatterns.some((p) => p.includes("/handler") || p.includes("/server"));
+    if (hasWeb && baseType === "package") return "service";
+    return baseType;
+  }
+
+  private normalize(value: string): string {
+    return value.replace(/\\/g, "/").replace(/^\.\//, "");
+  }
+
+  private toRelative(projectRoot: string, abs?: string): string | undefined {
+    if (!abs) return undefined;
+    if (!projectRoot) return abs;
+    return this.normalize(path.relative(projectRoot, abs));
   }
 }
 

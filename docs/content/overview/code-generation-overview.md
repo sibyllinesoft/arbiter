@@ -179,7 +179,7 @@ paths: {
       post: {
         summary: "Create an order"
         security: [{ bearerAuth: [] }]
-        implements: "contracts.workflows.OrderAPI.operations.createOrder"
+        implements: "operations.OrderAPI.operations.createOrder"
         responses: {
           "201": {
             description: "Created"
@@ -193,7 +193,7 @@ paths: {
     "/orders/{id}": {
       get: {
         summary: "Fetch an order"
-        implements: "contracts.workflows.OrderAPI.operations.getOrder"
+        implements: "operations.OrderAPI.operations.getOrder"
         responses: {
           "200": {
             description: "OK"
@@ -207,7 +207,7 @@ paths: {
   }
 }
 
-contracts: workflows: {
+contracts: workbehaviors: {
   OrderAPI: {
     version: "2025-01-01"
     summary: "Customer order API"
@@ -298,7 +298,7 @@ services: {
     language: "python"
     template: "python-fastapi"
     implements: {
-      apis: ["contracts.workflows.OrderAPI"]
+      apis: ["operations.OrderAPI"]
     }
     ports: [{ name: "http", port: 8000 }]
     dependencies: {
@@ -311,7 +311,7 @@ services: {
       createOrder: {
         path: "/orders"
         methods: ["POST"]
-        implements: "contracts.workflows.OrderAPI.operations.createOrder"
+        implements: "operations.OrderAPI.operations.createOrder"
         handler: {
           type: "module"
           module: "orders-api/handlers/orders"
@@ -321,7 +321,7 @@ services: {
       getOrder: {
         path: "/orders/{id}"
         methods: ["GET"]
-        implements: "contracts.workflows.OrderAPI.operations.getOrder"
+        implements: "operations.OrderAPI.operations.getOrder"
         handler: {
           type: "module"
           module: "orders-api/handlers/orders"

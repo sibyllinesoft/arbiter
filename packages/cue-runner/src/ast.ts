@@ -13,13 +13,13 @@ export interface CueAst {
   root: CueNode;
 }
 
-export async function parseCueToAst(content: string, cueBinaryPath?: string): Promise<CueAst> {
+export async function parseCueToAst(content: string): Promise<CueAst> {
   const workspace = mkdtempSync(path.join(tmpdir(), "cue-ast-"));
   const filePath = path.join(workspace, "input.cue");
   writeFileSync(filePath, content, "utf-8");
 
   try {
-    const runner = new CueRunner({ cwd: workspace, cueBinaryPath });
+    const runner = new CueRunner({ cwd: workspace });
     const result = await runner.exportJson(["./..."]);
 
     if (!result.success || !result.value) {

@@ -59,6 +59,235 @@ const deriveArtifactType = (serviceData: Record<string, any>): "internal" | "ext
 };
 
 export class CueArchitectureParser {
+  private static isRecord(value: unknown): value is Record<string, any> {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  }
+
+  private static normalizeKind(value: Record<string, any>, fallback: string): string {
+    const candidate =
+      value.kind ??
+      value.class ??
+      value.serviceClass ??
+      value.service_type ??
+      value.category ??
+      value.role ??
+      value.type;
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+    return fallback;
+  }
+
+  private static deriveServiceLayer(kind?: string): DiagramComponent["layer"] {
+    const lower = (kind || "").toLowerCase();
+    if (["database", "datastore", "db", "kv", "kv_store", "cache"].includes(lower)) {
+      return "data";
+    }
+    if (["proxy", "load_balancer", "cdn"].includes(lower)) {
+      return "service";
+    }
+    return "service";
+  }
+
+  private static normalizeServices(cueData: CueArchitectureData): Array<{
+    id: string;
+    name: string;
+    data: Record<string, any>;
+    kind: string;
+  }> {
+    const services: Array<{ id: string; name: string; data: Record<string, any>; kind: string }> =
+      [];
+
+    const collect = (source: unknown, defaultKind: string, prefix: string) => {
+      if (!source) return;
+      if (CueArchitectureParser.isRecord(source)) {
+        Object.entries(source as Record<string, any>).forEach(([id, raw]) => {
+          const data = (raw || {}) as Record<string, any>;
+          const kind = CueArchitectureParser.normalizeKind(data, defaultKind);
+          const name = (data.name as string) || id;
+          services.push({ id, name, data, kind });
+        });
+      } else if (Array.isArray(source)) {
+        (source as Array<any>).forEach((entry, idx) => {
+          const data = (entry || {}) as Record<string, any>;
+          const id = (data.id as string) || (data.name as string) || `${prefix}_${idx + 1}`;
+          const kind = CueArchitectureParser.normalizeKind(data, defaultKind);
+          const name = (data.name as string) || id;
+          services.push({ id, name, data, kind });
+        });
+      }
+    };
+
+    collect(cueData.services, "service", "service");
+    // Common service-like collections collapsed into services
+    const infra = cueData.infrastructure || {};
+    collect(infra.databases || infra.database, "database", "database");
+    collect(infra.datastores, "database", "datastore");
+    collect(infra.caches || infra.cache, "cache", "cache");
+    collect(
+      infra.queues || infra.queue || infra.message_queue || infra.message_queues,
+      "queue",
+      "queue",
+    );
+    collect(infra.proxies, "proxy", "proxy");
+    collect(infra.load_balancers || infra.loadBalancer, "load_balancer", "lb");
+    if (infra.networking) {
+      collect(
+        infra.networking.load_balancer || infra.networking.load_balancers,
+        "load_balancer",
+        "lb",
+      );
+      collect(infra.networking.proxies, "proxy", "proxy");
+      collect(infra.networking.cdn, "cdn", "cdn");
+    }
+
+    return services;
+  }
+
+  private static normalizeResources(cueData: CueArchitectureData): DiagramComponent[] {
+    const resources: DiagramComponent[] = [];
+    const resourceIds = new Set<string>();
+
+    const addResource = (resource: DiagramComponent) => {
+      if (resourceIds.has(resource.id)) return;
+      resourceIds.add(resource.id);
+      resources.push(resource);
+    };
+
+    const buildResourceComponent = (params: {
+      id: string;
+      name: string;
+      kind: string;
+      layer: DiagramComponent["layer"];
+      description?: string;
+      metadata?: Record<string, any>;
+      routePath?: string;
+      size?: { width: number; height: number };
+      capabilities?: string[];
+    }): DiagramComponent => {
+      return {
+        id: params.id,
+        name: params.name,
+        type: "resource",
+        kind: params.kind,
+        description: params.description,
+        layer: params.layer,
+        position: { x: 0, y: 0 },
+        size: params.size ?? { width: 160, height: 70 },
+        ...(params.routePath ? { routePath: params.routePath } : {}),
+        ...(params.capabilities ? { capabilities: params.capabilities } : {}),
+        metadata: params.metadata ?? {},
+      };
+    };
+
+    // New simplified schema: resources collection
+    const collectResources = (source: unknown, defaultKind: string, prefix: string) => {
+      if (!source) return;
+      if (CueArchitectureParser.isRecord(source)) {
+        Object.entries(source as Record<string, any>).forEach(([id, raw]) => {
+          const data = (raw || {}) as Record<string, any>;
+          const kind = CueArchitectureParser.normalizeKind(data, defaultKind);
+          const name = (data.name as string) || id;
+          const layer =
+            kind.toLowerCase() === "view" || kind.toLowerCase() === "ui"
+              ? "presentation"
+              : "service";
+          addResource(
+            buildResourceComponent({
+              id: `resource_${id}`,
+              name,
+              kind,
+              layer,
+              description: data.description,
+              metadata: data,
+              routePath: data.path ?? data.route ?? data.routePath,
+            }),
+          );
+        });
+      } else if (Array.isArray(source)) {
+        (source as Array<any>).forEach((raw, idx) => {
+          const data = (raw || {}) as Record<string, any>;
+          const id = (data.id as string) || (data.name as string) || `${prefix}_${idx + 1}`;
+          const kind = CueArchitectureParser.normalizeKind(data, defaultKind);
+          const name = (data.name as string) || id;
+          const layer =
+            kind.toLowerCase() === "view" || kind.toLowerCase() === "ui"
+              ? "presentation"
+              : "service";
+          addResource(
+            buildResourceComponent({
+              id: `resource_${id}`,
+              name,
+              kind,
+              layer,
+              description: data.description,
+              metadata: data,
+              routePath: data.path ?? data.route ?? data.routePath,
+            }),
+          );
+        });
+      }
+    };
+
+    collectResources(cueData.resources, "resource", "resource");
+
+    // Legacy OpenAPI-style paths -> endpoint resources
+    if (cueData.paths) {
+      Object.entries(cueData.paths).forEach(([path, pathData]) => {
+        const methods = Object.keys(pathData as any).filter((key) =>
+          ["get", "post", "put", "patch", "delete"].includes(key),
+        );
+
+        methods.forEach((method) => {
+          const idSafe = path.replace(/[^a-zA-Z0-9]/g, "_");
+          const resourceId = `resource_${method}_${idSafe}`;
+          addResource(
+            buildResourceComponent({
+              id: resourceId,
+              name: `${method.toUpperCase()} ${path}`,
+              kind: "endpoint",
+              layer: "service",
+              description: `API endpoint: ${method.toUpperCase()} ${path}`,
+              metadata: {
+                method: method.toUpperCase(),
+                path,
+                pathData: (pathData as any)[method],
+              },
+              size: { width: 160, height: 60 },
+            }),
+          );
+        });
+      });
+    }
+
+    // Legacy UI routes -> view resources
+    if (cueData.ui?.routes) {
+      cueData.ui.routes.forEach((route, index) => {
+        const id = route.id || `view_${index}`;
+        addResource(
+          buildResourceComponent({
+            id: `resource_view_${id}`,
+            name: route.name || route.path || `Route ${index + 1}`,
+            kind: "view",
+            layer: "presentation",
+            description: `View: ${route.path}`,
+            routePath: route.path,
+            size: { width: 150, height: 80 },
+            capabilities: route.capabilities || [],
+            metadata: {
+              ...route,
+              requiresAuth: route.requiresAuth,
+              component: route.component,
+              layout: route.layout,
+            },
+          }),
+        );
+      });
+    }
+
+    return resources;
+  }
+
   /**
    * Parse CUE data into architecture components and connections
    */
@@ -82,28 +311,6 @@ export class CueArchitectureParser {
     components: DiagramComponent[],
     connections: DiagramConnection[],
   ): void {
-    // Parse UI routes as presentation layer components
-    if (cueData.ui?.routes) {
-      cueData.ui.routes.forEach((route, index) => {
-        components.push({
-          id: `route_${route.id || index}`,
-          name: route.name || route.path || `Route ${index + 1}`,
-          type: "route",
-          description: `UI route: ${route.path}`,
-          layer: "presentation",
-          position: { x: 0, y: 0 }, // Will be calculated by layout
-          size: { width: 150, height: 80 },
-          routePath: route.path,
-          capabilities: route.capabilities || [],
-          metadata: {
-            requiresAuth: route.requiresAuth,
-            component: route.component,
-            layout: route.layout,
-          },
-        });
-      });
-    }
-
     // Parse capabilities as application layer components
     if (cueData.capabilities) {
       Object.entries(cueData.capabilities).forEach(([capId, capData]) => {
@@ -122,75 +329,55 @@ export class CueArchitectureParser {
       });
     }
 
-    // Parse services as service layer components
-    if (cueData.services) {
-      Object.entries(cueData.services).forEach(([serviceId, serviceData]) => {
-        components.push({
-          id: `service_${serviceId}`,
-          name: (serviceData as any).name || serviceId,
-          type: "service",
-          description: `Service: ${serviceId}`,
-          layer: "service",
-          position: { x: 0, y: 0 },
-          size: { width: 180, height: 100 },
-          artifactType: deriveArtifactType(serviceData as Record<string, any>),
-          language: (serviceData as any).language,
-          workload: deriveWorkload(serviceData as Record<string, any>),
-          ports: CueArchitectureParser.parseServicePorts(serviceData as any),
-          metadata: serviceData,
-        });
+    // Parse services and service-like infrastructure
+    CueArchitectureParser.normalizeServices(cueData).forEach((svc) => {
+      components.push({
+        id: `service_${svc.id}`,
+        name: svc.name || svc.id,
+        type: "service",
+        kind: svc.kind,
+        description: svc.data.description || `Service: ${svc.id}`,
+        layer: CueArchitectureParser.deriveServiceLayer(svc.kind),
+        position: { x: 0, y: 0 },
+        size: { width: 180, height: 100 },
+        artifactType: deriveArtifactType(svc.data as Record<string, any>),
+        language: (svc.data as any).language,
+        workload: deriveWorkload(svc.data as Record<string, any>),
+        ports: CueArchitectureParser.parseServicePorts(svc.data as any),
+        metadata: { ...svc.data, serviceKind: svc.kind },
       });
-    }
+    });
 
-    // Parse API paths as service endpoints
-    if (cueData.paths) {
-      Object.entries(cueData.paths).forEach(([path, pathData]) => {
-        const methods = Object.keys(pathData as any).filter((key) =>
-          ["get", "post", "put", "patch", "delete"].includes(key),
-        );
+    // Parse unified resources (endpoints/views)
+    CueArchitectureParser.normalizeResources(cueData).forEach((resource) => {
+      components.push(resource);
+    });
 
-        methods.forEach((method) => {
-          components.push({
-            id: `api_${method}_${path.replace(/[^a-zA-Z0-9]/g, "_")}`,
-            name: `${method.toUpperCase()} ${path}`,
-            type: "api_endpoint",
-            description: `API endpoint: ${method.toUpperCase()} ${path}`,
-            layer: "service",
-            position: { x: 0, y: 0 },
-            size: { width: 160, height: 60 },
-            metadata: {
-              method: method.toUpperCase(),
-              path,
-              pathData: (pathData as any)[method],
-            },
-          });
-        });
-      });
-    }
-
-    // Parse state models
-    if (cueData.stateModels) {
-      Object.entries(cueData.stateModels).forEach(([modelId, modelData]) => {
+    // Parse processes (formerly state machines)
+    const processes = cueData.processes ?? cueData.stateModels;
+    if (processes) {
+      Object.entries(processes).forEach(([processId, processData]) => {
         components.push({
-          id: `state_${modelId}`,
-          name: (modelData as any).name || modelId,
-          type: "state_machine",
-          description: `State machine: ${modelId}`,
+          id: `process_${processId}`,
+          name: (processData as any).name || processId,
+          type: "process",
+          description: `Process: ${processId}`,
           layer: "application",
           position: { x: 0, y: 0 },
           size: { width: 140, height: 90 },
-          states: (modelData as any).states || {},
+          states: (processData as any).states || {},
           metadata: {
-            initial: (modelData as any).initial,
-            states: (modelData as any).states,
+            initial: (processData as any).initial,
+            states: (processData as any).states,
           },
         });
       });
     }
 
-    // Parse flows to generate connections
-    if (cueData.flows) {
-      cueData.flows.forEach((flow, flowIndex) => {
+    // Parse behaviors (formerly flows) to generate connections
+    const behaviors = cueData.behaviors ?? cueData.flows;
+    if (behaviors) {
+      behaviors.forEach((flow: any, flowIndex: number) => {
         CueArchitectureParser.parseFlowConnections(flow, flowIndex, components, connections);
       });
     }
@@ -276,20 +463,27 @@ export class CueArchitectureParser {
   ): DiagramComponent | undefined {
     if (!step) return undefined;
 
-    // For visit steps, find route components
+    // For visit steps, find view resources (or legacy routes)
     if (step.type === "visit" && step.target) {
       return components.find(
         (c) =>
-          c.type === "route" && (c.routePath === step.target || c.id.includes(step.target ?? "")),
+          (c.type === "resource" &&
+            (c.kind === "view" || c.layer === "presentation") &&
+            (c.routePath === step.target || c.id.includes(step.target ?? ""))) ||
+          (c.type === "route" && (c.routePath === step.target || c.id.includes(step.target ?? ""))),
       );
     }
 
-    // For API expectations, find API endpoint components
+    // For API expectations, find endpoint resources
     if (step.type === "expect_api" && step.expectation) {
       const { method, path } = step.expectation;
       return components.find(
         (c) =>
-          c.type === "api_endpoint" && c.metadata?.method === method && c.metadata?.path === path,
+          (c.type === "resource" &&
+            (c.kind === "endpoint" || c.kind === "api_endpoint") &&
+            c.metadata?.method === method &&
+            c.metadata?.path === path) ||
+          (c.type === "api_endpoint" && c.metadata?.method === method && c.metadata?.path === path),
       );
     }
 
@@ -391,7 +585,11 @@ export class CueArchitectureParser {
 
     cueData.ui.routes.forEach((route) => {
       const routeComponent = components.find(
-        (c) => c.type === "route" && c.routePath === route.path,
+        (c) =>
+          (c.type === "resource" &&
+            (c.kind === "view" || c.layer === "presentation") &&
+            c.routePath === route.path) ||
+          (c.type === "route" && c.routePath === route.path),
       );
 
       if (!routeComponent || !route.capabilities) return;
@@ -419,11 +617,15 @@ export class CueArchitectureParser {
   static suggestDiagramTypes(cueData: CueArchitectureData): string[] {
     const suggestions: string[] = [];
 
-    if (cueData.ui?.routes && cueData.flows) {
+    const serviceCount = CueArchitectureParser.normalizeServices(cueData).length;
+    const resourceCount = CueArchitectureParser.normalizeResources(cueData).length;
+    const processCount = Object.keys(cueData.processes ?? cueData.stateModels ?? {}).length;
+
+    if (cueData.ui?.routes && (cueData.behaviors ?? cueData.flows)) {
       suggestions.push("user_journey");
     }
 
-    if (cueData.services || (cueData.services && Object.keys(cueData.services).length > 1)) {
+    if (serviceCount > 0) {
       suggestions.push("service_topology");
     }
 
@@ -431,11 +633,11 @@ export class CueArchitectureParser {
       suggestions.push("capability_map");
     }
 
-    if (cueData.stateModels) {
+    if (processCount > 0) {
       suggestions.push("state_diagram");
     }
 
-    if (cueData.paths) {
+    if (resourceCount > 0) {
       suggestions.push("api_surface");
     }
 

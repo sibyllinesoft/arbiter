@@ -172,7 +172,7 @@ const sampleV2CueData: CueArchitectureData = {
       ports: [{ name: "http", port: 8080, targetPort: 8080 }],
     },
   },
-  stateModels: {
+  processes: {
     invoice_state: {
       id: "invoice_state",
       initial: "draft",

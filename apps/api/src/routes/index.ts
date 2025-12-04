@@ -31,14 +31,23 @@ export { createAuthRouter } from "./auth";
 export { createFragmentsRouter } from "./fragments";
 
 export function createApiRouter(deps: Dependencies) {
-  const app = new Hono();
+  const root = new Hono();
+
+  // Public endpoints
+  root.get("/health", (c) =>
+    c.json({ status: "healthy", timestamp: new Date().toISOString(), database: true }),
+  );
+  root.route("/api/auth", createAuthRouter(deps as any));
+
+  const api = new Hono();
 
   const authService = deps.auth as AuthService | undefined;
   if (authService) {
     const authMiddleware = authService.createAuthMiddleware();
-    app.use("/api/*", async (c, next) => {
-      const path = c.req.path;
-      if (AUTH_EXCLUDED_PATHS.has(path) || path.startsWith("/api/auth/")) {
+    api.use("/*", async (c, next) => {
+      // normalize full path for exclusions
+      const fullPath = `/api${c.req.path}`;
+      if (AUTH_EXCLUDED_PATHS.has(fullPath)) {
         return next();
       }
 
@@ -84,26 +93,20 @@ export function createApiRouter(deps: Dependencies) {
     });
   }
 
-  // Health check at root
-  app.get("/health", (c) =>
-    c.json({ status: "healthy", timestamp: new Date().toISOString(), database: true }),
-  );
+  // Mount routers under the secured api group
+  api.route("/", createCoreRouter(deps));
+  api.route("/", createConfigRouter(deps));
+  api.route("/", createCliRouter(deps));
+  api.route("/", createProjectsRouter(deps));
+  api.route("/", createFragmentsRouter(deps));
+  api.route("/", createSpecsRouter(deps));
+  api.route("/", createIrRouter(deps));
+  api.route("/", createEventsRouter(deps));
+  api.route("/import", createImportRouter(deps));
+  api.route("/github", createGithubRouter(deps));
+  api.route("/tunnel", tunnelRoutes);
 
-  // Mount tunnel routes
-  app.route("/api/tunnel", tunnelRoutes);
-
-  // Mount other routers under /api
-  app.route("/api", createCoreRouter(deps));
-  app.route("/api", createConfigRouter(deps));
-  app.route("/api", createCliRouter(deps));
-  app.route("/api", createProjectsRouter(deps));
-  app.route("/api", createFragmentsRouter(deps));
-  app.route("/api", createSpecsRouter(deps));
-  app.route("/api", createIrRouter(deps));
-  app.route("/api", createEventsRouter(deps));
-  app.route("/api", createAuthRouter(deps as any));
-  app.route("/api/import", createImportRouter(deps));
-  app.route("/api/github", createGithubRouter(deps));
-
-  return app;
+  // Attach secured api under /api
+  root.route("/api", api);
+  return root;
 }
