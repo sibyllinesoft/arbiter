@@ -259,6 +259,15 @@ export class WebSocketClient {
     }
   }
 
+  /** Check if socket is already connected or connecting */
+  private isSocketActive(): boolean {
+    return Boolean(
+      this.socket &&
+        (this.socket.readyState === WebSocket.OPEN ||
+          this.socket.readyState === WebSocket.CONNECTING),
+    );
+  }
+
   /**
    * Initiate connection (idempotent).
    */
@@ -267,12 +276,7 @@ export class WebSocketClient {
       this.setProject(projectId);
     }
 
-    if (
-      this.socket &&
-      (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)
-    ) {
-      return;
-    }
+    if (this.isSocketActive()) return;
 
     this.manuallyDisconnected = false;
     this.transition(this.reconnectAttempts > 0 ? "reconnecting" : "connecting");
@@ -503,29 +507,52 @@ export class WebSocketClient {
     }, this.options.stabilityThreshold);
   }
 
-  private scheduleReconnect(): void {
-    if (this.manuallyDisconnected) {
-      return;
-    }
+  /** Check if reconnect should be deferred due to hidden tab */
+  private shouldDeferReconnect(): boolean {
+    return !this.visibility.isVisible() && this.options.pauseWhenHidden;
+  }
 
-    if (!this.visibility.isVisible() && this.options.pauseWhenHidden) {
-      log.debug("Tab hidden, deferring WebSocket reconnect until visible");
-      if (!this.visibilityUnsubscribe) {
-        this.visibilityUnsubscribe = this.visibility.onVisibilityChange(() => {
-          if (this.visibility.isVisible()) {
-            this.visibilityUnsubscribe?.();
-            this.visibilityUnsubscribe = null;
-            this.scheduleReconnect();
-          }
-        });
+  /** Set up visibility listener to resume reconnect when tab becomes visible */
+  private deferReconnectUntilVisible(): void {
+    log.debug("Tab hidden, deferring WebSocket reconnect until visible");
+    if (this.visibilityUnsubscribe) return;
+
+    this.visibilityUnsubscribe = this.visibility.onVisibilityChange(() => {
+      if (this.visibility.isVisible()) {
+        this.visibilityUnsubscribe?.();
+        this.visibilityUnsubscribe = null;
+        this.scheduleReconnect();
       }
-      return;
-    }
+    });
+  }
 
+  /** Clear any pending visibility listener */
+  private clearVisibilityListener(): void {
     if (this.visibilityUnsubscribe) {
       this.visibilityUnsubscribe();
       this.visibilityUnsubscribe = null;
     }
+  }
+
+  /** Calculate reconnect delay with exponential backoff and jitter */
+  private calculateReconnectDelay(): number {
+    const backoff = Math.min(
+      this.options.reconnectBaseDelay * Math.pow(2, this.reconnectAttempts - 1),
+      this.options.reconnectMaxDelay,
+    );
+    const jitter = Math.random() * 150;
+    return backoff + jitter;
+  }
+
+  private scheduleReconnect(): void {
+    if (this.manuallyDisconnected) return;
+
+    if (this.shouldDeferReconnect()) {
+      this.deferReconnectUntilVisible();
+      return;
+    }
+
+    this.clearVisibilityListener();
 
     if (this.reconnectAttempts >= this.options.maxReconnectAttempts) {
       log.warn("Max reconnect attempts reached, giving up");
@@ -534,17 +561,9 @@ export class WebSocketClient {
     }
 
     this.reconnectAttempts += 1;
-    const backoff = Math.min(
-      this.options.reconnectBaseDelay * Math.pow(2, this.reconnectAttempts - 1),
-      this.options.reconnectMaxDelay,
-    );
-    const jitter = Math.random() * 150;
-    const delay = backoff + jitter;
+    const delay = this.calculateReconnectDelay();
 
-    log.info("Scheduling WebSocket reconnect", {
-      attempt: this.reconnectAttempts,
-      delay,
-    });
+    log.info("Scheduling WebSocket reconnect", { attempt: this.reconnectAttempts, delay });
 
     this.clearReconnectTimer();
     this.reconnectTimer = this.timer.setTimeout(() => this.connect(), delay);
@@ -553,24 +572,20 @@ export class WebSocketClient {
   private trackSubscriptions(message: { type: string; data?: Record<string, unknown> }): void {
     if (message.type !== "event" || !message.data) return;
 
-    const action = message.data["action"];
-    const projectId = message.data["project_id"];
-    const channel = message.data["channel"];
+    const { action, project_id: projectId, channel } = message.data;
+    if (action !== "subscribe" && action !== "unsubscribe") return;
 
-    if (action === "subscribe") {
-      if (typeof projectId === "string") {
-        this.subscriptions.add(projectId);
-      }
-      if (typeof channel === "string") {
-        this.channelSubscriptions.add(channel);
-      }
-    } else if (action === "unsubscribe") {
-      if (typeof projectId === "string") {
-        this.subscriptions.delete(projectId);
-      }
-      if (typeof channel === "string") {
-        this.channelSubscriptions.delete(channel);
-      }
+    const isSubscribe = action === "subscribe";
+    this.updateSubscriptionSet(this.subscriptions, projectId, isSubscribe);
+    this.updateSubscriptionSet(this.channelSubscriptions, channel, isSubscribe);
+  }
+
+  private updateSubscriptionSet(set: Set<string>, value: unknown, add: boolean): void {
+    if (typeof value !== "string") return;
+    if (add) {
+      set.add(value);
+    } else {
+      set.delete(value);
     }
   }
 
