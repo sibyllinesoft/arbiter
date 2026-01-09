@@ -1,5 +1,9 @@
+/** @packageDocumentation Constraint system tests */
 import { describe, expect, it } from "bun:test";
-import { validateIdempotentEdits, withIdempotencyValidation } from "@/constraints/idempotency.js";
+import {
+  validateIdempotentEdits,
+  withIdempotencyValidation,
+} from "@/constraints/utils/idempotency.js";
 
 describe("Idempotency helpers", () => {
   it("validates idempotent edit flow and returns consistent content", async () => {

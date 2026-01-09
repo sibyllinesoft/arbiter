@@ -1,7 +1,12 @@
+/**
+ * @module api
+ * Unified API service for the Arbiter client application.
+ * Aggregates all service modules (projects, fragments, auth, etc.)
+ * and provides a single interface for API operations.
+ */
 import type {
   CreateFragmentRequest,
   CreateFragmentResponse,
-  Event,
   Fragment,
   FreezeRequest,
   FreezeResponse,

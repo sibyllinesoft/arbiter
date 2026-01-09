@@ -155,77 +155,166 @@ function unique(values: string[]): string[] {
   return deduped;
 }
 
-export async function resolveUIOptionCatalog(
+/**
+ * Result of running a generator for a UI option
+ */
+interface GeneratorRunResult<T> {
+  values: T | null;
+  diagnostic: string | null;
+}
+
+/**
+ * Run a generator and normalize the result
+ */
+async function runGenerator<T>(
+  entry: UIOptionConfigEntry | undefined,
+  baseDir: string,
+  key: UIOptionKey,
+  normalizer: (value: unknown) => T,
+  isEmpty: (value: T) => boolean,
+): Promise<GeneratorRunResult<T>> {
+  if (!entry?.generator) {
+    return { values: null, diagnostic: null };
+  }
+
+  try {
+    const generated = await executeGenerator(entry.generator, baseDir, key);
+    const normalized = normalizer(generated);
+    if (!isEmpty(normalized)) {
+      return { values: normalized, diagnostic: null };
+    }
+    return {
+      values: null,
+      diagnostic: `Generator for "${key}" returned no values, falling back to static configuration.`,
+    };
+  } catch (error) {
+    return {
+      values: null,
+      diagnostic: `Failed to execute generator for "${key}": ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    };
+  }
+}
+
+/**
+ * Resolve array-type UI options
+ */
+async function resolveArrayOptions(
   config: UIOptionConfig,
-  params: ResolveUIOptionsParams = {},
-): Promise<ResolveUIOptionsResult> {
-  const catalog: UIOptionCatalog = {};
-  const diagnostics: string[] = [];
-  const baseDir = params.baseDir || process.cwd();
+  baseDir: string,
+  diagnostics: string[],
+): Promise<Partial<Record<UIArrayOptionKey, string[]>>> {
+  const result: Partial<Record<UIArrayOptionKey, string[]>> = {};
 
   for (const key of ARRAY_UI_OPTION_KEYS) {
     const entry = config[key];
     const staticValues = normalizeValues(entry?.values);
-    let resolvedValues = [...staticValues];
 
-    if (entry?.generator) {
-      try {
-        const generated = await executeGenerator(entry.generator, baseDir, key);
-        const normalized = normalizeValues(generated);
-        if (normalized.length > 0) {
-          resolvedValues = normalized;
-        } else {
-          diagnostics.push(
-            `Generator for "${key}" returned no values, falling back to static configuration.`,
-          );
-        }
-      } catch (error) {
-        diagnostics.push(
-          `Failed to execute generator for "${key}": ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-      }
+    const genResult = await runGenerator(
+      entry,
+      baseDir,
+      key,
+      normalizeValues,
+      (v) => v.length === 0,
+    );
+
+    if (genResult.diagnostic) {
+      diagnostics.push(genResult.diagnostic);
     }
 
+    const resolvedValues = genResult.values ?? staticValues;
     if (resolvedValues.length > 0) {
-      (catalog as Record<UIArrayOptionKey, string[]>)[key] = unique(resolvedValues);
+      result[key] = unique(resolvedValues);
     }
   }
 
+  return result;
+}
+
+/**
+ * Resolve map-type UI options (serviceFrameworks)
+ */
+async function resolveMapOptions(
+  config: UIOptionConfig,
+  baseDir: string,
+  diagnostics: string[],
+): Promise<Record<string, string[]> | undefined> {
   for (const key of MAP_UI_OPTION_KEYS) {
     const entry = config[key];
     const staticMap = normalizeFrameworkMap(entry?.values);
-    let resolvedMap = { ...staticMap };
 
-    if (entry?.generator) {
-      try {
-        const generated = await executeGenerator(entry.generator, baseDir, key);
-        const normalized = normalizeFrameworkMap(generated);
-        if (Object.keys(normalized).length > 0) {
-          resolvedMap = normalized;
-        } else {
-          diagnostics.push(
-            `Generator for "${key}" returned no values, falling back to static configuration.`,
-          );
-        }
-      } catch (error) {
-        diagnostics.push(
-          `Failed to execute generator for "${key}": ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-      }
+    const genResult = await runGenerator(
+      entry,
+      baseDir,
+      key,
+      normalizeFrameworkMap,
+      (v) => Object.keys(v).length === 0,
+    );
+
+    if (genResult.diagnostic) {
+      diagnostics.push(genResult.diagnostic);
     }
 
+    const resolvedMap = genResult.values ?? staticMap;
     if (Object.keys(resolvedMap).length > 0) {
-      catalog.serviceFrameworks = Object.fromEntries(
+      return Object.fromEntries(
         Object.entries(resolvedMap).map(([language, frameworks]) => [language, unique(frameworks)]),
       );
     }
   }
 
+  return undefined;
+}
+
+export async function resolveUIOptionCatalog(
+  config: UIOptionConfig,
+  params: ResolveUIOptionsParams = {},
+): Promise<ResolveUIOptionsResult> {
+  const diagnostics: string[] = [];
+  const baseDir = params.baseDir || process.cwd();
+
+  const arrayOptions = await resolveArrayOptions(config, baseDir, diagnostics);
+  const serviceFrameworks = await resolveMapOptions(config, baseDir, diagnostics);
+
+  const catalog: UIOptionCatalog = {
+    ...arrayOptions,
+    ...(serviceFrameworks && { serviceFrameworks }),
+  };
+
   return { catalog, diagnostics };
+}
+
+/**
+ * Build a config entry from values and generator
+ */
+function buildConfigEntry(
+  values: unknown,
+  generator: string | undefined,
+): UIOptionConfigEntry | null {
+  const entry: UIOptionConfigEntry = {};
+
+  if (values) {
+    entry.values = values;
+  }
+
+  if (generator) {
+    entry.generator = generator;
+  }
+
+  return "values" in entry || "generator" in entry ? entry : null;
+}
+
+/**
+ * Copy service frameworks map with deep clone
+ */
+function cloneServiceFrameworks(
+  frameworks: Record<string, string[]> | undefined,
+): Record<string, string[]> | undefined {
+  if (!frameworks) return undefined;
+  return Object.fromEntries(
+    Object.entries(frameworks).map(([language, fwList]) => [language, [...fwList]]),
+  );
 }
 
 export function buildUIOptionConfig(
@@ -234,47 +323,22 @@ export function buildUIOptionConfig(
 ): UIOptionConfig {
   const config: UIOptionConfig = {};
 
+  // Process array options
   for (const key of ARRAY_UI_OPTION_KEYS) {
-    const values = catalog?.[key];
-    const generator = generators?.[key];
-
-    const entry: UIOptionConfigEntry = {};
-
-    if (values) {
-      entry.values = [...values];
-    }
-
-    if (generator) {
-      entry.generator = generator;
-    }
-
-    if ("values" in entry || "generator" in entry) {
+    const values = catalog?.[key] ? [...catalog[key]] : undefined;
+    const entry = buildConfigEntry(values, generators?.[key]);
+    if (entry) {
       config[key] = entry;
     }
   }
 
+  // Process service frameworks map
   if (catalog?.serviceFrameworks || generators?.serviceFrameworks) {
-    const values = catalog?.serviceFrameworks
-      ? Object.fromEntries(
-          Object.entries(catalog.serviceFrameworks).map(([language, frameworks]) => [
-            language,
-            [...frameworks],
-          ]),
-        )
-      : undefined;
-    const generator = generators?.serviceFrameworks;
-
-    const entry: UIOptionConfigEntry = {};
-
-    if (values) {
-      entry.values = values;
-    }
-
-    if (generator) {
-      entry.generator = generator;
-    }
-
-    if ("values" in entry || "generator" in entry) {
+    const entry = buildConfigEntry(
+      cloneServiceFrameworks(catalog?.serviceFrameworks),
+      generators?.serviceFrameworks,
+    );
+    if (entry) {
       config.serviceFrameworks = entry;
     }
   }

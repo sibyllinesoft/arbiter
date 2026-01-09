@@ -1,3 +1,8 @@
+/**
+ * @module SpecService
+ * API service for specification operations.
+ * Handles spec resolution, validation, IR generation, and freezing.
+ */
 import type {
   FreezeRequest,
   FreezeResponse,
@@ -12,8 +17,16 @@ import { ApiClient } from "./client";
 
 const log = createLogger("SpecService");
 
+/**
+ * Service class for specification operations.
+ * Provides methods for resolving, validating, and generating IR from specs.
+ */
 export class SpecService {
-  constructor(private readonly client: ApiClient) {}
+  private readonly client: ApiClient;
+
+  constructor(client: ApiClient) {
+    this.client = client;
+  }
 
   async validateProject(
     projectId: string,

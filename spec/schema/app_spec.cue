@@ -1,7 +1,8 @@
-\
     package schema
 
-    import "strings"
+    import (
+      "list"
+    )
 
     // Top-level “AppSpec” schema. All fragments unify into this shape under /spec/app.
   #AppSpec: {
@@ -9,7 +10,7 @@
         name:   #Human
         goals?: [...#Human]
         constraints?: [...#Human]
-        roles?: [...#Role] & minItems(1)
+        roles?: [...#Role] & list.MinItems(1)
         slos?: {
           p95_page_load_ms?: int & >0
           uptime?:           string // e.g., "99.9%"
@@ -26,7 +27,7 @@
       operations?: { [#Slug]: #Operation }
 
       // Behaviors & oracles (formerly flows)
-      behaviors: [...#Flow] & minItems(1)
+      behaviors: [...#Flow] & list.MinItems(1)
 
       // Determinism hooks for tests
       testability?: {
@@ -58,7 +59,7 @@
         seed?: [...#Seed]
         env?:  #Slug
       }
-      steps: [...#Step] & minItems(1)
+      steps: [...#Step] & list.MinItems(1)
       variants?: [...{
         name: #Slug
         override?: _
@@ -91,7 +92,7 @@
     #HttpRequestBody: {
       description?: string
       required?: bool | *false
-      content: #HttpContent & minFields(1)
+      content: #HttpContent  // At least one media type required
     }
 
     #HttpResponse: {
@@ -102,9 +103,11 @@
 
     #HttpParameter: {
       name: string & !=""
-      'in': "path" | "query" | "header" | "cookie"
+      // Use quoted field name since 'in' is a CUE keyword
+      "in": "path" | "query" | "header" | "cookie"
       description?: string
-      required?: bool | *(self.'in' == "path")
+      // Path parameters should typically be required; validated at runtime
+      required?: bool
       schema?: _
       schemaRef?: string
       deprecated?: bool
@@ -119,7 +122,7 @@
       deprecated?: bool
       parameters?: [...#HttpParameter]
       requestBody?: #HttpRequestBody
-      responses: { [string]: #HttpResponse } & minFields(1)
+      responses: { [string]: #HttpResponse }  // At least one response required
       assertions?: #CueAssertionBlock
     }
 
@@ -132,6 +135,3 @@
       tags?: [...#Slug]
     }
 
-    // ---------- Helpers ----------
-    minItems(n: int): { _hiddenMinItems: n }
-    minFields(n: int): { _hiddenMinFields: n }

@@ -1,99 +1,69 @@
+import type { Context, Next } from "hono";
 import { Hono } from "hono";
-import type { AuthService } from "../auth.js";
-import { createAuthRouter } from "./auth";
-import { createCliRouter } from "./cli";
-import { createConfigRouter } from "./config";
-import { createCoreRouter } from "./core";
-import { createEventsRouter } from "./events";
-import { createFragmentsRouter } from "./fragments";
-import { createGithubRouter } from "./github";
-import { createImportRouter } from "./import";
-import { createIrRouter } from "./ir";
-import { createProjectsRouter } from "./projects";
-import { createSpecsRouter } from "./specs";
-import { tunnelRoutes } from "./tunnel";
+import type { AuthService } from "../auth";
+// core routes
+import { createEventsRouter } from "./core/events";
+import { createImportRouter } from "./core/import";
+import { createIrRouter } from "./core/ir";
+// io routes
+import { createConfigRouter } from "./io/config";
+import { createFragmentsRouter } from "./io/fragments";
+import { createProjectsRouter } from "./io/projects";
+import { createSpecsRouter } from "./io/specs";
+// util routes
+import { createAuthRouter } from "./util/auth";
+import { createCliRouter } from "./util/cli";
+import { createCoreRouter } from "./util/core";
+import { createGithubRouter } from "./util/github";
+import { tunnelRoutes } from "./util/tunnel";
 
 export type Dependencies = Record<string, unknown>;
 
 const AUTH_EXCLUDED_PATHS = new Set<string>(["/api/auth/metadata", "/api/auth/token", "/health"]);
 
-export { tunnelRoutes } from "./tunnel";
-export { createCoreRouter } from "./core";
-export { createConfigRouter } from "./config";
-export { createCliRouter } from "./cli";
-export { createProjectsRouter } from "./projects";
-export { createSpecsRouter } from "./specs";
-export { createIrRouter } from "./ir";
-export { createImportRouter } from "./import";
-export { createGithubRouter } from "./github";
-export { createEventsRouter } from "./events";
-export { createAuthRouter } from "./auth";
-export { createFragmentsRouter } from "./fragments";
+// Re-exports
+export { tunnelRoutes } from "./util/tunnel";
+export { createCoreRouter } from "./util/core";
+export { createConfigRouter } from "./io/config";
+export { createCliRouter } from "./util/cli";
+export { createProjectsRouter } from "./io/projects";
+export { createSpecsRouter } from "./io/specs";
+export { createIrRouter } from "./core/ir";
+export { createImportRouter } from "./core/import";
+export { createGithubRouter } from "./util/github";
+export { createEventsRouter } from "./core/events";
+export { createAuthRouter } from "./util/auth";
+export { createFragmentsRouter } from "./io/fragments";
 
-export function createApiRouter(deps: Dependencies) {
-  const root = new Hono();
+function buildOAuthRedirectUrl(config: any, requestUrl: string): string {
+  const authorizationEndpoint = config.oauth.authorization_endpoint;
+  const clientId = config.oauth.clientId ?? "dev-cli";
+  const redirectUri = config.oauth.redirectUri || "http://localhost:3000/oauth/callback";
+  const scopes = (config.oauth.requiredScopes ?? ["read", "write"]).join(" ");
 
-  // Public endpoints
-  root.get("/health", (c) =>
-    c.json({ status: "healthy", timestamp: new Date().toISOString(), database: true }),
+  const authorizeUrl = new URL(authorizationEndpoint);
+  authorizeUrl.searchParams.set("client_id", clientId);
+  authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+  authorizeUrl.searchParams.set("response_type", "code");
+  authorizeUrl.searchParams.set("scope", scopes);
+  authorizeUrl.searchParams.set("state", Buffer.from(requestUrl, "utf-8").toString("base64url"));
+
+  return authorizeUrl.toString();
+}
+
+function createUnauthorizedResponse(c: Context) {
+  return c.json(
+    {
+      type: "https://httpstatuses.com/401",
+      title: "Unauthorized",
+      status: 401,
+      detail: "Valid bearer token required",
+    },
+    401,
   );
-  root.route("/api/auth", createAuthRouter(deps as any));
+}
 
-  const api = new Hono();
-
-  const authService = deps.auth as AuthService | undefined;
-  if (authService) {
-    const authMiddleware = authService.createAuthMiddleware();
-    api.use("/*", async (c, next) => {
-      // normalize full path for exclusions
-      const fullPath = `/api${c.req.path}`;
-      if (AUTH_EXCLUDED_PATHS.has(fullPath)) {
-        return next();
-      }
-
-      const result = await authMiddleware(c.req.raw);
-      if (!result.authorized) {
-        const accept = c.req.header("accept") ?? "";
-        const prefersHtml = accept.includes("text/html");
-        if (prefersHtml && deps.config && (deps.config as any).oauth?.authorization_endpoint) {
-          const authorizationEndpoint = (deps.config as any).oauth.authorization_endpoint;
-          const clientId = (deps.config as any).oauth.clientId;
-          const redirectUri =
-            (deps.config as any).oauth.redirectUri || "http://localhost:3000/oauth/callback";
-          const authorizeUrl = new URL(authorizationEndpoint);
-          authorizeUrl.searchParams.set("client_id", clientId ?? "dev-cli");
-          authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-          authorizeUrl.searchParams.set("response_type", "code");
-          authorizeUrl.searchParams.set(
-            "scope",
-            ((deps.config as any).oauth.requiredScopes ?? ["read", "write"]).join(" "),
-          );
-          const stateParam = c.req.url;
-          authorizeUrl.searchParams.set(
-            "state",
-            Buffer.from(stateParam, "utf-8").toString("base64url"),
-          );
-          return c.redirect(authorizeUrl.toString(), 302);
-        }
-        return (
-          result.response ??
-          c.json(
-            {
-              type: "https://httpstatuses.com/401",
-              title: "Unauthorized",
-              status: 401,
-              detail: "Valid bearer token required",
-            },
-            401,
-          )
-        );
-      }
-
-      await next();
-    });
-  }
-
-  // Mount routers under the secured api group
+function mountRouters(api: Hono, deps: Dependencies) {
   api.route("/", createCoreRouter(deps));
   api.route("/", createConfigRouter(deps));
   api.route("/", createCliRouter(deps));
@@ -105,8 +75,41 @@ export function createApiRouter(deps: Dependencies) {
   api.route("/import", createImportRouter(deps));
   api.route("/github", createGithubRouter(deps));
   api.route("/tunnel", tunnelRoutes);
+}
 
-  // Attach secured api under /api
+export function createApiRouter(deps: Dependencies) {
+  const root = new Hono();
+
+  root.get("/health", (c) =>
+    c.json({ status: "healthy", timestamp: new Date().toISOString(), database: true }),
+  );
+  root.route("/api/auth", createAuthRouter(deps as any));
+
+  const api = new Hono();
+  const authService = deps.auth as AuthService | undefined;
+
+  if (authService) {
+    const authMiddleware = authService.createAuthMiddleware();
+
+    api.use("/*", async (c, next) => {
+      const fullPath = `/api${c.req.path}`;
+      if (AUTH_EXCLUDED_PATHS.has(fullPath)) return next();
+
+      const result = await authMiddleware(c.req.raw);
+      if (result.authorized) return next();
+
+      const prefersHtml = (c.req.header("accept") ?? "").includes("text/html");
+      const config = deps.config as any;
+
+      if (prefersHtml && config?.oauth?.authorization_endpoint) {
+        return c.redirect(buildOAuthRedirectUrl(config, c.req.url), 302);
+      }
+
+      return result.response ?? createUnauthorizedResponse(c);
+    });
+  }
+
+  mountRouters(api, deps);
   root.route("/api", api);
   return root;
 }

@@ -4,9 +4,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import { SpecEngine } from "../../specEngine.ts";
-import type { Fragment, ServerConfig } from "../../types.ts";
-import { generateId } from "../../utils.ts";
+import { generateId } from "../../io/utils";
+import { SpecEngine } from "../../util/specEngine";
+import type { Fragment, ServerConfig } from "../../util/types";
 const MINIMAL_CAPABILITIES_BLOCK = `
 capabilities: {
 	"spec.test": {
@@ -43,11 +43,6 @@ describe("SpecEngine", () => {
       spec_workdir: tempWorkdir,
       jq_binary_path: "jq",
       auth_required: false,
-      rate_limit: {
-        max_tokens: 10,
-        refill_rate: 1,
-        window_ms: 10000,
-      },
       external_tool_timeout_ms: 10000,
       websocket: {
         max_connections: 100,

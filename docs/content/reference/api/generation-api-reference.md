@@ -732,7 +732,7 @@ import {
   CLIConfig,
   CustomHookManager,
   setActiveHookManager 
-} from '@arbiter/cli';
+} from '@sibyllinesoft/arbiter-cli';
 
 async function runCustomGeneration() {
   // Setup configuration
@@ -788,7 +788,7 @@ async function runCustomGeneration() {
 ### Custom Template Resolver
 
 ```typescript
-import { TemplateResolver } from '@arbiter/cli';
+import { TemplateResolver } from '@sibyllinesoft/arbiter-cli';
 
 async function customTemplateProcessing() {
   const resolver = new TemplateResolver({

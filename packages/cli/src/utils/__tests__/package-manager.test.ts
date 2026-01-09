@@ -1,9 +1,10 @@
+/** @packageDocumentation Utility tests */
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { detectPackageManager, getPackageManagerCommands } from "@/utils/package-manager.js";
+import { detectPackageManager, getPackageManagerCommands } from "@/utils/io/package-manager.js";
 
 describe("package-manager utilities", () => {
   afterEach(() => {

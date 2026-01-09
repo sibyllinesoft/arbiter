@@ -17,7 +17,7 @@ code generation. This tutorial covers:
 
 ## Prerequisites
 
-- Arbiter CLI installed (`npm install -g @arbiter/cli` or standalone binary)
+- Arbiter CLI installed (`npm install -g @sibyllinesoft/arbiter-cli` or standalone binary)
 - Kubernetes cluster access (local or cloud)
 - Basic understanding of CUE and Kubernetes concepts
 
@@ -528,7 +528,7 @@ jobs:
         uses: oven-sh/setup-bun@v1
 
       - name: Install Arbiter CLI
-        run: bun install -g @arbiter/cli
+        run: bun install -g @sibyllinesoft/arbiter-cli
 
       - name: Generate Kubernetes manifests
         run: arbiter generate my-microservices --environment=production
@@ -745,7 +745,7 @@ remains well-structured and maintainable at any scale.
 
 ## Next Steps
 
-1. **Explore the Demo Project**: Check out the `demo-project/` directory for a
+1. **Explore the Demo Project**: Check out the `examples/demo-project/` directory for a
    complete working example
 2. **Read the Core Concepts**: Review `docs/overview/core-concepts.md` (or the
    "Overview → Core Concepts" page in the site) for deeper architecture

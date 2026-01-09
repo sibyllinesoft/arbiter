@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { LATEST_API_VERSION, VERSION_COMPATIBILITY } from "@/constraints/schema.js";
+import { LATEST_API_VERSION, VERSION_COMPATIBILITY } from "@/constraints/core/schema.js";
 import { evaluateApiVersion, loadVersionsToCheck } from "@/services/compat/index.js";
 
 describe("compat version helpers", () => {

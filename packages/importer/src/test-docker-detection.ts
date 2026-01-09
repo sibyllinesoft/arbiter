@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { ArtifactClassifier } from "./detection/classifier";
 import { DockerPlugin } from "./plugins/docker";
 import type { InferenceContext, ParseContext, ProjectMetadata } from "./types";
 
@@ -138,6 +139,8 @@ volumes:
     projectRoot: "/home/nathan/Projects/arbiter",
     fileIndex: parseContext.fileIndex,
     allEvidence: evidence,
+    directoryContexts: new Map(),
+    classifier: new ArtifactClassifier(),
     options: {
       minConfidence: 0.3,
       inferRelationships: true,

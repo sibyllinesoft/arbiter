@@ -1,6 +1,6 @@
 # Constraint Verification System
 
-Comprehensive enforcement of the "Don'ts" from TODO.md section 13, ensuring all operations comply with defined limits and patterns.
+Comprehensive enforcement of the "Don'ts" from docs/ARCHITECTURE_REVIEW.md section 13, ensuring all operations comply with defined limits and patterns.
 
 ## Overview
 
@@ -425,4 +425,4 @@ monitor.on('custom_event', (data) => {
 });
 ```
 
-This constraint system ensures complete compliance with TODO.md section 13 requirements while providing comprehensive monitoring, reporting, and integration capabilities.
+This constraint system ensures complete compliance with docs/ARCHITECTURE_REVIEW.md section 13 requirements while providing comprehensive monitoring, reporting, and integration capabilities.

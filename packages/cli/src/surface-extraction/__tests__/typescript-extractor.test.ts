@@ -12,7 +12,7 @@ describe("extractTypeScriptSurface", () => {
   it("returns null and warns when no source files are provided", async () => {
     const log = spyOn(console, "log").mockReturnValue();
     const { extractTypeScriptSurface } = await import(
-      "@/surface-extraction/typescript-extractor.js"
+      "@/surface-extraction/extractors/typescript-extractor.js"
     );
 
     const result = await extractTypeScriptSurface({ includePrivate: false } as any, []);
@@ -36,7 +36,7 @@ export const value = 3;
     );
 
     const { extractTypeScriptSurface } = await import(
-      "@/surface-extraction/typescript-extractor.js"
+      "@/surface-extraction/extractors/typescript-extractor.js"
     );
 
     const surface = await extractTypeScriptSurface({ includePrivate: false } as any, [file]);
@@ -50,7 +50,7 @@ export const value = 3;
   it("handles read errors gracefully and returns null", async () => {
     const log = spyOn(console, "error").mockReturnValue();
     const { extractTypeScriptSurface } = await import(
-      "@/surface-extraction/typescript-extractor.js"
+      "@/surface-extraction/extractors/typescript-extractor.js"
     );
 
     const result = await extractTypeScriptSurface({ includePrivate: true } as any, ["nope.ts"]);

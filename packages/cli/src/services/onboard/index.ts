@@ -9,7 +9,7 @@ import path from "node:path";
 import { safeFileOperation } from "@/constraints/index.js";
 import { syncProject } from "@/services/sync/index.js";
 import type { CLIConfig } from "@/types.js";
-import { ProgressBar } from "@/utils/progress.js";
+import { ProgressBar } from "@/utils/api/progress.js";
 import chalk from "chalk";
 import fs from "fs-extra";
 import inquirer from "inquirer";

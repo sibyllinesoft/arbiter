@@ -1,0 +1,23 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "./packages/cli/src/index.ts",
+    "./packages/shared/src/index.ts",
+    "./packages/api-types/src/index.ts"
+  ],
+  "tsconfig": "./docs/config/tsconfig.json",
+  "plugin": ["typedoc-plugin-markdown"],
+  "theme": "markdown",
+  "readme": "none",
+  "out": "./docs/content/reference/api/tsdoc",
+  "exclude": [
+    "**/__tests__/**",
+    "packages/cli/src/docs/**/*",
+    "**/dist/**"
+  ],
+  "skipErrorChecking": true,
+  "categorizeByGroup": true,
+  "cleanOutputDir": true,
+  "hideBreadcrumbs": true,
+  "githubPages": false
+}

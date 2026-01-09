@@ -1,3 +1,14 @@
+/**
+ * @packageDocumentation
+ * Integrate command - Generate CI/CD workflows from project specifications.
+ *
+ * Provides functionality to:
+ * - Detect project languages and frameworks
+ * - Generate GitHub Actions workflows
+ * - Create pull request and main branch workflows
+ * - Support custom template integration
+ */
+
 import fs from "node:fs/promises";
 import path from "node:path";
 import { safeFileOperation } from "@/constraints/index.js";
@@ -8,8 +19,8 @@ import {
   createGitHubPullRequestWorkflow,
 } from "@/services/integrate/workflow-builder.js";
 import type { CLIConfig, GitHubTemplatesConfig, IntegrateOptions } from "@/types.js";
-import { detectPackageManager, getPackageManagerCommands } from "@/utils/package-manager.js";
-import { UnifiedGitHubTemplateManager } from "@/utils/unified-github-template-manager.js";
+import { UnifiedGitHubTemplateManager } from "@/utils/github/templates/unified-github-template-manager.js";
+import { detectPackageManager, getPackageManagerCommands } from "@/utils/io/package-manager.js";
 import chalk from "chalk";
 import * as YAML from "yaml";
 
@@ -43,6 +54,21 @@ const defaultDeps: IntegrateDependencies = {
 
 type WriteStatus = "written" | "skipped" | "dry-run";
 
+interface RunContext {
+  projectPath: string;
+  dryRun: boolean;
+  force: boolean;
+  type: string;
+  provider: string;
+  workflowDir: string;
+  summary: { written: number; skipped: number; dryRun: number };
+}
+
+interface LanguageInfo {
+  name: string;
+  framework?: string;
+}
+
 export class IntegrateService {
   constructor(
     private readonly config: CLIConfig,
@@ -50,26 +76,64 @@ export class IntegrateService {
   ) {}
 
   async run(options: IntegrateOptions): Promise<number> {
-    const projectPath = this.config.projectDir || process.cwd();
-    const dryRun = Boolean(options.dryRun);
+    const ctx = this.createRunContext(options);
 
+    this.logHeader(ctx);
+
+    const languages = await this.detectAndLogLanguages(ctx.projectPath);
+    if (!languages) return 1;
+
+    const assembly = await this.loadAndLogAssembly(ctx.projectPath);
+
+    this.validateProvider(ctx.provider);
+
+    await this.deps.fs.mkdir(ctx.workflowDir, { recursive: true });
+
+    const pmCommands = getPackageManagerCommands(detectPackageManager(undefined, ctx.projectPath));
+
+    await this.generateWorkflows(ctx, languages, assembly, pmCommands);
+    await this.generateTemplatesIfRequested(ctx, options);
+
+    this.logCompletionSummary(ctx, languages);
+    return 0;
+  }
+
+  private createRunContext(options: IntegrateOptions): RunContext {
+    const projectPath = this.config.projectDir || process.cwd();
+    return {
+      projectPath,
+      dryRun: Boolean(options.dryRun),
+      force: Boolean(options.force),
+      type: options.type ?? "all",
+      provider: options.provider ?? options.platform ?? "github",
+      workflowDir: path.resolve(projectPath, options.output ?? ".github/workflows"),
+      summary: { written: 0, skipped: 0, dryRun: 0 },
+    };
+  }
+
+  private logHeader(ctx: RunContext): void {
     console.log(chalk.blue("🔗 Arbiter CI/CD integration"));
-    console.log(chalk.dim(`Project: ${projectPath}`));
-    if (dryRun) {
+    console.log(chalk.dim(`Project: ${ctx.projectPath}`));
+    if (ctx.dryRun) {
       console.log(chalk.yellow("Simulating changes (dry run). Files will not be written."));
     }
+  }
 
+  private async detectAndLogLanguages(projectPath: string): Promise<LanguageInfo[] | null> {
     const languages = await this.deps.detectLanguages(projectPath);
     if (languages.length === 0) {
       console.log(chalk.yellow("⚠️  No supported languages detected (TS, Python, Rust, Go)."));
-      return 1;
+      return null;
     }
 
     console.log(chalk.green(`✅ Detected ${languages.length} language(s):`));
     for (const lang of languages) {
       console.log(chalk.dim(`  • ${lang.name}${lang.framework ? ` (${lang.framework})` : ""}`));
     }
+    return languages;
+  }
 
+  private async loadAndLogAssembly(projectPath: string) {
     const assembly = await this.deps.readAssembly(projectPath);
     if (assembly?.buildMatrix) {
       console.log(chalk.green("✅ Found arbiter.assembly.cue build matrix"));
@@ -78,8 +142,10 @@ export class IntegrateService {
     } else if (assembly) {
       console.log(chalk.yellow("⚠️  Assembly file detected but using default build matrix"));
     }
+    return assembly;
+  }
 
-    const provider = options.provider ?? options.platform ?? "github";
+  private validateProvider(provider: string): void {
     if (provider !== "github") {
       console.log(
         chalk.yellow(
@@ -87,78 +153,112 @@ export class IntegrateService {
         ),
       );
     }
+  }
 
-    const workflowDir = path.resolve(projectPath, options.output ?? ".github/workflows");
-    await this.deps.fs.mkdir(workflowDir, { recursive: true });
-
-    const force = Boolean(options.force);
-    const type = options.type ?? "all";
-    const summary = { written: 0, skipped: 0, dryRun: 0 };
-
-    const packageManager = detectPackageManager(undefined, projectPath);
-    const pmCommands = getPackageManagerCommands(packageManager);
-
-    if (type === "all" || type === "pr") {
-      const prWorkflow = this.deps.createPullRequestWorkflow(
-        languages,
-        assembly?.buildMatrix,
-        pmCommands,
-      );
-      const prPath = path.join(workflowDir, "pr.yml");
-      const status = await this.writeYaml(prPath, prWorkflow, { force, dryRun });
-      this.logWriteResult(projectPath, prPath, status);
-      this.bumpSummary(summary, status);
+  private async generateWorkflows(
+    ctx: RunContext,
+    languages: LanguageInfo[],
+    assembly: Awaited<ReturnType<typeof readAssemblyConfig>>,
+    pmCommands: ReturnType<typeof getPackageManagerCommands>,
+  ): Promise<void> {
+    if (ctx.type === "all" || ctx.type === "pr") {
+      await this.generatePrWorkflow(ctx, languages, assembly, pmCommands);
     }
 
-    if (type === "all" || type === "main" || type === "release") {
-      const mainWorkflow = this.deps.createMainWorkflow(
-        languages,
-        assembly?.buildMatrix,
-        pmCommands,
-      );
-      const mainPath = path.join(workflowDir, "main.yml");
-      const status = await this.writeYaml(mainPath, mainWorkflow, { force, dryRun });
-      this.logWriteResult(projectPath, mainPath, status);
-      this.bumpSummary(summary, status);
+    if (ctx.type === "all" || ctx.type === "main" || ctx.type === "release") {
+      await this.generateMainWorkflow(ctx, languages, assembly, pmCommands);
     }
+  }
 
-    if (options.templates && provider === "github") {
-      console.log(chalk.blue("\n🎯 Generating GitHub issue templates..."));
-      const templateManager = this.deps.templateManagerFactory(this.config.github?.templates);
-      const templates = await templateManager.generateRepositoryTemplateFiles();
-      for (const [relativePath, content] of Object.entries(templates)) {
-        const targetPath = path.join(projectPath, relativePath);
-        const status = await this.writeText(targetPath, content, { force, dryRun });
-        this.logWriteResult(projectPath, targetPath, status);
-        this.bumpSummary(summary, status);
-      }
+  private async generatePrWorkflow(
+    ctx: RunContext,
+    languages: LanguageInfo[],
+    assembly: Awaited<ReturnType<typeof readAssemblyConfig>>,
+    pmCommands: ReturnType<typeof getPackageManagerCommands>,
+  ): Promise<void> {
+    const prWorkflow = this.deps.createPullRequestWorkflow(
+      languages,
+      assembly?.buildMatrix,
+      pmCommands,
+    );
+    const prPath = path.join(ctx.workflowDir, "pr.yml");
+    const status = await this.writeYaml(prPath, prWorkflow, {
+      force: ctx.force,
+      dryRun: ctx.dryRun,
+    });
+    this.logWriteResult(ctx.projectPath, prPath, status);
+    this.bumpSummary(ctx.summary, status);
+  }
+
+  private async generateMainWorkflow(
+    ctx: RunContext,
+    languages: LanguageInfo[],
+    assembly: Awaited<ReturnType<typeof readAssemblyConfig>>,
+    pmCommands: ReturnType<typeof getPackageManagerCommands>,
+  ): Promise<void> {
+    const mainWorkflow = this.deps.createMainWorkflow(languages, assembly?.buildMatrix, pmCommands);
+    const mainPath = path.join(ctx.workflowDir, "main.yml");
+    const status = await this.writeYaml(mainPath, mainWorkflow, {
+      force: ctx.force,
+      dryRun: ctx.dryRun,
+    });
+    this.logWriteResult(ctx.projectPath, mainPath, status);
+    this.bumpSummary(ctx.summary, status);
+  }
+
+  private async generateTemplatesIfRequested(
+    ctx: RunContext,
+    options: IntegrateOptions,
+  ): Promise<void> {
+    if (!options.templates || ctx.provider !== "github") return;
+
+    console.log(chalk.blue("\n🎯 Generating GitHub issue templates..."));
+    const templateManager = this.deps.templateManagerFactory(this.config.github?.templates);
+    const templates = await templateManager.generateRepositoryTemplateFiles();
+
+    for (const [relativePath, content] of Object.entries(templates)) {
+      const targetPath = path.join(ctx.projectPath, relativePath);
+      const status = await this.writeText(targetPath, content, {
+        force: ctx.force,
+        dryRun: ctx.dryRun,
+      });
+      this.logWriteResult(ctx.projectPath, targetPath, status);
+      this.bumpSummary(ctx.summary, status);
     }
+  }
 
+  private logCompletionSummary(ctx: RunContext, languages: LanguageInfo[]): void {
     console.log(chalk.green("\n🎉 CI/CD integration complete!"));
     console.log(
       chalk.cyan(
-        `📊 Files — written: ${summary.written}, skipped: ${summary.skipped}, dry-run: ${summary.dryRun}`,
+        `📊 Files — written: ${ctx.summary.written}, skipped: ${ctx.summary.skipped}, dry-run: ${ctx.summary.dryRun}`,
       ),
     );
 
-    if (summary.written + summary.dryRun > 0) {
-      console.log(chalk.cyan("\nNext steps:"));
-      console.log(chalk.dim("  1. Commit and push the workflow files"));
-      console.log(chalk.dim("  2. Configure repository secrets for package publishing"));
-      if (languages.some((l) => l.name === "typescript")) {
-        console.log(chalk.dim("     • NPM_TOKEN"));
+    if (ctx.summary.written + ctx.summary.dryRun > 0) {
+      this.logNextSteps(languages);
+    }
+  }
+
+  private logNextSteps(languages: LanguageInfo[]): void {
+    console.log(chalk.cyan("\nNext steps:"));
+    console.log(chalk.dim("  1. Commit and push the workflow files"));
+    console.log(chalk.dim("  2. Configure repository secrets for package publishing"));
+
+    const secretHints: Record<string, string> = {
+      typescript: "     • NPM_TOKEN",
+      python: "     • PYPI_TOKEN",
+      rust: "     • CARGO_TOKEN",
+    };
+
+    for (const [langName, hint] of Object.entries(secretHints)) {
+      if (languages.some((l) => l.name === langName)) {
+        console.log(chalk.dim(hint));
       }
-      if (languages.some((l) => l.name === "python")) {
-        console.log(chalk.dim("     • PYPI_TOKEN"));
-      }
-      if (languages.some((l) => l.name === "rust")) {
-        console.log(chalk.dim("     • CARGO_TOKEN"));
-      }
-      console.log(chalk.dim("  3. Open a PR to exercise the validation workflow"));
-      console.log(chalk.dim("  4. Create a release to verify publish automation"));
     }
 
-    return 0;
+    console.log(chalk.dim("  3. Open a PR to exercise the validation workflow"));
+    console.log(chalk.dim("  4. Create a release to verify publish automation"));
   }
 
   private async writeYaml(

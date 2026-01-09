@@ -1,6 +1,14 @@
+/**
+ * Prisma schema parser.
+ * Extracts database configuration and provider information from Prisma schema files.
+ */
 import path from "node:path";
 import type { FileParser } from "./base";
 
+/**
+ * Parser for Prisma schema files (schema.prisma).
+ * Detects the database provider and marks artifacts as database type.
+ */
 export const prismaParser: FileParser = {
   name: "prisma",
   priority: 6,

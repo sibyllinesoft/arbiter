@@ -1,4 +1,4 @@
-import type { Project } from "../types";
+import type { Project } from "../util/types";
 
 export type DbProject = Project & {
   service_count: number;

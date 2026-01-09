@@ -474,6 +474,90 @@ export async function mockApiResponses(page: Page): Promise<void> {
   });
 }
 
+/**
+ * Test each tab in sequence and verify it can be activated.
+ * Returns results for each tab including success status.
+ */
+export async function testTabSequence(
+  tabsPage: TabsPage,
+  basePage: BasePage,
+  tabs: readonly string[],
+  side: "left" | "right",
+): Promise<Array<{ tab: string; success: boolean }>> {
+  const results: Array<{ tab: string; success: boolean }> = [];
+
+  for (const tabName of tabs) {
+    try {
+      await tabsPage.clickTab(tabName, side);
+      const activeTab = await tabsPage.getActiveTab(side);
+      const success = activeTab.toLowerCase().includes(tabName.toLowerCase());
+
+      await basePage.waitForLoadingComplete();
+      await basePage.takeScreenshot(`tab-${tabName.toLowerCase()}`);
+
+      results.push({ tab: tabName, success });
+    } catch (error) {
+      results.push({ tab: tabName, success: false });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Test each viewport in sequence and verify the page adapts correctly.
+ * Returns results for each viewport including visibility status.
+ */
+export async function testViewportSequence(
+  page: import("@playwright/test").Page,
+  basePage: BasePage,
+  viewports: readonly Array<{ width: number; height: number; name: string }>,
+  elementSelector: string,
+): Promise<Array<{ viewport: string; visible: boolean }>> {
+  const results: Array<{ viewport: string; visible: boolean }> = [];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.waitForTimeout(500);
+
+    const element = page.locator(elementSelector);
+    const visible = await element.isVisible();
+
+    await basePage.takeScreenshot(`viewport-${viewport.name}`);
+    results.push({ viewport: viewport.name, visible });
+  }
+
+  return results;
+}
+
+/**
+ * Find the first visible element from a list of selectors.
+ * Returns the selector that matched, or null if none found.
+ */
+export async function findFirstVisibleSelector(
+  basePage: BasePage,
+  selectors: readonly string[],
+): Promise<string | null> {
+  for (const selector of selectors) {
+    if (await basePage.elementExists(selector)) {
+      return selector;
+    }
+  }
+  return null;
+}
+
+/**
+ * Filter console messages by type (error, warning, etc.)
+ */
+export function filterConsoleMessages(
+  messages: Array<{ type: string; text: string }>,
+  patterns: readonly string[],
+): string[] {
+  return messages
+    .filter((msg) => patterns.some((pattern) => msg.text.includes(pattern)))
+    .map((msg) => msg.text);
+}
+
 // Test data generators
 export const TEST_DATA = {
   CUE_CONTENT: `

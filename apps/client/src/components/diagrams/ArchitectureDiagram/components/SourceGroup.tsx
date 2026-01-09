@@ -30,7 +30,7 @@ const ICON_COLOR_MAP: Record<string, string> = {
   frontend: "text-teal-500 dark:text-teal-300",
   flow: "text-sky-500 dark:text-sky-300",
   capability: "text-pink-500 dark:text-pink-300",
-  epic: "text-rose-500 dark:text-rose-300",
+  group: "text-rose-500 dark:text-rose-300",
   task: "text-slate-500 dark:text-slate-300",
 };
 

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 
-import { addService } from "@/services/add/subcommands/service.js";
+import { addService } from "@/services/add/subcommands/runtime/service.js";
 import * as templateEngine from "@/services/add/template-engine.js";
-import * as platform from "@/utils/platform-detection.js";
+import * as platform from "@/utils/util/core/platform-detection.js";
 
 const createManipulator = () => ({
   addService: mock(async (_c: string, name: string, cfg: any) => `added:${name}:${cfg.type}`),

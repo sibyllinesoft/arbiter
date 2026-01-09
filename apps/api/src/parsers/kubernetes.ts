@@ -1,8 +1,16 @@
+/**
+ * Kubernetes manifest parser.
+ * Extracts resource kinds and names from Kubernetes YAML manifests.
+ */
 import path from "node:path";
 import YAML from "js-yaml";
 import type { FileParser } from "./base";
 import { isInfrastructureYaml } from "./helpers";
 
+/**
+ * Parser for Kubernetes manifest files (.yaml, .yml).
+ * Parses multi-document YAML files and extracts resource summaries.
+ */
 export const kubernetesParser: FileParser = {
   name: "kubernetes",
   priority: 5,

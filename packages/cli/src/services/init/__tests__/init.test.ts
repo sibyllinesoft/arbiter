@@ -1,7 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
-import os from "node:os";
-import path from "node:path";
-import fs from "fs-extra";
+import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 const minimalConfig = {
   apiUrl: "http://localhost:3000",
@@ -12,65 +9,23 @@ const minimalConfig = {
 } as any;
 
 describe("initCommand", () => {
-  let tmpDir: string;
-  let originalCwd: string;
-
-  beforeEach(async () => {
-    originalCwd = process.cwd();
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "arbiter-init-"));
-    process.chdir(tmpDir);
-  });
-
-  afterEach(async () => {
+  afterEach(() => {
     mock.restore();
-    process.chdir(originalCwd);
-    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
   });
 
-  it("creates a basic template project with config and readme", async () => {
+  it("requires a preset to be specified", async () => {
     const { initCommand } = await import("@/services/init/index.js");
-    const targetDir = path.join(tmpDir, "demo");
+    const error = spyOn(console, "error").mockReturnValue();
 
-    const code = await initCommand("demo", { template: "basic", directory: targetDir } as any);
-
-    const readme = await fs.readFile(path.join(targetDir, "README.md"), "utf-8");
-    const config = await fs.readJson(path.join(targetDir, ".arbiter", "config.json"));
-
-    expect(code).toBe(0);
-    expect(readme).toContain("# demo");
-    expect(config.apiUrl).toBeTruthy();
-  });
-
-  it("warns when directory already exists without force", async () => {
-    const { initCommand } = await import("@/services/init/index.js");
-    const targetDir = path.join(tmpDir, "existing");
-    await fs.ensureDir(targetDir);
-    const log = spyOn(console, "log").mockReturnValue();
-
-    const code = await initCommand("existing", { directory: targetDir } as any);
+    const code = await initCommand("demo", {} as any);
 
     expect(code).toBe(1);
-    expect(log.mock.calls[0][0]).toContain("already exists");
-  });
+    expect(error).toHaveBeenCalled();
 
-  it("throws on unknown template", async () => {
-    const { initCommand } = await import("@/services/init/index.js");
-
-    const code = await initCommand("demo", {
-      template: "does-not-exist",
-      directory: tmpDir,
-    } as any);
-    expect(code).toBe(2);
+    error.mockRestore();
   });
 
   it("prints available presets for unknown preset id", async () => {
-    mock.module("@/services/api-client.js", () => ({
-      ApiClient: class MockApiClient {},
-    }));
-    mock.module("@/services/utils/progress.js", () => ({
-      withProgress: async (_opts: any, fn: any) => fn(),
-    }));
-
     const log = spyOn(console, "log").mockReturnValue();
     const error = spyOn(console, "error").mockReturnValue();
 
@@ -78,19 +33,34 @@ describe("initCommand", () => {
     const code = await initCommand("demo", { preset: "nope" } as any, minimalConfig);
 
     expect(code).toBe(1);
-    expect(error).toHaveBeenCalled(); // printed error message
+    expect(error).toHaveBeenCalled();
     expect(log.mock.calls.some((c) => String(c[0]).includes("Available presets"))).toBe(true);
+
+    log.mockRestore();
+    error.mockRestore();
+  });
+
+  it("fails when config is missing for preset initialization", async () => {
+    const { initCommand } = await import("@/services/init/index.js");
+    const error = spyOn(console, "error").mockReturnValue();
+
+    const code = await initCommand("demo", { preset: "web-app" } as any);
+
+    expect(code).toBe(2);
+    expect(error).toHaveBeenCalled();
+
+    error.mockRestore();
   });
 
   it("creates project via preset using ApiClient", async () => {
-    mock.module("@/api-client.js", () => ({
+    mock.module("@/io/api/api-client.js", () => ({
       ApiClient: class MockApiClient {
         async createProject() {
           return { success: true } as any;
         }
       },
     }));
-    mock.module("@/utils/progress.js", () => ({
+    mock.module("@/utils/api/progress.js", () => ({
       withProgress: async (_opts: any, fn: any) => fn(),
     }));
 

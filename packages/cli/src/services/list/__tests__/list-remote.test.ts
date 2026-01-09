@@ -2,13 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const listComponentsMock = vi.fn();
 
-vi.mock("@/api-client.js", () => {
+vi.mock("@/io/api/api-client.js", () => {
   return {
     ApiClient: vi.fn().mockImplementation(() => ({ listComponents: listComponentsMock })),
   };
 });
 
-vi.mock("@/utils/progress.js", () => ({
+vi.mock("@/utils/api/progress.js", () => ({
   withProgress: (_opts: any, fn: any) => fn(),
 }));
 
@@ -16,7 +16,7 @@ const formatComponentTable = vi.fn(() => "TABLE_OUT");
 const formatJson = vi.fn(() => "JSON_OUT");
 const formatYaml = vi.fn(() => "YAML_OUT");
 
-vi.mock("@/utils/formatting.js", () => ({
+vi.mock("@/utils/util/output/formatting.js", () => ({
   formatComponentTable,
   formatJson,
   formatYaml,

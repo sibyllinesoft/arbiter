@@ -7,119 +7,48 @@
  * Run them separately with: bun test:stress
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
-import { SpecWorkbenchDB } from "../../db.ts";
-import { SpecWorkbenchServer } from "../../server.ts";
-import type { Fragment, ServerConfig } from "../../types.ts";
-import { generateId } from "../../utils.ts";
+import { generateId } from "../../io/utils";
+import type { Fragment } from "../../util/types";
+import {
+  type ConcurrencyTestContext,
+  initializeTestServer,
+  shutdownTestServer,
+} from "./server-setup";
+import {
+  type FragmentTimingResult,
+  createFragmentWithTiming,
+  createFragmentsConcurrently,
+  delay,
+  extractResponse,
+  findLatestResult,
+  generateCueContent,
+  generateDbOperation,
+  generateResourceOperation,
+  getProjectFragments,
+  getResolvedSpec,
+  validateProject,
+} from "./test-utils";
 
 describe("Concurrency and Race Condition Tests", () => {
-  let db: SpecWorkbenchDB;
-  let server: SpecWorkbenchServer;
-  let baseUrl: string;
-  let testConfig: ServerConfig;
-  let skipSuite = false;
-  let startupError: unknown;
+  let ctx: ConcurrencyTestContext;
 
   beforeAll(async () => {
-    const port = 45000 + Math.floor(Math.random() * 1000);
-
-    testConfig = {
-      port,
-      host: "127.0.0.1",
-      database_path: ":memory:",
-      spec_workdir: `/tmp/concurrency-test-${Date.now()}`,
-      jq_binary_path: "jq",
-      auth_required: false,
-      rate_limit: {
-        max_tokens: 1000, // High limit for concurrency testing
-        refill_rate: 100,
-        window_ms: 1000,
-      },
-      external_tool_timeout_ms: 30000, // Longer timeout for heavy load
-      websocket: {
-        max_connections: 100,
-        ping_interval_ms: 5000,
-      },
-    };
-
-    db = await SpecWorkbenchDB.create(testConfig);
-    server = new SpecWorkbenchServer(testConfig, db);
-    try {
-      await server.start();
-      const assignedPort = server.getPort();
-      baseUrl = `http://${testConfig.host}:${assignedPort}`;
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Extra startup time
-    } catch (error) {
-      skipSuite = true;
-      startupError = error;
-      console.warn(
-        "[ConcurrencyTest] Skipping concurrency suite due to server startup failure:",
-        error,
-      );
-    }
+    ctx = await initializeTestServer();
   });
 
   afterAll(async () => {
-    if (!skipSuite && server) {
-      await server.shutdown();
-    }
+    await shutdownTestServer(ctx);
   });
 
-  /**
-   * Helper to create fragments with precise timing control
-   */
-  async function createFragmentWithTiming(
-    projectId: string,
-    path: string,
-    content: string,
-    delayMs = 0,
-  ) {
-    if (delayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
+  // Helper wrappers that inject ctx.baseUrl
+  const createFragment = (projectId: string, path: string, content: string, delayMs = 0) =>
+    createFragmentWithTiming(ctx.baseUrl, projectId, path, content, delayMs);
 
-    const start = Date.now();
-    const response = await fetch(`${baseUrl}/api/fragments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        project_id: projectId,
-        path,
-        content,
-      }),
-    });
-    const duration = Date.now() - start;
+  const getResolved = (projectId: string) => getResolvedSpec(ctx.baseUrl, projectId);
 
-    return { response, duration, timestamp: start };
-  }
+  const validate = (projectId: string) => validateProject(ctx.baseUrl, projectId);
 
-  /**
-   * Helper to validate project and get resolved spec
-   */
-  async function getResolvedSpec(projectId: string) {
-    const validationResponse = await fetch(`${baseUrl}/api/validate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_id: projectId }),
-    });
-
-    if (validationResponse.status !== 200) {
-      return null;
-    }
-
-    const result = await validationResponse.json();
-    if (!result.success) {
-      return null;
-    }
-
-    const resolvedResponse = await fetch(`${baseUrl}/api/resolved?project_id=${projectId}`);
-
-    if (resolvedResponse.status !== 200) {
-      return null;
-    }
-
-    return await resolvedResponse.json();
-  }
+  const getFragments = (projectId: string) => getProjectFragments(ctx.baseUrl, projectId);
 
   describe("Multi-Client Fragment Conflicts", () => {
     let testProjectId: string;
@@ -129,27 +58,20 @@ describe("Concurrency and Race Condition Tests", () => {
     });
 
     it.skip("[STRESS TEST] should handle simultaneous writes to same fragment with last-write-wins", async () => {
-      if (skipSuite) {
+      if (ctx.skipSuite) {
         return;
       }
       const fragmentPath = "conflict.cue";
       const clientCount = 10;
 
       // Create simultaneous write operations
-      const writePromises = [];
-      const expectedContent = [];
+      const writePromises: Promise<FragmentTimingResult>[] = [];
 
       for (let i = 0; i < clientCount; i++) {
         const content = `package spec\n\nclient${i}_data: {\n\tvalue: ${i}\n\ttimestamp: "${new Date().toISOString()}"\n}`;
-        expectedContent.push({ clientId: i, content });
-
-        const promise = createFragmentWithTiming(
-          testProjectId,
-          fragmentPath,
-          content,
-          Math.random() * 100, // Random delay 0-100ms
+        writePromises.push(
+          createFragment(testProjectId, fragmentPath, content, Math.random() * 100),
         );
-        writePromises.push(promise);
       }
 
       const results = await Promise.all(writePromises);
@@ -160,21 +82,18 @@ describe("Concurrency and Race Condition Tests", () => {
       });
 
       // Wait for all operations to settle
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await delay(500);
 
       // Get final state
-      const resolvedSpec = await getResolvedSpec(testProjectId);
+      const resolvedSpec = await getResolved(testProjectId);
       expect(resolvedSpec).not.toBeNull();
 
       // Find which client won (should be deterministic based on timestamp)
-      const latestResult = results.reduce((latest, current) =>
-        current.timestamp > latest.timestamp ? current : latest,
-      );
-
-      // Verify last-write-wins behavior
-      const resolvedContent = JSON.stringify(resolvedSpec.resolved);
+      const latestResult = findLatestResult(results);
       const winningClientIndex = results.indexOf(latestResult);
 
+      // Verify last-write-wins behavior
+      const resolvedContent = JSON.stringify(resolvedSpec!.resolved);
       expect(resolvedContent).toContain(`client${winningClientIndex}_data`);
 
       console.log(
@@ -183,10 +102,10 @@ describe("Concurrency and Race Condition Tests", () => {
     });
 
     it("should prevent partial state corruption during concurrent validation", async () => {
-      if (skipSuite) {
+      if (ctx.skipSuite) {
         console.warn(
           "[ConcurrencyTest] Skipping validation race test due to startup failure",
-          startupError,
+          ctx.startupError,
         );
         return;
       }
@@ -194,51 +113,37 @@ describe("Concurrency and Race Condition Tests", () => {
       const validationCount = 3;
 
       // Create base fragments
-      const fragmentPromises = [];
-      for (let i = 0; i < fragmentCount; i++) {
-        const promise = createFragmentWithTiming(
-          testProjectId,
-          `base_${i}.cue`,
-          `package spec\n\nbase${i}: {\n\tid: "${i}"\n\tvalue: ${i * 10}\n}`,
-        );
-        fragmentPromises.push(promise);
-      }
-
-      await Promise.all(fragmentPromises);
+      const baseFragments = Array.from({ length: fragmentCount }, (_, i) => ({
+        path: `base_${i}.cue`,
+        content: generateCueContent(`base${i}`, { id: `${i}`, value: i * 10 }),
+      }));
+      await createFragmentsConcurrently(ctx.baseUrl, testProjectId, baseFragments);
 
       // Trigger simultaneous validations while adding more fragments
-      const concurrentOperations = [];
+      const concurrentOperations: Promise<Response | FragmentTimingResult>[] = [];
 
       // Validation operations
       for (let i = 0; i < validationCount; i++) {
-        const validationPromise = fetch(`${baseUrl}/api/validate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ project_id: testProjectId }),
-        });
-        concurrentOperations.push(validationPromise);
+        concurrentOperations.push(validate(testProjectId).then((r) => r.response));
       }
 
       // Fragment additions during validation
       for (let i = 0; i < 3; i++) {
-        const addPromise = createFragmentWithTiming(
-          testProjectId,
-          `concurrent_${i}.cue`,
-          `package spec\n\nconcurrent${i}: {\n\tadded_during_validation: true\n}`,
-          50 * i, // Staggered timing
+        concurrentOperations.push(
+          createFragment(
+            testProjectId,
+            `concurrent_${i}.cue`,
+            generateCueContent(`concurrent${i}`, { added_during_validation: true }),
+            50 * i,
+          ),
         );
-        concurrentOperations.push(addPromise);
       }
 
       const results = await Promise.all(concurrentOperations);
 
       // All validations should either succeed or fail cleanly (no partial states)
       for (let i = 0; i < validationCount; i++) {
-        const operationResult = results[i];
-        // The first validationCount results are validation responses (plain Response objects)
-        // The remaining results are fragment creation responses (objects with response property)
-        const response =
-          operationResult instanceof Response ? operationResult : (operationResult as any).response;
+        const response = extractResponse(results[i] as Response | FragmentTimingResult);
         expect(response.status).toBe(200);
 
         const validationResult = await response.json();
@@ -250,7 +155,6 @@ describe("Concurrency and Race Condition Tests", () => {
           expect(validationResult.spec_hash.length).toBeGreaterThan(0);
           expect(validationResult.resolved).toBeDefined();
         } else {
-          // Failed validations may have empty or "invalid" spec_hash
           expect(["", "invalid"].includes(validationResult.spec_hash)).toBe(true);
           expect(validationResult.errors.length).toBeGreaterThan(0);
         }
@@ -260,47 +164,43 @@ describe("Concurrency and Race Condition Tests", () => {
     });
 
     it.skip("[STRESS TEST] should maintain fragment integrity under high concurrent load", async () => {
-      if (skipSuite) {
+      if (ctx.skipSuite) {
         return;
       }
       const clientCount = 20;
       const fragmentsPerClient = 5;
+      const expectedFragments = new Set<string>();
 
-      const allOperations = [];
-      const expectedFragments = new Set();
-
-      // Each client creates multiple fragments
+      // Build fragment definitions
+      const fragmentDefs = [];
       for (let client = 0; client < clientCount; client++) {
         for (let fragment = 0; fragment < fragmentsPerClient; fragment++) {
           const path = `client_${client}_fragment_${fragment}.cue`;
-          const content = `package spec\n\nclient${client}_fragment${fragment}: {\n\tclient_id: "${client}"\n\tfragment_id: "${fragment}"\n\tvalue: ${client * 1000 + fragment}\n}`;
-
           expectedFragments.add(path);
-
-          const promise = createFragmentWithTiming(
-            testProjectId,
+          fragmentDefs.push({
             path,
-            content,
-            Math.random() * 200, // Random delay 0-200ms
-          );
-          allOperations.push(promise);
+            content: generateCueContent(`client${client}_fragment${fragment}`, {
+              client_id: `${client}`,
+              fragment_id: `${fragment}`,
+              value: client * 1000 + fragment,
+            }),
+            delayMs: Math.random() * 200,
+          });
         }
       }
 
       const start = Date.now();
-      const results = await Promise.all(allOperations);
+      const results = await createFragmentsConcurrently(ctx.baseUrl, testProjectId, fragmentDefs);
       const totalDuration = Date.now() - start;
 
       // All operations should succeed
-      results.forEach(({ response }, _index) => {
+      results.forEach(({ response }) => {
         expect(response.status).toBe(201);
       });
 
       // Verify all fragments are accessible
-      const fragmentsResponse = await fetch(`${baseUrl}/api/fragments?project_id=${testProjectId}`);
+      const { response: fragmentsResponse, fragments } = await getFragments(testProjectId);
       expect(fragmentsResponse.status).toBe(200);
-
-      const fragments = await fragmentsResponse.json();
       expect(fragments.length).toBe(clientCount * fragmentsPerClient);
 
       // Verify no duplicates or corruption
@@ -325,46 +225,25 @@ describe("Concurrency and Race Condition Tests", () => {
     });
 
     it("should handle concurrent database operations without deadlocks", async () => {
-      if (skipSuite) {
+      if (ctx.skipSuite) {
         console.warn(
           "[ConcurrencyTest] Skipping database concurrency test due to startup failure",
-          startupError,
+          ctx.startupError,
         );
         return;
       }
       const operationCount = 15;
-      const operations = [];
 
-      // Mix of different database operations
-      for (let i = 0; i < operationCount; i++) {
-        const operationType = i % 3;
-
-        switch (operationType) {
-          case 0: // Create fragment
-            operations.push(
-              createFragmentWithTiming(
-                testProjectId,
-                `db_test_${i}.cue`,
-                `package spec\n\ndb_test${i}: ${i}`,
-              ),
-            );
-            break;
-
-          case 1: // Validate project (reads + computation)
-            operations.push(
-              fetch(`${baseUrl}/api/validate`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ project_id: testProjectId }),
-              }),
-            );
-            break;
-
-          case 2: // List fragments (read operation)
-            operations.push(fetch(`${baseUrl}/api/fragments?project_id=${testProjectId}`));
-            break;
-        }
-      }
+      // Mix of different database operations using helper
+      const operations = Array.from({ length: operationCount }, (_, i) =>
+        generateDbOperation(
+          i,
+          () =>
+            createFragment(testProjectId, `db_test_${i}.cue`, `package spec\n\ndb_test${i}: ${i}`),
+          () => validate(testProjectId),
+          () => getFragments(testProjectId),
+        ),
+      );
 
       const start = Date.now();
       const results = await Promise.all(operations);
@@ -372,7 +251,7 @@ describe("Concurrency and Race Condition Tests", () => {
 
       // No operation should fail due to deadlock or timeout
       results.forEach((result, index) => {
-        const response = "response" in result ? result.response : result;
+        const response = extractResponse(result as Response | FragmentTimingResult);
         expect(response.status).toBeLessThan(500); // No server errors
 
         if (response.status >= 400) {
@@ -388,26 +267,23 @@ describe("Concurrency and Race Condition Tests", () => {
 
     it.skip("[STRESS TEST] should maintain referential integrity during concurrent fragment operations", async () => {
       // Create base fragment that others will reference
-      await createFragmentWithTiming(
+      await createFragment(
         testProjectId,
         "base.cue",
         `package spec\n\nbase_config: {\n\tapi_version: "v1"\n\tbase_url: "https://api.example.com"\n}`,
       );
 
       const referenceCount = 10;
-      const referenceOperations = [];
+      const referenceFragments = Array.from({ length: referenceCount }, (_, i) => ({
+        path: `reference_${i}.cue`,
+        content: `package spec\n\nservice${i}: {\n\tname: "service_${i}"\n\tapi_version: base_config.api_version\n\tbase_url: base_config.base_url\n}`,
+      }));
 
-      // Create fragments that reference the base fragment
-      for (let i = 0; i < referenceCount; i++) {
-        const operation = createFragmentWithTiming(
-          testProjectId,
-          `reference_${i}.cue`,
-          `package spec\n\nservice${i}: {\n\tname: "service_${i}"\n\tapi_version: base_config.api_version\n\tbase_url: base_config.base_url\n}`,
-        );
-        referenceOperations.push(operation);
-      }
-
-      const results = await Promise.all(referenceOperations);
+      const results = await createFragmentsConcurrently(
+        ctx.baseUrl,
+        testProjectId,
+        referenceFragments,
+      );
 
       // All reference creations should succeed
       results.forEach(({ response }) => {
@@ -415,22 +291,16 @@ describe("Concurrency and Race Condition Tests", () => {
       });
 
       // Validate the complete project
-      const validationResponse = await fetch(`${baseUrl}/api/validate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: testProjectId }),
-      });
-
+      const { response: validationResponse, result } = await validate(testProjectId);
       expect(validationResponse.status).toBe(200);
-      const result = await validationResponse.json();
       expect(result.success).toBe(true);
 
       // Verify all references resolved correctly
-      const resolvedSpec = await getResolvedSpec(testProjectId);
+      const resolvedSpec = await getResolved(testProjectId);
       expect(resolvedSpec).not.toBeNull();
 
       for (let i = 0; i < referenceCount; i++) {
-        const service = resolvedSpec.resolved[`service${i}`];
+        const service = (resolvedSpec!.resolved as Record<string, any>)[`service${i}`];
         expect(service).toBeDefined();
         expect(service.api_version).toBe("v1");
         expect(service.base_url).toBe("https://api.example.com");
@@ -451,70 +321,53 @@ describe("Concurrency and Race Condition Tests", () => {
 
     it.skip("[STRESS TEST] should handle concurrent fragment updates during active validation", async () => {
       // Create initial fragment set
-      const initialFragments = [];
-      for (let i = 0; i < 5; i++) {
-        initialFragments.push(
-          createFragmentWithTiming(
-            testProjectId,
-            `initial_${i}.cue`,
-            `package spec\n\ninitial${i}: {\n\tid: ${i}\n\tstatus: "initial"\n}`,
+      const initialFragments = Array.from({ length: 5 }, (_, i) => ({
+        path: `initial_${i}.cue`,
+        content: generateCueContent(`initial${i}`, { id: i, status: "initial" }),
+      }));
+      await createFragmentsConcurrently(ctx.baseUrl, testProjectId, initialFragments);
+
+      // Start validation (this will take some time)
+      const validationPromise = validate(testProjectId);
+
+      // While validation is running, modify fragments with staggered timing
+      const updatePromises: Promise<FragmentTimingResult>[] = [];
+      for (let i = 0; i < 3; i++) {
+        updatePromises.push(
+          delay(50 + i * 30).then(() =>
+            createFragment(
+              testProjectId,
+              `initial_${i}.cue`,
+              generateCueContent(`initial${i}`, {
+                id: i,
+                status: "updated_during_validation",
+                timestamp: `${Date.now()}`,
+              }),
+            ),
           ),
         );
       }
 
-      await Promise.all(initialFragments);
-
-      // Start validation (this will take some time)
-      const validationPromise = fetch(`${baseUrl}/api/validate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: testProjectId }),
-      });
-
-      // While validation is running, modify fragments
-      const updatePromises = [];
-      for (let i = 0; i < 3; i++) {
-        // Wait a bit then update
-        const updatePromise = new Promise((resolve) => {
-          setTimeout(
-            async () => {
-              const result = await createFragmentWithTiming(
-                testProjectId,
-                `initial_${i}.cue`,
-                `package spec\n\ninitial${i}: {\n\tid: ${i}\n\tstatus: "updated_during_validation"\n\ttimestamp: "${Date.now()}"\n}`,
-              );
-              resolve(result);
-            },
-            50 + i * 30,
-          ); // Staggered updates
-        });
-        updatePromises.push(updatePromise);
-      }
-
       // Wait for both validation and updates
-      const [validationResponse, ...updateResults] = await Promise.all([
+      const [validationData, ...updateResults] = await Promise.all([
         validationPromise,
         ...updatePromises,
       ]);
 
       // Validation should complete successfully
-      expect(validationResponse.status).toBe(200);
-      const validationResult = await validationResponse.json();
+      expect(validationData.response.status).toBe(200);
+      const validationResult = validationData.result;
 
       // Updates should all succeed
-      updateResults.forEach((result: any) => {
+      updateResults.forEach((result) => {
         expect(result.response.status).toBe(201);
       });
 
       // Run another validation to see final state
-      const finalValidationResponse = await fetch(`${baseUrl}/api/validate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: testProjectId }),
-      });
+      const { response: finalValidationResponse, result: finalResult } =
+        await validate(testProjectId);
 
       expect(finalValidationResponse.status).toBe(200);
-      const finalResult = await finalValidationResponse.json();
 
       // The validation might succeed or fail depending on the current state,
       // but it should return a valid response without corruption
@@ -554,40 +407,24 @@ capabilities: {
 }`;
 
       // Create fragments in parallel
-      const fragmentPromises = [];
-      for (let i = 0; i < 3; i++) {
-        fragmentPromises.push(
-          createFragmentWithTiming(testProjectId, `content_${i}.cue`, baseContent),
-        );
-      }
-
-      await Promise.all(fragmentPromises);
+      const fragments = Array.from({ length: 3 }, (_, i) => ({
+        path: `content_${i}.cue`,
+        content: baseContent,
+      }));
+      await createFragmentsConcurrently(ctx.baseUrl, testProjectId, fragments);
 
       // Run multiple validations simultaneously
-      const validationPromises = [];
-      for (let i = 0; i < 5; i++) {
-        validationPromises.push(
-          fetch(`${baseUrl}/api/validate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ project_id: testProjectId }),
-          }),
-        );
-      }
-
-      const validationResponses = await Promise.all(validationPromises);
-      const validationResults = await Promise.all(
-        validationResponses.map((response) => response.json()),
-      );
+      const validationPromises = Array.from({ length: 5 }, () => validate(testProjectId));
+      const validationResults = await Promise.all(validationPromises);
 
       // All validations should succeed
-      validationResults.forEach((result) => {
+      validationResults.forEach(({ result }) => {
         expect(result.success).toBe(true);
         expect(result.spec_hash.length).toBeGreaterThan(0);
       });
 
       // All spec hashes should be identical (deterministic)
-      const hashes = validationResults.map((r) => r.spec_hash);
+      const hashes = validationResults.map((r) => r.result.spec_hash);
       const uniqueHashes = new Set(hashes);
       expect(uniqueHashes.size).toBe(1);
 
@@ -606,56 +443,17 @@ capabilities: {
 
     it.skip("should gracefully handle resource exhaustion scenarios", async () => {
       const heavyLoadCount = 50;
-      const operations = [];
 
-      // Create operations that stress different resources
-      for (let i = 0; i < heavyLoadCount; i++) {
-        // Alternate between different resource-intensive operations
-        const operationType = i % 4;
-
-        switch (operationType) {
-          case 0: // CPU-intensive validation
-            operations.push(
-              createFragmentWithTiming(
-                testProjectId,
-                `heavy_${i}.cue`,
-                `package spec\n\n// Complex nested structure\nheavy${i}: {\n\tfor i, v in list.Range(0, 100, 1) {\n\t\t"item_\\(i)": {\n\t\t\tid: i\n\t\t\tvalue: v * 2\n\t\t\tvalidation: string & =~"^[a-z]+$"\n\t\t}\n\t}\n}`,
-              ),
-            );
-            break;
-
-          case 1: {
-            // Memory-intensive content
-            const largeContent = `package spec\n\nlarge_data${i}: {\n${Array.from(
-              { length: 200 },
-              (_, j) => `\tfield_${j}: "large_string_value_${"x".repeat(50)}_${j}"`,
-            ).join("\n")}\n}`;
-            operations.push(
-              createFragmentWithTiming(testProjectId, `large_${i}.cue`, largeContent),
-            );
-            break;
-          }
-
-          case 2: // Validation operation
-            operations.push(
-              fetch(`${baseUrl}/api/validate`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ project_id: testProjectId }),
-              }),
-            );
-            break;
-
-          case 3: // IR generation (if fragments exist)
-            if (i > 5) {
-              // Only after some fragments exist
-              operations.push(
-                fetch(`${baseUrl}/api/ir?project_id=${testProjectId}&type=capabilities`),
-              );
-            }
-            break;
-        }
-      }
+      // Create operations that stress different resources using helper
+      const operations = Array.from({ length: heavyLoadCount }, (_, i) =>
+        generateResourceOperation(
+          i,
+          ctx.baseUrl,
+          testProjectId,
+          (path, content) => createFragment(testProjectId, path, content),
+          () => validate(testProjectId),
+        ),
+      ).filter((op): op is Promise<Response | FragmentTimingResult> => op !== null);
 
       const start = Date.now();
       const results = await Promise.allSettled(operations);
@@ -663,7 +461,6 @@ capabilities: {
 
       // Analyze results
       const successful = results.filter((r) => r.status === "fulfilled").length;
-      const _failed = results.filter((r) => r.status === "rejected").length;
 
       // Should handle most operations (some may fail due to resource limits)
       const successRate = successful / results.length;
@@ -677,7 +474,7 @@ capabilities: {
       );
 
       // System should recover - try a simple operation
-      const recoveryTest = await createFragmentWithTiming(
+      const recoveryTest = await createFragment(
         testProjectId,
         "recovery_test.cue",
         "package spec\n\nrecovery: true",

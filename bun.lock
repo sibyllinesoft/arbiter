@@ -6,6 +6,7 @@
       "name": "spec-workbench-backend",
       "dependencies": {
         "@headlessui/react": "^2.2.7",
+        "@hono/zod-validator": "^0.7.5",
         "@modelcontextprotocol/sdk": "^1.18.1",
         "@octokit/rest": "^22.0.0",
         "fs-extra": "^11.3.2",
@@ -187,6 +188,9 @@
     "packages/cue-runner": {
       "name": "@arbiter/cue-runner",
       "version": "0.1.0",
+      "dependencies": {
+        "cuelang-js": "^1.3.1",
+      },
       "devDependencies": {
         "@types/node": "^20.11.0",
         "bun-types": "^1.2.21",
@@ -483,6 +487,8 @@
     "@headlessui/react": ["@headlessui/react@2.2.7", "", { "dependencies": { "@floating-ui/react": "^0.26.16", "@react-aria/focus": "^3.20.2", "@react-aria/interactions": "^3.25.0", "@tanstack/react-virtual": "^3.13.9", "use-sync-external-store": "^1.5.0" }, "peerDependencies": { "react": "^18 || ^19 || ^19.0.0-rc", "react-dom": "^18 || ^19 || ^19.0.0-rc" } }, "sha512-WKdTymY8Y49H8/gUc/lIyYK1M+/6dq0Iywh4zTZVAaiTDprRfioxSgD0wnXTQTBpjpGJuTL1NO/mqEvc//5SSg=="],
 
     "@hono/mcp": ["@hono/mcp@0.1.4", "", { "peerDependencies": { "@modelcontextprotocol/sdk": "^1.12.0", "hono": ">=4.0.0" } }, "sha512-OOMZCXaCcKw6MZoXJH1caO1FAPjJoTKRVstgzRVE8GJ/LMXvm/3OTynZYex0b5NYdMQRemd+FUjdCcYkH1pxMQ=="],
+
+    "@hono/zod-validator": ["@hono/zod-validator@0.7.5", "", { "peerDependencies": { "hono": ">=3.9.0", "zod": "^3.25.0 || ^4.0.0" } }, "sha512-n4l4hutkfYU07PzRUHBOVzUEn38VSfrh+UVE5d0w4lyfWDOEhzxIupqo5iakRiJL44c3vTuFJBvcmUl8b9agIA=="],
 
     "@hpcc-js/wasm": ["@hpcc-js/wasm@2.26.2", "", { "dependencies": { "yargs": "18.0.0" }, "bin": { "dot-wasm": "./deprecated/dot-wasm.js" } }, "sha512-AuAKiLDo/AAQ365LNS8PQ+MIRXvwI5P7C1x8nHgzCcVbRvDLR2Wfuvqd1sR3FwgsTIEetvY6wvDxWtnFbBsTuQ=="],
 

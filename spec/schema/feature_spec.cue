@@ -1,11 +1,12 @@
-\
     package schema
+
+    import "list"
 
     #FeatureSpec: {
       feature: {
         id: "quick-approve" | #Slug // id must be a slug; example provided
         title: #Human
-        owners: [...#Email] & minItems(1)
+        owners: [...#Email] & list.MinItems(1)
         state?: "experimental" | "beta" | "ga"
         scope?: {
           routes?:   [...#RouteID]

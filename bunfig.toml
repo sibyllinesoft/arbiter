@@ -1,3 +1,7 @@
+[alias]
+# Shims memfs to avoid Bun bundler CJS transform issues when compiling standalone CLI
+memfs = "./packages/cli/src/shims/memfs.ts"
+
 [test]
 # Exclude compiled / generated output from coverage
 coveragePathIgnorePatterns = [

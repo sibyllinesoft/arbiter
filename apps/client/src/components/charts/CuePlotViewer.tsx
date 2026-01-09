@@ -1,8 +1,13 @@
+/**
+ * CUE Plot Viewer component for rendering charts from CUE specifications.
+ * Parses plot definitions from CUE exports and renders them with D3/Chart.js.
+ */
 import { BarChart3, LineChart, PieChart, TrendingUp, Zap } from "lucide-react";
 import React, { useState, useMemo } from "react";
-import { DataViewer } from "../diagrams/DataViewer";
+import { DataViewer } from "../diagrams/viewers/DataViewer";
 import { Chart, type ChartData } from "./Chart";
 
+/** Props for the CuePlotViewer component */
 interface CuePlotViewerProps {
   /** JSON data exported from CUE containing plot definitions */
   plotData: Record<string, any>;
@@ -14,6 +19,7 @@ interface CuePlotViewerProps {
   mode?: "plots" | "raw" | "split";
 }
 
+/** Internal representation of a parsed plot definition */
 interface ParsedPlot {
   name: string;
   title: string;
@@ -22,6 +28,112 @@ interface ParsedPlot {
   rawData: any;
 }
 
+/** Build a dataset object from raw dataset data */
+function buildDataset(dataset: any, chartType: string) {
+  return {
+    label: dataset.label || "Data",
+    data: dataset.data || [],
+    backgroundColor: dataset.backgroundColor || "#3b82f6",
+    borderColor: dataset.borderColor || "#2563eb",
+    fill: dataset.fill !== undefined ? dataset.fill : chartType === "area",
+    borderWidth: dataset.borderWidth || 2,
+  };
+}
+
+/** Build chart options with scales configuration */
+function buildChartOptions(plotJson: any, chartType: string) {
+  return {
+    responsive: true,
+    ...plotJson.options,
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: chartType === "scatter" ? "X Values" : "Categories",
+        },
+        ...plotJson.options?.scales?.x,
+      },
+      y: {
+        title: {
+          display: true,
+          text: "Values",
+        },
+        ...plotJson.options?.scales?.y,
+      },
+      ...plotJson.options?.scales,
+    },
+  };
+}
+
+/** Convert a CUE JSON plot definition to internal chart format */
+function createPlotFromJson(plotName: string, plotJson: any): ParsedPlot | null {
+  try {
+    const title = plotJson.title || plotName;
+    const type = plotJson.type || "line";
+
+    if (!plotJson.data || !plotJson.data.datasets) {
+      console.warn(`Plot ${plotName} missing required data.datasets field`);
+      return null;
+    }
+
+    const chartData: ChartData = {
+      title,
+      type,
+      data: {
+        labels: plotJson.data.labels || [],
+        datasets: plotJson.data.datasets.map((dataset: any) => buildDataset(dataset, type)),
+      },
+      options: buildChartOptions(plotJson, type),
+    };
+
+    return { name: plotName, title, type, chartData, rawData: plotJson };
+  } catch (err) {
+    console.error(`Error creating plot ${plotName}:`, err);
+    return null;
+  }
+}
+
+/** Get the appropriate icon component for a chart type */
+function getPlotIcon(type: string) {
+  switch (type) {
+    case "line":
+      return <LineChart className="w-4 h-4" />;
+    case "bar":
+      return <BarChart3 className="w-4 h-4" />;
+    case "scatter":
+      return <Zap className="w-4 h-4" />;
+    case "pie":
+      return <PieChart className="w-4 h-4" />;
+    case "area":
+      return <TrendingUp className="w-4 h-4" />;
+    default:
+      return <LineChart className="w-4 h-4" />;
+  }
+}
+
+/** Check if a value looks like a chart definition */
+function isChartDefinition(value: any): boolean {
+  return typeof value === "object" && value !== null && "type" in value && "data" in value;
+}
+
+/** Parse all plots from the plot data */
+function parsePlots(plotData: Record<string, any>): ParsedPlot[] {
+  const plots: ParsedPlot[] = [];
+  Object.entries(plotData).forEach(([key, value]) => {
+    if (isChartDefinition(value)) {
+      const plot = createPlotFromJson(key, value);
+      if (plot) {
+        plots.push(plot);
+      }
+    }
+  });
+  return plots;
+}
+
+/**
+ * Component that renders charts from CUE plot specifications.
+ * Supports line, bar, scatter, pie, and area chart types.
+ */
 export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
   plotData,
   projectId,
@@ -35,19 +147,7 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
   const parsedPlots = useMemo(() => {
     try {
       setError(null);
-      const plots: ParsedPlot[] = [];
-
-      // Look for objects that have chart-like structure (type, data, etc.)
-      Object.entries(plotData).forEach(([key, value]) => {
-        if (typeof value === "object" && value !== null && "type" in value && "data" in value) {
-          const plot = createPlotFromJson(key, value);
-          if (plot) {
-            plots.push(plot);
-          }
-        }
-      });
-
-      return plots;
+      return parsePlots(plotData);
     } catch (err) {
       setError(`Failed to parse plot data: ${err}`);
       return [];
@@ -65,85 +165,6 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
   }, [parsedPlots, selectedPlot]);
 
   const selectedPlotData = parsedPlots.find((plot) => plot.name === selectedPlot);
-
-  function createPlotFromJson(plotName: string, plotJson: any): ParsedPlot | null {
-    try {
-      const title = plotJson.title || plotName;
-      const type = plotJson.type || "line";
-
-      // Validate required fields
-      if (!plotJson.data || !plotJson.data.datasets) {
-        console.warn(`Plot ${plotName} missing required data.datasets field`);
-        return null;
-      }
-
-      // Convert CUE JSON structure to Chart.js compatible format
-      const chartData: ChartData = {
-        title,
-        type,
-        data: {
-          labels: plotJson.data.labels || [],
-          datasets: plotJson.data.datasets.map((dataset: any) => ({
-            label: dataset.label || "Data",
-            data: dataset.data || [],
-            backgroundColor: dataset.backgroundColor || "#3b82f6",
-            borderColor: dataset.borderColor || "#2563eb",
-            fill: dataset.fill !== undefined ? dataset.fill : type === "area",
-            borderWidth: dataset.borderWidth || 2,
-          })),
-        },
-        options: {
-          responsive: true,
-          ...plotJson.options,
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: type === "scatter" ? "X Values" : "Categories",
-              },
-              ...plotJson.options?.scales?.x,
-            },
-            y: {
-              title: {
-                display: true,
-                text: "Values",
-              },
-              ...plotJson.options?.scales?.y,
-            },
-            ...plotJson.options?.scales,
-          },
-        },
-      };
-
-      return {
-        name: plotName,
-        title,
-        type,
-        chartData,
-        rawData: plotJson,
-      };
-    } catch (err) {
-      console.error(`Error creating plot ${plotName}:`, err);
-      return null;
-    }
-  }
-
-  const getPlotIcon = (type: string) => {
-    switch (type) {
-      case "line":
-        return <LineChart className="w-4 h-4" />;
-      case "bar":
-        return <BarChart3 className="w-4 h-4" />;
-      case "scatter":
-        return <Zap className="w-4 h-4" />;
-      case "pie":
-        return <PieChart className="w-4 h-4" />;
-      case "area":
-        return <TrendingUp className="w-4 h-4" />;
-      default:
-        return <LineChart className="w-4 h-4" />;
-    }
-  };
 
   if (error) {
     return (

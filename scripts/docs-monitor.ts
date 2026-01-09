@@ -125,7 +125,7 @@ export async function main(): Promise<void> {
     .name("docs-monitor")
     .description("Documentation monitoring and maintenance system")
     .version("1.0.0")
-    .option("-c, --config <path>", "configuration file path", "./docs-config.yaml")
+    .option("-c, --config <path>", "configuration file path", "./docs/config/docs-config.yaml")
     .option("--check-freshness", "check documentation freshness")
     .option("--check-links", "validate all links")
     .option("--check-quality", "assess documentation quality")
@@ -150,7 +150,7 @@ export async function main(): Promise<void> {
   program
     .command("health")
     .description("quick health check of documentation")
-    .option("-c, --config <path>", "configuration file path", "./docs-config.yaml")
+    .option("-c, --config <path>", "configuration file path", "./docs/config/docs-config.yaml")
     .action(async (options) => {
       try {
         const report = await generateHealthReport(options.config);
@@ -164,7 +164,7 @@ export async function main(): Promise<void> {
   program
     .command("fix")
     .description("automatically fix common documentation issues")
-    .option("-c, --config <path>", "configuration file path", "./docs-config.yaml")
+    .option("-c, --config <path>", "configuration file path", "./docs/config/docs-config.yaml")
     .option("--dry-run", "preview fixes without applying")
     .option("-v, --verbose", "verbose output")
     .action(async (options) => {
@@ -180,7 +180,7 @@ export async function main(): Promise<void> {
   program
     .command("alert")
     .description("send alerts based on current health status")
-    .option("-c, --config <path>", "configuration file path", "./docs-config.yaml")
+    .option("-c, --config <path>", "configuration file path", "./docs/config/docs-config.yaml")
     .option("--force", "send alerts regardless of thresholds")
     .action(async (options) => {
       try {

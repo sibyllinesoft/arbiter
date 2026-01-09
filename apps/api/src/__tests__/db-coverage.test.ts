@@ -2,8 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
-import { SpecWorkbenchDB } from "../db";
-import type { ServerConfig } from "../types";
+import { SpecWorkbenchDB } from "../util/db";
+import type { ServerConfig } from "../util/types";
 
 const TEST_DIR = path.join(tmpdir(), `arbiter-db-coverage-test-${Date.now()}`);
 const TEST_DB_PATH = path.join(TEST_DIR, "coverage.db");
@@ -21,11 +21,6 @@ describe("Database Coverage Tests", () => {
       spec_workdir: TEST_DIR,
       jq_binary_path: "jq",
       auth_required: false,
-      rate_limit: {
-        max_tokens: 100,
-        refill_rate: 10,
-        window_ms: 60000,
-      },
       external_tool_timeout_ms: 5000,
       websocket: {
         max_connections: 10,
@@ -319,7 +314,6 @@ describe("Database Coverage Tests", () => {
         spec_workdir: TEST_DIR,
         jq_binary_path: "jq",
         auth_required: false,
-        rate_limit: { max_tokens: 100, refill_rate: 10, window_ms: 60000 },
         external_tool_timeout_ms: 5000,
         websocket: { max_connections: 10, ping_interval_ms: 30000 },
       };
@@ -336,7 +330,6 @@ describe("Database Coverage Tests", () => {
         spec_workdir: TEST_DIR,
         jq_binary_path: "jq",
         auth_required: false,
-        rate_limit: { max_tokens: 100, refill_rate: 10, window_ms: 60000 },
         external_tool_timeout_ms: 5000,
         websocket: { max_connections: 10, ping_interval_ms: 30000 },
       };

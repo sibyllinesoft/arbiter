@@ -1,7 +1,8 @@
+/** @packageDocumentation Constraint system tests */
 import { EventEmitter } from "node:events";
 import { __cliIntegrationTesting } from "@/constraints/cli-integration.js";
-import { ConstraintViolationError } from "@/constraints/core.js";
-import { globalConstraintMonitor } from "@/constraints/monitoring.js";
+import { ConstraintViolationError } from "@/constraints/core/core.js";
+import { globalConstraintMonitor } from "@/constraints/core/monitoring.js";
 import { createCUEManipulator } from "@/cue/index.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

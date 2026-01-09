@@ -1,3 +1,8 @@
+/**
+ * @module ClientsReport
+ * Component for displaying and managing client entities in a project.
+ * Provides CRUD operations for clients and their associated views.
+ */
 import { useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { Layout } from "lucide-react";
@@ -6,27 +11,87 @@ import { toast } from "react-toastify";
 
 import { useTabBadgeUpdater } from "@/contexts/TabBadgeContext";
 import { Button } from "@/design-system";
-import {
-  createExternalArtifactCard,
-  isManualClient,
-  normalizeClient,
-} from "@/features/spec/transformers/clients";
-import { coerceDisplayValue, slugify } from "@/features/spec/utils/clients";
+import { slugify } from "@/features/spec/utils/clients";
 import { useCatalog } from "@/hooks/useCatalog";
 import { apiService } from "@/services/api";
 import type { ResolvedSpecResponse } from "@/types/api";
-import ArtifactCard from "../ArtifactCard";
+import ArtifactCard from "../core/ArtifactCard";
 import AddEntityModal from "../modals/AddEntityModal";
-import {
-  DEFAULT_UI_OPTION_CATALOG,
-  type FieldValue,
-  type UiOptionCatalog,
-} from "../modals/entityTypes";
+import { type FieldValue, type UiOptionCatalog } from "../modals/entityTypes";
 import { ClientCard } from "./components/ClientCard";
-import type { ClientsReportProps, NormalizedClient, NormalizedClientView } from "./types";
+import type { ClientsReportProps, NormalizedClient } from "./types";
+import { extractClients } from "./utils/extractClients";
 
+/** No-op function for default handlers */
 const noop = () => {};
 
+/** Toast configuration for success messages */
+const TOAST_SUCCESS_CONFIG = {
+  icon: false,
+  className: "graphite-toast-success",
+  progressClassName: "graphite-toast-progress-success",
+} as const;
+
+/** Toast configuration for error messages */
+const TOAST_ERROR_CONFIG = {
+  className: "graphite-toast-error",
+  progressClassName: "graphite-toast-progress-error",
+} as const;
+
+/** Extract name value from form values */
+function extractNameValue(values: Record<string, FieldValue>, fallback: string): string {
+  const name = values.name;
+  return typeof name === "string" && name.trim().length > 0 ? name.trim() : fallback;
+}
+
+/** Create normalized values with identifiers */
+function buildValuesWithIdentifiers(
+  values: Record<string, FieldValue>,
+  identifier: string,
+): Record<string, unknown> {
+  const valuesWithIds: Record<string, FieldValue> = {
+    ...values,
+    id: identifier,
+    slug: identifier,
+  };
+  return Object.fromEntries(
+    Object.entries(valuesWithIds).map(([key, value]) => [key, value as unknown]),
+  );
+}
+
+/** Extract path value from form values */
+function extractPathValue(values: Record<string, FieldValue>, fallback: string): string {
+  const path = values.path;
+  return typeof path === "string" && path.trim().length > 0 ? path.trim() : fallback;
+}
+
+/** Build view values with client context */
+function buildViewValuesWithContext(
+  values: Record<string, FieldValue>,
+  identifier: string,
+  client: NormalizedClient,
+): Record<string, unknown> {
+  const valuesWithContext: Record<string, FieldValue> = {
+    ...values,
+    id: identifier,
+    slug: identifier,
+    clientId: client.identifier,
+    clientIdentifier: client.identifier,
+    clientName: client.displayName ?? client.identifier,
+    clientSlug: slugify(client.identifier),
+  };
+  return Object.fromEntries(
+    Object.entries(valuesWithContext).map(([key, value]) => [key, value as unknown]),
+  );
+}
+
+/**
+ * ClientsReport displays a list of client applications with their views.
+ * Supports creating new clients and adding views to existing clients.
+ * @param props - Component props
+ * @param props.projectId - ID of the current project
+ * @param props.className - Optional CSS class name
+ */
 export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) => {
   const catalog = useCatalog<ResolvedSpecResponse>(projectId);
   const { data, isLoading, isError, error } = catalog;
@@ -64,25 +129,14 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
 
   const handleSubmitAddClient = useCallback(
     async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
-      if (!projectId || isCreatingClient) {
-        return;
-      }
+      if (!projectId || isCreatingClient) return;
 
+      setIsCreatingClient(true);
       try {
-        setIsCreatingClient(true);
-        const nameValue =
-          typeof payload.values.name === "string" && payload.values.name.trim().length > 0
-            ? payload.values.name.trim()
-            : "";
-        const draftIdentifier = slugify(nameValue || `frontend-${Date.now()}`);
-        const valuesWithIdentifiers: Record<string, FieldValue> = {
-          ...payload.values,
-          id: draftIdentifier,
-          slug: draftIdentifier,
-        };
-        const normalizedValues = Object.fromEntries(
-          Object.entries(valuesWithIdentifiers).map(([key, value]) => [key, value as unknown]),
-        );
+        const nameValue = extractNameValue(payload.values, `frontend-${Date.now()}`);
+        const draftIdentifier = slugify(nameValue);
+        const normalizedValues = buildValuesWithIdentifiers(payload.values, draftIdentifier);
+
         await apiService.createProjectEntity(projectId, {
           type: payload.entityType,
           values: normalizedValues,
@@ -90,20 +144,13 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
         await refreshResolved();
         await queryClient.invalidateQueries({ queryKey: ["projects"] });
         await queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
-        toast.success("Client added successfully", {
-          icon: false,
-          className: "graphite-toast-success",
-          progressClassName: "graphite-toast-progress-success",
-        });
+        toast.success("Client added successfully", TOAST_SUCCESS_CONFIG);
         setIsAddClientOpen(false);
       } catch (submissionError) {
         console.error("[ClientsReport] Failed to add client", submissionError);
         const message =
           submissionError instanceof Error ? submissionError.message : "Failed to add client";
-        toast.error(message, {
-          className: "graphite-toast-error",
-          progressClassName: "graphite-toast-progress-error",
-        });
+        toast.error(message, TOAST_ERROR_CONFIG);
       } finally {
         setIsCreatingClient(false);
       }
@@ -122,61 +169,37 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
 
   const handleSubmitAddView = useCallback(
     async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
-      if (!projectId || !addViewState.client || isCreatingView) {
-        return;
-      }
+      if (!projectId || !addViewState.client || isCreatingView) return;
 
+      const targetClient = addViewState.client;
+      setIsCreatingView(true);
       try {
-        setIsCreatingView(true);
-        const targetClient = addViewState.client;
-        const nameValue =
-          typeof payload.values.name === "string" && payload.values.name.trim().length > 0
-            ? payload.values.name.trim()
-            : (targetClient.displayName ?? targetClient.identifier);
-        const pathValue =
-          typeof payload.values.path === "string" && payload.values.path.trim().length > 0
-            ? payload.values.path.trim()
-            : "/";
-        const draftIdentifier = slugify(
-          `${nameValue || targetClient.identifier}-${pathValue || "view"}`,
+        const nameValue = extractNameValue(
+          payload.values,
+          targetClient.displayName ?? targetClient.identifier,
         );
-        const valuesWithContext: Record<string, FieldValue> = {
-          ...payload.values,
-          id: draftIdentifier,
-          slug: draftIdentifier,
-          clientId: targetClient.identifier,
-          clientIdentifier: targetClient.identifier,
-          clientName: targetClient.displayName ?? targetClient.identifier,
-          clientSlug: slugify(targetClient.identifier),
-        };
-
-        const normalizedValues = Object.fromEntries(
-          Object.entries(valuesWithContext).map(([key, value]) => [key, value as unknown]),
+        const pathValue = extractPathValue(payload.values, "/");
+        const draftIdentifier = slugify(`${nameValue}-${pathValue || "view"}`);
+        const normalizedValues = buildViewValuesWithContext(
+          payload.values,
+          draftIdentifier,
+          targetClient,
         );
 
         await apiService.createProjectEntity(projectId, {
           type: payload.entityType,
           values: normalizedValues,
         });
-
         await refreshResolved();
         await queryClient.invalidateQueries({ queryKey: ["projects"] });
         await queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
-
-        toast.success("View added successfully", {
-          icon: false,
-          className: "graphite-toast-success",
-          progressClassName: "graphite-toast-progress-success",
-        });
+        toast.success("View added successfully", TOAST_SUCCESS_CONFIG);
         setAddViewState({ open: false, client: null });
       } catch (submissionError) {
         console.error("[ClientsReport] Failed to add view", submissionError);
         const message =
           submissionError instanceof Error ? submissionError.message : "Failed to add view";
-        toast.error(message, {
-          className: "graphite-toast-error",
-          progressClassName: "graphite-toast-progress-error",
-        });
+        toast.error(message, TOAST_ERROR_CONFIG);
       } finally {
         setIsCreatingView(false);
       }
@@ -185,213 +208,8 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
   );
 
   const { internalClients, externalClients } = useMemo(() => {
-    const resolved = data?.resolved as Record<string, any> | undefined;
-    const spec = resolved?.spec ?? resolved;
-    const componentsSource = spec?.components ?? resolved?.components ?? {};
-
-    const entries: Array<[string, any]> = [];
-    if (Array.isArray(componentsSource)) {
-      componentsSource.forEach((component, index) => {
-        entries.push([`component-${index + 1}`, component]);
-      });
-    } else if (componentsSource && typeof componentsSource === "object") {
-      Object.entries(componentsSource).forEach(([key, value]) => {
-        entries.push([key, value]);
-      });
-    }
-
-    const seenComponentKeys = new Set(entries.map(([key]) => key.toLowerCase()));
-
-    const frontendPackages = Array.isArray(spec?.frontend?.packages) ? spec.frontend.packages : [];
-
-    frontendPackages.forEach((pkg: Record<string, unknown>) => {
-      if (!pkg || typeof pkg !== "object") return;
-      const packageNameRaw =
-        (typeof (pkg as Record<string, unknown>).packageName === "string"
-          ? ((pkg as Record<string, string>).packageName ?? "").trim()
-          : "") ||
-        (typeof (pkg as Record<string, unknown>).name === "string"
-          ? ((pkg as Record<string, string>).name ?? "").trim()
-          : "");
-      if (!packageNameRaw) return;
-      const key = packageNameRaw.replace(/_/g, "-");
-      const normalizedKey = key.toLowerCase();
-      if (seenComponentKeys.has(normalizedKey)) {
-        return;
-      }
-
-      const packageRoot =
-        typeof (pkg as Record<string, unknown>).packageRoot === "string"
-          ? ((pkg as Record<string, string>).packageRoot ?? "").trim()
-          : undefined;
-      const packageJsonPath =
-        typeof (pkg as Record<string, unknown>).packageJsonPath === "string"
-          ? ((pkg as Record<string, string>).packageJsonPath ?? "").trim()
-          : undefined;
-      const frameworks = Array.isArray((pkg as Record<string, unknown>).frameworks)
-        ? ((pkg as { frameworks: unknown[] }).frameworks ?? [])
-            .map((item) => (typeof item === "string" ? item.trim() : ""))
-            .filter(Boolean)
-        : [];
-      const routeEntries = Array.isArray((pkg as Record<string, unknown>).routes)
-        ? ((pkg as { routes: any[] }).routes ?? [])
-            .map((route) => {
-              if (!route || typeof route !== "object") return null;
-              const pathValue = typeof route.path === "string" ? route.path.trim() : "";
-              const filePathValue = typeof route.filePath === "string" ? route.filePath.trim() : "";
-              const routerTypeValue =
-                typeof route.routerType === "string" ? route.routerType.trim() : undefined;
-              if (!pathValue && !filePathValue) return null;
-              return {
-                path: pathValue || "/",
-                ...(filePathValue ? { filePath: filePathValue } : {}),
-                ...(routerTypeValue ? { routerType: routerTypeValue } : {}),
-              };
-            })
-            .filter((entry): entry is { path: string; filePath?: string; routerType?: string } =>
-              Boolean(entry),
-            )
-        : [];
-
-      const frontendAnalysis = {
-        frameworks,
-        components: Array.isArray((pkg as Record<string, unknown>).components)
-          ? (pkg as { components: unknown[] }).components
-          : [],
-        routers: routeEntries.length
-          ? [
-              {
-                type: frameworks[0] ?? "frontend",
-                routerType: routeEntries[0]?.routerType ?? frameworks[0] ?? "frontend",
-                routes: routeEntries,
-              },
-            ]
-          : [],
-      };
-
-      const metadata: Record<string, unknown> = {
-        ...(packageRoot ? { packageRoot, root: packageRoot } : {}),
-        ...(packageJsonPath ? { sourceFile: packageJsonPath } : {}),
-        frameworks,
-        frontendAnalysis,
-        classification: {
-          detectedType: "frontend",
-          source: "frontend-packages",
-          reason: "aggregated",
-        },
-        detected: true,
-      };
-
-      entries.push([
-        key,
-        {
-          id: key,
-          artifactId: key,
-          name: packageNameRaw,
-          type: "frontend",
-          description: "",
-          metadata,
-        },
-      ]);
-      seenComponentKeys.add(normalizedKey);
-    });
-
-    const manualViewMap = new Map<string, NormalizedClientView[]>();
-    const registerManualView = (candidate: string | undefined, view: NormalizedClientView) => {
-      if (typeof candidate !== "string") return;
-      const normalizedKey = candidate.trim().toLowerCase();
-      if (!normalizedKey) return;
-      const existing = manualViewMap.get(normalizedKey);
-      const keySignature = `${view.path}|${view.component ?? ""}`.toLowerCase();
-      if (existing) {
-        if (
-          !existing.some(
-            (item) => `${item.path}|${item.component ?? ""}`.toLowerCase() === keySignature,
-          )
-        ) {
-          existing.push(view);
-        }
-        return;
-      }
-      manualViewMap.set(normalizedKey, [view]);
-    };
-
-    entries.forEach(([entryKey, value]) => {
-      const type = coerceDisplayValue(value?.type);
-      if (type !== "view") {
-        return;
-      }
-      const metadata = (value?.metadata ?? {}) as Record<string, unknown>;
-      const rawPath =
-        coerceDisplayValue(metadata?.path) ??
-        coerceDisplayValue((metadata?.route as { path?: string } | undefined)?.path) ??
-        "/";
-      const normalizedPath = rawPath.startsWith("/") ? rawPath : `/${rawPath.replace(/^\/?/, "")}`;
-      const componentName =
-        coerceDisplayValue(metadata?.component) ??
-        coerceDisplayValue(metadata?.componentName) ??
-        coerceDisplayValue(value?.name) ??
-        `view-${entryKey}`;
-      const filePath =
-        coerceDisplayValue(metadata?.filePath) ??
-        coerceDisplayValue(metadata?.sourceFile) ??
-        coerceDisplayValue(metadata?.source_path) ??
-        undefined;
-      const routerType =
-        coerceDisplayValue(metadata?.routerType) ??
-        coerceDisplayValue(metadata?.router_type) ??
-        undefined;
-      const manualView: NormalizedClientView = {
-        key: `${entryKey}-manual-${slugify(normalizedPath)}-${slugify(componentName ?? "view")}`,
-        path: normalizedPath,
-        ...(componentName ? { component: componentName } : {}),
-        ...(routerType ? { routerType } : {}),
-        ...(filePath ? { filePath } : {}),
-      };
-
-      const candidateIdentifiers: Array<string | undefined> = [
-        coerceDisplayValue(metadata?.clientId) ?? undefined,
-        coerceDisplayValue(metadata?.clientIdentifier) ?? undefined,
-        coerceDisplayValue(metadata?.clientSlug) ?? undefined,
-        coerceDisplayValue(metadata?.clientName) ?? undefined,
-      ];
-
-      if (metadata?.client && typeof metadata.client === "object") {
-        const clientMeta = metadata.client as Record<string, unknown>;
-        candidateIdentifiers.push(
-          coerceDisplayValue(clientMeta.id) ?? undefined,
-          coerceDisplayValue(clientMeta.identifier) ?? undefined,
-          coerceDisplayValue(clientMeta.slug) ?? undefined,
-          coerceDisplayValue(clientMeta.name) ?? undefined,
-        );
-      }
-
-      const viewName = coerceDisplayValue(value?.name);
-      if (viewName) {
-        candidateIdentifiers.push(viewName, slugify(viewName));
-      }
-
-      candidateIdentifiers.forEach((identifier) => {
-        if (!identifier) return;
-        registerManualView(identifier, manualView);
-        registerManualView(slugify(identifier), manualView);
-      });
-    });
-
-    const clients = entries
-      .filter(([, value]) => {
-        const type = coerceDisplayValue(value?.type);
-        return type === "frontend";
-      })
-      .map(([key, value]) => normalizeClient(key, value, manualViewMap))
-      .sort((a, b) => a.displayName.localeCompare(b.displayName));
-
-    const internal = clients.filter((client) => client.hasSource || isManualClient(client));
-    const external = clients
-      .filter((client) => !(client.hasSource || isManualClient(client)))
-      .map((client) => createExternalArtifactCard(client.identifier, client.raw));
-
-    return { internalClients: internal, externalClients: external };
+    const resolved = (data?.resolved as Record<string, unknown> | undefined) ?? {};
+    return extractClients(resolved);
   }, [data?.resolved]);
 
   const tabBadgeUpdater = useTabBadgeUpdater();

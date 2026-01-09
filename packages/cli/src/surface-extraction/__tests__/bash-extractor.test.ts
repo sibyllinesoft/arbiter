@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { extractBashSurface } from "@/surface-extraction/bash-extractor.js";
+import { extractBashSurface } from "@/surface-extraction/extractors/bash-extractor.js";
 
 const makeTmp = () => fs.mkdtemp(path.join(os.tmpdir(), "arb-bash-"));
 

@@ -98,6 +98,124 @@ export interface DetectionFactors {
 }
 
 /**
+ * Definition of a file pattern rule for artifact detection.
+ */
+interface FilePatternRule {
+  category: keyof CategoryMatrix;
+  patterns: RegExp[];
+  maxConfidence: number;
+  confidencePerMatch: number;
+}
+
+/**
+ * Maximum confidence limits for each category from config analysis.
+ */
+const CONFIG_CONFIDENCE_LIMITS: Record<string, number> = {
+  tool: 0.9,
+  package: 0.8,
+  frontend: 0.6,
+  web_service: 0.5,
+};
+
+/**
+ * Confidence added per indicator for each category.
+ */
+const CONFIG_CONFIDENCE_PER_INDICATOR: Record<string, number> = {
+  tool: 0.4,
+  package: 0.2,
+  frontend: 0.2,
+  web_service: 0.2,
+};
+
+/**
+ * Weight configuration for factor aggregation.
+ */
+interface FactorWeights {
+  dependency: number;
+  source: number;
+  config: number;
+  script: number;
+  filePattern: number;
+}
+
+/**
+ * Weights when full evidence (source/config) is available.
+ */
+const WEIGHTS_FULL: FactorWeights = {
+  dependency: 0.5,
+  source: 0.25,
+  config: 0.25,
+  script: 0.08,
+  filePattern: 0.05,
+};
+
+/**
+ * Weights for lightweight signals (e.g., Go/C# binaries without detailed analysis).
+ */
+const WEIGHTS_LIGHTWEIGHT: FactorWeights = {
+  dependency: 0.7,
+  source: 0,
+  config: 0,
+  script: 0.2,
+  filePattern: 0.1,
+};
+
+/**
+ * File pattern rules for detecting artifact types.
+ */
+const FILE_PATTERN_RULES: FilePatternRule[] = [
+  {
+    category: "tool",
+    patterns: [/bin\//, /cli\./, /command\./, /main\./, /cmd\//i],
+    maxConfidence: 0.6,
+    confidencePerMatch: 0.2,
+  },
+  {
+    category: "web_service",
+    patterns: [/server\./, /app\./, /routes?\//, /controllers?\//, /middleware\//],
+    maxConfidence: 0.7,
+    confidencePerMatch: 0.15,
+  },
+  {
+    category: "frontend",
+    patterns: [
+      /components?\//,
+      /pages?\//,
+      /views?\//,
+      /public\//,
+      /assets?\//,
+      /src\/.*\.(tsx?|jsx?|vue|svelte)$/,
+    ],
+    maxConfidence: 0.6,
+    confidencePerMatch: 0.1,
+  },
+  {
+    category: "package",
+    patterns: [/lib\//, /src\/.*index\.(ts|js)$/, /dist\//],
+    maxConfidence: 0.4,
+    confidencePerMatch: 0.1,
+  },
+  {
+    category: "desktop_app",
+    patterns: [/electron/, /tauri/, /native/, /desktop/],
+    maxConfidence: 0.8,
+    confidencePerMatch: 0.3,
+  },
+  {
+    category: "game",
+    patterns: [/game/, /scenes?\//, /sprites?\//, /assets\/.*\.(png|jpg|wav|mp3)$/],
+    maxConfidence: 0.7,
+    confidencePerMatch: 0.2,
+  },
+  {
+    category: "mobile",
+    patterns: [/mobile/, /ios\//, /android\//, /react-native/],
+    maxConfidence: 0.8,
+    confidencePerMatch: 0.25,
+  },
+];
+
+/**
  * Main artifact detection engine
  */
 export class ArtifactDetector {
@@ -297,126 +415,29 @@ export class ArtifactDetector {
     confidence: number;
     patterns: string[];
   }> {
-    const factors: Array<{
-      category: keyof CategoryMatrix;
-      confidence: number;
-      patterns: string[];
-    }> = [];
-
-    // CLI indicators
-    const cliPatterns = context.filePatterns.filter(
-      (pattern) =>
-        /bin\//.test(pattern) ||
-        /cli\./.test(pattern) ||
-        /command\./.test(pattern) ||
-        /main\./.test(pattern) ||
-        /cmd\//i.test(pattern),
+    return FILE_PATTERN_RULES.map((rule) => this.evaluateFilePatternRule(context, rule)).filter(
+      (factor): factor is NonNullable<typeof factor> => factor !== null,
     );
-    if (cliPatterns.length > 0) {
-      factors.push({
-        category: "tool",
-        confidence: Math.min(0.6, cliPatterns.length * 0.2),
-        patterns: cliPatterns,
-      });
-    }
+  }
 
-    // Web service patterns
-    const webPatterns = context.filePatterns.filter(
-      (pattern) =>
-        /server\./.test(pattern) ||
-        /app\./.test(pattern) ||
-        /routes?\//.test(pattern) ||
-        /controllers?\//.test(pattern) ||
-        /middleware\//.test(pattern),
+  /**
+   * Evaluates a single file pattern rule against the context.
+   */
+  private evaluateFilePatternRule(
+    context: DetectionContext,
+    rule: FilePatternRule,
+  ): { category: keyof CategoryMatrix; confidence: number; patterns: string[] } | null {
+    const matchingPatterns = context.filePatterns.filter((pattern) =>
+      rule.patterns.some((regex) => regex.test(pattern)),
     );
-    if (webPatterns.length > 0) {
-      factors.push({
-        category: "web_service",
-        confidence: Math.min(0.7, webPatterns.length * 0.15),
-        patterns: webPatterns,
-      });
-    }
 
-    // Frontend patterns
-    const frontendPatterns = context.filePatterns.filter(
-      (pattern) =>
-        /components?\//.test(pattern) ||
-        /pages?\//.test(pattern) ||
-        /views?\//.test(pattern) ||
-        /public\//.test(pattern) ||
-        /assets?\//.test(pattern) ||
-        /src\/.*\.(tsx?|jsx?|vue|svelte)$/.test(pattern),
-    );
-    if (frontendPatterns.length > 0) {
-      factors.push({
-        category: "frontend",
-        confidence: Math.min(0.6, frontendPatterns.length * 0.1),
-        patterns: frontendPatterns,
-      });
-    }
+    if (matchingPatterns.length === 0) return null;
 
-    // Library/module patterns
-    const modulePatterns = context.filePatterns.filter(
-      (pattern) =>
-        /lib\//.test(pattern) || /src\/.*index\.(ts|js)$/.test(pattern) || /dist\//.test(pattern),
-    );
-    if (modulePatterns.length > 0) {
-      factors.push({
-        category: "package",
-        confidence: Math.min(0.4, modulePatterns.length * 0.1),
-        patterns: modulePatterns,
-      });
-    }
-
-    // Desktop app patterns
-    const desktopPatterns = context.filePatterns.filter(
-      (pattern) =>
-        /electron/.test(pattern) ||
-        /tauri/.test(pattern) ||
-        /native/.test(pattern) ||
-        /desktop/.test(pattern),
-    );
-    if (desktopPatterns.length > 0) {
-      factors.push({
-        category: "desktop_app",
-        confidence: Math.min(0.8, desktopPatterns.length * 0.3),
-        patterns: desktopPatterns,
-      });
-    }
-
-    // Game patterns
-    const gamePatterns = context.filePatterns.filter(
-      (pattern) =>
-        /game/.test(pattern) ||
-        /scenes?\//.test(pattern) ||
-        /sprites?\//.test(pattern) ||
-        /assets\/.*\.(png|jpg|wav|mp3)$/.test(pattern),
-    );
-    if (gamePatterns.length > 0) {
-      factors.push({
-        category: "game",
-        confidence: Math.min(0.7, gamePatterns.length * 0.2),
-        patterns: gamePatterns,
-      });
-    }
-
-    // Mobile patterns
-    const mobilePatterns = context.filePatterns.filter(
-      (pattern) =>
-        /mobile/.test(pattern) ||
-        /ios\//.test(pattern) ||
-        /android\//.test(pattern) ||
-        /react-native/.test(pattern),
-    );
-    if (mobilePatterns.length > 0) {
-      factors.push({
-        category: "mobile",
-        confidence: Math.min(0.8, mobilePatterns.length * 0.25),
-        patterns: mobilePatterns,
-      });
-    }
-
-    return factors;
+    return {
+      category: rule.category,
+      confidence: Math.min(rule.maxConfidence, matchingPatterns.length * rule.confidencePerMatch),
+      patterns: matchingPatterns,
+    };
   }
 
   /**
@@ -427,115 +448,173 @@ export class ArtifactDetector {
     confidence: number;
     indicators: string[];
   }> {
-    const factors: Array<{
-      category: keyof CategoryMatrix;
-      confidence: number;
-      indicators: string[];
-    }> = [];
-
     const config = context.packageConfig;
 
-    // CLI indicators
-    const cliIndicators: string[] = [];
+    const categoryIndicators: Map<keyof CategoryMatrix, string[]> = new Map([
+      ["tool", this.detectCliIndicators(config)],
+      ["package", this.detectModuleIndicators(config)],
+      ["frontend", this.detectFrontendIndicators(config)],
+      ["web_service", this.detectWebServiceIndicators(config)],
+    ]);
+
+    return Array.from(categoryIndicators.entries())
+      .filter(([, indicators]) => indicators.length > 0)
+      .map(([category, indicators]) => ({
+        category,
+        confidence: Math.min(
+          CONFIG_CONFIDENCE_LIMITS[category],
+          indicators.length * CONFIG_CONFIDENCE_PER_INDICATOR[category],
+        ),
+        indicators,
+      }));
+  }
+
+  /**
+   * Detects CLI-related indicators in package configuration.
+   */
+  private detectCliIndicators(config: Record<string, any>): string[] {
+    const indicators: string[] = [];
     if (config.bin) {
-      cliIndicators.push("has bin field");
+      indicators.push("has bin field");
       if (typeof config.bin === "object") {
-        cliIndicators.push("binary command definitions");
-        cliIndicators.push("explicit CLI entry point");
+        indicators.push("binary command definitions", "explicit CLI entry point");
       }
     }
     if (config.main && typeof config.main === "string" && config.main.includes("bin")) {
-      cliIndicators.push("main points to bin");
+      indicators.push("main points to bin");
     }
     if (config.preferGlobal) {
-      cliIndicators.push("preferGlobal flag");
+      indicators.push("preferGlobal flag");
     }
     if (config.entry_points?.console_scripts) {
-      cliIndicators.push("console script entry points");
-      cliIndicators.push("exposed console commands");
+      indicators.push("console script entry points", "exposed console commands");
     }
-    if (cliIndicators.length > 0) {
-      factors.push({
-        category: "tool",
-        confidence: Math.min(0.9, cliIndicators.length * 0.4),
-        indicators: cliIndicators,
-      });
-    }
+    return indicators;
+  }
 
-    // Module indicators - enhanced detection
-    const moduleIndicators: string[] = [];
-    if (config.main && !config.bin) {
-      moduleIndicators.push("has main without bin");
-    }
-    if (config.exports) {
-      moduleIndicators.push("has exports field");
-    }
-    if (config.types || config.typings) {
-      moduleIndicators.push("provides TypeScript types");
-    }
-    if ("private" in config && !config.private && !config.bin) {
-      moduleIndicators.push("public package without CLI");
-    }
-    // Check for module-specific fields
-    if (config.module) {
-      moduleIndicators.push("has ESM module field");
-    }
-    if (config.peerDependencies && Object.keys(config.peerDependencies).length > 0) {
-      moduleIndicators.push("has peer dependencies");
-    }
-    if (config.keywords?.some((k: string) => /module|util|helper|plugin|middleware/i.test(k))) {
-      moduleIndicators.push("module-related keywords");
-    }
-    if (moduleIndicators.length > 0) {
-      factors.push({
-        category: "package",
-        confidence: Math.min(0.8, moduleIndicators.length * 0.2),
-        indicators: moduleIndicators,
-      });
-    }
+  /**
+   * Module indicator rule definition
+   */
+  private static readonly MODULE_INDICATOR_RULES: Array<{
+    check: (config: Record<string, any>) => boolean;
+    indicator: string;
+  }> = [
+    { check: (c) => Boolean(c.main && !c.bin), indicator: "has main without bin" },
+    { check: (c) => Boolean(c.exports), indicator: "has exports field" },
+    { check: (c) => Boolean(c.types || c.typings), indicator: "provides TypeScript types" },
+    {
+      check: (c) => "private" in c && !c.private && !c.bin,
+      indicator: "public package without CLI",
+    },
+    { check: (c) => Boolean(c.module), indicator: "has ESM module field" },
+    {
+      check: (c) => Boolean(c.peerDependencies && Object.keys(c.peerDependencies).length > 0),
+      indicator: "has peer dependencies",
+    },
+    {
+      check: (c) =>
+        c.keywords?.some((k: string) => /module|util|helper|plugin|middleware/i.test(k)),
+      indicator: "module-related keywords",
+    },
+  ];
 
-    // Frontend indicators - enhanced detection
-    const frontendIndicators: string[] = [];
+  /**
+   * Detects module/package indicators in package configuration.
+   */
+  private detectModuleIndicators(config: Record<string, any>): string[] {
+    return ArtifactDetector.MODULE_INDICATOR_RULES.filter((rule) => rule.check(config)).map(
+      (rule) => rule.indicator,
+    );
+  }
+
+  /**
+   * Detects frontend-related indicators in package configuration.
+   */
+  private detectFrontendIndicators(config: Record<string, any>): string[] {
+    const indicators: string[] = [];
     if (config.private && (config.scripts?.build || config.scripts?.dev)) {
-      frontendIndicators.push("private package with build/dev scripts");
+      indicators.push("private package with build/dev scripts");
     }
-    if (config.homepage) {
-      frontendIndicators.push("has homepage field");
-    }
-    if (config.browserslist) {
-      frontendIndicators.push("has browserslist config");
-    }
+    if (config.homepage) indicators.push("has homepage field");
+    if (config.browserslist) indicators.push("has browserslist config");
     if (config.scripts?.start && !config.scripts?.start.includes("node")) {
-      frontendIndicators.push("non-node start script");
+      indicators.push("non-node start script");
     }
-    if (frontendIndicators.length > 0) {
-      factors.push({
-        category: "frontend",
-        confidence: Math.min(0.6, frontendIndicators.length * 0.2),
-        indicators: frontendIndicators,
-      });
-    }
+    return indicators;
+  }
 
-    // Web service indicators - new detection
-    const webServiceIndicators: string[] = [];
+  /**
+   * Detects web service indicators in package configuration.
+   */
+  private detectWebServiceIndicators(config: Record<string, any>): string[] {
+    const indicators: string[] = [];
     if (config.scripts?.start?.includes("node")) {
-      webServiceIndicators.push("node start script");
+      indicators.push("node start script");
     }
     if (config.scripts?.["start:prod"] || config.scripts?.production) {
-      webServiceIndicators.push("production start scripts");
+      indicators.push("production start scripts");
     }
     if (config.engines?.node && !config.bin) {
-      webServiceIndicators.push("node engine requirement without CLI");
+      indicators.push("node engine requirement without CLI");
     }
-    if (webServiceIndicators.length > 0) {
-      factors.push({
-        category: "web_service",
-        confidence: Math.min(0.5, webServiceIndicators.length * 0.2),
-        indicators: webServiceIndicators,
-      });
-    }
+    return indicators;
+  }
 
-    return factors;
+  /**
+   * Source pattern detection rules
+   */
+  private static readonly SOURCE_PATTERN_RULES: Array<{
+    category: keyof CategoryMatrix;
+    confidence: number;
+    pattern: string;
+    check: (analysis: DetectionContext["sourceAnalysis"]) => boolean;
+  }> = [
+    {
+      category: "web_service",
+      confidence: 0.9,
+      pattern: "server/service patterns detected",
+      check: (a) => !!a?.hasServerPatterns,
+    },
+    {
+      category: "frontend",
+      confidence: 0.8,
+      pattern: "frontend/UI patterns detected",
+      check: (a) => !!a?.hasFrontendPatterns,
+    },
+    {
+      category: "data_processing",
+      confidence: 0.7,
+      pattern: "data processing patterns detected",
+      check: (a) => !!a?.hasDataProcessingPatterns,
+    },
+    {
+      category: "game",
+      confidence: 0.9,
+      pattern: "game development patterns detected",
+      check: (a) => !!a?.hasGamePatterns,
+    },
+    {
+      category: "mobile",
+      confidence: 0.8,
+      pattern: "mobile development patterns detected",
+      check: (a) => !!a?.hasMobilePatterns,
+    },
+    {
+      category: "desktop_app",
+      confidence: 0.8,
+      pattern: "desktop application patterns detected",
+      check: (a) => !!a?.hasDesktopPatterns,
+    },
+  ];
+
+  /**
+   * Collect CLI/tool patterns from source analysis
+   */
+  private collectToolPatterns(analysis: DetectionContext["sourceAnalysis"]): string[] {
+    const patterns: string[] = [];
+    if (analysis?.hasBinaryExecution) patterns.push("binary execution patterns");
+    if (analysis?.hasCliPatterns) patterns.push("CLI interaction patterns");
+    return patterns;
   }
 
   /**
@@ -551,67 +630,23 @@ export class ArtifactDetector {
       confidence: number;
       patterns: string[];
     }> = [];
+    const analysis = context.sourceAnalysis;
 
-    const analysis = context.sourceAnalysis!;
-
-    if (analysis.hasBinaryExecution || analysis.hasCliPatterns) {
-      const patterns: string[] = [];
-      if (analysis.hasBinaryExecution) patterns.push("binary execution patterns");
-      if (analysis.hasCliPatterns) patterns.push("CLI interaction patterns");
-
-      factors.push({
-        category: "tool",
-        confidence: 0.8,
-        patterns,
-      });
+    // Handle tool patterns (binary execution or CLI)
+    const toolPatterns = this.collectToolPatterns(analysis);
+    if (toolPatterns.length > 0) {
+      factors.push({ category: "tool", confidence: 0.8, patterns: toolPatterns });
     }
 
-    if (analysis.hasServerPatterns) {
-      factors.push({
-        category: "web_service",
-        confidence: 0.9,
-        patterns: ["server/service patterns detected"],
-      });
-    }
-
-    if (analysis.hasFrontendPatterns) {
-      factors.push({
-        category: "frontend",
-        confidence: 0.8,
-        patterns: ["frontend/UI patterns detected"],
-      });
-    }
-
-    if (analysis.hasDataProcessingPatterns) {
-      factors.push({
-        category: "data_processing",
-        confidence: 0.7,
-        patterns: ["data processing patterns detected"],
-      });
-    }
-
-    if (analysis.hasGamePatterns) {
-      factors.push({
-        category: "game",
-        confidence: 0.9,
-        patterns: ["game development patterns detected"],
-      });
-    }
-
-    if (analysis.hasMobilePatterns) {
-      factors.push({
-        category: "mobile",
-        confidence: 0.8,
-        patterns: ["mobile development patterns detected"],
-      });
-    }
-
-    if (analysis.hasDesktopPatterns) {
-      factors.push({
-        category: "desktop_app",
-        confidence: 0.8,
-        patterns: ["desktop application patterns detected"],
-      });
+    // Apply standard pattern rules
+    for (const rule of ArtifactDetector.SOURCE_PATTERN_RULES) {
+      if (rule.check(analysis)) {
+        factors.push({
+          category: rule.category,
+          confidence: rule.confidence,
+          patterns: [rule.pattern],
+        });
+      }
     }
 
     return factors;
@@ -621,134 +656,154 @@ export class ArtifactDetector {
    * Aggregate scores from all factors using weighted combination
    */
   private aggregateScores(factors: DetectionFactors): Record<string, number> {
-    const scores: Record<string, number> = {};
+    const weights = this.selectWeights(factors);
+    const scores = this.computeWeightedScores(factors, weights);
 
+    if (this.needsFallbackDetection(scores)) {
+      this.applyFallbackScores(factors, scores);
+    }
+
+    return this.normalizeScores(scores);
+  }
+
+  /**
+   * Selects weight configuration based on available evidence.
+   */
+  private selectWeights(factors: DetectionFactors): FactorWeights {
     const hasSource = (factors.sourceFactors?.length ?? 0) > 0;
     const hasConfig = factors.configFactors.length > 0;
 
-    // When we only have lightweight signals (e.g., Go or C# binaries) lean on
-    // dependencies more heavily so obvious CLI frameworks still rank highly.
-    const weights =
-      hasSource || hasConfig
-        ? {
-            dependency: 0.5,
-            source: 0.25,
-            config: 0.25,
-            script: 0.08,
-            filePattern: 0.05,
-          }
-        : {
-            dependency: 0.7,
-            source: 0,
-            config: 0,
-            script: 0.2,
-            filePattern: 0.1,
-          };
+    // When we only have lightweight signals, lean on dependencies more heavily
+    return hasSource || hasConfig ? WEIGHTS_FULL : WEIGHTS_LIGHTWEIGHT;
+  }
 
-    // Aggregate dependency factors
-    factors.dependencyFactors.forEach((factor) => {
-      scores[factor.category] =
-        (scores[factor.category] || 0) + factor.confidence * weights.dependency;
-    });
+  /**
+   * Computes weighted scores from all factor types.
+   */
+  private computeWeightedScores(
+    factors: DetectionFactors,
+    weights: FactorWeights,
+  ): Record<string, number> {
+    const scores: Record<string, number> = {};
 
-    // Aggregate source factors (if available)
-    factors.sourceFactors?.forEach((factor) => {
-      scores[factor.category] = (scores[factor.category] || 0) + factor.confidence * weights.source;
-    });
+    const addFactorScore = (
+      factorList: Array<{ category: string; confidence: number }> | undefined,
+      weight: number,
+    ) => {
+      factorList?.forEach((factor) => {
+        scores[factor.category] = (scores[factor.category] || 0) + factor.confidence * weight;
+      });
+    };
 
-    // Aggregate config factors
-    factors.configFactors.forEach((factor) => {
-      scores[factor.category] = (scores[factor.category] || 0) + factor.confidence * weights.config;
-    });
+    addFactorScore(factors.dependencyFactors, weights.dependency);
+    addFactorScore(factors.sourceFactors, weights.source);
+    addFactorScore(factors.configFactors, weights.config);
+    addFactorScore(factors.scriptFactors, weights.script);
+    addFactorScore(factors.filePatternFactors, weights.filePattern);
 
-    // Aggregate script factors
-    factors.scriptFactors.forEach((factor) => {
-      scores[factor.category] = (scores[factor.category] || 0) + factor.confidence * weights.script;
-    });
+    return scores;
+  }
 
-    // Aggregate file pattern factors
-    factors.filePatternFactors.forEach((factor) => {
-      scores[factor.category] =
-        (scores[factor.category] || 0) + factor.confidence * weights.filePattern;
-    });
+  /**
+   * Checks if fallback detection is needed due to low/no scores.
+   */
+  private needsFallbackDetection(scores: Record<string, number>): boolean {
+    const values = Object.values(scores);
+    return values.length === 0 || Math.max(...values) < 0.1;
+  }
 
-    // Enhanced default detection based on common patterns
-    if (Object.keys(scores).length === 0 || Math.max(...Object.values(scores)) < 0.1) {
-      // Try to make a more intelligent guess based on available evidence
+  /**
+   * Applies fallback scores when primary detection yields low results.
+   */
+  private applyFallbackScores(factors: DetectionFactors, scores: Record<string, number>): void {
+    const fallbackRules: Array<{
+      check: () => boolean;
+      category: string;
+      score: number;
+    }> = [
+      {
+        check: () => factors.configFactors.some((f) => f.category === "tool" && f.confidence > 0.5),
+        category: "tool",
+        score: 0.7,
+      },
+      {
+        check: () =>
+          factors.configFactors.some((f) => f.category === "package" && f.confidence > 0.3),
+        category: "package",
+        score: 0.5,
+      },
+      {
+        check: () =>
+          factors.sourceFactors?.some((f) => f.category === "web_service" && f.confidence > 0.5) ??
+          false,
+        category: "web_service",
+        score: 0.6,
+      },
+      {
+        check: () =>
+          factors.filePatternFactors.some((f) => f.category === "frontend" && f.confidence > 0.3),
+        category: "frontend",
+        score: 0.5,
+      },
+    ];
 
-      // Strong CLI indicators
-      if (factors.configFactors.some((f) => f.category === "tool" && f.confidence > 0.5)) {
-        scores["tool"] = 0.7;
-      }
-      // Strong package indicators
-      else if (factors.configFactors.some((f) => f.category === "package" && f.confidence > 0.3)) {
-        scores["package"] = 0.5;
-      }
-      // Check for web service patterns
-      else if (
-        factors.sourceFactors?.some((f) => f.category === "web_service" && f.confidence > 0.5)
-      ) {
-        scores["web_service"] = 0.6;
-      }
-      // Check for frontend patterns
-      else if (
-        factors.filePatternFactors.some((f) => f.category === "frontend" && f.confidence > 0.3)
-      ) {
-        scores["frontend"] = 0.5;
-      }
-      // Default to package with low confidence
-      else {
-        scores["package"] = 0.2;
+    for (const rule of fallbackRules) {
+      if (rule.check()) {
+        scores[rule.category] = rule.score;
+        return;
       }
     }
 
-    // Normalize scores but keep them reasonable
-    Object.keys(scores).forEach((key) => {
-      scores[key] = Math.min(1.0, scores[key]);
-    });
+    // Default fallback
+    scores["package"] = 0.2;
+  }
 
-    return scores;
+  /**
+   * Normalizes scores to ensure they're within valid range.
+   */
+  private normalizeScores(scores: Record<string, number>): Record<string, number> {
+    const normalized: Record<string, number> = {};
+    for (const [key, value] of Object.entries(scores)) {
+      normalized[key] = Math.min(1.0, value);
+    }
+    return normalized;
+  }
+
+  /**
+   * Adds explanation lines from a factor if it matches the primary type.
+   */
+  private addFactorExplanation(
+    explanation: string[],
+    label: string,
+    items: string[] | undefined,
+    limit?: number,
+  ): void {
+    if (!items || items.length === 0) return;
+    explanation.push(`${label}:`);
+    explanation.push(...(limit ? items.slice(0, limit) : items));
   }
 
   /**
    * Generate human-readable explanation
    */
   private generateExplanation(
-    context: DetectionContext,
+    _context: DetectionContext,
     factors: DetectionFactors,
     primaryType: keyof CategoryMatrix,
   ): string[] {
-    const explanation: string[] = [];
+    const explanation: string[] = [`Detected as ${primaryType} based on:`];
 
-    explanation.push(`Detected as ${primaryType} based on:`);
-
-    // Add dependency explanations
     const depFactor = factors.dependencyFactors.find((f) => f.category === primaryType);
-    if (depFactor && depFactor.matches.length > 0) {
-      explanation.push("Dependencies:");
-      explanation.push(...depFactor.matches.slice(0, 3));
-    }
+    this.addFactorExplanation(explanation, "Dependencies", depFactor?.matches, 3);
 
-    // Add source code explanations
     const sourceFactor = factors.sourceFactors?.find((f) => f.category === primaryType);
-    if (sourceFactor && sourceFactor.patterns.length > 0) {
-      explanation.push("Source code:");
-      explanation.push(...sourceFactor.patterns);
-    }
+    this.addFactorExplanation(explanation, "Source code", sourceFactor?.patterns);
 
-    // Add config explanations
     const configFactor = factors.configFactors.find((f) => f.category === primaryType);
-    if (configFactor && configFactor.indicators.length > 0) {
-      explanation.push("Configuration:");
-      explanation.push(...configFactor.indicators);
-    }
+    this.addFactorExplanation(explanation, "Configuration", configFactor?.indicators);
 
-    // Add script explanations
     const scriptFactor = factors.scriptFactors.find((f) => f.category === primaryType);
-    if (scriptFactor && scriptFactor.scripts.length > 0) {
-      explanation.push("Scripts:");
-      explanation.push(...scriptFactor.scripts.slice(0, 2));
-    }
+    this.addFactorExplanation(explanation, "Scripts", scriptFactor?.scripts, 2);
 
     return explanation;
   }

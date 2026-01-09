@@ -1,5 +1,6 @@
+/** @packageDocumentation CLI command tests */
 import { describe, expect, it, mock } from "bun:test";
-import { createAddCommands } from "@/cli/add";
+import { createAddCommands } from "@/cli/commands/add.js";
 import { Command } from "commander";
 
 // Helper to capture process.exit calls

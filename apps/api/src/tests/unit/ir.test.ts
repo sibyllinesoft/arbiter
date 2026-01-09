@@ -2,8 +2,8 @@
  * Unit tests for the IR (Intermediate Representation) generator
  */
 import { beforeAll, describe, expect, it } from "bun:test";
-import { IRGenerator } from "../../ir.ts";
-import type { IRKind } from "../../types.ts";
+import { IRGenerator } from "../../io/ir";
+import type { IRKind } from "../../util/types";
 
 describe("IRGenerator", () => {
   let generator: IRGenerator;

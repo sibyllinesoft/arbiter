@@ -43,43 +43,34 @@ export class DockerPlugin implements ImporterPlugin {
       throw new Error("File content required for Docker parsing");
     }
 
-    const evidence: Evidence[] = [];
     const basename = path.basename(filePath).toLowerCase();
+    const projectRoot = context?.projectRoot || "/";
 
     try {
-      let parsed;
       if (basename === "dockerfile") {
-        // Don't use YAML for Dockerfile
-        parsed = null;
-      } else {
-        parsed = yaml.parse(fileContent);
+        return this.parseDockerfile(fileContent, filePath, projectRoot);
       }
 
-      if (basename === "dockerfile") {
-        // Parse Dockerfile
-        const dockerfileEvidence = await this.parseDockerfile(
-          fileContent,
-          filePath,
-          context?.projectRoot || "/",
-        );
-        evidence.push(...dockerfileEvidence);
-      } else if (basename.includes("docker-compose")) {
-        // Parse docker-compose.yml
-        if (parsed && typeof parsed === "object") {
-          const composeEvidence = this.parseDockerCompose(
-            parsed,
-            filePath,
-            context?.projectRoot || "/",
-          );
-          evidence.push(...composeEvidence);
-        }
+      if (basename.includes("docker-compose")) {
+        return this.parseComposeFile(fileContent, filePath, projectRoot);
       }
 
-      return evidence;
+      return [];
     } catch (error) {
       console.warn(`Failed to parse Docker file ${filePath}:`, error);
       return [];
     }
+  }
+
+  /**
+   * Parse a docker-compose file and return evidence
+   */
+  private parseComposeFile(content: string, filePath: string, projectRoot: string): Evidence[] {
+    const parsed = yaml.parse(content);
+    if (!parsed || typeof parsed !== "object") {
+      return [];
+    }
+    return this.parseDockerCompose(parsed, filePath, projectRoot);
   }
 
   private async parseDockerfile(
@@ -233,97 +224,121 @@ export class DockerPlugin implements ImporterPlugin {
     return evidence;
   }
 
+  /**
+   * Check if a compose service has a valid image specified
+   */
+  private hasValidImage(serviceConfig: Record<string, unknown>): boolean {
+    return typeof serviceConfig?.image === "string" && serviceConfig.image.trim().length > 0;
+  }
+
+  /**
+   * Build docker metadata for an artifact
+   */
+  private buildDockerMetadata(
+    data: DockerData,
+    buildPaths: { buildContextRel?: string; dockerfileRel?: string },
+    projectRoot: string,
+  ): Record<string, unknown> {
+    const serviceConfig = data.composeServiceConfig as Record<string, unknown>;
+    const dockerMetadata: Record<string, unknown> = {
+      composeService: data.composeServiceConfig,
+      composeServiceYaml: data.composeServiceYaml,
+      composeFile: path.relative(projectRoot, data.filePath) || data.filePath,
+      image: this.hasValidImage(serviceConfig) ? (serviceConfig.image as string) : undefined,
+    };
+
+    if (buildPaths.buildContextRel) {
+      dockerMetadata.buildContext = buildPaths.buildContextRel;
+    }
+    if (buildPaths.dockerfileRel) {
+      dockerMetadata.dockerfilePath = buildPaths.dockerfileRel;
+    }
+
+    return dockerMetadata;
+  }
+
+  /**
+   * Build artifact metadata from docker metadata
+   */
+  private buildArtifactMetadata(
+    dockerMetadata: Record<string, unknown>,
+    data: DockerData,
+  ): Record<string, unknown> {
+    const image = (data.composeServiceConfig as any)?.image;
+    return {
+      sourceFile: dockerMetadata.composeFile,
+      docker: dockerMetadata,
+      external: true,
+      composeOnly: true,
+      containerImage: typeof image === "string" ? image : undefined,
+    };
+  }
+
+  /**
+   * Create an inferred artifact from compose service evidence
+   */
+  private createComposeArtifact(
+    ev: Evidence,
+    data: DockerData,
+    dockerMetadata: Record<string, unknown>,
+  ): InferredArtifact {
+    return {
+      artifact: {
+        id: `compose-service-${data.name}`,
+        type: "service" as const,
+        name: data.name,
+        description: "Service defined in docker-compose (no package manifest found)",
+        tags: ["docker", "compose", "service", "external"],
+        metadata: this.buildArtifactMetadata(dockerMetadata, data),
+      },
+      provenance: {
+        evidence: [ev.id],
+        plugins: ["docker"],
+        rules: ["compose-external-service"],
+        timestamp: Date.now(),
+        pipelineVersion: "1.0.0",
+      },
+      relationships: [],
+    };
+  }
+
   async infer(evidence: Evidence[], context: InferenceContext): Promise<InferredArtifact[]> {
+    // Only consider compose service evidence; ignore Dockerfiles for inference.
+    const composeEvidence = evidence.filter(
+      (e) =>
+        e.source === this.name() &&
+        e.type === "config" &&
+        (e.data as DockerData)?.type === "service",
+    );
+
+    if (composeEvidence.length === 0) return [];
+
+    const projectRoot = context.projectRoot || "";
+    const packageEvidence = evidence.filter((e) => e.source === "nodejs" && e.type === "config");
     const artifacts: InferredArtifact[] = [];
 
-    // Filter Docker evidence
-    const dockerEvidence = evidence.filter((e) => e.source === this.name() && e.type === "config");
-
-    const hasCompose = dockerEvidence.some((e) => e.filePath.toLowerCase().includes("compose"));
-
-    for (const ev of dockerEvidence) {
+    for (const ev of composeEvidence) {
       const data = ev.data as unknown as DockerData;
-      if (data.type !== "service" && (hasCompose || data.type !== "dockerfile")) continue;
+      const composeDir = path.dirname(data.filePath);
+      const buildPaths = this.resolveBuildPaths(data.composeServiceConfig, composeDir, projectRoot);
+      const serviceConfig = data.composeServiceConfig as Record<string, unknown>;
 
-      const artifactType = data.type === "dockerfile" ? "service" : data.type;
-
-      // Calculate relative path for root to match nodejs plugin behavior
-      const projectRoot = context.projectRoot || "";
-      const relativeFilePath = projectRoot
-        ? path.relative(projectRoot, data.filePath)
-        : data.filePath;
-      const root = hasCompose ? path.basename(relativeFilePath) : path.dirname(relativeFilePath);
-
-      const buildPaths = this.resolveBuildPaths(
-        data.composeServiceConfig,
-        path.dirname(data.filePath),
+      const hasPackageManifest = this.composeHasPackageManifest(
+        buildPaths.buildContextRel,
+        composeDir === projectRoot ? "" : path.relative(projectRoot, composeDir) || ".",
+        context.directoryContexts,
+        packageEvidence,
+        data.name,
         projectRoot,
       );
 
-      const dockerMetadata: Record<string, unknown> = {};
-      if (data.composeServiceConfig) {
-        dockerMetadata.composeService = data.composeServiceConfig;
-      }
-      if (data.composeServiceYaml) {
-        dockerMetadata.composeServiceYaml = data.composeServiceYaml;
-      }
-      const metadata: Record<string, unknown> = {
-        sourceFile: relativeFilePath,
-        root,
-      };
+      // Skip emitting a service when a package manifest exists; package plugins will handle it.
+      if (hasPackageManifest) continue;
+      // Only emit compose-defined external services when an image is specified.
+      if (!this.hasValidImage(serviceConfig)) continue;
 
-      if (Object.keys(dockerMetadata).length > 0) {
-        metadata.docker = dockerMetadata;
-      }
-
-      if (data.composeServiceConfig && typeof data.composeServiceConfig === "object") {
-        const composeConfig = data.composeServiceConfig as Record<string, unknown>;
-        if (typeof composeConfig.image === "string") {
-          metadata.containerImage = composeConfig.image;
-        }
-        if (composeConfig.build !== undefined) {
-          metadata.dockerBuild = composeConfig.build;
-        }
-      }
-
-      if (buildPaths.buildContextRel) {
-        metadata.buildContext = buildPaths.buildContextRel;
-        dockerMetadata.buildContext = buildPaths.buildContextRel;
-      }
-      if (buildPaths.dockerfileRel) {
-        metadata.dockerfilePath = buildPaths.dockerfileRel;
-        dockerMetadata.dockerfilePath = buildPaths.dockerfileRel;
-      }
-
-      if (data.dockerfileContent) {
-        dockerMetadata.dockerfile = data.dockerfileContent;
-        metadata.dockerfileContent = data.dockerfileContent;
-      }
-
-      if (relativeFilePath) {
-        metadata.dockerfile = relativeFilePath;
-      }
-
-      const artifact = {
-        id: `docker-${artifactType}-${data.name}`,
-        type: artifactType as any,
-        name: data.name,
-        description: data.description,
-        tags: ["docker", artifactType],
-        metadata,
-      };
-
-      artifacts.push({
-        artifact,
-        provenance: {
-          evidence: [ev.id],
-          plugins: ["docker"],
-          rules: ["docker-simplification"],
-          timestamp: Date.now(),
-          pipelineVersion: "1.0.0",
-        },
-        relationships: [],
-      });
+      const dockerMetadata = this.buildDockerMetadata(data, buildPaths, projectRoot);
+      artifacts.push(this.createComposeArtifact(ev, data, dockerMetadata));
     }
 
     return artifacts;
@@ -361,5 +376,128 @@ export class DockerPlugin implements ImporterPlugin {
       buildContextRel: rel(buildContextAbs),
       dockerfileRel: rel(dockerfileAbs),
     };
+  }
+
+  /**
+   * Determines whether the compose service's build context (or compose dir) already
+   * contains a package manifest, in which case we avoid emitting a duplicate service
+   * and let language-specific plugins define it.
+   */
+  private composeHasPackageManifest(
+    buildContextRel: string | undefined,
+    composeDirRel: string,
+    directoryContexts: Map<string, any>,
+    packageEvidence: Evidence[],
+    composeServiceName: string,
+    projectRoot: string,
+  ): boolean {
+    const candidateKeys = this.buildCandidateKeys(buildContextRel, composeDirRel);
+
+    // Check package evidence for matching name or location
+    if (
+      this.hasMatchingPackageEvidence(
+        packageEvidence,
+        composeServiceName,
+        candidateKeys,
+        projectRoot,
+      )
+    ) {
+      return true;
+    }
+
+    // Check directory contexts for manifest files
+    return this.hasManifestInDirectoryContexts(candidateKeys, directoryContexts);
+  }
+
+  /**
+   * Build list of candidate directory keys to check
+   */
+  private buildCandidateKeys(buildContextRel: string | undefined, composeDirRel: string): string[] {
+    const candidates = [buildContextRel, composeDirRel].filter(Boolean) as string[];
+    return candidates.map((rel) => (rel === "" ? "." : rel));
+  }
+
+  /**
+   * Check if any package evidence matches by name or location
+   */
+  private hasMatchingPackageEvidence(
+    packageEvidence: Evidence[],
+    composeServiceName: string,
+    candidateKeys: string[],
+    projectRoot: string,
+  ): boolean {
+    const normalizedServiceName = this.stripScope(composeServiceName || "");
+
+    for (const ev of packageEvidence) {
+      const pkg = (ev.data as any).fullPackage ?? ev.data;
+      if (!pkg) continue;
+
+      const pkgName = this.stripScope(pkg.name || "");
+      if (pkgName && normalizedServiceName === pkgName) {
+        return true;
+      }
+
+      if (this.isEvidenceInCandidateDir(ev, candidateKeys, projectRoot)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Strip npm scope from package name
+   */
+  private stripScope(value: string): string {
+    return typeof value === "string" ? value.replace(/^@[^/]+\//, "") : value;
+  }
+
+  /**
+   * Check if evidence file is in one of the candidate directories
+   */
+  private isEvidenceInCandidateDir(
+    ev: Evidence,
+    candidateKeys: string[],
+    projectRoot: string,
+  ): boolean {
+    const filePath = ev.filePath || "";
+    const relDir =
+      path.relative(projectRoot, path.dirname(filePath)).replace(/\\/g, "/").replace(/^\.\//, "") ||
+      ".";
+
+    return candidateKeys.some((key) =>
+      key === "." ? !relDir || relDir === "." : relDir === key || relDir.startsWith(`${key}/`),
+    );
+  }
+
+  /**
+   * Check if directory contexts contain manifest files
+   */
+  private hasManifestInDirectoryContexts(
+    candidateKeys: string[],
+    directoryContexts: Map<string, any>,
+  ): boolean {
+    const manifestNames = new Set([
+      "package.json",
+      "go.mod",
+      "Cargo.toml",
+      "pyproject.toml",
+      "requirements.txt",
+      "Pipfile",
+      "Pipfile.lock",
+      "poetry.lock",
+      "setup.py",
+    ]);
+
+    for (const key of candidateKeys) {
+      const ctx = directoryContexts.get(key);
+      if (!ctx) continue;
+
+      const patterns: string[] = ctx.filePatterns || [];
+      const hasManifest = patterns.some((p) => manifestNames.has(p.split("/")[0] || p));
+      if (hasManifest) return true;
+    }
+
+    return false;
   }
 }

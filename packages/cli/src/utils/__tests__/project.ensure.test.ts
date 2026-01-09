@@ -1,5 +1,6 @@
+/** @packageDocumentation Utility tests */
 import { describe, expect, it } from "bun:test";
-import { ensureProjectExists } from "@/utils/project";
+import { ensureProjectExists } from "@/utils/api/project";
 
 const baseConfig = {
   projectDir: "/tmp/demo",

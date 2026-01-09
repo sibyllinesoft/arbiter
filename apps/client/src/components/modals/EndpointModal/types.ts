@@ -2,6 +2,7 @@ import type { FieldValue } from "../entityTypes";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 export type ParameterLocation = "path" | "query" | "header" | "cookie";
+export type SectionId = "endpoint" | "request" | "parameters" | "responses";
 
 export interface EndpointModalProps {
   open: boolean;

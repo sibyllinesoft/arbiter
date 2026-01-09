@@ -1,13 +1,12 @@
-\
     package schema
 
     // ---------- Canonical identifiers & primitives ----------
     #Slug:          =~"^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
     #Human:         string & !=""                              // short human label
-    #Email:         =~"^[^@\s]+@[^@\s]+\.[^@\s]+$"
-    #ISODateTime:   =~"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+    #Email:         =~"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+    #ISODateTime:   =~"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
     #Percent01:     number & >=0.0 & <=1.0
-    #URLPath:       =~"^/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*$"
+    #URLPath:       =~"^/[A-Za-z0-9._~:/?#\\[\\]@!$&'()*+,;=%-]*$"
     #HTTPMethod:    "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
     #HTTPStatus:    int & >=100 & <=599
 
@@ -16,9 +15,28 @@
     #Cap:           #Slug                                      // capability, e.g., approve
     #Role:          #Slug                                      // role, e.g., manager
 
+    // ---------- Issue tracking ----------
+    // Entity types that can be referenced by issues
+    #EntityType: "service" | "client" | "package" | "tool" | "group" |
+                 "capability" | "operation" | "behavior" | "issue"
+
+    // Structured reference to another entity
+    #EntityRef: {
+        type:   #EntityType
+        slug:   #Slug
+        // Optional label for display (auto-resolved from referenced entity)
+        label?: #Human
+    }
+
+    // Issue workflow states
+    #IssueStatus: "open" | "in-progress" | "resolved" | "closed" | "wont-fix"
+
+    // Issue priority levels
+    #IssuePriority: "critical" | "high" | "medium" | "low"
+
     // ---------- Locator contract ----------
     #LocatorToken:  =~"^[a-z]+:[a-z0-9_-]+$"                   // e.g., btn:approve
-    #CssSelector:   string & =~"^[^\n\r]+$" & !=""             // non-empty single-line
+    #CssSelector:   string & =~"^[^\\n\\r]+$" & !=""           // non-empty single-line
 
     // ---------- Flow steps ----------
     #FlowID:        #Slug

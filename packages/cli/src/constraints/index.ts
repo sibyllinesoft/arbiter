@@ -5,32 +5,32 @@ import {
   DEFAULT_CONSTRAINTS,
   constrainedOperation,
   globalConstraintEnforcer,
-} from "@/constraints/core.js";
+} from "@/constraints/core/core.js";
+import {
+  type SandboxValidator,
+  type SandboxedOperation,
+  createSandboxValidator,
+  initializeSandboxConfig,
+} from "@/constraints/core/sandbox.js";
+import {
+  LATEST_API_VERSION,
+  ensureLatestSchema,
+  globalSchemaValidator,
+  validateReadData,
+} from "@/constraints/core/schema.js";
 import {
   type FileSystemOperation,
   bundleStandalone,
   copyStandalone,
   globalFileSystemConstraints,
   safeFileOperation,
-} from "@/constraints/filesystem.js";
+} from "@/constraints/utils/filesystem.js";
 import {
   type IdempotentOperation,
   globalIdempotencyValidator,
   validateIdempotentEdits,
   withIdempotencyValidation,
-} from "@/constraints/idempotency.js";
-import {
-  type SandboxValidator,
-  type SandboxedOperation,
-  createSandboxValidator,
-  initializeSandboxConfig,
-} from "@/constraints/sandbox.js";
-import {
-  LATEST_API_VERSION,
-  ensureLatestSchema,
-  globalSchemaValidator,
-  validateReadData,
-} from "@/constraints/schema.js";
+} from "@/constraints/utils/idempotency.js";
 import type { CLIConfig } from "@/types.js";
 import chalk from "chalk";
 
@@ -96,6 +96,37 @@ export class ConstraintSystem extends EventEmitter {
     this.startMaintenanceTasks();
   }
 
+  private startSandboxTracking(sandbox: SandboxedOperation | undefined): string | undefined {
+    return sandbox ? this.sandboxValidator.startOperation(sandbox) : undefined;
+  }
+
+  private endSandboxTracking(
+    sandbox: SandboxedOperation | undefined,
+    operationId: string | undefined,
+  ): void {
+    if (sandbox && operationId) {
+      this.sandboxValidator.endOperation(sandbox, operationId);
+    }
+  }
+
+  private async executeWithIdempotency<T>(
+    idempotent: IdempotentOperation | undefined,
+    operation: string,
+    metadata: Record<string, unknown> | undefined,
+    executor: () => Promise<T>,
+  ): Promise<T> {
+    if (idempotent) {
+      return withIdempotencyValidation(idempotent, { operation, metadata }, executor);
+    }
+    return executor();
+  }
+
+  private validateApiResult<T>(result: T): void {
+    if (this.isApiData(result)) {
+      ensureLatestSchema(result);
+    }
+  }
+
   /**
    * Execute any operation with comprehensive constraint enforcement
    */
@@ -112,37 +143,18 @@ export class ConstraintSystem extends EventEmitter {
     return constrainedOperation(
       operation,
       async () => {
-        // Start sandbox tracking if applicable
-        let sandboxOperationId: string | undefined;
-        if (operationType.sandbox) {
-          sandboxOperationId = this.sandboxValidator.startOperation(operationType.sandbox);
-        }
-
+        const sandboxOperationId = this.startSandboxTracking(operationType.sandbox);
         try {
-          let result: T;
-
-          // Apply idempotency validation if needed
-          if (operationType.idempotent) {
-            result = await withIdempotencyValidation(
-              operationType.idempotent,
-              { operation, metadata },
-              executor,
-            );
-          } else {
-            result = await executor();
-          }
-
-          // Validate result schema if it looks like API data
-          if (this.isApiData(result)) {
-            ensureLatestSchema(result);
-          }
-
+          const result = await this.executeWithIdempotency(
+            operationType.idempotent,
+            operation,
+            metadata,
+            executor,
+          );
+          this.validateApiResult(result);
           return result;
         } finally {
-          // End sandbox tracking
-          if (operationType.sandbox && sandboxOperationId) {
-            this.sandboxValidator.endOperation(operationType.sandbox, sandboxOperationId);
-          }
+          this.endSandboxTracking(operationType.sandbox, sandboxOperationId);
         }
       },
       metadata,
@@ -319,78 +331,80 @@ export class ConstraintSystem extends EventEmitter {
     };
   }
 
+  private buildReportHeader(status: ConstraintSystemStatus): string[] {
+    const healthColor = status.isHealthy ? chalk.green : chalk.red;
+    const healthStatus = status.isHealthy ? "HEALTHY" : "VIOLATIONS DETECTED";
+    return [
+      chalk.bold("🛡️  Constraint System Status"),
+      "",
+      `Overall Status: ${healthColor(healthStatus)}`,
+      `Compliance Rate: ${this.formatComplianceRate(status.violations.complianceRate)}`,
+      "",
+    ];
+  }
+
+  private buildConstraintLimitsSection(status: ConstraintSystemStatus): string[] {
+    return [
+      chalk.bold("Constraint Limits:"),
+      `  Max Payload Size: ${this.formatBytes(status.constraints.maxPayloadSize)}`,
+      `  Max Operation Time: ${status.constraints.maxOperationTime}ms`,
+      `  Rate Limit: ${status.constraints.rateLimit.requests} req/${status.constraints.rateLimit.windowMs}ms`,
+      `  API Version: ${status.constraints.apiVersion}`,
+      `  Symlink Depth: ${status.constraints.maxSymlinkDepth} (symlinks forbidden)`,
+      "",
+    ];
+  }
+
+  private buildViolationsSection(status: ConstraintSystemStatus): string[] {
+    if (status.violations.totalViolations === 0) {
+      return [chalk.green("✅ No constraint violations detected")];
+    }
+
+    const lines: string[] = [chalk.bold(chalk.red("Violations:"))];
+
+    for (const [constraint, count] of Object.entries(status.violations.byConstraint)) {
+      if (count > 0) {
+        lines.push(`  ${chalk.red("✗")} ${constraint}: ${count} violations`);
+      }
+    }
+
+    if (status.violations.criticalViolations.length > 0) {
+      lines.push("", chalk.bold(chalk.red("Critical Issues:")));
+      for (const critical of status.violations.criticalViolations) {
+        lines.push(`  ${chalk.red("⚠")} ${critical}`);
+      }
+    }
+
+    lines.push("", chalk.bold("Suggestions:"));
+    for (const suggestion of status.violations.suggestions) {
+      lines.push(`  ${chalk.yellow("💡")} ${suggestion}`);
+    }
+
+    return lines;
+  }
+
+  private buildComponentStatusSection(status: ConstraintSystemStatus): string[] {
+    return [
+      "",
+      chalk.bold("Component Status:"),
+      `  Sandbox: ${status.sandbox.activeOperations} active ops, ${status.sandbox.complianceRate.toFixed(1)}% compliant`,
+      `  File System: ${status.fileSystem.symlinks} symlinks, ${status.fileSystem.invalidPaths} invalid paths`,
+      `  Idempotency: ${status.idempotency.cacheSize} cached, ${status.idempotency.validations} validated`,
+      `  Schema: version ${status.schema.latestVersion}, ${status.schema.deprecatedWarnings} warnings`,
+    ];
+  }
+
   /**
    * Generate constraint compliance report
    */
   generateComplianceReport(): string {
     const status = this.getSystemStatus();
-    const lines: string[] = [];
-
-    lines.push(chalk.bold("🛡️  Constraint System Status"));
-    lines.push("");
-
-    // Overall health
-    const healthColor = status.isHealthy ? chalk.green : chalk.red;
-    const healthStatus = status.isHealthy ? "HEALTHY" : "VIOLATIONS DETECTED";
-    lines.push(`Overall Status: ${healthColor(healthStatus)}`);
-    lines.push(`Compliance Rate: ${this.formatComplianceRate(status.violations.complianceRate)}`);
-    lines.push("");
-
-    // Constraint details
-    lines.push(chalk.bold("Constraint Limits:"));
-    lines.push(`  Max Payload Size: ${this.formatBytes(status.constraints.maxPayloadSize)}`);
-    lines.push(`  Max Operation Time: ${status.constraints.maxOperationTime}ms`);
-    lines.push(
-      `  Rate Limit: ${status.constraints.rateLimit.requests} req/${status.constraints.rateLimit.windowMs}ms`,
-    );
-    lines.push(`  API Version: ${status.constraints.apiVersion}`);
-    lines.push(`  Symlink Depth: ${status.constraints.maxSymlinkDepth} (symlinks forbidden)`);
-    lines.push("");
-
-    // Violations
-    if (status.violations.totalViolations > 0) {
-      lines.push(chalk.bold(chalk.red("Violations:")));
-      for (const [constraint, count] of Object.entries(status.violations.byConstraint)) {
-        if (count > 0) {
-          lines.push(`  ${chalk.red("✗")} ${constraint}: ${count} violations`);
-        }
-      }
-
-      if (status.violations.criticalViolations.length > 0) {
-        lines.push("");
-        lines.push(chalk.bold(chalk.red("Critical Issues:")));
-        for (const critical of status.violations.criticalViolations) {
-          lines.push(`  ${chalk.red("⚠")} ${critical}`);
-        }
-      }
-
-      lines.push("");
-      lines.push(chalk.bold("Suggestions:"));
-      for (const suggestion of status.violations.suggestions) {
-        lines.push(`  ${chalk.yellow("💡")} ${suggestion}`);
-      }
-    } else {
-      lines.push(chalk.green("✅ No constraint violations detected"));
-    }
-
-    lines.push("");
-
-    // Component status
-    lines.push(chalk.bold("Component Status:"));
-    lines.push(
-      `  Sandbox: ${status.sandbox.activeOperations} active ops, ${status.sandbox.complianceRate.toFixed(1)}% compliant`,
-    );
-    lines.push(
-      `  File System: ${status.fileSystem.symlinks} symlinks, ${status.fileSystem.invalidPaths} invalid paths`,
-    );
-    lines.push(
-      `  Idempotency: ${status.idempotency.cacheSize} cached, ${status.idempotency.validations} validated`,
-    );
-    lines.push(
-      `  Schema: version ${status.schema.latestVersion}, ${status.schema.deprecatedWarnings} warnings`,
-    );
-
-    return lines.join("\n");
+    return [
+      ...this.buildReportHeader(status),
+      ...this.buildConstraintLimitsSection(status),
+      ...this.buildViolationsSection(status),
+      ...this.buildComponentStatusSection(status),
+    ].join("\n");
   }
 
   /**
@@ -466,74 +480,47 @@ export class ConstraintSystem extends EventEmitter {
     this.violationCounts.set(constraint, current + 1);
   }
 
+  private static readonly CRITICAL_VIOLATION_MESSAGES: Record<string, string> = {
+    maxPayloadSize: "Payload size limits exceeded - requests/responses too large",
+    maxOperationTime: "Operations taking too long - performance issues detected",
+    sandboxCompliance: "Direct tool execution detected - must use server endpoints",
+    symlinkPrevention: "Symlinks detected - must use standalone file copies",
+    apiVersion: "Outdated API versions in use - must use latest schema",
+    idempotency: "Non-idempotent operations detected - results are inconsistent",
+  };
+
+  private static readonly IMPROVEMENT_SUGGESTIONS: Record<string, string> = {
+    maxPayloadSize: "Consider pagination or compression for large datasets",
+    maxOperationTime: "Optimize algorithms or implement caching for better performance",
+    rateLimit: "Implement request queuing or batch operations",
+    sandboxCompliance:
+      "Ensure all analyze/validate operations use API client instead of direct tools",
+    symlinkPrevention: "Use file copying utilities that create standalone copies",
+  };
+
   /**
    * Get critical violations that need immediate attention
    */
   private getCriticalViolations(): string[] {
-    const critical: string[] = [];
-
-    for (const [constraint, count] of this.violationCounts.entries()) {
-      if (count > 0) {
-        switch (constraint) {
-          case "maxPayloadSize":
-            critical.push("Payload size limits exceeded - requests/responses too large");
-            break;
-          case "maxOperationTime":
-            critical.push("Operations taking too long - performance issues detected");
-            break;
-          case "sandboxCompliance":
-            critical.push("Direct tool execution detected - must use server endpoints");
-            break;
-          case "symlinkPrevention":
-            critical.push("Symlinks detected - must use standalone file copies");
-            break;
-          case "apiVersion":
-            critical.push("Outdated API versions in use - must use latest schema");
-            break;
-          case "idempotency":
-            critical.push("Non-idempotent operations detected - results are inconsistent");
-            break;
-        }
-      }
-    }
-
-    return critical;
+    return Array.from(this.violationCounts.entries())
+      .filter(([, count]) => count > 0)
+      .map(([constraint]) => ConstraintSystem.CRITICAL_VIOLATION_MESSAGES[constraint])
+      .filter(Boolean);
   }
 
   /**
    * Get improvement suggestions based on violations
    */
   private getImprovementSuggestions(): string[] {
-    const suggestions: string[] = [];
-
-    for (const [constraint, count] of this.violationCounts.entries()) {
-      if (count > 0) {
-        switch (constraint) {
-          case "maxPayloadSize":
-            suggestions.push("Consider pagination or compression for large datasets");
-            break;
-          case "maxOperationTime":
-            suggestions.push("Optimize algorithms or implement caching for better performance");
-            break;
-          case "rateLimit":
-            suggestions.push("Implement request queuing or batch operations");
-            break;
-          case "sandboxCompliance":
-            suggestions.push(
-              "Ensure all analyze/validate operations use API client instead of direct tools",
-            );
-            break;
-          case "symlinkPrevention":
-            suggestions.push("Use file copying utilities that create standalone copies");
-            break;
-          case "apiVersion":
-            suggestions.push(`Update all schemas to use API version ${LATEST_API_VERSION}`);
-            break;
+    return Array.from(this.violationCounts.entries())
+      .filter(([, count]) => count > 0)
+      .map(([constraint]) => {
+        if (constraint === "apiVersion") {
+          return `Update all schemas to use API version ${LATEST_API_VERSION}`;
         }
-      }
-    }
-
-    return suggestions;
+        return ConstraintSystem.IMPROVEMENT_SUGGESTIONS[constraint];
+      })
+      .filter(Boolean) as string[];
   }
 
   /**

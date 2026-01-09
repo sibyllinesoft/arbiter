@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import type { ContentFetcher } from "../../content-fetcher";
-import { analyzeProjectFiles } from "../../project-analysis";
+import type { ContentFetcher } from "../../git/content-fetcher";
+import { analyzeProjectFiles } from "../../git/project-analysis";
 
 describe("Cargo manifest analysis", () => {
   const createFetcher = (files: Record<string, string>): ContentFetcher => ({

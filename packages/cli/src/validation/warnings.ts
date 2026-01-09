@@ -1,4 +1,5 @@
 /**
+ * @packageDocumentation
  * Validation Warning System
  *
  * This module provides a comprehensive warning system that checks CUE specifications
@@ -7,12 +8,16 @@
  * Warnings block generation unless --force flag is used.
  */
 
-import { resolveServiceArtifactType, resolveServiceWorkload } from "@/utils/service-metadata.js";
+import {
+  resolveServiceArtifactType,
+  resolveServiceWorkload,
+} from "@/utils/api/service-metadata.js";
 import chalk from "chalk";
 
+/** Supported HTTP methods for path validation */
 const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"];
 
-// Normalized spec interface for validation
+/** Normalized spec interface for validation */
 interface NormalizedSpec {
   product?: { name?: string; goals?: string[] };
   metadata?: { name?: string; version?: string; description?: string };
@@ -21,7 +26,7 @@ interface NormalizedSpec {
   contracts?: Record<string, any>;
   ui?: { routes?: any[] };
   tests?: any[];
-  epics?: any[];
+  groups?: any[];
   security?: any;
   performance?: any;
   observability?: any;
@@ -31,6 +36,7 @@ interface NormalizedSpec {
   docs?: any;
 }
 
+/** Validation warning or error structure */
 export interface ValidationWarning {
   category: string;
   severity: "warning" | "error";
@@ -39,6 +45,7 @@ export interface ValidationWarning {
   path?: string;
 }
 
+/** Result of specification validation */
 export interface ValidationResult {
   hasWarnings: boolean;
   hasErrors: boolean;
@@ -57,7 +64,7 @@ export function validateSpecification(spec: any): ValidationResult {
 
   // Run all validators
   warnings.push(...validateTestDefinitions(normalizedSpec));
-  warnings.push(...validateEpicsAndTasks(normalizedSpec));
+  warnings.push(...validateGroupsAndIssues(normalizedSpec));
   warnings.push(...validateServiceCompleteness(normalizedSpec));
   warnings.push(...validateDocumentation(normalizedSpec));
   warnings.push(...validateSecurity(normalizedSpec));
@@ -81,9 +88,7 @@ export function validateSpecification(spec: any): ValidationResult {
   };
 }
 
-/**
- * Normalize any spec format to a consistent interface
- */
+/** Normalize any spec format to a consistent interface */
 function normalizeSpec(spec: any): NormalizedSpec {
   if (!spec) return {};
 
@@ -95,7 +100,7 @@ function normalizeSpec(spec: any): NormalizedSpec {
     contracts: spec.contracts,
     ui: spec.ui,
     tests: spec.tests,
-    epics: spec.epics,
+    groups: spec.groups,
     security: spec.security,
     performance: spec.performance,
     observability: spec.observability,
@@ -106,249 +111,324 @@ function normalizeSpec(spec: any): NormalizedSpec {
   };
 }
 
-/**
- * Check if specification has comprehensive test definitions
- */
-function validateTestDefinitions(spec: NormalizedSpec): ValidationWarning[] {
-  const warnings: ValidationWarning[] = [];
-
-  // Check for missing test suites
-  if (!spec.tests || spec.tests.length === 0) {
-    warnings.push({
-      category: "Testing",
-      severity: "warning",
-      message: "No test suites defined",
-      suggestion: "Add comprehensive test coverage with unit, integration, and e2e tests",
-      path: "tests",
-    });
-  } else {
-    // Check for test coverage completeness
-    const hasUnit = spec.tests.some((t) => t.type === "unit");
-    const hasIntegration = spec.tests.some((t) => t.type === "integration");
-    const hasE2E = spec.tests.some((t) => t.type === "e2e");
-
-    if (!hasUnit) {
-      warnings.push({
-        category: "Testing",
-        severity: "warning",
-        message: "Missing unit tests",
-        suggestion: "Add unit test suite to validate individual components",
-        path: "tests",
-      });
-    }
-
-    if (!hasIntegration) {
-      warnings.push({
-        category: "Testing",
-        severity: "warning",
-        message: "Missing integration tests",
-        suggestion: "Add integration test suite to validate service interactions",
-        path: "tests",
-      });
-    }
-
-    if (!hasE2E) {
-      warnings.push({
-        category: "Testing",
-        severity: "warning",
-        message: "Missing end-to-end tests",
-        suggestion: "Add e2e test suite to validate complete user workflows",
-        path: "tests",
-      });
-    }
-
-    // Check for test cases without assertions
-    spec.tests.forEach((testSuite, idx) => {
-      if (!testSuite.cases || testSuite.cases.length === 0) {
-        warnings.push({
-          category: "Testing",
-          severity: "warning",
-          message: `Test suite '${testSuite.name}' has no test cases`,
-          suggestion: "Add specific test cases with clear assertions",
-          path: `tests[${idx}].cases`,
-        });
-      }
-    });
-  }
-
-  return warnings;
+/** Create a validation warning with the given properties */
+function createWarning(
+  category: string,
+  message: string,
+  suggestion: string,
+  path?: string,
+  severity: "warning" | "error" = "warning",
+): ValidationWarning {
+  return { category, severity, message, suggestion, path };
 }
 
-/**
- * Check for missing epics and tasks for source services
- */
-function validateEpicsAndTasks(spec: NormalizedSpec): ValidationWarning[] {
-  const warnings: ValidationWarning[] = [];
+/** Check if a test type exists in the test suite */
+function hasTestType(tests: any[], type: string): boolean {
+  return tests.some((t) => t.type === type);
+}
 
-  // Check if epics/tasks are defined
-  const hasEpics = spec.epics && spec.epics.length > 0;
-  const hasTasks = spec.epics?.some((epic) => epic.tasks && epic.tasks.length > 0);
+/** Check for missing test types (unit, integration, e2e) */
+function checkMissingTestTypes(tests: any[]): ValidationWarning[] {
+  const checks = [
+    {
+      type: "unit",
+      message: "Missing unit tests",
+      suggestion: "Add unit test suite to validate individual components",
+    },
+    {
+      type: "integration",
+      message: "Missing integration tests",
+      suggestion: "Add integration test suite to validate service interactions",
+    },
+    {
+      type: "e2e",
+      message: "Missing end-to-end tests",
+      suggestion: "Add e2e test suite to validate complete user workflows",
+    },
+  ];
+  return checks
+    .filter(({ type }) => !hasTestType(tests, type))
+    .map(({ message, suggestion }) => createWarning("Testing", message, suggestion, "tests"));
+}
 
-  // Find source services (not pre-existing containers)
-  const sourceServices = Object.entries(spec.services || {}).filter(([, service]) => {
-    return (
-      resolveServiceWorkload(service) === "deployment" &&
-      resolveServiceArtifactType(service) === "internal" &&
-      !service.image
+/** Check for test suites without test cases */
+function checkEmptyTestSuites(tests: any[]): ValidationWarning[] {
+  return tests
+    .filter((suite) => !suite.cases?.length)
+    .map((suite, idx) =>
+      createWarning(
+        "Testing",
+        `Test suite '${suite.name}' has no test cases`,
+        "Add specific test cases with clear assertions",
+        `tests[${idx}].cases`,
+      ),
     );
-  });
+}
 
-  if (sourceServices.length > 0) {
-    if (!hasEpics) {
-      warnings.push({
-        category: "Project Management",
-        severity: "warning",
-        message: "Source services found but no epics defined",
-        suggestion: `Add epics to track implementation of custom services: ${sourceServices.map(([name]) => name).join(", ")}`,
-        path: "epics",
-      });
-    }
-
-    if (!hasTasks) {
-      warnings.push({
-        category: "Project Management",
-        severity: "warning",
-        message: "Source services found but no implementation tasks defined",
-        suggestion: `Add detailed tasks with dependencies for implementing: ${sourceServices.map(([name]) => name).join(", ")}`,
-        path: "epics[].tasks",
-      });
-    }
-
-    // Check each source service has corresponding epic/tasks
-    sourceServices.forEach(([serviceName, service]) => {
-      const hasServiceEpic = spec.epics?.some(
-        (epic) =>
-          epic.name.toLowerCase().includes(serviceName.toLowerCase()) ||
-          epic.description?.toLowerCase().includes(serviceName.toLowerCase()),
-      );
-
-      if (!hasServiceEpic) {
-        warnings.push({
-          category: "Project Management",
-          severity: "warning",
-          message: `Source service '${serviceName}' has no corresponding epic`,
-          suggestion: `Add epic for implementing ${serviceName} service with detailed tasks`,
-          path: `services.${serviceName}`,
-        });
-      }
-    });
+/** Validate test definitions for completeness */
+function validateTestDefinitions(spec: NormalizedSpec): ValidationWarning[] {
+  if (!spec.tests?.length) {
+    return [
+      createWarning(
+        "Testing",
+        "No test suites defined",
+        "Add comprehensive test coverage with unit, integration, and e2e tests",
+        "tests",
+      ),
+    ];
   }
+  return [...checkMissingTestTypes(spec.tests), ...checkEmptyTestSuites(spec.tests)];
+}
 
+/** Check if a service is a source (buildable) service */
+function isSourceService(service: any): boolean {
+  return (
+    resolveServiceWorkload(service) === "deployment" &&
+    resolveServiceArtifactType(service) === "internal" &&
+    !service.image
+  );
+}
+
+/** Find all source services in the service map */
+function findSourceServices(services: Record<string, any>): [string, any][] {
+  return Object.entries(services || {}).filter(([, service]) => isSourceService(service));
+}
+
+/**
+ * Check if groups array has groups with tasks.
+ * @param groups - Array of groups to check
+ * @returns Object indicating if groups and tasks exist
+ */
+function hasGroupsWithTasks(groups: any[]): { hasGroups: boolean; hasTasks: boolean } {
+  const hasGroups = groups?.length > 0;
+  const hasTasks = groups?.some((g) => g.tasks?.length > 0);
+  return { hasGroups, hasTasks };
+}
+
+/**
+ * Check if a service has a corresponding group in the groups array.
+ * @param serviceName - Name of the service
+ * @param groups - Array of groups to search
+ * @returns True if a corresponding group exists
+ */
+function serviceHasCorrespondingGroup(serviceName: string, groups: any[]): boolean {
+  return (
+    groups?.some(
+      (g) =>
+        g.name?.toLowerCase().includes(serviceName.toLowerCase()) ||
+        g.description?.toLowerCase().includes(serviceName.toLowerCase()),
+    ) ?? false
+  );
+}
+
+/**
+ * Check for missing project management elements.
+ * @param sourceServices - Array of source services
+ * @param groupStatus - Object indicating group and task status
+ * @returns Array of validation warnings
+ */
+function checkMissingProjectManagement(
+  sourceServices: [string, any][],
+  groupStatus: { hasGroups: boolean; hasTasks: boolean },
+): ValidationWarning[] {
+  const serviceNames = sourceServices.map(([n]) => n).join(", ");
+  const warnings: ValidationWarning[] = [];
+  if (!groupStatus.hasGroups)
+    warnings.push(
+      createWarning(
+        "Project Management",
+        "Source services found but no groups defined",
+        `Add groups to track implementation of custom services: ${serviceNames}`,
+        "groups",
+      ),
+    );
+  if (!groupStatus.hasTasks)
+    warnings.push(
+      createWarning(
+        "Project Management",
+        "Source services found but no implementation tasks defined",
+        `Add detailed tasks with dependencies for implementing: ${serviceNames}`,
+        "groups[].tasks",
+      ),
+    );
   return warnings;
 }
 
 /**
- * Check service definitions for completeness
+ * Check if all source services have corresponding groups.
+ * @param sourceServices - Array of source services
+ * @param groups - Array of groups
+ * @returns Array of validation warnings for uncovered services
+ */
+function checkServiceGroupCoverage(
+  sourceServices: [string, any][],
+  groups: any[],
+): ValidationWarning[] {
+  return sourceServices
+    .filter(([name]) => !serviceHasCorrespondingGroup(name, groups))
+    .map(([name]) =>
+      createWarning(
+        "Project Management",
+        `Source service '${name}' has no corresponding group`,
+        `Add group for implementing ${name} service with detailed tasks`,
+        `services.${name}`,
+      ),
+    );
+}
+
+/**
+ * Validate groups and issues in the specification.
+ * @param spec - Normalized specification
+ * @returns Array of validation warnings
+ */
+function validateGroupsAndIssues(spec: NormalizedSpec): ValidationWarning[] {
+  const sourceServices = findSourceServices(spec.services || {});
+  if (sourceServices.length === 0) return [];
+  const groupStatus = hasGroupsWithTasks(spec.groups || []);
+  return [
+    ...checkMissingProjectManagement(sourceServices, groupStatus),
+    ...checkServiceGroupCoverage(sourceServices, spec.groups || []),
+  ];
+}
+
+/** Configuration for a service validation check */
+interface ServiceCheck {
+  condition: (service: any) => boolean;
+  message: (name: string) => string;
+  suggestion: string;
+  pathSuffix: string;
+}
+
+/** List of service validation checks */
+const SERVICE_CHECKS: ServiceCheck[] = [
+  {
+    condition: (s) => !s.language,
+    message: (n) => `Service '${n}' missing language specification`,
+    suggestion: "Specify the programming language (typescript, python, rust, go, etc.)",
+    pathSuffix: "language",
+  },
+  {
+    condition: (s) => !s.ports?.length,
+    message: (n) => `Service '${n}' has no port definitions`,
+    suggestion: "Define exposed ports with protocol and target port",
+    pathSuffix: "ports",
+  },
+  {
+    condition: (s) => resolveServiceArtifactType(s) === "internal" && !s.healthCheck,
+    message: (n) => `Source service '${n}' missing health check configuration`,
+    suggestion: "Add health check endpoint and configuration for monitoring",
+    pathSuffix: "healthCheck",
+  },
+  {
+    condition: (s) => !s.resources,
+    message: (n) => `Service '${n}' missing resource specifications`,
+    suggestion: "Define CPU and memory limits for proper resource management",
+    pathSuffix: "resources",
+  },
+  {
+    condition: (s) =>
+      resolveServiceArtifactType(s) === "internal" && !Object.keys(s.env || {}).length,
+    message: (n) => `Source service '${n}' missing environment configuration`,
+    suggestion: "Define environment variables for configuration management",
+    pathSuffix: "env",
+  },
+];
+
+/**
+ * Validate a single service against all service checks.
+ * @param serviceName - Name of the service
+ * @param service - Service configuration object
+ * @returns Array of validation warnings for the service
+ */
+function validateSingleService(serviceName: string, service: any): ValidationWarning[] {
+  const basePath = `services.${serviceName}`;
+  return SERVICE_CHECKS.filter(({ condition }) => condition(service)).map(
+    ({ message, suggestion, pathSuffix }) =>
+      createWarning(
+        "Service Definition",
+        message(serviceName),
+        suggestion,
+        `${basePath}.${pathSuffix}`,
+      ),
+  );
+}
+
+/**
+ * Validate completeness of all services in the specification.
+ * @param spec - Normalized specification
+ * @returns Array of validation warnings
  */
 function validateServiceCompleteness(spec: NormalizedSpec): ValidationWarning[] {
-  const warnings: ValidationWarning[] = [];
+  return Object.entries(spec.services || {}).flatMap(([name, service]) =>
+    validateSingleService(name, service),
+  );
+}
 
-  Object.entries(spec.services || {}).forEach(([serviceName, service]) => {
-    const basePath = `services.${serviceName}`;
+/**
+ * Check for missing product goals
+ */
+function checkMissingProductGoals(spec: NormalizedSpec): ValidationWarning | null {
+  if (!spec.product?.goals || spec.product.goals.length === 0) {
+    return createWarning(
+      "Documentation",
+      "Missing product goals and objectives",
+      "Define clear product goals to guide development decisions",
+      "product.goals",
+    );
+  }
+  return null;
+}
 
-    // Check for missing essential service properties
-    if (!service.language) {
-      warnings.push({
-        category: "Service Definition",
-        severity: "warning",
-        message: `Service '${serviceName}' missing language specification`,
-        suggestion: "Specify the programming language (typescript, python, rust, go, etc.)",
-        path: `${basePath}.language`,
-      });
-    }
+/**
+ * Check for missing project description
+ */
+function checkMissingDescription(spec: NormalizedSpec): ValidationWarning | null {
+  if (!spec.metadata?.description) {
+    return createWarning(
+      "Documentation",
+      "Missing project description",
+      "Add comprehensive project description in metadata",
+      "metadata.description",
+    );
+  }
+  return null;
+}
 
-    if (!service.ports || service.ports.length === 0) {
-      warnings.push({
-        category: "Service Definition",
-        severity: "warning",
-        message: `Service '${serviceName}' has no port definitions`,
-        suggestion: "Define exposed ports with protocol and target port",
-        path: `${basePath}.ports`,
-      });
-    }
+/**
+ * Check if spec has API services
+ */
+function hasApiServices(services: Record<string, any> | undefined): boolean {
+  return Object.values(services || {}).some((s) =>
+    s.ports?.some((p: any) => p.name?.includes("http") || p.name?.includes("api")),
+  );
+}
 
-    // Check for missing health checks on source services
-    if (resolveServiceArtifactType(service) === "internal" && !service.healthCheck) {
-      warnings.push({
-        category: "Service Definition",
-        severity: "warning",
-        message: `Source service '${serviceName}' missing health check configuration`,
-        suggestion: "Add health check endpoint and configuration for monitoring",
-        path: `${basePath}.healthCheck`,
-      });
-    }
-
-    // Check for missing resource limits
-    if (!service.resources) {
-      warnings.push({
-        category: "Service Definition",
-        severity: "warning",
-        message: `Service '${serviceName}' missing resource specifications`,
-        suggestion: "Define CPU and memory limits for proper resource management",
-        path: `${basePath}.resources`,
-      });
-    }
-
-    // Check for missing environment configuration
-    if (
-      resolveServiceArtifactType(service) === "internal" &&
-      (!service.env || Object.keys(service.env).length === 0)
-    ) {
-      warnings.push({
-        category: "Service Definition",
-        severity: "warning",
-        message: `Source service '${serviceName}' missing environment configuration`,
-        suggestion: "Define environment variables for configuration management",
-        path: `${basePath}.env`,
-      });
-    }
-  });
-
-  return warnings;
+/**
+ * Check for missing API documentation
+ */
+function checkMissingApiDocs(spec: NormalizedSpec): ValidationWarning | null {
+  if (hasApiServices(spec.services) && (!spec.docs || !spec.docs.api)) {
+    return createWarning(
+      "Documentation",
+      "API services found but no API documentation specified",
+      "Add API documentation configuration (OpenAPI, endpoints, etc.)",
+      "docs.api",
+    );
+  }
+  return null;
 }
 
 /**
  * Check for missing documentation
  */
 function validateDocumentation(spec: NormalizedSpec): ValidationWarning[] {
-  const warnings: ValidationWarning[] = [];
+  const checks = [
+    checkMissingProductGoals(spec),
+    checkMissingDescription(spec),
+    checkMissingApiDocs(spec),
+  ];
 
-  if (!spec.product?.goals || spec.product.goals.length === 0) {
-    warnings.push({
-      category: "Documentation",
-      severity: "warning",
-      message: "Missing product goals and objectives",
-      suggestion: "Define clear product goals to guide development decisions",
-      path: "product.goals",
-    });
-  }
-
-  if (!spec.metadata?.description) {
-    warnings.push({
-      category: "Documentation",
-      severity: "warning",
-      message: "Missing project description",
-      suggestion: "Add comprehensive project description in metadata",
-      path: "metadata.description",
-    });
-  }
-
-  // Check for missing API documentation
-  const hasApiServices = Object.values(spec.services || {}).some((s) =>
-    s.ports?.some((p) => p.name?.includes("http") || p.name?.includes("api")),
-  );
-
-  if (hasApiServices && (!spec.docs || !spec.docs.api)) {
-    warnings.push({
-      category: "Documentation",
-      severity: "warning",
-      message: "API services found but no API documentation specified",
-      suggestion: "Add API documentation configuration (OpenAPI, endpoints, etc.)",
-      path: "docs.api",
-    });
-  }
-
-  return warnings;
+  return checks.filter((w): w is ValidationWarning => w !== null);
 }
 
 /**
@@ -423,99 +503,132 @@ function validatePerformanceSpecs(spec: NormalizedSpec): ValidationWarning[] {
 /**
  * Check UI completeness
  */
-function validateUICompleteness(spec: NormalizedSpec): ValidationWarning[] {
+/**
+ * Validate a single route for completeness
+ */
+function validateRoute(route: any, idx: number): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
+  const basePath = `ui.routes[${idx}]`;
 
-  if (spec.ui?.routes && spec.ui.routes.length > 0) {
-    spec.ui.routes.forEach((route, idx) => {
-      const basePath = `ui.routes[${idx}]`;
+  if (!route.components || route.components.length === 0) {
+    warnings.push(
+      createWarning(
+        "UI Design",
+        `Route '${route.path}' missing component specifications`,
+        "Define UI components needed for this route",
+        `${basePath}.components`,
+      ),
+    );
+  }
 
-      if (!route.components || route.components.length === 0) {
-        warnings.push({
-          category: "UI Design",
-          severity: "warning",
-          message: `Route '${route.path}' missing component specifications`,
-          suggestion: "Define UI components needed for this route",
-          path: `${basePath}.components`,
-        });
-      }
-
-      if (!route.capabilities || route.capabilities.length === 0) {
-        warnings.push({
-          category: "UI Design",
-          severity: "warning",
-          message: `Route '${route.path}' missing capability definitions`,
-          suggestion: "Define user capabilities/permissions for this route",
-          path: `${basePath}.capabilities`,
-        });
-      }
-    });
-
-    // Check for missing locators (test automation)
-    if (!spec.locators || Object.keys(spec.locators).length === 0) {
-      warnings.push({
-        category: "UI Design",
-        severity: "warning",
-        message: "UI routes defined but no test locators specified",
-        suggestion: "Add CSS selectors/test IDs for automated testing",
-        path: "locators",
-      });
-    }
+  if (!route.capabilities || route.capabilities.length === 0) {
+    warnings.push(
+      createWarning(
+        "UI Design",
+        `Route '${route.path}' missing capability definitions`,
+        "Define user capabilities/permissions for this route",
+        `${basePath}.capabilities`,
+      ),
+    );
   }
 
   return warnings;
 }
 
 /**
+ * Check if locators are missing when routes are defined
+ */
+function checkMissingLocators(spec: NormalizedSpec): ValidationWarning[] {
+  if (!spec.locators || Object.keys(spec.locators).length === 0) {
+    return [
+      createWarning(
+        "UI Design",
+        "UI routes defined but no test locators specified",
+        "Add CSS selectors/test IDs for automated testing",
+        "locators",
+      ),
+    ];
+  }
+  return [];
+}
+
+function validateUICompleteness(spec: NormalizedSpec): ValidationWarning[] {
+  if (!spec.ui?.routes || spec.ui.routes.length === 0) {
+    return [];
+  }
+
+  const routeWarnings = spec.ui.routes.flatMap((route, idx) => validateRoute(route, idx));
+  const locatorWarnings = checkMissingLocators(spec);
+
+  return [...routeWarnings, ...locatorWarnings];
+}
+
+/**
+ * Check if a service is a database service
+ */
+function isDatabaseService(service: any): boolean {
+  if (!service || typeof service !== "object") {
+    return false;
+  }
+  const image = typeof service.image === "string" ? service.image.toLowerCase() : "";
+  const resourceKind =
+    typeof service.resource?.kind === "string" ? service.resource.kind.toLowerCase() : "";
+
+  return (
+    image.includes("postgres") ||
+    image.includes("mysql") ||
+    image.includes("mongo") ||
+    resourceKind === "database"
+  );
+}
+
+/**
+ * Check if spec has any database services
+ */
+function hasDatabaseServices(services: Record<string, any> | undefined): boolean {
+  return Object.values(services || {}).some(isDatabaseService);
+}
+
+/**
  * Check data management completeness
  */
 function validateDataManagement(spec: NormalizedSpec): ValidationWarning[] {
+  if (!hasDatabaseServices(spec.services)) {
+    return [];
+  }
+
   const warnings: ValidationWarning[] = [];
 
-  // Check for database usage without proper configuration
-  const hasDatabaseServices = Object.values(spec.services || {}).some((s) => {
-    if (!s || typeof s !== "object") {
-      return false;
-    }
-    const image = typeof (s as any).image === "string" ? (s as any).image.toLowerCase() : "";
-    const resourceKind =
-      typeof (s as any).resource?.kind === "string"
-        ? ((s as any).resource.kind as string).toLowerCase()
-        : "";
-    return (
-      image.includes("postgres") ||
-      image.includes("mysql") ||
-      image.includes("mongo") ||
-      resourceKind === "database"
+  if (!spec.data) {
+    warnings.push(
+      createWarning(
+        "Data Management",
+        "Database services found but no data schema defined",
+        "Add data models, migrations, and backup strategies",
+        "data",
+      ),
     );
-  });
+  }
 
-  if (hasDatabaseServices) {
-    if (!spec.data) {
-      warnings.push({
-        category: "Data Management",
-        severity: "warning",
-        message: "Database services found but no data schema defined",
-        suggestion: "Add data models, migrations, and backup strategies",
-        path: "data",
-      });
-    }
-
-    // Check for missing migration strategy
-    if (!spec.data?.migrations) {
-      warnings.push({
-        category: "Data Management",
-        severity: "warning",
-        message: "Database services found but no migration strategy defined",
-        suggestion: "Define database migration and versioning approach",
-        path: "data.migrations",
-      });
-    }
+  if (!spec.data?.migrations) {
+    warnings.push(
+      createWarning(
+        "Data Management",
+        "Database services found but no migration strategy defined",
+        "Define database migration and versioning approach",
+        "data.migrations",
+      ),
+    );
   }
 
   return warnings;
 }
 
+/**
+ * Validate path grouping in the specification.
+ * @param spec - Normalized specification
+ * @returns Array of validation warnings for path grouping issues
+ */
 function validatePathGrouping(spec: NormalizedSpec): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
   const services = spec.services || {};
@@ -624,6 +737,12 @@ function validateEnvironmentConfig(spec: NormalizedSpec): ValidationWarning[] {
   return warnings;
 }
 
+/**
+ * Validate that all contract references in the specification are implemented.
+ * @param rawSpec - Raw specification object
+ * @param spec - Normalized specification
+ * @returns Array of validation warnings for missing contract implementations
+ */
 function validateContractImplementations(rawSpec: any, spec: NormalizedSpec): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
   const root = rawSpec ?? {};
@@ -639,108 +758,230 @@ function validateContractImplementations(rawSpec: any, spec: NormalizedSpec): Va
     });
   };
 
+  validateServiceContractRefs(services, root, reportMissing);
+  validatePathOperationContracts(spec.paths, root, reportMissing);
+
+  return warnings;
+}
+
+/**
+ * Validate contract references in service definitions.
+ * @param services - Map of services
+ * @param root - Root specification object
+ * @param reportMissing - Callback to report missing references
+ */
+function validateServiceContractRefs(
+  services: Record<string, any>,
+  root: any,
+  reportMissing: (ref: string, path: string) => void,
+): void {
   for (const [serviceName, service] of Object.entries(services)) {
     if (!service || typeof service !== "object") continue;
-    const serviceBasePath = `services.${serviceName}`;
 
-    const serviceApis = service.implements?.apis;
-    if (Array.isArray(serviceApis)) {
-      serviceApis.forEach((reference: unknown, index) => {
-        if (typeof reference === "string" && !resolveContractReference(root, reference)) {
-          reportMissing(reference, `${serviceBasePath}.implements.apis[${index}]`);
-        }
-      });
+    const basePath = `services.${serviceName}`;
+    validateServiceApiRefs(service, root, basePath, reportMissing);
+    validateEndpointContractRefs(service.endpoints, root, basePath, reportMissing);
+  }
+}
+
+/**
+ * Validate API references in a service.
+ * @param service - Service object
+ * @param root - Root specification object
+ * @param basePath - Base path for error reporting
+ * @param reportMissing - Callback to report missing references
+ */
+function validateServiceApiRefs(
+  service: any,
+  root: any,
+  basePath: string,
+  reportMissing: (ref: string, path: string) => void,
+): void {
+  const serviceApis = service.implements?.apis;
+  if (!Array.isArray(serviceApis)) return;
+
+  serviceApis.forEach((reference: unknown, index: number) => {
+    if (typeof reference === "string" && !resolveContractReference(root, reference)) {
+      reportMissing(reference, `${basePath}.implements.apis[${index}]`);
     }
+  });
+}
 
-    const endpoints = service.endpoints;
-    if (endpoints && typeof endpoints === "object") {
-      for (const [endpointId, endpointSpec] of Object.entries(endpoints)) {
-        if (!endpointSpec || typeof endpointSpec !== "object") {
-          continue;
-        }
-        const reference = (endpointSpec as Record<string, unknown>).implements;
-        if (typeof reference === "string" && !resolveContractReference(root, reference)) {
-          reportMissing(reference, `${serviceBasePath}.endpoints.${endpointId}.implements`);
-        }
-      }
+/**
+ * Validate contract references in endpoint definitions.
+ * @param endpoints - Endpoints object
+ * @param root - Root specification object
+ * @param basePath - Base path for error reporting
+ * @param reportMissing - Callback to report missing references
+ */
+function validateEndpointContractRefs(
+  endpoints: any,
+  root: any,
+  basePath: string,
+  reportMissing: (ref: string, path: string) => void,
+): void {
+  if (!endpoints || typeof endpoints !== "object") return;
+
+  for (const [endpointId, endpointSpec] of Object.entries(endpoints)) {
+    if (!endpointSpec || typeof endpointSpec !== "object") continue;
+
+    const reference = (endpointSpec as Record<string, unknown>).implements;
+    if (typeof reference === "string" && !resolveContractReference(root, reference)) {
+      reportMissing(reference, `${basePath}.endpoints.${endpointId}.implements`);
     }
   }
+}
 
-  forEachPathOperation(spec.paths, (operation, contextPath) => {
+/**
+ * Validate contract references in path operations.
+ * @param paths - Paths object
+ * @param root - Root specification object
+ * @param reportMissing - Callback to report missing references
+ */
+function validatePathOperationContracts(
+  paths: any,
+  root: any,
+  reportMissing: (ref: string, path: string) => void,
+): void {
+  forEachPathOperation(paths, (operation, contextPath) => {
     const reference = operation?.implements;
     if (typeof reference === "string" && !resolveContractReference(root, reference)) {
       reportMissing(reference, `${contextPath}.implements`);
     }
   });
-
-  return warnings;
 }
 
+/**
+ * Check if a handler is an endpoint handler.
+ * @param handler - Handler object
+ * @returns True if the handler is an endpoint handler
+ */
+function isEndpointHandler(handler: any): boolean {
+  return handler && typeof handler === "object" && handler.type === "endpoint";
+}
+
+/**
+ * Create a handler validator function.
+ * @param services - Map of services
+ * @param warnings - Array to collect warnings
+ * @returns Validator function for handlers
+ */
+function createHandlerValidator(
+  services: Record<string, any>,
+  warnings: ValidationWarning[],
+): (handler: any, contextPath: string) => void {
+  return (handler, contextPath) => {
+    if (!isEndpointHandler(handler)) return;
+
+    const serviceWarning = validateHandlerService(handler, services, contextPath);
+    if (serviceWarning) {
+      warnings.push(serviceWarning);
+      return;
+    }
+
+    const endpointWarning = validateHandlerEndpoint(handler, services, contextPath);
+    if (endpointWarning) {
+      warnings.push(endpointWarning);
+    }
+  };
+}
+
+/**
+ * Validate that a handler references an existing service.
+ * @param handler - Handler object
+ * @param services - Map of services
+ * @param contextPath - Context path for error reporting
+ * @returns Validation warning if service is missing, null otherwise
+ */
+function validateHandlerService(
+  handler: any,
+  services: Record<string, any>,
+  contextPath: string,
+): ValidationWarning | null {
+  const targetService = handler.service;
+  if (typeof targetService !== "string" || !services[targetService]) {
+    return {
+      category: "API Design",
+      severity: "error",
+      message: `Handler references unknown service '${targetService ?? "undefined"}'.`,
+      suggestion: "Update the handler to reference an existing service.",
+      path: `${contextPath}.handler.service`,
+    };
+  }
+  return null;
+}
+
+/**
+ * Validate that a handler references an existing endpoint.
+ * @param handler - Handler object
+ * @param services - Map of services
+ * @param contextPath - Context path for error reporting
+ * @returns Validation warning if endpoint is missing, null otherwise
+ */
+function validateHandlerEndpoint(
+  handler: any,
+  services: Record<string, any>,
+  contextPath: string,
+): ValidationWarning | null {
+  const { service: targetService, endpoint: targetEndpoint } = handler;
+  const endpointMap = services[targetService]?.endpoints;
+  const isInvalidEndpoint =
+    !endpointMap || typeof endpointMap !== "object" || !(targetEndpoint in endpointMap);
+
+  if (isInvalidEndpoint) {
+    return {
+      category: "API Design",
+      severity: "error",
+      message: `Handler references unknown endpoint '${targetEndpoint ?? "undefined"}' on service '${targetService}'.`,
+      suggestion: "Ensure the endpoint exists under services.<name>.endpoints.",
+      path: `${contextPath}.handler.endpoint`,
+    };
+  }
+  return null;
+}
+
+/**
+ * Extract handler from an object.
+ * @param obj - Object to extract handler from
+ * @returns Handler object or undefined
+ */
+function extractHandler(obj: any): any {
+  return obj && typeof obj === "object" ? (obj as Record<string, any>).handler : undefined;
+}
+
+/**
+ * Validate endpoint references in the specification.
+ * @param spec - Normalized specification
+ * @returns Array of validation warnings
+ */
 function validateEndpointReferences(spec: NormalizedSpec): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
   const services = spec.services || {};
-
-  const validateHandlerReference = (handler: any, contextPath: string) => {
-    if (!handler || typeof handler !== "object") {
-      return;
-    }
-    if (handler.type !== "endpoint") {
-      return;
-    }
-
-    const targetService = handler.service;
-    const targetEndpoint = handler.endpoint;
-
-    if (typeof targetService !== "string" || !services[targetService]) {
-      warnings.push({
-        category: "API Design",
-        severity: "error",
-        message: `Handler references unknown service '${targetService ?? "undefined"}'.`,
-        suggestion: "Update the handler to reference an existing service.",
-        path: `${contextPath}.handler.service`,
-      });
-      return;
-    }
-
-    const endpointMap = services[targetService]?.endpoints;
-    if (!endpointMap || typeof endpointMap !== "object" || !(targetEndpoint in endpointMap)) {
-      warnings.push({
-        category: "API Design",
-        severity: "error",
-        message: `Handler references unknown endpoint '${targetEndpoint ?? "undefined"}' on service '${targetService}'.`,
-        suggestion: "Ensure the endpoint exists under services.<name>.endpoints.",
-        path: `${contextPath}.handler.endpoint`,
-      });
-    }
-  };
+  const validateHandlerReference = createHandlerValidator(services, warnings);
 
   for (const [serviceName, service] of Object.entries(services)) {
     const endpoints = service?.endpoints;
-    if (endpoints && typeof endpoints === "object") {
-      for (const [endpointId, endpointSpec] of Object.entries(endpoints)) {
-        const endpointHandler =
-          endpointSpec && typeof endpointSpec === "object"
-            ? (endpointSpec as Record<string, any>).handler
-            : undefined;
-        validateHandlerReference(
-          endpointHandler,
-          `services.${serviceName}.endpoints.${endpointId}`,
-        );
-      }
+    if (!endpoints || typeof endpoints !== "object") continue;
+
+    for (const [endpointId, endpointSpec] of Object.entries(endpoints)) {
+      const handler = extractHandler(endpointSpec);
+      validateHandlerReference(handler, `services.${serviceName}.endpoints.${endpointId}`);
     }
   }
 
   forEachPathOperation(spec.paths, (operation, contextPath) => {
-    const handlerSpec =
-      operation && typeof operation === "object"
-        ? (operation as Record<string, any>).handler
-        : undefined;
-    validateHandlerReference(handlerSpec, contextPath);
+    validateHandlerReference(extractHandler(operation), contextPath);
   });
 
   return warnings;
 }
 
+/**
+ * Resolve a contract reference path in the specification.
+ * @param root - Root specification object
+ * @param reference - Reference path string
+ * @returns True if the reference resolves to a valid value
+ */
 function resolveContractReference(root: any, reference: string): boolean {
   if (!reference) return true;
   let current: any = root;
@@ -756,11 +997,52 @@ function resolveContractReference(root: any, reference: string): boolean {
   return true;
 }
 
+/**
+ * Check if a value is a path specification candidate.
+ * @param value - Value to check
+ * @returns True if the value is a path specification candidate
+ */
 function isPathSpecCandidate(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== "object") {
     return false;
   }
   return HTTP_METHODS.some((method) => Object.prototype.hasOwnProperty.call(value, method));
+}
+
+/**
+ * Iterate over all path operations in the specification.
+ * @param paths - Paths object
+ * @param iterate - Callback for each operation
+ */
+/**
+ * Visit all HTTP method operations in a path spec
+ */
+function visitPathSpec(
+  pathSpec: Record<string, any>,
+  contextBase: string,
+  iterate: (operation: Record<string, any>, contextPath: string) => void,
+): void {
+  for (const method of HTTP_METHODS) {
+    const operation = pathSpec[method];
+    if (operation && typeof operation === "object") {
+      iterate(operation as Record<string, any>, `${contextBase}.${method}`);
+    }
+  }
+}
+
+/**
+ * Process nested path group entries
+ */
+function processNestedPathGroup(
+  groupKey: string,
+  value: Record<string, any>,
+  iterate: (operation: Record<string, any>, contextPath: string) => void,
+): void {
+  for (const [pathKey, pathSpec] of Object.entries(value)) {
+    if (isPathSpecCandidate(pathSpec)) {
+      visitPathSpec(pathSpec as Record<string, any>, `paths.${groupKey}.${pathKey}`, iterate);
+    }
+  }
 }
 
 function forEachPathOperation(
@@ -771,66 +1053,74 @@ function forEachPathOperation(
     return;
   }
 
-  const visitPathSpec = (pathSpec: Record<string, any>, contextBase: string) => {
-    for (const method of HTTP_METHODS) {
-      const operation = pathSpec[method];
-      if (operation && typeof operation === "object") {
-        iterate(operation as Record<string, any>, `${contextBase}.${method}`);
-      }
-    }
-  };
-
   for (const [groupKey, value] of Object.entries(paths)) {
     if (isPathSpecCandidate(value)) {
-      visitPathSpec(value as Record<string, any>, `paths.${groupKey}`);
+      visitPathSpec(value as Record<string, any>, `paths.${groupKey}`, iterate);
       continue;
     }
 
     if (value && typeof value === "object") {
-      for (const [pathKey, pathSpec] of Object.entries(value as Record<string, any>)) {
-        if (!isPathSpecCandidate(pathSpec)) {
-          continue;
-        }
-        visitPathSpec(pathSpec as Record<string, any>, `paths.${groupKey}.${pathKey}`);
-      }
+      processNestedPathGroup(groupKey, value as Record<string, any>, iterate);
     }
   }
 }
 
 /**
- * Format warnings for CLI output
+ * Format a single validation item for display.
+ * @param item - Validation warning item
+ * @param colorFn - Chalk color function
+ * @returns Array of formatted lines
+ */
+function formatValidationItem(item: ValidationWarning, colorFn: typeof chalk.red): string[] {
+  const lines = [
+    colorFn(`  • ${item.category}: ${item.message}`),
+    chalk.gray(`    ${item.suggestion}`),
+  ];
+  if (item.path) lines.push(chalk.gray(`    Path: ${item.path}`));
+  return lines;
+}
+
+/**
+ * Format a section of validation items for display.
+ * @param header - Section header
+ * @param items - Validation warnings
+ * @param colorFn - Chalk color function
+ * @returns Array of formatted lines
+ */
+function formatSection(
+  header: string,
+  items: ValidationWarning[],
+  colorFn: typeof chalk.red,
+): string[] {
+  if (items.length === 0) return [];
+  return [colorFn.bold(header), ...items.flatMap((item) => formatValidationItem(item, colorFn))];
+}
+
+/**
+ * Format the agent notice for display.
+ * @returns Array of formatted notice lines
+ */
+function formatAgentNotice(): string[] {
+  return [
+    chalk.blue.bold("\n💡 Use --force to generate anyway"),
+    chalk.red.bold("\n🚨 IMPORTANT FOR AI AGENTS:"),
+    chalk.yellow(
+      "IF YOU NEED INFORMATION TO COMPLETE THE SPEC, ASK THE PRODUCT OWNER (USER) FOR IT.",
+    ),
+    chalk.yellow("YOU MUST REQUEST APPROVAL FROM THE USER BEFORE USING `--force`."),
+  ];
+}
+
+/**
+ * Format validation warnings and errors for display.
+ * @param result - Validation result object
+ * @returns Formatted string of warnings and errors
  */
 export function formatWarnings(result: ValidationResult): string {
-  const lines: string[] = [];
-
-  if (result.hasErrors) {
-    lines.push(chalk.red.bold("\n❌ ERRORS (must fix):"));
-    result.errors.forEach((error) => {
-      lines.push(chalk.red(`  • ${error.category}: ${error.message}`));
-      lines.push(chalk.gray(`    ${error.suggestion}`));
-      if (error.path) lines.push(chalk.gray(`    Path: ${error.path}`));
-    });
-  }
-
-  if (result.hasWarnings) {
-    lines.push(chalk.yellow.bold("\n⚠️  WARNINGS (recommend fixing):"));
-    result.warnings.forEach((warning) => {
-      lines.push(chalk.yellow(`  • ${warning.category}: ${warning.message}`));
-      lines.push(chalk.gray(`    ${warning.suggestion}`));
-      if (warning.path) lines.push(chalk.gray(`    Path: ${warning.path}`));
-    });
-  }
-
-  if (result.hasWarnings || result.hasErrors) {
-    lines.push(chalk.blue.bold("\n💡 Use --force to generate anyway"));
-    lines.push(chalk.red.bold("\n🚨 IMPORTANT FOR AI AGENTS:"));
-    lines.push(
-      chalk.yellow(
-        "IF YOU NEED INFORMATION TO COMPLETE THE SPEC, ASK THE PRODUCT OWNER (USER) FOR IT.",
-      ),
-    );
-    lines.push(chalk.yellow("YOU MUST REQUEST APPROVAL FROM THE USER BEFORE USING `--force`."));
-  }
-
-  return lines.join("\n");
+  const sections = [
+    formatSection("\n❌ ERRORS (must fix):", result.errors, chalk.red),
+    formatSection("\n⚠️  WARNINGS (recommend fixing):", result.warnings, chalk.yellow),
+  ];
+  const hasIssues = result.hasWarnings || result.hasErrors;
+  return [...sections.flat(), ...(hasIssues ? formatAgentNotice() : [])].join("\n");
 }

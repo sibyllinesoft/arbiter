@@ -4,7 +4,7 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import Badge from "@/components/Badge";
+import Badge from "@/components/api/Badge";
 import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
 import React, { useState, useRef, useEffect, type ReactNode } from "react";
 import { cn } from "../../variants";

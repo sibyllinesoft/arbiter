@@ -1,3 +1,4 @@
+/** @packageDocumentation Utility tests */
 import { describe, expect, it } from "bun:test";
 
 import {
@@ -5,7 +6,7 @@ import {
   isInternalService,
   resolveServiceArtifactType,
   resolveServiceWorkload,
-} from "@/utils/service-metadata.js";
+} from "@/utils/api/service-metadata.js";
 
 describe("service metadata helpers", () => {
   it("detects workloads from multiple legacy fields", () => {

@@ -33,10 +33,10 @@ export interface NormalizedTask {
   matchKeys: string[];
   /** Backing artifact identifier when available */
   artifactId?: string;
-  /** Associated epic identifier if scoped */
-  epicId?: string | null;
-  /** Associated epic display name if scoped */
-  epicName?: string;
+  /** Associated group identifier if scoped */
+  groupId?: string | null;
+  /** Associated group display name if scoped */
+  groupName?: string;
 }
 
 export interface NormalizedTaskGroup {
@@ -52,8 +52,8 @@ export interface NormalizedTaskGroup {
   description?: string;
   /** Normalized tasks contained within the group */
   tasks: NormalizedTask[];
-  /** Group type - either dedicated epic or global unscoped tasks */
-  type: "epic" | "unscoped";
+  /** Group type - either dedicated group or global unscoped tasks */
+  type: "group" | "unscoped";
   /** Slug match keys to correlate tasks with this group */
   matchKeys: string[];
 }
@@ -68,14 +68,14 @@ export interface NormalizeTaskArgs {
   key: string;
   index: number;
   nodePrefix: string;
-  epicContext?: { id?: string | null; slug: string; name: string };
+  groupContext?: { id?: string | null; slug: string; name: string };
 }
 
 export interface TaskGroupPanelProps {
   group: NormalizedTaskGroup;
   isActive: boolean;
   onTaskClick: (task: NormalizedTask) => void;
-  onEpicEdit?: (group: NormalizedTaskGroup) => void;
+  onGroupEdit?: (group: NormalizedTaskGroup) => void;
 }
 
 export interface TaskFlowData {
@@ -91,7 +91,7 @@ export interface TasksDiagramProps {
 
 export interface TasksDiagramHandle {
   openTaskCreator: () => void;
-  openEpicCreator: () => void;
+  openGroupCreator: () => void;
 }
 
 export interface TaskDetailCardProps {

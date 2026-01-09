@@ -3,10 +3,10 @@
  * Validates all performance targets: 500ms validation, 100ms WebSocket broadcast, 1.5s initial load
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
-import { SpecWorkbenchDB } from "../../db.ts";
-import { SpecWorkbenchServer } from "../../server.ts";
-import type { ServerConfig } from "../../types.ts";
-import { generateId } from "../../utils.ts";
+import { generateId } from "../../io/utils";
+import { SpecWorkbenchServer } from "../../server";
+import { SpecWorkbenchDB } from "../../util/db";
+import type { ServerConfig } from "../../util/types";
 
 (process.env.ARBITER_FULL_API === "1" ? describe : describe.skip)(
   "Performance Validation and Benchmarks",
@@ -27,11 +27,6 @@ import { generateId } from "../../utils.ts";
         spec_workdir: `/tmp/perf-test-${Date.now()}`,
         jq_binary_path: "jq",
         auth_required: false,
-        rate_limit: {
-          max_tokens: 10000, // High limit for performance testing
-          refill_rate: 1000,
-          window_ms: 1000,
-        },
         external_tool_timeout_ms: 60000, // Allow for longer operations
         websocket: {
           max_connections: 200,

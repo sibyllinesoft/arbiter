@@ -1,8 +1,9 @@
+/** @packageDocumentation Utility tests */
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { mkdtemp, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { GenerationHookManager } from "@/utils/generation-hooks";
+import { GenerationHookManager } from "@/utils/api/generation-hooks";
 
 const makeTmp = () => mkdtemp(path.join(os.tmpdir(), "arb-hooks-"));
 

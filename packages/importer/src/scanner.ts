@@ -99,6 +99,43 @@ const DEFAULT_SCANNER_CONFIG: Partial<ScannerConfig> = {
 };
 
 /**
+ * Information about a compose service extracted from docker evidence.
+ */
+interface ComposeServiceInfo {
+  composeFilePath: string;
+  composeFileRelative: string;
+  composeServiceName: string;
+  serviceConfig: Record<string, unknown>;
+  serviceYaml?: string;
+  buildContextAbsolute?: string;
+  buildContextRelative?: string;
+  dockerfilePathAbsolute?: string;
+  dockerfilePathRelative?: string;
+  dockerfileContent?: string;
+}
+
+/**
+ * Normalizes a relative path for consistent comparison.
+ */
+function normalizeRelativePath(value: string | undefined): string {
+  if (!value) return "";
+  const normalized = value.replace(/\\/g, "/");
+  if (normalized === "." || normalized === "./") return "";
+  return normalized.replace(/^\.\//, "").replace(/\/$/, "");
+}
+
+/**
+ * Deep clones an object using JSON serialization.
+ */
+function deepClone<T>(value: T): T {
+  try {
+    return JSON.parse(JSON.stringify(value)) as T;
+  } catch {
+    return value;
+  }
+}
+
+/**
  * Maintains the set of importer plugins available to the scanner.
  *
  * @public
@@ -148,6 +185,133 @@ export class PluginRegistry {
 }
 
 /**
+ * Parameters needed to process a single file for indexing.
+ */
+interface FileProcessingParams {
+  filePath: string;
+  projectRoot: string;
+  parseOptions: ParseOptions;
+  files: Map<string, FileInfo>;
+  directories: Map<string, DirectoryInfo>;
+}
+
+/**
+ * Attempts to enumerate files using git or falls back to glob.
+ */
+async function enumerateFiles(
+  projectRoot: string,
+  ignorePatterns: string[],
+  parseOptions: ParseOptions,
+): Promise<string[]> {
+  try {
+    return await tryGitFileEnumeration(projectRoot);
+  } catch {
+    return await fallbackGlobEnumeration(projectRoot, ignorePatterns, parseOptions);
+  }
+}
+
+/**
+ * Creates a FileInfo object from file stats and path information.
+ */
+function createFileInfo(
+  filePath: string,
+  relativePath: string,
+  stats: fs.Stats,
+  extension: string,
+  isBinary: boolean,
+): FileInfo {
+  return {
+    path: filePath,
+    relativePath,
+    size: stats.size,
+    lastModified: stats.mtime.getTime(),
+    extension,
+    isBinary,
+    metadata: {},
+  };
+}
+
+/**
+ * Updates directory statistics when a file is added.
+ */
+async function updateDirectoryStats(
+  dirPath: string,
+  projectRoot: string,
+  fileStats: fs.Stats,
+  directories: Map<string, DirectoryInfo>,
+): Promise<void> {
+  if (!directories.has(dirPath)) {
+    const dirStats = await fs.stat(dirPath);
+    directories.set(dirPath, {
+      path: dirPath,
+      relativePath: path.relative(projectRoot, dirPath),
+      fileCount: 0,
+      totalSize: 0,
+      lastModified: dirStats.mtime.getTime(),
+    });
+  }
+
+  const dirInfo = directories.get(dirPath)!;
+  dirInfo.fileCount++;
+  dirInfo.totalSize += fileStats.size;
+  dirInfo.lastModified = Math.max(dirInfo.lastModified, fileStats.mtime.getTime());
+}
+
+/**
+ * Checks if a file should be included in the index based on various criteria.
+ */
+async function shouldIncludeFile(
+  filePath: string,
+  stats: fs.Stats,
+  parseOptions: ParseOptions,
+  projectRoot: string,
+): Promise<{ include: boolean; isBinary: boolean }> {
+  if (!stats.isFile() || stats.size > parseOptions.maxFileSize) {
+    return { include: false, isBinary: false };
+  }
+
+  const relativePath = path.relative(projectRoot, filePath);
+  const basename = path.basename(filePath);
+  const extension = path.extname(filePath).toLowerCase();
+
+  if (!passesConfigAllowlist(relativePath, basename)) {
+    return { include: false, isBinary: false };
+  }
+
+  const isBinary = await isFileBinary(filePath, parseOptions.includeBinaries);
+  if (isBinary && !parseOptions.includeBinaries) {
+    return { include: false, isBinary };
+  }
+
+  if (!(await passesContentGuard(filePath, extension))) {
+    return { include: false, isBinary };
+  }
+
+  return { include: true, isBinary };
+}
+
+/**
+ * Processes a single file and adds it to the index if valid.
+ */
+async function processFileForIndex(params: FileProcessingParams): Promise<void> {
+  const { filePath, projectRoot, parseOptions, files, directories } = params;
+
+  const stats = await fs.stat(filePath);
+  const { include, isBinary } = await shouldIncludeFile(filePath, stats, parseOptions, projectRoot);
+
+  if (!include) return;
+
+  const relativePath = path.relative(projectRoot, filePath);
+  const extension = path.extname(filePath).toLowerCase();
+
+  const fileInfo = createFileInfo(filePath, relativePath, stats, extension, isBinary);
+  files.set(filePath, fileInfo);
+
+  const dirPath = path.dirname(filePath);
+  await updateDirectoryStats(dirPath, projectRoot, stats, directories);
+}
+
+/**
  * Builds an index of files and directories that will participate in parsing.
  *
  * @param projectRoot - Root directory of the project under analysis.
@@ -162,59 +326,11 @@ async function buildFileIndex(
   const files = new Map<string, FileInfo>();
   const directories = new Map<string, DirectoryInfo>();
 
-  let allFiles: string[];
-  try {
-    allFiles = await tryGitFileEnumeration(projectRoot);
-  } catch {
-    allFiles = await fallbackGlobEnumeration(projectRoot, ignorePatterns, parseOptions);
-  }
+  const allFiles = await enumerateFiles(projectRoot, ignorePatterns, parseOptions);
 
   for (const filePath of allFiles) {
     try {
-      const stats = await fs.stat(filePath);
-      if (!stats.isFile()) continue;
-
-      if (stats.size > parseOptions.maxFileSize) continue;
-
-      const relativePath = path.relative(projectRoot, filePath);
-      const basename = path.basename(filePath);
-      const extension = path.extname(filePath).toLowerCase();
-
-      if (!passesConfigAllowlist(relativePath, basename)) continue;
-
-      const isBinary = await isFileBinary(filePath, parseOptions.includeBinaries);
-      if (isBinary && !parseOptions.includeBinaries) continue;
-
-      if (!(await passesContentGuard(filePath, extension))) continue;
-
-      const fileInfo: FileInfo = {
-        path: filePath,
-        relativePath,
-        size: stats.size,
-        lastModified: stats.mtime.getTime(),
-        extension,
-        isBinary,
-        metadata: {},
-      };
-
-      files.set(filePath, fileInfo);
-
-      const dirPath = path.dirname(filePath);
-      if (!directories.has(dirPath)) {
-        const dirStats = await fs.stat(dirPath);
-        directories.set(dirPath, {
-          path: dirPath,
-          relativePath: path.relative(projectRoot, dirPath),
-          fileCount: 0,
-          totalSize: 0,
-          lastModified: dirStats.mtime.getTime(),
-        });
-      }
-
-      const dirInfo = directories.get(dirPath)!;
-      dirInfo.fileCount++;
-      dirInfo.totalSize += stats.size;
-      dirInfo.lastModified = Math.max(dirInfo.lastModified, stats.mtime.getTime());
+      await processFileForIndex({ filePath, projectRoot, parseOptions, files, directories });
     } catch {
       continue;
     }
@@ -407,42 +523,87 @@ function passesConfigAllowlist(relativePath: string, basename: string): boolean 
 }
 
 /**
+ * Rule for content validation.
+ */
+interface ContentGuardRule {
+  /** Check if this rule applies to the file */
+  matches: (basename: string, extension: string) => boolean;
+  /** Validate the file content sample, return true if valid */
+  validate: (sample: string) => boolean;
+}
+
+/**
+ * Content guard rules for different file types.
+ */
+const CONTENT_GUARD_RULES: ContentGuardRule[] = [
+  {
+    matches: (basename) => basename.includes("docker-compose") || basename.includes("compose"),
+    validate: (sample) => /services:\s*$/m.test(sample) || /version:\s*['"]?[0-9]/m.test(sample),
+  },
+  {
+    matches: (_, ext) => ext === ".yaml" || ext === ".yml",
+    validate: (sample) =>
+      (/apiVersion:\s*/.test(sample) && /kind:\s*/.test(sample)) || /\w+:\s*/.test(sample),
+  },
+  {
+    matches: (_, ext) => ext === ".tf",
+    validate: (sample) =>
+      /provider\s*"/.test(sample) || /resource\s*"/.test(sample) || /variable\s*"/.test(sample),
+  },
+  {
+    matches: (basename) => basename.includes("openapi"),
+    validate: (sample) =>
+      /openapi:\s*['"]?[0-9]/.test(sample) || /swagger:\s*['"]?[0-9]/.test(sample),
+  },
+];
+
+/**
+ * Check if a file requires content guarding based on its name/extension.
+ */
+function requiresContentGuard(basename: string, extension: string): boolean {
+  return (
+    basename.includes("docker-compose") ||
+    basename.includes("compose") ||
+    basename.startsWith("Dockerfile") ||
+    extension === ".tf" ||
+    basename.includes("kubernetes") ||
+    basename === "Chart.yaml" ||
+    basename.startsWith("values") ||
+    basename.includes("openapi")
+  );
+}
+
+/**
+ * Read a sample of file content for validation.
+ */
+async function readFileSample(filePath: string): Promise<string | null> {
+  try {
+    const buffer = await fs.readFile(filePath, { flag: "r" });
+    return buffer.subarray(0, Math.min(1024, buffer.length)).toString("utf-8");
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Guards against scanning files that are known to be generated or extremely large.
  */
 async function passesContentGuard(filePath: string, extension: string): Promise<boolean> {
   try {
     const basename = path.basename(filePath);
-    const shouldGuard =
-      basename.includes("docker-compose") ||
-      basename.includes("compose") ||
-      basename.startsWith("Dockerfile") ||
-      extension === ".tf" ||
-      basename.includes("kubernetes") ||
-      basename === "Chart.yaml" ||
-      basename.startsWith("values") ||
-      basename.includes("openapi");
 
-    if (!shouldGuard) return true;
-
-    const buffer = await fs.readFile(filePath, { flag: "r" });
-    const sample = buffer.subarray(0, Math.min(1024, buffer.length)).toString("utf-8");
-
-    if (basename.includes("docker-compose") || basename.includes("compose")) {
-      return /services:\s*$/m.test(sample) || /version:\s*['"]?[0-9]/m.test(sample);
+    if (!requiresContentGuard(basename, extension)) {
+      return true;
     }
 
-    if (extension === ".yaml" || extension === ".yml") {
-      return (/apiVersion:\s*/.test(sample) && /kind:\s*/.test(sample)) || /\w+:\s*/.test(sample);
+    const sample = await readFileSample(filePath);
+    if (sample === null) {
+      return true;
     }
 
-    if (extension === ".tf") {
-      return (
-        /provider\s*"/.test(sample) || /resource\s*"/.test(sample) || /variable\s*"/.test(sample)
-      );
-    }
-
-    if (basename.includes("openapi")) {
-      return /openapi:\s*['"]?[0-9]/.test(sample) || /swagger:\s*['"]?[0-9]/.test(sample);
+    const applicableRule = CONTENT_GUARD_RULES.find((rule) => rule.matches(basename, extension));
+    if (applicableRule) {
+      return applicableRule.validate(sample);
     }
 
     return true;
@@ -590,6 +751,37 @@ export class ScannerRunner {
   }
 
   /**
+   * Reads file content if the file is not binary.
+   */
+  private async readFileContent(fileInfo: FileInfo): Promise<string | undefined> {
+    if (fileInfo.isBinary) {
+      return undefined;
+    }
+
+    try {
+      return await fs.readFile(fileInfo.path, "utf-8");
+    } catch (error) {
+      throw new ParseError(fileInfo.path, `Failed to read file: ${error}`);
+    }
+  }
+
+  /**
+   * Collects evidence from a single plugin for a file.
+   */
+  private async collectPluginEvidence(
+    plugin: ImporterPlugin,
+    filePath: string,
+    fileContent: string | undefined,
+    parseContext: ParseContext,
+  ): Promise<Evidence[]> {
+    try {
+      return await plugin.parse(filePath, fileContent, parseContext);
+    } catch (error) {
+      throw new PluginError(plugin.name(), `Failed to parse ${filePath}: ${error}`, error as Error);
+    }
+  }
+
+  /**
    * Parses a single file and collects evidence from all supporting plugins.
    */
   private async parseFile(fileInfo: FileInfo, parseContext: ParseContext): Promise<Evidence[]> {
@@ -597,15 +789,7 @@ export class ScannerRunner {
       return [];
     }
 
-    let fileContent: string | undefined;
-    if (!fileInfo.isBinary) {
-      try {
-        fileContent = await fs.readFile(fileInfo.path, "utf-8");
-      } catch (error) {
-        throw new ParseError(fileInfo.path, `Failed to read file: ${error}`);
-      }
-    }
-
+    const fileContent = await this.readFileContent(fileInfo);
     const supportingPlugins = this.pluginRegistry.getSupportingPlugins(fileInfo.path, fileContent);
 
     if (supportingPlugins.length === 0) {
@@ -613,18 +797,14 @@ export class ScannerRunner {
     }
 
     const evidence: Evidence[] = [];
-
     for (const plugin of supportingPlugins) {
-      try {
-        const pluginEvidence = await plugin.parse(fileInfo.path, fileContent, parseContext);
-        evidence.push(...pluginEvidence);
-      } catch (error) {
-        throw new PluginError(
-          plugin.name(),
-          `Failed to parse ${fileInfo.path}: ${error}`,
-          error as Error,
-        );
-      }
+      const pluginEvidence = await this.collectPluginEvidence(
+        plugin,
+        fileInfo.path,
+        fileContent,
+        parseContext,
+      );
+      evidence.push(...pluginEvidence);
     }
 
     return evidence;
@@ -692,27 +872,24 @@ export class ScannerRunner {
     if (dockerEvidence.length === 0) return;
 
     const baseProjectRoot = projectRoot ?? "";
+    const { composeServices, dockerfiles } = this.extractDockerEvidenceData(
+      dockerEvidence,
+      baseProjectRoot,
+    );
 
-    const normalizeRelativePath = (value: string | undefined): string => {
-      if (!value) return "";
-      const normalized = value.replace(/\\/g, "/");
-      if (normalized === "." || normalized === "./") return "";
-      return normalized.replace(/^\.\//, "").replace(/\/$/, "");
-    };
+    if (composeServices.length === 0) return;
 
-    interface ComposeServiceInfo {
-      composeFilePath: string;
-      composeFileRelative: string;
-      composeServiceName: string;
-      serviceConfig: Record<string, unknown>;
-      serviceYaml?: string;
-      buildContextAbsolute?: string;
-      buildContextRelative?: string;
-      dockerfilePathAbsolute?: string;
-      dockerfilePathRelative?: string;
-      dockerfileContent?: string;
-    }
+    this.attachDockerfileContents(composeServices, dockerfiles);
+    this.applyDockerMetadataToArtifacts(artifacts, composeServices);
+  }
 
+  /**
+   * Extracts compose service info and dockerfile contents from docker evidence.
+   */
+  private extractDockerEvidenceData(
+    dockerEvidence: Evidence[],
+    baseProjectRoot: string,
+  ): { composeServices: ComposeServiceInfo[]; dockerfiles: Map<string, string> } {
     const composeServices: ComposeServiceInfo[] = [];
     const dockerfiles = new Map<string, string>();
 
@@ -724,81 +901,142 @@ export class ScannerRunner {
       const dataType = typeof dataTypeRaw === "string" ? dataTypeRaw.toLowerCase() : "";
 
       if (dataType === "dockerfile") {
-        const filePath = data.filePath;
-        const content = data.dockerfileContent;
-        if (typeof filePath === "string" && typeof content === "string") {
-          dockerfiles.set(path.resolve(filePath), content);
-        }
+        this.collectDockerfile(data, dockerfiles);
         continue;
       }
 
-      if (dataType !== "service") continue;
-
-      const composeFilePath = data.filePath;
-      const composeServiceConfig = data.composeServiceConfig;
-      if (typeof composeFilePath !== "string") continue;
-      if (!composeServiceConfig || typeof composeServiceConfig !== "object") continue;
-
-      const composeServiceNameRaw = data.name;
-      const composeServiceName =
-        typeof composeServiceNameRaw === "string" ? composeServiceNameRaw : "";
-      const composeServiceYaml =
-        typeof data.composeServiceYaml === "string" ? data.composeServiceYaml : undefined;
-
-      const composeDir = path.dirname(composeFilePath);
-      const composeFileRelative = normalizeRelativePath(
-        path.relative(baseProjectRoot, composeFilePath),
-      );
-
-      let buildContextAbsolute: string | undefined;
-      let dockerfilePathAbsolute: string | undefined;
-
-      const buildConfig = (composeServiceConfig as Record<string, unknown>).build;
-
-      if (typeof buildConfig === "string") {
-        buildContextAbsolute = path.resolve(composeDir, buildConfig);
-        dockerfilePathAbsolute = path.resolve(buildContextAbsolute, "Dockerfile");
-      } else if (buildConfig && typeof buildConfig === "object") {
-        const build = buildConfig as Record<string, unknown>;
-        const contextValue = build.context;
-        const dockerfileValue = build.dockerfile;
-
-        if (typeof contextValue === "string") {
-          buildContextAbsolute = path.resolve(composeDir, contextValue);
-        } else {
-          buildContextAbsolute = composeDir;
-        }
-
-        if (typeof dockerfileValue === "string") {
-          const baseDir = buildContextAbsolute ?? composeDir;
-          dockerfilePathAbsolute = path.resolve(baseDir, dockerfileValue);
-        } else if (buildContextAbsolute) {
-          dockerfilePathAbsolute = path.resolve(buildContextAbsolute, "Dockerfile");
+      if (dataType === "service") {
+        const serviceInfo = this.parseComposeService(data, baseProjectRoot);
+        if (serviceInfo) {
+          composeServices.push(serviceInfo);
         }
       }
-
-      const buildContextRelative = buildContextAbsolute
-        ? normalizeRelativePath(path.relative(baseProjectRoot, buildContextAbsolute))
-        : undefined;
-      const dockerfilePathRelative = dockerfilePathAbsolute
-        ? normalizeRelativePath(path.relative(baseProjectRoot, dockerfilePathAbsolute))
-        : undefined;
-
-      composeServices.push({
-        composeFilePath,
-        composeFileRelative,
-        composeServiceName,
-        serviceConfig: composeServiceConfig as Record<string, unknown>,
-        serviceYaml: composeServiceYaml,
-        buildContextAbsolute,
-        buildContextRelative,
-        dockerfilePathAbsolute,
-        dockerfilePathRelative,
-      });
     }
 
-    if (composeServices.length === 0) return;
+    return { composeServices, dockerfiles };
+  }
 
+  /**
+   * Collects dockerfile content from evidence data.
+   */
+  private collectDockerfile(data: Record<string, unknown>, dockerfiles: Map<string, string>): void {
+    const filePath = data.filePath;
+    const content = data.dockerfileContent;
+    if (typeof filePath === "string" && typeof content === "string") {
+      dockerfiles.set(path.resolve(filePath), content);
+    }
+  }
+
+  /**
+   * Parses a compose service entry from evidence data.
+   */
+  private parseComposeService(
+    data: Record<string, unknown>,
+    baseProjectRoot: string,
+  ): ComposeServiceInfo | null {
+    const composeFilePath = data.filePath;
+    const composeServiceConfig = data.composeServiceConfig;
+    if (typeof composeFilePath !== "string") return null;
+    if (!composeServiceConfig || typeof composeServiceConfig !== "object") return null;
+
+    const composeServiceNameRaw = data.name;
+    const composeServiceName =
+      typeof composeServiceNameRaw === "string" ? composeServiceNameRaw : "";
+    const composeServiceYaml =
+      typeof data.composeServiceYaml === "string" ? data.composeServiceYaml : undefined;
+
+    const composeDir = path.dirname(composeFilePath);
+    const composeFileRelative = normalizeRelativePath(
+      path.relative(baseProjectRoot, composeFilePath),
+    );
+
+    const { buildContextAbsolute, dockerfilePathAbsolute } = this.resolveBuildPaths(
+      composeServiceConfig as Record<string, unknown>,
+      composeDir,
+    );
+
+    const buildContextRelative = buildContextAbsolute
+      ? normalizeRelativePath(path.relative(baseProjectRoot, buildContextAbsolute))
+      : undefined;
+    const dockerfilePathRelative = dockerfilePathAbsolute
+      ? normalizeRelativePath(path.relative(baseProjectRoot, dockerfilePathAbsolute))
+      : undefined;
+
+    return {
+      composeFilePath,
+      composeFileRelative,
+      composeServiceName,
+      serviceConfig: composeServiceConfig as Record<string, unknown>,
+      serviceYaml: composeServiceYaml,
+      buildContextAbsolute,
+      buildContextRelative,
+      dockerfilePathAbsolute,
+      dockerfilePathRelative,
+    };
+  }
+
+  /**
+   * Resolve paths from string-based build config (shorthand syntax)
+   */
+  private resolveStringBuildPaths(
+    buildPath: string,
+    composeDir: string,
+  ): { buildContextAbsolute: string; dockerfilePathAbsolute: string } {
+    const buildContextAbsolute = path.resolve(composeDir, buildPath);
+    return {
+      buildContextAbsolute,
+      dockerfilePathAbsolute: path.resolve(buildContextAbsolute, "Dockerfile"),
+    };
+  }
+
+  /**
+   * Resolve paths from object-based build config
+   */
+  private resolveObjectBuildPaths(
+    build: Record<string, unknown>,
+    composeDir: string,
+  ): { buildContextAbsolute: string; dockerfilePathAbsolute: string } {
+    const contextValue = build.context;
+    const dockerfileValue = build.dockerfile;
+
+    const buildContextAbsolute =
+      typeof contextValue === "string" ? path.resolve(composeDir, contextValue) : composeDir;
+
+    const dockerfilePathAbsolute =
+      typeof dockerfileValue === "string"
+        ? path.resolve(buildContextAbsolute, dockerfileValue)
+        : path.resolve(buildContextAbsolute, "Dockerfile");
+
+    return { buildContextAbsolute, dockerfilePathAbsolute };
+  }
+
+  /**
+   * Resolves build context and dockerfile paths from compose service config.
+   */
+  private resolveBuildPaths(
+    serviceConfig: Record<string, unknown>,
+    composeDir: string,
+  ): { buildContextAbsolute?: string; dockerfilePathAbsolute?: string } {
+    const buildConfig = serviceConfig.build;
+
+    if (typeof buildConfig === "string") {
+      return this.resolveStringBuildPaths(buildConfig, composeDir);
+    }
+
+    if (buildConfig && typeof buildConfig === "object") {
+      return this.resolveObjectBuildPaths(buildConfig as Record<string, unknown>, composeDir);
+    }
+
+    return {};
+  }
+
+  /**
+   * Attaches dockerfile contents to their corresponding compose services.
+   */
+  private attachDockerfileContents(
+    composeServices: ComposeServiceInfo[],
+    dockerfiles: Map<string, string>,
+  ): void {
     for (const service of composeServices) {
       if (!service.dockerfilePathAbsolute) continue;
       const content = dockerfiles.get(path.resolve(service.dockerfilePathAbsolute));
@@ -806,114 +1044,217 @@ export class ScannerRunner {
         service.dockerfileContent = content;
       }
     }
+  }
 
-    const scoredMatch = (artifact: InferredArtifact): ComposeServiceInfo | undefined => {
-      if (artifact.artifact.type !== "service") return undefined;
-
-      const metadata = artifact.artifact.metadata as Record<string, unknown>;
-      const artifactRootRaw = typeof metadata.root === "string" ? metadata.root : undefined;
-      const artifactRoot = normalizeRelativePath(artifactRootRaw);
-      const artifactName = artifact.artifact.name;
-      const containerImage =
-        typeof metadata.containerImage === "string" ? metadata.containerImage : undefined;
-
-      const candidates = composeServices
-        .map((service) => {
-          let score = 0;
-
-          if (!artifactRoot && !service.buildContextRelative) {
-            score += 80;
-          }
-
-          if (artifactRoot && service.buildContextRelative) {
-            if (service.buildContextRelative === artifactRoot) {
-              score += 100;
-            } else if (service.buildContextRelative.startsWith(`${artifactRoot}/`)) {
-              score += 60;
-            } else if (artifactRoot.startsWith(`${service.buildContextRelative}/`)) {
-              score += 40;
-            }
-          }
-
-          if (artifactName && service.composeServiceName === artifactName) {
-            score += 50;
-          }
-
-          const serviceImage = (service.serviceConfig as { image?: unknown }).image;
-          if (
-            containerImage &&
-            typeof serviceImage === "string" &&
-            serviceImage === containerImage
-          ) {
-            score += 40;
-          }
-
-          if (!score && composeServices.length === 1) {
-            score = 10;
-          }
-
-          return { service, score };
-        })
-        .filter((candidate) => candidate.score > 0)
-        .sort((a, b) => b.score - a.score);
-
-      return candidates.length > 0 ? candidates[0].service : undefined;
-    };
-
+  /**
+   * Applies docker metadata from compose services to matching artifacts.
+   */
+  private applyDockerMetadataToArtifacts(
+    artifacts: InferredArtifact[],
+    composeServices: ComposeServiceInfo[],
+  ): void {
     for (const artifact of artifacts) {
-      const match = scoredMatch(artifact);
+      const match = this.findBestComposeServiceMatch(artifact, composeServices);
       if (!match) continue;
+      this.enrichArtifactWithDockerInfo(artifact, match);
+    }
+  }
 
-      const metadata = artifact.artifact.metadata as Record<string, unknown>;
+  /**
+   * Finds the best matching compose service for an artifact using scoring.
+   */
+  private findBestComposeServiceMatch(
+    artifact: InferredArtifact,
+    composeServices: ComposeServiceInfo[],
+  ): ComposeServiceInfo | undefined {
+    if (artifact.artifact.type !== "service") return undefined;
 
-      const dockerMetadata =
-        metadata.docker && typeof metadata.docker === "object"
-          ? (metadata.docker as Record<string, unknown>)
-          : {};
+    const metadata = artifact.artifact.metadata as Record<string, unknown>;
+    const artifactRootRaw = typeof metadata.root === "string" ? metadata.root : undefined;
+    const artifactRoot = normalizeRelativePath(artifactRootRaw);
+    const artifactName = artifact.artifact.name;
+    const containerImage =
+      typeof metadata.containerImage === "string" ? metadata.containerImage : undefined;
 
-      const clone = <T>(value: T): T => {
-        try {
-          return JSON.parse(JSON.stringify(value)) as T;
-        } catch {
-          return value;
-        }
-      };
+    const candidates = composeServices
+      .map((service) => ({
+        service,
+        score: this.scoreServiceMatch(
+          service,
+          artifactRoot,
+          artifactName,
+          containerImage,
+          composeServices.length,
+        ),
+      }))
+      .filter((candidate) => candidate.score > 0)
+      .sort((a, b) => b.score - a.score);
 
-      if (!metadata.docker || typeof metadata.docker !== "object") {
-        metadata.docker = dockerMetadata;
-      }
+    return candidates.length > 0 ? candidates[0].service : undefined;
+  }
 
-      dockerMetadata.composeFile = match.composeFileRelative || match.composeFilePath;
-      dockerMetadata.composeServiceName = match.composeServiceName;
-      dockerMetadata.composeService = clone(match.serviceConfig);
-      if (match.serviceYaml) {
-        dockerMetadata.composeServiceYaml = match.serviceYaml;
-      }
-      if (match.buildContextRelative !== undefined) {
-        dockerMetadata.buildContext = match.buildContextRelative;
-      }
-      if (match.dockerfilePathRelative) {
-        dockerMetadata.dockerfilePath = match.dockerfilePathRelative;
-      }
-      if (match.dockerfileContent) {
-        dockerMetadata.dockerfile = match.dockerfileContent;
-        metadata.dockerfileContent = match.dockerfileContent;
-      }
+  /**
+   * Calculates match score between an artifact and a compose service.
+   */
+  private scoreServiceMatch(
+    service: ComposeServiceInfo,
+    artifactRoot: string,
+    artifactName: string,
+    containerImage: string | undefined,
+    totalServices: number,
+  ): number {
+    let score = 0;
 
-      if (!metadata.containerImage) {
-        const candidateImage = (match.serviceConfig as { image?: unknown }).image;
-        if (typeof candidateImage === "string") {
-          metadata.containerImage = candidateImage;
-        }
-      }
+    score += this.scoreRootMatch(service.buildContextRelative, artifactRoot);
+    score += this.scoreNameMatch(service.composeServiceName, artifactName);
+    score += this.scoreImageMatch(service.serviceConfig, containerImage);
 
-      if (!metadata.buildContext && match.buildContextRelative !== undefined) {
-        metadata.buildContext = match.buildContextRelative;
-      }
-      if (!metadata.dockerfilePath && match.dockerfilePathRelative) {
-        metadata.dockerfilePath = match.dockerfilePathRelative;
+    // Default score for single service when no other matches
+    if (!score && totalServices === 1) {
+      score = 10;
+    }
+
+    return score;
+  }
+
+  /**
+   * Score based on root directory matching
+   */
+  private scoreRootMatch(buildContextRelative: string | undefined, artifactRoot: string): number {
+    // Both empty means root level match
+    if (!artifactRoot && !buildContextRelative) {
+      return 80;
+    }
+
+    // Both need values to compare
+    if (!artifactRoot || !buildContextRelative) {
+      return 0;
+    }
+
+    // Exact match
+    if (buildContextRelative === artifactRoot) {
+      return 100;
+    }
+
+    // Service is nested within artifact
+    if (buildContextRelative.startsWith(`${artifactRoot}/`)) {
+      return 60;
+    }
+
+    // Artifact is nested within service
+    if (artifactRoot.startsWith(`${buildContextRelative}/`)) {
+      return 40;
+    }
+
+    return 0;
+  }
+
+  /**
+   * Score based on service name matching
+   */
+  private scoreNameMatch(serviceName: string, artifactName: string): number {
+    if (artifactName && serviceName === artifactName) {
+      return 50;
+    }
+    return 0;
+  }
+
+  /**
+   * Score based on container image matching
+   */
+  private scoreImageMatch(
+    serviceConfig: Record<string, unknown>,
+    containerImage: string | undefined,
+  ): number {
+    const serviceImage = (serviceConfig as { image?: unknown }).image;
+    if (containerImage && typeof serviceImage === "string" && serviceImage === containerImage) {
+      return 40;
+    }
+    return 0;
+  }
+
+  /**
+   * Ensure docker metadata object exists on artifact
+   */
+  private ensureDockerMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+    if (metadata.docker && typeof metadata.docker === "object") {
+      return metadata.docker as Record<string, unknown>;
+    }
+    const dockerMetadata: Record<string, unknown> = {};
+    metadata.docker = dockerMetadata;
+    return dockerMetadata;
+  }
+
+  /**
+   * Apply compose service metadata to docker metadata object
+   */
+  private applyComposeMetadata(
+    dockerMetadata: Record<string, unknown>,
+    match: ComposeServiceInfo,
+  ): void {
+    dockerMetadata.composeFile = match.composeFileRelative || match.composeFilePath;
+    dockerMetadata.composeServiceName = match.composeServiceName;
+    dockerMetadata.composeService = deepClone(match.serviceConfig);
+
+    if (match.serviceYaml) {
+      dockerMetadata.composeServiceYaml = match.serviceYaml;
+    }
+    if (match.buildContextRelative !== undefined) {
+      dockerMetadata.buildContext = match.buildContextRelative;
+    }
+    if (match.dockerfilePathRelative) {
+      dockerMetadata.dockerfilePath = match.dockerfilePathRelative;
+    }
+  }
+
+  /**
+   * Apply dockerfile content if available
+   */
+  private applyDockerfileContent(
+    metadata: Record<string, unknown>,
+    dockerMetadata: Record<string, unknown>,
+    match: ComposeServiceInfo,
+  ): void {
+    if (match.dockerfileContent) {
+      dockerMetadata.dockerfile = match.dockerfileContent;
+      metadata.dockerfileContent = match.dockerfileContent;
+    }
+  }
+
+  /**
+   * Fill in missing top-level metadata from match
+   */
+  private fillMissingTopLevelMetadata(
+    metadata: Record<string, unknown>,
+    match: ComposeServiceInfo,
+  ): void {
+    if (!metadata.containerImage) {
+      const candidateImage = (match.serviceConfig as { image?: unknown }).image;
+      if (typeof candidateImage === "string") {
+        metadata.containerImage = candidateImage;
       }
     }
+    if (!metadata.buildContext && match.buildContextRelative !== undefined) {
+      metadata.buildContext = match.buildContextRelative;
+    }
+    if (!metadata.dockerfilePath && match.dockerfilePathRelative) {
+      metadata.dockerfilePath = match.dockerfilePathRelative;
+    }
+  }
+
+  /**
+   * Enriches an artifact with docker metadata from a matched compose service.
+   */
+  private enrichArtifactWithDockerInfo(
+    artifact: InferredArtifact,
+    match: ComposeServiceInfo,
+  ): void {
+    const metadata = artifact.artifact.metadata as Record<string, unknown>;
+    const dockerMetadata = this.ensureDockerMetadata(metadata);
+
+    this.applyComposeMetadata(dockerMetadata, match);
+    this.applyDockerfileContent(metadata, dockerMetadata, match);
+    this.fillMissingTopLevelMetadata(metadata, match);
   }
 
   /**
@@ -921,18 +1262,30 @@ export class ScannerRunner {
    * This happens when both a Dockerfile and a package file (package.json, go.mod, etc.)
    * exist in the same directory and create separate service artifacts.
    */
-  private consolidateDuplicateServices(artifacts: InferredArtifact[]): InferredArtifact[] {
-    const serviceArtifacts = artifacts.filter((a) => a.artifact.type === "service");
-    const nonServiceArtifacts = artifacts.filter((a) => a.artifact.type !== "service");
+  /**
+   * Check if an artifact is a Docker-based service.
+   */
+  private isDockerService(artifact: InferredArtifact): boolean {
+    const evidence = artifact.provenance?.evidence || [];
+    return evidence.some((e) => e.toLowerCase().includes("dockerfile"));
+  }
 
-    if (serviceArtifacts.length <= 1) {
-      return artifacts;
-    }
+  /**
+   * Check if an artifact is a package-based service (nodejs, python, go, rust).
+   */
+  private isPackageService(artifact: InferredArtifact): boolean {
+    const plugins = artifact.provenance?.plugins || [];
+    const packagePlugins = ["nodejs", "python", "go", "rust"];
+    return packagePlugins.some((p) => plugins.includes(p));
+  }
 
-    // Group services by their root directory
+  /**
+   * Group services by their root directory.
+   */
+  private groupServicesByRoot(services: InferredArtifact[]): Map<string, InferredArtifact[]> {
     const servicesByRoot = new Map<string, InferredArtifact[]>();
 
-    for (const artifact of serviceArtifacts) {
+    for (const artifact of services) {
       const metadata = artifact.artifact.metadata as Record<string, unknown>;
       const root = this.normalizeServiceRoot(metadata.root);
 
@@ -942,42 +1295,47 @@ export class ScannerRunner {
       servicesByRoot.get(root)!.push(artifact);
     }
 
-    // Consolidate services in the same root directory
+    return servicesByRoot;
+  }
+
+  /**
+   * Consolidate services in a single root directory.
+   */
+  private consolidateServicesInRoot(
+    root: string,
+    services: InferredArtifact[],
+  ): InferredArtifact[] {
+    if (services.length === 1) {
+      return services;
+    }
+
+    const dockerService = services.find((s) => this.isDockerService(s));
+    const packageService = services.find((s) => this.isPackageService(s));
+
+    if (dockerService && packageService) {
+      const merged = this.mergeServices(packageService, dockerService);
+      this.debug(
+        `Consolidated services at root "${root}": ${packageService.artifact.name} + docker metadata`,
+      );
+      return [merged];
+    }
+
+    return services;
+  }
+
+  private consolidateDuplicateServices(artifacts: InferredArtifact[]): InferredArtifact[] {
+    const serviceArtifacts = artifacts.filter((a) => a.artifact.type === "service");
+    const nonServiceArtifacts = artifacts.filter((a) => a.artifact.type !== "service");
+
+    if (serviceArtifacts.length <= 1) {
+      return artifacts;
+    }
+
+    const servicesByRoot = this.groupServicesByRoot(serviceArtifacts);
     const consolidated: InferredArtifact[] = [];
 
     for (const [root, services] of servicesByRoot.entries()) {
-      if (services.length === 1) {
-        consolidated.push(services[0]);
-        continue;
-      }
-
-      // Check if we have both Docker and package-based services
-      const dockerService = services.find((s) => {
-        const evidence = s.provenance?.evidence || [];
-        return evidence.some((e) => e.toLowerCase().includes("dockerfile"));
-      });
-
-      const packageService = services.find((s) => {
-        const plugins = s.provenance?.plugins || [];
-        return (
-          plugins.includes("nodejs") ||
-          plugins.includes("python") ||
-          plugins.includes("go") ||
-          plugins.includes("rust")
-        );
-      });
-
-      if (dockerService && packageService) {
-        // Merge them, preferring the package service as the base
-        const merged = this.mergeServices(packageService, dockerService);
-        consolidated.push(merged);
-        this.debug(
-          `Consolidated services at root "${root}": ${packageService.artifact.name} + docker metadata`,
-        );
-      } else {
-        // No clear consolidation pattern, keep all services
-        consolidated.push(...services);
-      }
+      consolidated.push(...this.consolidateServicesInRoot(root, services));
     }
 
     return [...consolidated, ...nonServiceArtifacts];
@@ -987,76 +1345,102 @@ export class ScannerRunner {
    * Merges two service artifacts, combining their metadata and provenance.
    */
   private mergeServices(primary: InferredArtifact, secondary: InferredArtifact): InferredArtifact {
-    const primaryMetadata = primary.artifact.metadata as Record<string, unknown>;
-    const secondaryMetadata = secondary.artifact.metadata as Record<string, unknown>;
-
-    // Merge metadata, preferring primary but adding missing fields from secondary
-    const mergedMetadata: Record<string, unknown> = { ...primaryMetadata };
-
-    // Copy over Docker-specific metadata if not already present
-    if (secondaryMetadata.dockerfileContent && !mergedMetadata.dockerfileContent) {
-      mergedMetadata.dockerfileContent = secondaryMetadata.dockerfileContent;
-    }
-    if (secondaryMetadata.dockerfile && !mergedMetadata.dockerfile) {
-      mergedMetadata.dockerfile = secondaryMetadata.dockerfile;
-    }
-
-    // Merge docker metadata object
-    if (secondaryMetadata.docker && typeof secondaryMetadata.docker === "object") {
-      if (!mergedMetadata.docker || typeof mergedMetadata.docker !== "object") {
-        mergedMetadata.docker = {};
-      }
-      const primaryDocker = mergedMetadata.docker as Record<string, unknown>;
-      const secondaryDocker = secondaryMetadata.docker as Record<string, unknown>;
-
-      Object.assign(primaryDocker, secondaryDocker);
-    }
-
-    // Preserve build context/dockerfile path if the primary lacked them
-    if (!mergedMetadata.buildContext && typeof secondaryMetadata.buildContext === "string") {
-      mergedMetadata.buildContext = secondaryMetadata.buildContext;
-    }
-    if (!mergedMetadata.dockerfilePath && typeof secondaryMetadata.dockerfilePath === "string") {
-      mergedMetadata.dockerfilePath = secondaryMetadata.dockerfilePath;
-    }
-
-    // Merge tags
-    const primaryTags = new Set(primary.artifact.tags || []);
-    const secondaryTags = secondary.artifact.tags || [];
-    for (const tag of secondaryTags) {
-      primaryTags.add(tag);
-    }
-
-    // Merge provenance
-    const mergedEvidence = [
-      ...(primary.provenance?.evidence || []),
-      ...(secondary.provenance?.evidence || []),
-    ];
-    const mergedPlugins = Array.from(
-      new Set([...(primary.provenance?.plugins || []), ...(secondary.provenance?.plugins || [])]),
+    const mergedMetadata = this.mergeServiceMetadata(
+      primary.artifact.metadata as Record<string, unknown>,
+      secondary.artifact.metadata as Record<string, unknown>,
     );
-    const mergedRules = Array.from(
-      new Set([
-        ...(primary.provenance?.rules || []),
-        ...(secondary.provenance?.rules || []),
-        "service-consolidation",
-      ]),
-    );
+    const mergedTags = this.mergeServiceTags(primary.artifact.tags, secondary.artifact.tags);
+    const mergedProvenance = this.mergeServiceProvenance(primary.provenance, secondary.provenance);
 
     return {
       artifact: {
         ...primary.artifact,
-        tags: Array.from(primaryTags),
+        tags: mergedTags,
         metadata: mergedMetadata,
       },
-      provenance: {
-        evidence: mergedEvidence,
-        plugins: mergedPlugins,
-        rules: mergedRules,
-        timestamp: Date.now(),
-        pipelineVersion: primary.provenance?.pipelineVersion || "1.0.0",
-      },
+      provenance: mergedProvenance,
       relationships: [...(primary.relationships || []), ...(secondary.relationships || [])],
+    };
+  }
+
+  /**
+   * Merges metadata from two service artifacts.
+   */
+  private mergeServiceMetadata(
+    primaryMeta: Record<string, unknown>,
+    secondaryMeta: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const merged: Record<string, unknown> = { ...primaryMeta };
+
+    this.copyMissingStringField(merged, secondaryMeta, "dockerfileContent");
+    this.copyMissingStringField(merged, secondaryMeta, "dockerfile");
+    this.copyMissingStringField(merged, secondaryMeta, "buildContext");
+    this.copyMissingStringField(merged, secondaryMeta, "dockerfilePath");
+    this.mergeDockerMetadata(merged, secondaryMeta);
+
+    return merged;
+  }
+
+  /**
+   * Copy a field from secondary to merged if not already present.
+   */
+  private copyMissingStringField(
+    merged: Record<string, unknown>,
+    secondary: Record<string, unknown>,
+    field: string,
+  ): void {
+    if (secondary[field] && !merged[field]) {
+      merged[field] = secondary[field];
+    }
+  }
+
+  /**
+   * Merge the docker metadata object from secondary into merged.
+   */
+  private mergeDockerMetadata(
+    merged: Record<string, unknown>,
+    secondary: Record<string, unknown>,
+  ): void {
+    if (!secondary.docker || typeof secondary.docker !== "object") {
+      return;
+    }
+
+    if (!merged.docker || typeof merged.docker !== "object") {
+      merged.docker = {};
+    }
+
+    Object.assign(merged.docker as Record<string, unknown>, secondary.docker);
+  }
+
+  /**
+   * Merges tags from two service artifacts.
+   */
+  private mergeServiceTags(
+    primaryTags: string[] | undefined,
+    secondaryTags: string[] | undefined,
+  ): string[] {
+    const tagSet = new Set(primaryTags || []);
+    for (const tag of secondaryTags || []) {
+      tagSet.add(tag);
+    }
+    return Array.from(tagSet);
+  }
+
+  /**
+   * Merges provenance from two service artifacts.
+   */
+  private mergeServiceProvenance(
+    primary: InferredArtifact["provenance"],
+    secondary: InferredArtifact["provenance"],
+  ): InferredArtifact["provenance"] {
+    return {
+      evidence: [...(primary?.evidence || []), ...(secondary?.evidence || [])],
+      plugins: Array.from(new Set([...(primary?.plugins || []), ...(secondary?.plugins || [])])),
+      rules: Array.from(
+        new Set([...(primary?.rules || []), ...(secondary?.rules || []), "service-consolidation"]),
+      ),
+      timestamp: Date.now(),
+      pipelineVersion: primary?.pipelineVersion || "1.0.0",
     };
   }
 

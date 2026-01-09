@@ -1,34 +1,37 @@
 /**
- * Add command - Compositional interface for building specifications
+ * @packageDocumentation
+ * Add command - Compositional interface for building specifications.
  *
- * COMPLETELY REWRITTEN to use proper AST-based CUE manipulation
- * instead of fragile string concatenation.
+ * Uses AST-based CUE manipulation for incremental spec building.
  *
- * This command allows users to incrementally build up their project specification
- * stored under the .arbiter/ directory through discrete, validated operations
- * using the CUE tool.
+ * Provides functionality to:
+ * - Add services, clients, endpoints, routes to specifications
+ * - Add flows, locators, schemas, contracts
+ * - Add packages, components, and modules
+ * - Validate and persist specification changes
  */
 
 import * as path from "node:path";
-import { ApiClient } from "@/api-client.js";
 import { getCueManipulator } from "@/constraints/cli-integration.js";
 import { safeFileOperation } from "@/constraints/index.js";
 import { formatCUE, validateCUE } from "@/cue/index.js";
+import { ApiClient } from "@/io/api/api-client.js";
+import { ProjectEntityRepository } from "@/repositories/project-entity-repository.js";
+import { SpecificationRepository } from "@/repositories/specification-repository.js";
+import { syncEntityWithProject } from "@/services/add/entity-sync.js";
 import { toTitleCase } from "@/services/add/shared.js";
-import { addCache } from "@/services/add/subcommands/cache.js";
-import { addClient } from "@/services/add/subcommands/client.js";
-import { addContractOperation, addContractWorkflow } from "@/services/add/subcommands/contracts.js";
-import { addDatabase } from "@/services/add/subcommands/database.js";
-import { addEndpoint } from "@/services/add/subcommands/endpoint.js";
-import { addFlow } from "@/services/add/subcommands/flow.js";
-import { addLoadBalancer } from "@/services/add/subcommands/load-balancer.js";
-import { addLocator } from "@/services/add/subcommands/locator.js";
-// Module and package helpers are defined locally in this file
-import { addRoute } from "@/services/add/subcommands/route.js";
-import { addSchema } from "@/services/add/subcommands/schema.js";
-import { addService } from "@/services/add/subcommands/service.js";
+import {
+  addContractOperation,
+  addContractWorkflow,
+} from "@/services/add/subcommands/definitions/contracts.js";
+import { addRoute } from "@/services/add/subcommands/definitions/route.js";
+import { addSchema } from "@/services/add/subcommands/definitions/schema.js";
+import { addClient } from "@/services/add/subcommands/runtime/client.js";
+import { addEndpoint } from "@/services/add/subcommands/runtime/endpoint.js";
+import { addFlow } from "@/services/add/subcommands/runtime/flow.js";
+import { addLocator } from "@/services/add/subcommands/runtime/locator.js";
+import { addService } from "@/services/add/subcommands/runtime/service.js";
 import type { CLIConfig } from "@/types.js";
-import { ensureProjectExists } from "@/utils/project.js";
 import chalk from "chalk";
 import { diffLines } from "diff";
 import fs from "fs-extra";
@@ -38,6 +41,241 @@ export interface AddOptions {
   dryRun?: boolean;
   force?: boolean;
   template?: string;
+}
+
+// Subcommand handler registry for routing
+type SubcommandHandler = (
+  manipulator: any,
+  content: string,
+  name: string,
+  options: AddOptions & Record<string, any>,
+) => Promise<string>;
+
+const SUBCOMMAND_HANDLERS: Record<string, SubcommandHandler> = {
+  service: addService,
+  client: addClient,
+  endpoint: addEndpoint,
+  route: addRoute,
+  flow: addFlow,
+  locator: addLocator,
+  schema: addSchema,
+  contract: addContractWorkflow,
+  package: addPackage,
+  component: addComponent,
+  module: addModule,
+};
+
+interface AssemblyContext {
+  assemblyDir: string;
+  assemblyPath: string;
+  content: string;
+}
+
+async function loadLocalAssembly(assemblyPath: string, verbose: boolean): Promise<string> {
+  if (await fs.pathExists(assemblyPath)) {
+    if (verbose) {
+      console.log(chalk.dim("📁 Loaded existing specification from .arbiter directory"));
+    }
+    return fs.readFile(assemblyPath, "utf-8");
+  }
+  console.log(chalk.yellow("⚠️  No existing specification found. Creating new specification..."));
+  return initializeAssembly();
+}
+
+async function loadRemoteAssembly(
+  config: CLIConfig,
+  assemblyPath: string,
+  verbose: boolean,
+): Promise<string> {
+  const apiClient = new ApiClient(config);
+  const specRepo = new SpecificationRepository(apiClient);
+
+  try {
+    const storedSpec = await specRepo.getSpecification("assembly", assemblyPath);
+    if (storedSpec.success && storedSpec.data?.content) {
+      if (verbose) {
+        console.log(
+          chalk.dim("📡 Retrieved existing specification from service (sharded storage)"),
+        );
+      }
+      return storedSpec.data.content;
+    }
+    throw new Error("No stored specification found");
+  } catch {
+    return loadLocalAssembly(assemblyPath, verbose);
+  }
+}
+
+async function getAssemblyContext(
+  config: CLIConfig,
+  options: AddOptions,
+): Promise<AssemblyContext> {
+  const assemblyDir = path.resolve(".arbiter");
+  const assemblyPath = path.join(assemblyDir, "assembly.cue");
+  const useLocalOnly = config.localMode === true;
+
+  if (useLocalOnly && options.verbose) {
+    console.log(chalk.dim("📁 Local mode enabled: using .arbiter CUE files only"));
+  }
+
+  const content = useLocalOnly
+    ? await loadLocalAssembly(assemblyPath, options.verbose ?? false)
+    : await loadRemoteAssembly(config, assemblyPath, options.verbose ?? false);
+
+  return { assemblyDir, assemblyPath, content };
+}
+
+async function routeSubcommand(
+  manipulator: any,
+  subcommand: string,
+  assemblyContent: string,
+  name: string,
+  options: AddOptions & Record<string, any>,
+): Promise<string | null> {
+  // Special case for contract-operation
+  if (subcommand === "contract-operation") {
+    const contractName = options.contract;
+    if (typeof contractName !== "string" || contractName.trim().length === 0) {
+      throw new Error("Contract name is required for contract-operation subcommand");
+    }
+    return addContractOperation(manipulator, assemblyContent, contractName, name, options);
+  }
+
+  const handler = SUBCOMMAND_HANDLERS[subcommand];
+  if (!handler) {
+    console.error(chalk.red(`❌ Unknown subcommand: ${subcommand}`));
+    console.log(
+      chalk.dim(
+        "Available subcommands: service, client, endpoint, route, flow, locator, schema, contract, contract-operation, package, component, module",
+      ),
+    );
+    console.log(
+      chalk.dim(
+        "Infrastructure aliases: database, cache, queue, load-balancer (these create services with --type)",
+      ),
+    );
+    return null;
+  }
+
+  return handler(manipulator, assemblyContent, name, options);
+}
+
+async function persistLocalAssembly(
+  ctx: AssemblyContext,
+  content: string,
+  reason: string,
+  options: AddOptions,
+): Promise<void> {
+  await fs.ensureDir(ctx.assemblyDir);
+  await safeFileOperation("write", ctx.assemblyPath, async (validatedPath) => {
+    await fs.writeFile(validatedPath, content, "utf-8");
+  });
+
+  const relativePath = path.relative(process.cwd(), ctx.assemblyPath) || ctx.assemblyPath;
+  const suffix = reason ? ` (${reason})` : "";
+  console.log(chalk.green(`✅ Updated ${relativePath}${suffix}`));
+
+  if (options.verbose) {
+    console.log(chalk.dim("Added configuration:"));
+    console.log(chalk.dim(showDiff(ctx.content, content)));
+  }
+}
+
+function logStoreSuccess(subcommand: string, name: string, shardName?: string): void {
+  console.log(chalk.green(`✅ Updated specification in service (${subcommand}: ${name})`));
+  console.log(
+    chalk.dim("💡 CUE files will be generated to .arbiter/ when specification is complete"),
+  );
+  if (shardName) {
+    console.log(chalk.dim(`   Stored in shard: ${shardName}`));
+  }
+}
+
+function logVerboseDiff(ctx: AssemblyContext, updatedContent: string, verbose?: boolean): void {
+  if (!verbose) return;
+  console.log(chalk.dim("Added configuration:"));
+  console.log(chalk.dim(showDiff(ctx.content, updatedContent)));
+}
+
+function logStorageError(error: unknown): void {
+  console.error(
+    chalk.red("❌ Failed to store specification with Arbiter service:"),
+    error instanceof Error ? error.message : String(error),
+  );
+  console.error(chalk.dim("Tip: re-run with --local if you intentionally want to work offline."));
+}
+
+async function storeRemoteSpecification(
+  config: CLIConfig,
+  ctx: AssemblyContext,
+  updatedContent: string,
+  subcommand: string,
+  name: string,
+  options: AddOptions & Record<string, any>,
+): Promise<boolean> {
+  const apiClient = new ApiClient(config);
+  const specRepo = new SpecificationRepository(apiClient);
+
+  try {
+    const shardType = getShardTypeForSubcommand(subcommand);
+    const storeResult = await specRepo.storeSpecification({
+      content: updatedContent,
+      type: shardType,
+      path: ctx.assemblyPath,
+      shard: shardType,
+    });
+
+    if (!storeResult.success) {
+      throw new Error(storeResult.error || "Failed to store specification");
+    }
+
+    logStoreSuccess(subcommand, name, storeResult.data?.shard);
+    logVerboseDiff(ctx, updatedContent, options.verbose);
+    await syncEntityWithProject(apiClient, config, subcommand, name, options);
+    return true;
+  } catch (apiError) {
+    logStorageError(apiError);
+    return false;
+  }
+}
+
+/**
+ * Validate CUE content and report errors
+ */
+async function validateContent(content: string): Promise<boolean> {
+  const validationResult = await validateCUE(content);
+  if (validationResult.valid) {
+    return true;
+  }
+
+  console.error(chalk.red("❌ CUE validation failed:"));
+  validationResult.errors.forEach((error) => console.error(chalk.red(`  • ${error}`)));
+  return false;
+}
+
+/**
+ * Persist specification changes based on mode (dry-run, local, remote)
+ */
+async function persistSpecification(
+  ctx: AssemblyContext,
+  updatedContent: string,
+  subcommand: string,
+  name: string,
+  options: AddOptions & Record<string, any>,
+  config: CLIConfig,
+): Promise<boolean> {
+  if (options.dryRun) {
+    console.log(chalk.yellow("🔍 Dry run - changes that would be made:"));
+    console.log(chalk.dim(showDiff(ctx.content, updatedContent)));
+    return true;
+  }
+
+  if (config.localMode) {
+    await persistLocalAssembly(ctx, updatedContent, "local mode", options);
+    return true;
+  }
+
+  return storeRemoteSpecification(config, ctx, updatedContent, subcommand, name, options);
 }
 
 /**
@@ -54,216 +292,32 @@ export async function runAddCommand(
   try {
     console.log(chalk.blue(`🔧 Adding ${subcommand}: ${name}`));
 
-    // Get existing assembly content from sharded storage in service
-    const assemblyDir = path.resolve(".arbiter"); // Move to .arbiter directory
-    const assemblyPath = path.join(assemblyDir, "assembly.cue");
-    let assemblyContent = "";
+    const ctx = await getAssemblyContext(config, options);
+    const updatedContent = await routeSubcommand(
+      manipulator,
+      subcommand,
+      ctx.content,
+      name,
+      options,
+    );
 
-    const useLocalOnly = config.localMode === true;
-    if (useLocalOnly && options.verbose) {
-      console.log(chalk.dim("📁 Local mode enabled: using .arbiter CUE files only"));
-    }
-
-    if (useLocalOnly) {
-      if (await fs.pathExists(assemblyPath)) {
-        assemblyContent = await fs.readFile(assemblyPath, "utf-8");
-        if (options.verbose) {
-          console.log(chalk.dim("📁 Loaded existing specification from .arbiter directory"));
-        }
-      } else {
-        console.log(
-          chalk.yellow("⚠️  No existing specification found. Creating new specification..."),
-        );
-        assemblyContent = await initializeAssembly();
-      }
-    } else {
-      // Initialize API client to try getting existing specification from sharded storage
-      const apiClient = new ApiClient(config);
-
-      try {
-        // First try to get the specification from the service's sharded storage
-        const storedSpec = await apiClient.getSpecification("assembly", assemblyPath);
-        if (storedSpec.success && storedSpec.data && storedSpec.data.content) {
-          assemblyContent = storedSpec.data.content;
-          if (options.verbose) {
-            console.log(
-              chalk.dim("📡 Retrieved existing specification from service (sharded storage)"),
-            );
-          }
-        } else {
-          throw new Error("No stored specification found");
-        }
-      } catch (_apiError) {
-        // Fallback to local .arbiter storage only
-        if (await fs.pathExists(assemblyPath)) {
-          assemblyContent = await fs.readFile(assemblyPath, "utf-8");
-          if (options.verbose) {
-            console.log(chalk.dim("📁 Retrieved existing specification from .arbiter directory"));
-          }
-        } else {
-          // Initialize with basic structure
-          console.log(
-            chalk.yellow("⚠️  No existing specification found. Creating new specification..."),
-          );
-          assemblyContent = await initializeAssembly();
-        }
-      }
-    }
-
-    let updatedContent = assemblyContent;
-
-    const persistLocalAssembly = async (content: string, reason: string) => {
-      await fs.ensureDir(assemblyDir);
-      await safeFileOperation("write", assemblyPath, async (validatedPath) => {
-        await fs.writeFile(validatedPath, content, "utf-8");
-      });
-
-      const relativePath = path.relative(process.cwd(), assemblyPath) || assemblyPath;
-      const suffix = reason ? ` (${reason})` : "";
-      console.log(chalk.green(`✅ Updated ${relativePath}${suffix}`));
-
-      if (options.verbose) {
-        console.log(chalk.dim("Added configuration:"));
-        console.log(chalk.dim(showDiff(assemblyContent, content)));
-      }
-    };
-
-    // Route to appropriate handler using AST-based manipulation
-    switch (subcommand) {
-      case "service":
-        updatedContent = await addService(manipulator, assemblyContent, name, options);
-        break;
-      case "client":
-        updatedContent = await addClient(manipulator, assemblyContent, name, options);
-        break;
-      case "endpoint":
-        updatedContent = await addEndpoint(manipulator, assemblyContent, name, options);
-        break;
-      case "route":
-        updatedContent = await addRoute(manipulator, assemblyContent, name, options);
-        break;
-      case "flow":
-        updatedContent = await addFlow(manipulator, assemblyContent, name, options);
-        break;
-      case "load-balancer":
-        updatedContent = await addLoadBalancer(manipulator, assemblyContent, options);
-        break;
-      case "database":
-        updatedContent = await addDatabase(manipulator, assemblyContent, name, options);
-        break;
-      case "cache":
-        updatedContent = await addCache(manipulator, assemblyContent, name, options);
-        break;
-      case "locator":
-        updatedContent = await addLocator(manipulator, assemblyContent, name, options);
-        break;
-      case "schema":
-        updatedContent = await addSchema(manipulator, assemblyContent, name, options);
-        break;
-      case "contract":
-        updatedContent = await addContractWorkflow(manipulator, assemblyContent, name, options);
-        break;
-      case "contract-operation": {
-        const contractName = options.contract;
-        if (typeof contractName !== "string" || contractName.trim().length === 0) {
-          throw new Error("Contract name is required for contract-operation subcommand");
-        }
-        updatedContent = await addContractOperation(
-          manipulator,
-          assemblyContent,
-          contractName,
-          name,
-          options,
-        );
-        break;
-      }
-      case "package":
-        updatedContent = await addPackage(manipulator, assemblyContent, name, options);
-        break;
-      case "component":
-        updatedContent = await addComponent(manipulator, assemblyContent, name, options);
-        break;
-      case "module":
-        updatedContent = await addModule(manipulator, assemblyContent, name, options);
-        break;
-      default:
-        console.error(chalk.red(`❌ Unknown subcommand: ${subcommand}`));
-        console.log(
-          chalk.dim(
-            "Available subcommands: service, client, endpoint, route, flow, load-balancer, database, cache, locator, schema, contract, contract-operation, package, component",
-          ),
-        );
-        return 1;
-    }
-
-    // Validate the updated content using CUE tool
-    const validationResult = await validateCUE(updatedContent);
-    if (!validationResult.valid) {
-      console.error(chalk.red("❌ CUE validation failed:"));
-      validationResult.errors.forEach((error) => {
-        console.error(chalk.red(`  • ${error}`));
-      });
+    if (updatedContent === null) {
       return 1;
     }
 
-    // Store specification in service or preview changes
-    if (options.dryRun) {
-      console.log(chalk.yellow("🔍 Dry run - changes that would be made:"));
-      console.log(chalk.dim(showDiff(assemblyContent, updatedContent)));
-    } else if (useLocalOnly) {
-      await persistLocalAssembly(updatedContent, "local mode");
-    } else {
-      // Initialize API client and store specification in service database
-      const apiClient = new ApiClient(config);
-      let storeSucceeded = false;
-
-      try {
-        // Determine shard type based on subcommand
-        const shardType = getShardTypeForSubcommand(subcommand);
-
-        // Store the updated CUE specification in the service with sharding
-        const storeResult = await apiClient.storeSpecification({
-          content: updatedContent,
-          type: shardType,
-          path: assemblyPath,
-          shard: shardType, // Use shard type as shard identifier
-        });
-
-        if (storeResult.success) {
-          storeSucceeded = true;
-          console.log(chalk.green(`✅ Updated specification in service (${subcommand}: ${name})`));
-          console.log(
-            chalk.dim("💡 CUE files will be generated to .arbiter/ when specification is complete"),
-          );
-
-          if (storeResult.data?.shard) {
-            console.log(chalk.dim(`   Stored in shard: ${storeResult.data.shard}`));
-          }
-
-          if (options.verbose) {
-            console.log(chalk.dim("Added configuration:"));
-            console.log(chalk.dim(showDiff(assemblyContent, updatedContent)));
-          }
-        } else {
-          throw new Error(storeResult.error || "Failed to store specification");
-        }
-      } catch (apiError) {
-        console.error(
-          chalk.red("❌ Failed to store specification with Arbiter service:"),
-          apiError instanceof Error ? apiError.message : String(apiError),
-        );
-        console.error(
-          chalk.dim("Tip: re-run with --local if you intentionally want to work offline."),
-        );
-        return 1;
-      }
-
-      if (storeSucceeded) {
-        await syncEntityWithProject(apiClient, config, subcommand, name, options);
-      }
+    if (!(await validateContent(updatedContent))) {
+      return 1;
     }
 
-    return 0;
+    const success = await persistSpecification(
+      ctx,
+      updatedContent,
+      subcommand,
+      name,
+      options,
+      config,
+    );
+    return success ? 0 : 1;
   } catch (error) {
     console.error(chalk.red("❌ Failed to add component:"));
     console.error(chalk.red(error instanceof Error ? error.message : String(error)));
@@ -460,7 +514,9 @@ function showDiff(oldContent: string, newContent: string): string {
 }
 
 /**
- * Determine shard type based on add subcommand for better organization
+ * Determine shard type based on add subcommand for better organization.
+ * @param subcommand - The add subcommand
+ * @returns Shard type string
  */
 function getShardTypeForSubcommand(subcommand: string): string {
   const shardMapping: Record<string, string> = {
@@ -469,299 +525,14 @@ function getShardTypeForSubcommand(subcommand: string): string {
     endpoint: "endpoints",
     route: "routes",
     flow: "flows",
-    database: "services", // Databases go with services
-    "load-balancer": "services", // Load balancers go with services
     schema: "schemas",
     locator: "locators",
     contract: "contracts",
     "contract-operation": "contracts",
+    package: "packages",
+    component: "components",
+    module: "modules",
   };
 
   return shardMapping[subcommand] || "assembly";
-}
-
-async function syncEntityWithProject(
-  client: ApiClient,
-  config: CLIConfig,
-  subcommand: string,
-  name: string,
-  options: Record<string, any>,
-): Promise<void> {
-  const entityType = mapSubcommandToEntityType(subcommand);
-  if (!entityType) return;
-
-  const projectId = await ensureProjectExists(client, config);
-
-  switch (entityType) {
-    case "service":
-      await upsertServiceEntity(client, projectId, name, options);
-      console.log(chalk.dim(`🗄️  Synced service "${name}" with project catalog`));
-      break;
-    case "database":
-      await upsertDatabaseEntity(client, projectId, name, options);
-      console.log(chalk.dim(`🗄️  Synced database "${name}" with project catalog`));
-      break;
-    default:
-      await upsertGenericEntity(client, projectId, entityType, name, options);
-      console.log(chalk.dim(`🗄️  Synced ${entityType} "${name}" with project catalog`));
-  }
-}
-
-async function upsertServiceEntity(
-  client: ApiClient,
-  projectId: string,
-  name: string,
-  options: Record<string, any>,
-): Promise<void> {
-  const artifactId = await findExistingArtifactId(client, projectId, "service", name);
-  const values = buildServiceEntityValues(name, options);
-
-  if (artifactId) {
-    const result = await client.updateProjectEntity(projectId, artifactId, {
-      type: "service",
-      values,
-    });
-    if (!result.success) {
-      throw new Error(result.error || `Failed to update service "${name}" in project catalog`);
-    }
-  } else {
-    const result = await client.createProjectEntity(projectId, { type: "service", values });
-    if (!result.success) {
-      throw new Error(result.error || `Failed to register service "${name}" in project catalog`);
-    }
-  }
-}
-
-async function upsertDatabaseEntity(
-  client: ApiClient,
-  projectId: string,
-  name: string,
-  options: Record<string, any>,
-): Promise<void> {
-  const artifactId = await findExistingArtifactId(client, projectId, "database", name);
-  const values = buildDatabaseEntityValues(name, options);
-
-  if (artifactId) {
-    const result = await client.updateProjectEntity(projectId, artifactId, {
-      type: "database",
-      values,
-    });
-    if (!result.success) {
-      throw new Error(result.error || `Failed to update database "${name}" in project catalog`);
-    }
-  } else {
-    const result = await client.createProjectEntity(projectId, { type: "database", values });
-    if (!result.success) {
-      throw new Error(result.error || `Failed to register database "${name}" in project catalog`);
-    }
-  }
-}
-
-async function upsertGenericEntity(
-  client: ApiClient,
-  projectId: string,
-  type: string,
-  name: string,
-  options: Record<string, any>,
-): Promise<void> {
-  const artifactId = await findExistingArtifactId(client, projectId, type, name);
-  const values = buildGenericEntityValues(type, name, options);
-
-  if (artifactId) {
-    const result = await client.updateProjectEntity(projectId, artifactId, { type, values });
-    if (!result.success) {
-      throw new Error(result.error || `Failed to update ${type} "${name}" in project catalog`);
-    }
-  } else {
-    const result = await client.createProjectEntity(projectId, { type, values });
-    if (!result.success) {
-      throw new Error(result.error || `Failed to register ${type} "${name}" in project catalog`);
-    }
-  }
-}
-
-async function findExistingArtifactId(
-  client: ApiClient,
-  projectId: string,
-  type: string,
-  name: string,
-): Promise<string | null> {
-  const projectResult = await client.getProject(projectId);
-  if (!projectResult.success) {
-    throw new Error(projectResult.error || `Failed to fetch project ${projectId} details`);
-  }
-
-  const spec = projectResult.data?.resolved?.spec ?? projectResult.data?.spec;
-  if (!spec || typeof spec !== "object") {
-    return null;
-  }
-
-  // Prefer artifacts if available
-  const artifacts = Array.isArray(projectResult.data?.resolved?.artifacts)
-    ? projectResult.data.resolved.artifacts
-    : [];
-
-  const target = normalizeName(name);
-
-  const artifactMatch = artifacts.find(
-    (a: any) => normalizeName(a?.name) === target && (a?.type || "").toLowerCase() === type,
-  );
-  if (artifactMatch?.id) return artifactMatch.id as string;
-
-  // Fallback to spec collections for specific types
-  const collectionKey = mapEntityTypeToSpecCollection(type);
-  if (!collectionKey) return null;
-
-  const collection = spec[collectionKey] as Record<string, any> | undefined;
-  if (!collection || typeof collection !== "object") {
-    return null;
-  }
-
-  for (const entry of Object.values(collection)) {
-    if (!entry || typeof entry !== "object") continue;
-    const entryNameRaw =
-      typeof (entry as any).name === "string"
-        ? (entry as any).name
-        : typeof (entry as any).displayName === "string"
-          ? (entry as any).displayName
-          : typeof (entry as any).metadata?.name === "string"
-            ? (entry as any).metadata.name
-            : undefined;
-    if (!entryNameRaw) continue;
-
-    if (entryNameRaw.trim().toLowerCase() !== target) {
-      continue;
-    }
-
-    const idCandidate =
-      typeof (entry as any).artifactId === "string"
-        ? (entry as any).artifactId
-        : typeof (entry as any).metadata?.artifactId === "string"
-          ? (entry as any).metadata.artifactId
-          : typeof (entry as any).id === "string"
-            ? (entry as any).id
-            : undefined;
-    if (idCandidate) {
-      return idCandidate;
-    }
-  }
-
-  return null;
-}
-
-function mapEntityTypeToSpecCollection(type: string): string | null {
-  switch (type) {
-    case "service":
-      return "services";
-    case "database":
-      return "databases";
-    case "package":
-      return "components"; // packages live under components.packages but resolved flatten; handled via artifacts mostly
-    case "tool":
-    case "frontend":
-    case "infrastructure":
-      return "components";
-    case "route":
-      return "ui"; // handled separately elsewhere; artifacts cover main cases
-    default:
-      return null;
-  }
-}
-
-function normalizeName(value: unknown): string {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/_/g, "-");
-}
-
-function buildServiceEntityValues(
-  name: string,
-  options: Record<string, any>,
-): Record<string, unknown> {
-  const language =
-    typeof options.language === "string" && options.language.trim().length > 0
-      ? options.language.trim()
-      : "typescript";
-
-  const values: Record<string, unknown> = {
-    name,
-    language,
-  };
-
-  if (typeof options.port === "number" && Number.isFinite(options.port)) {
-    values.port = options.port;
-  }
-
-  if (typeof options.serviceType === "string" && options.serviceType.trim().length > 0) {
-    values.serviceType = options.serviceType.trim();
-  }
-
-  const inferredSource =
-    typeof options.directory === "string" && options.directory.trim().length > 0
-      ? options.directory.trim()
-      : `./src/${name}`;
-  values.sourcePath = inferredSource;
-
-  return values;
-}
-
-function buildDatabaseEntityValues(
-  name: string,
-  options: Record<string, any>,
-): Record<string, unknown> {
-  const values: Record<string, unknown> = { name };
-  if (typeof options.type === "string" && options.type.trim().length > 0) {
-    values.type = options.type.trim();
-  }
-  return values;
-}
-
-function buildGenericEntityValues(
-  type: string,
-  name: string,
-  options: Record<string, any>,
-): Record<string, unknown> {
-  const values: Record<string, unknown> = { name };
-
-  if (options?.path) values.path = options.path;
-  if (options?.description) values.description = options.description;
-  if (options?.id) values.id = options.id;
-
-  switch (type) {
-    case "route":
-      values.path = options.path ?? name;
-      values.id = options.id ?? name;
-      break;
-    case "flow":
-      values.id = options.id ?? name;
-      break;
-    case "capability":
-      values.id = options.id ?? name;
-      break;
-    default:
-      break;
-  }
-
-  return values;
-}
-
-function mapSubcommandToEntityType(subcommand: string): string | null {
-  const normalized = subcommand.trim().toLowerCase();
-  const map: Record<string, string> = {
-    service: "service",
-    database: "database",
-    package: "package",
-    tool: "tool",
-    frontend: "frontend",
-    "load-balancer": "infrastructure",
-    cache: "database",
-    route: "route",
-    flow: "flow",
-    capability: "capability",
-    epic: "epic",
-    task: "task",
-  };
-
-  return map[normalized] || null;
 }

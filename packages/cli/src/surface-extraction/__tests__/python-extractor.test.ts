@@ -2,7 +2,7 @@ import { describe, expect, it, spyOn } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { extractPythonSurface } from "@/surface-extraction/python-extractor.js";
+import { extractPythonSurface } from "@/surface-extraction/extractors/python-extractor.js";
 import * as globModule from "glob";
 
 describe("extractPythonSurface", () => {

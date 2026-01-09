@@ -2,19 +2,17 @@
  * DiagramTabs - Right pane tabs for diagrams and activity
  */
 
-import CapabilitiesReport from "@/components/CapabilitiesReport";
-import ContractsReport from "@/components/ContractsReport";
-import FlowsReport from "@/components/FlowsReport";
-import InfrastructureReport from "@/components/InfrastructureReport";
-import PackagesReport from "@/components/PackagesReport";
-import SchemasReport from "@/components/SchemasReport";
-import ToolsReport from "@/components/ToolsReport";
-import {
-  ArchitectureFlowReport,
-  EventsReport,
-  ServicesReport,
-  TasksReport,
-} from "@/components/index";
+import { ServicesReport } from "@/components/ServicesReport";
+import CapabilitiesReport from "@/components/api/CapabilitiesReport";
+import FlowsReport from "@/components/api/FlowsReport";
+import PackagesReport from "@/components/api/PackagesReport";
+import SchemasReport from "@/components/api/SchemasReport";
+import { TasksReport } from "@/components/api/TasksReport";
+import ToolsReport from "@/components/api/ToolsReport";
+import ArchitectureFlowReport from "@/components/core/ArchitectureFlowReport";
+import { EventsReport } from "@/components/io/EventsReport";
+import ContractsReport from "@/components/io/reports/ContractsReport";
+import InfrastructureReport from "@/components/io/reports/InfrastructureReport";
 import type { Project } from "@/types/api";
 import { DiagramPlaceholder } from "./DiagramPlaceholder";
 
@@ -22,6 +20,96 @@ interface DiagramTabsProps {
   project: Project | null;
   tabBadges?: Record<string, number>;
 }
+
+/** Tab definition for declarative tab configuration */
+interface TabDefinition {
+  id: string;
+  label: string;
+  placeholder: string;
+  countKey: keyof NonNullable<Project["entities"]> | "tasks" | "events" | "schemas" | "contracts";
+  ReportComponent: React.ComponentType<{ projectId: string }>;
+}
+
+/** Tab configuration for all diagram tabs */
+const TAB_DEFINITIONS: TabDefinition[] = [
+  {
+    id: "architecture",
+    label: "Architecture",
+    placeholder: "System Architecture",
+    countKey: "services",
+    ReportComponent: ArchitectureFlowReport,
+  },
+  {
+    id: "schemas",
+    label: "Schemas",
+    placeholder: "Data Schemas",
+    countKey: "schemas",
+    ReportComponent: SchemasReport,
+  },
+  {
+    id: "contracts",
+    label: "Contracts",
+    placeholder: "API Contracts",
+    countKey: "contracts",
+    ReportComponent: ContractsReport,
+  },
+  {
+    id: "services",
+    label: "Services",
+    placeholder: "Service Catalog",
+    countKey: "services",
+    ReportComponent: ServicesReport,
+  },
+  {
+    id: "packages",
+    label: "Packages",
+    placeholder: "Packages",
+    countKey: "packages",
+    ReportComponent: PackagesReport,
+  },
+  {
+    id: "tools",
+    label: "Tools",
+    placeholder: "Tools",
+    countKey: "tools",
+    ReportComponent: ToolsReport,
+  },
+  {
+    id: "infrastructure",
+    label: "Infrastructure",
+    placeholder: "Infrastructure",
+    countKey: "infrastructure",
+    ReportComponent: InfrastructureReport,
+  },
+  {
+    id: "flows",
+    label: "Flows",
+    placeholder: "Flows",
+    countKey: "flows",
+    ReportComponent: FlowsReport,
+  },
+  {
+    id: "capabilities",
+    label: "Capabilities",
+    placeholder: "Capabilities",
+    countKey: "capabilities",
+    ReportComponent: CapabilitiesReport,
+  },
+  {
+    id: "tasks",
+    label: "Tasks",
+    placeholder: "Group Tasks",
+    countKey: "tasks",
+    ReportComponent: TasksReport,
+  },
+  {
+    id: "events",
+    label: "Events",
+    placeholder: "Event Log",
+    countKey: "events",
+    ReportComponent: EventsReport,
+  },
+];
 
 export function useDiagramTabs({ project, tabBadges }: DiagramTabsProps) {
   // Prefer the canonical project entity counts (kept in sync via WebSocket + React Query)
@@ -135,7 +223,7 @@ export function useDiagramTabs({ project, tabBadges }: DiagramTabsProps) {
       content: project ? (
         <TasksReport projectId={project.id} />
       ) : (
-        <DiagramPlaceholder type="Epic Tasks" />
+        <DiagramPlaceholder type="Group Tasks" />
       ),
     },
     {

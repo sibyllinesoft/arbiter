@@ -6,303 +6,197 @@ export interface InternalServiceCandidate {
   sourcePath?: string;
 }
 
-const toRecord = (value: unknown): Record<string, unknown> | undefined => {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-  return value as Record<string, unknown>;
-};
+type RawRecord = Record<string, unknown>;
 
 const normalizeString = (value: unknown): string | undefined => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
+  if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed.toLowerCase() : undefined;
 };
 
-export const getPackageJson = (raw: unknown): Record<string, unknown> | null => {
-  if (!raw || typeof raw !== "object") {
-    return null;
-  }
-  const rawRecord = raw as Record<string, unknown>;
-  const metadata = rawRecord.metadata;
-  if (metadata && typeof metadata === "object") {
-    const packageJson = (metadata as Record<string, unknown>).packageJson;
-    if (packageJson && typeof packageJson === "object") {
-      return packageJson as Record<string, unknown>;
-    }
-  }
-  const direct = rawRecord.packageJson;
-  if (direct && typeof direct === "object") {
-    return direct as Record<string, unknown>;
-  }
-  return null;
+const getMetadata = (raw: unknown): RawRecord | undefined => {
+  if (!raw || typeof raw !== "object") return undefined;
+  const metadata = (raw as RawRecord).metadata;
+  return metadata && typeof metadata === "object" ? (metadata as RawRecord) : undefined;
+};
+
+export const getPackageJson = (raw: unknown): RawRecord | null => {
+  if (!raw || typeof raw !== "object") return null;
+  const rawRecord = raw as RawRecord;
+  const metadata = getMetadata(raw);
+
+  const pkgJson = metadata?.packageJson ?? rawRecord.packageJson;
+  return pkgJson && typeof pkgJson === "object" ? (pkgJson as RawRecord) : null;
+};
+
+const hasBinField = (candidate: unknown): boolean => {
+  if (!candidate) return false;
+  if (typeof candidate === "string") return candidate.trim().length > 0;
+  if (typeof candidate === "object") return Object.keys(candidate as RawRecord).length > 0;
+  return false;
 };
 
 export const hasPackageBin = (raw: unknown): boolean => {
   const packageJson = getPackageJson(raw);
-  if (!packageJson) {
-    return false;
-  }
+  if (!packageJson) return false;
 
-  const rawRecord = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-  const metadata =
-    rawRecord.metadata && typeof rawRecord.metadata === "object"
-      ? (rawRecord.metadata as Record<string, unknown>)
-      : undefined;
+  const rawRecord = (raw && typeof raw === "object" ? raw : {}) as RawRecord;
+  const metadata = getMetadata(raw);
 
-  const candidateSources = [
-    (packageJson as Record<string, unknown>).bin,
-    metadata?.bin,
-    rawRecord.bin,
-  ];
-  for (const candidate of candidateSources) {
-    if (!candidate) continue;
-    if (typeof candidate === "string" && candidate.trim().length > 0) {
-      return true;
-    }
-    if (typeof candidate === "object") {
-      const keys = Object.keys(candidate as Record<string, unknown>);
-      if (keys.length > 0) {
-        return true;
-      }
-    }
-  }
-  return false;
+  return [packageJson.bin, metadata?.bin, rawRecord.bin].some(hasBinField);
 };
+
+const includesService = (value: unknown): boolean =>
+  typeof value === "string" && value.toLowerCase().includes("service");
 
 export const isServiceDetected = (service: InternalServiceCandidate): boolean => {
   const raw = service.raw;
-  if (raw && typeof raw === "object") {
-    const rawRecord = raw as Record<string, unknown>;
-    const metadata =
-      rawRecord.metadata && typeof rawRecord.metadata === "object"
-        ? (rawRecord.metadata as Record<string, unknown>)
-        : undefined;
-
-    const candidates: Array<unknown> = [
-      rawRecord.type,
-      rawRecord.category,
-      metadata?.detectedType,
-      metadata?.type,
-      metadata?.category,
-      service.typeLabel,
-    ];
-
-    return candidates.some((candidate) => {
-      if (typeof candidate !== "string") {
-        return false;
-      }
-      const value = candidate.toLowerCase();
-      return value.includes("service");
-    });
-  }
-
-  if (typeof service.typeLabel === "string") {
-    return service.typeLabel.toLowerCase().includes("service");
-  }
-
-  return false;
-};
-
-/**
- * Checks if a service has a buildable package file.
- *
- * Package files indicate code that can be built/compiled:
- * - package.json (Node.js/JavaScript/TypeScript)
- * - Cargo.toml (Rust)
- * - pyproject.toml, setup.py (Python)
- * - go.mod (Go)
- * - pom.xml, build.gradle (Java)
- */
-export const hasBuildablePackageFile = (raw: unknown, serviceName?: string): boolean => {
   if (!raw || typeof raw !== "object") {
-    return false;
+    return includesService(service.typeLabel);
   }
 
-  const rawRecord = raw as Record<string, unknown>;
-  const metadata =
-    rawRecord.metadata && typeof rawRecord.metadata === "object"
-      ? (rawRecord.metadata as Record<string, unknown>)
-      : undefined;
+  const rawRecord = raw as RawRecord;
+  const metadata = getMetadata(raw);
 
-  // PRIMARY CHECK: Check for explicit manifest field in metadata
-  const manifest = normalizeString(metadata?.manifest) || normalizeString(rawRecord.manifest);
-  console.log("[internal-classifier] checking manifest", {
-    serviceName,
-    manifest,
-    hasMetadata: Boolean(metadata),
-    metadataManifest: metadata?.manifest,
-    rawRecordManifest: rawRecord.manifest,
-  });
-  if (manifest) {
-    const buildableManifests = [
-      "package.json",
-      "cargo.toml",
-      "pyproject.toml",
-      "setup.py",
-      "go.mod",
-      "pom.xml",
-      "build.gradle",
-      "pipfile",
-      "requirements.txt",
-    ];
+  const candidates = [
+    rawRecord.type,
+    rawRecord.category,
+    metadata?.detectedType,
+    metadata?.type,
+    metadata?.category,
+    service.typeLabel,
+  ];
 
-    if (buildableManifests.includes(manifest)) {
-      console.log("[internal-classifier] ✅ INTERNAL service (has buildable manifest)", {
-        serviceName,
-        manifest,
-      });
-      return true;
-    }
-  }
-
-  // FALLBACK: Check for explicit package.json object
-  const hasPackageJson = getPackageJson(raw);
-  if (hasPackageJson) {
-    return true;
-  }
-
-  // FALLBACK: Check sourceFile path for buildable package files
-  const sourceFile = normalizeString(metadata?.sourceFile) || normalizeString(rawRecord.sourceFile);
-  if (sourceFile) {
-    const packageFiles = [
-      "package.json",
-      "cargo.toml",
-      "pyproject.toml",
-      "setup.py",
-      "go.mod",
-      "pom.xml",
-      "build.gradle",
-      "build.gradle.kts",
-    ];
-
-    const matchedPackageFile = packageFiles.find((pkg) => sourceFile.includes(pkg));
-    if (matchedPackageFile) {
-      return true;
-    }
-  }
-
-  // FALLBACK: Check tags for language indicators (nodejs, rust, python, go, java)
-  const tags = Array.isArray(rawRecord.tags)
-    ? rawRecord.tags
-    : Array.isArray(metadata?.tags)
-      ? metadata.tags
-      : [];
-
-  const languageTags = ["nodejs", "rust", "python", "go", "java", "typescript", "javascript"];
-  const hasLanguageTag = tags.some((tag: unknown) => {
-    if (typeof tag !== "string") return false;
-    const tagLower = tag.toLowerCase();
-    return languageTags.some((lang) => tagLower === lang || tagLower.includes(lang));
-  });
-
-  if (hasLanguageTag) {
-    // But exclude if it's ONLY docker-tagged
-    const isDockerOnly =
-      tags.length === 1 && typeof tags[0] === "string" && tags[0].toLowerCase() === "docker";
-    if (!isDockerOnly) {
-      return true;
-    }
-  }
-
-  return false;
+  return candidates.some(includesService);
 };
 
-/**
- * Checks if a service has a Docker build context defined.
- * Services with build contexts are built from source code, not pulled from a registry.
- */
+/** Known buildable manifest files */
+const BUILDABLE_MANIFESTS = new Set([
+  "package.json",
+  "cargo.toml",
+  "pyproject.toml",
+  "setup.py",
+  "go.mod",
+  "pom.xml",
+  "build.gradle",
+  "pipfile",
+  "requirements.txt",
+  "build.gradle.kts",
+]);
+
+/** Language tags that indicate buildable code */
+const LANGUAGE_TAGS = new Set([
+  "nodejs",
+  "rust",
+  "python",
+  "go",
+  "java",
+  "typescript",
+  "javascript",
+]);
+
+const isLanguageTag = (tag: unknown): boolean => {
+  if (typeof tag !== "string") return false;
+  const tagLower = tag.toLowerCase();
+  return Array.from(LANGUAGE_TAGS).some((lang) => tagLower === lang || tagLower.includes(lang));
+};
+
+/** Check for explicit manifest field in metadata or raw record */
+const hasManifestField = (rawRecord: RawRecord, metadata: RawRecord | undefined): boolean => {
+  const manifest = normalizeString(metadata?.manifest) ?? normalizeString(rawRecord.manifest);
+  return Boolean(manifest && BUILDABLE_MANIFESTS.has(manifest));
+};
+
+/** Check sourceFile path for buildable manifest files */
+const hasMatchingSourceFile = (rawRecord: RawRecord, metadata: RawRecord | undefined): boolean => {
+  const sourceFile = normalizeString(metadata?.sourceFile) ?? normalizeString(rawRecord.sourceFile);
+  if (!sourceFile) return false;
+  return Array.from(BUILDABLE_MANIFESTS).some((pkg) => sourceFile.includes(pkg));
+};
+
+/** Get tags array from raw record or metadata */
+const getTags = (rawRecord: RawRecord, metadata: RawRecord | undefined): unknown[] => {
+  if (Array.isArray(rawRecord.tags)) return rawRecord.tags;
+  if (Array.isArray(metadata?.tags)) return metadata.tags;
+  return [];
+};
+
+/** Check if tags contain language indicators (excluding docker-only) */
+const hasBuildableLanguageTags = (
+  rawRecord: RawRecord,
+  metadata: RawRecord | undefined,
+): boolean => {
+  const tags = getTags(rawRecord, metadata);
+  if (!tags.some(isLanguageTag)) return false;
+  const isDockerOnly =
+    tags.length === 1 && typeof tags[0] === "string" && tags[0].toLowerCase() === "docker";
+  return !isDockerOnly;
+};
+
+/** Checks if a service has a buildable package file */
+export const hasBuildablePackageFile = (raw: unknown): boolean => {
+  if (!raw || typeof raw !== "object") return false;
+
+  const rawRecord = raw as RawRecord;
+  const metadata = getMetadata(raw);
+
+  return (
+    hasManifestField(rawRecord, metadata) ||
+    getPackageJson(raw) !== null ||
+    hasMatchingSourceFile(rawRecord, metadata) ||
+    hasBuildableLanguageTags(rawRecord, metadata)
+  );
+};
+
+const getDockerComposeService = (metadata: RawRecord | undefined): RawRecord | undefined => {
+  const docker = metadata?.docker as RawRecord | undefined;
+  return (docker?.composeService ?? metadata?.composeService) as RawRecord | undefined;
+};
+
+/** Checks if a service has a Docker build context defined */
 const hasDockerBuild = (raw: unknown): boolean => {
   if (!raw || typeof raw !== "object") return false;
-  const rawRecord = raw as Record<string, unknown>;
-  const metadata =
-    rawRecord.metadata && typeof rawRecord.metadata === "object"
-      ? (rawRecord.metadata as Record<string, unknown>)
-      : undefined;
+  const rawRecord = raw as RawRecord;
+  const metadata = getMetadata(raw);
+  const composeService = getDockerComposeService(metadata);
 
-  // Check all the places where a build context might be specified
   const buildLocations = [
     rawRecord.build,
     metadata?.build,
     metadata?.dockerBuild,
     metadata?.buildContext,
-    (metadata?.docker as Record<string, unknown>)?.composeService &&
-      ((metadata?.docker as Record<string, unknown>)?.composeService as Record<string, unknown>)
-        ?.build,
-    (metadata?.composeService as Record<string, unknown>)?.build,
+    composeService?.build,
   ];
 
-  return buildLocations.some((build) => build !== undefined && build !== null);
+  return buildLocations.some((build) => build != null);
 };
 
-/**
- * Checks if a service is container-only (has an image but no build context).
- * Services like nats, postgres, redis are container-only.
- * Services with build contexts (spec-workbench, api) are NOT container-only.
- */
+/** Checks if a service is container-only (has an image but no build context) */
 const isContainerOnlyService = (raw: unknown): boolean => {
   if (!raw || typeof raw !== "object") return false;
+  if (hasDockerBuild(raw)) return false;
 
-  // If there's a build context, it's NOT container-only (it's built from source)
-  if (hasDockerBuild(raw)) {
-    return false;
-  }
+  const metadata = getMetadata(raw);
+  const composeService = getDockerComposeService(metadata);
 
-  const rawRecord = raw as Record<string, unknown>;
-  const metadata =
-    rawRecord.metadata && typeof rawRecord.metadata === "object"
-      ? (rawRecord.metadata as Record<string, unknown>)
-      : undefined;
-
-  // Check all the places where an image might be specified
   const imageLocations = [
     metadata?.image,
     metadata?.containerImage,
     metadata?.originalImage,
-    (metadata?.docker as Record<string, unknown>)?.composeService &&
-      ((metadata?.docker as Record<string, unknown>)?.composeService as Record<string, unknown>)
-        ?.image,
-    (metadata?.composeService as Record<string, unknown>)?.image,
+    composeService?.image,
   ];
 
-  // Has an image but no build = container-only (external)
   return imageLocations.some((img) => typeof img === "string" && img.trim().length > 0);
 };
 
-/**
- * Determines if a service should be classified as internal or external.
- *
- * Radically simplified rule:
- * - Internal: Has a buildable package file (package.json, Cargo.toml, pyproject.toml, etc.)
- *             OR has a Docker build context (builds from source)
- * - External: Everything else (Docker Compose image-only, infrastructure services, etc.)
- */
+/** Determines if a service should be classified as internal or external */
 export const shouldTreatAsInternalService = (service: InternalServiceCandidate): boolean => {
-  const serviceName = (service.raw as any)?.name || "unknown";
+  if (service.hasSource || service.sourcePath) return true;
+  if (hasDockerBuild(service.raw)) return true;
+  if (isContainerOnlyService(service.raw)) return false;
 
-  // Fast-path: explicit signals from discovery (source code detected)
-  if (service.hasSource) return true;
-
-  // Services with Docker build contexts are internal (they build from source)
-  if (hasDockerBuild(service.raw)) {
-    console.log("[internal-classifier] internal (has docker build):", serviceName);
-    return true;
-  }
-
-  // Container-only services (image but no build context) are external
-  // This catches nats, postgres, redis, etc. from docker-compose
-  if (isContainerOnlyService(service.raw)) {
-    console.log("[internal-classifier] external (container-only):", serviceName);
-    return false;
-  }
-
-  // If there's a sourcePath, it's internal
-  if (service.sourcePath) return true;
-
-  const rawType = normalizeString((service.raw as any)?.type);
+  const rawType = normalizeString((service.raw as RawRecord)?.type);
   if (rawType === "internal") return true;
 
-  return hasBuildablePackageFile(service.raw, serviceName);
+  return hasBuildablePackageFile(service.raw);
 };

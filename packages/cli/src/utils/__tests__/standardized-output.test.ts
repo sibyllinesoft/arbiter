@@ -1,7 +1,8 @@
+/** @packageDocumentation Utility tests */
 import { describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
-import { StandardizedOutputManager } from "@/utils/standardized-output";
+import { StandardizedOutputManager } from "@/utils/util/standardized-output";
 import fs from "fs-extra";
 
 const tmp = () => fs.mkdtemp(path.join(os.tmpdir(), "arbiter-out-"));
@@ -21,10 +22,9 @@ describe("StandardizedOutputManager", () => {
     await fs.remove(dir);
   });
 
-  it("writes diff, junit, and emits NDJSON events", async () => {
+  it("writes diff and junit without NDJSON output", async () => {
     const dir = await tmp();
-    const ndjsonPath = path.join(dir, "events.ndjson");
-    const manager = new StandardizedOutputManager("cli test", true, ndjsonPath);
+    const manager = new StandardizedOutputManager("cli test", true);
 
     // diff
     const diffPath = path.join(dir, "diff.txt");
@@ -50,11 +50,10 @@ describe("StandardizedOutputManager", () => {
     expect(junitContent).toContain("<testsuite");
     expect(junitContent).toContain('classname="c"');
 
-    // ndjson event
+    // ndjson output removed; emitEvent should be a no-op
     manager.emitEvent({ phase: "run", status: "ok" } as any);
     manager.close();
-    const ndjson = await fs.readFile(ndjsonPath, "utf8");
-    expect(ndjson.trim().length).toBeGreaterThan(0);
+    expect(await fs.pathExists(path.join(dir, "events.ndjson"))).toBe(false);
 
     await fs.remove(dir);
   });

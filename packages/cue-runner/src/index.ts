@@ -100,46 +100,108 @@ export class CueRunner {
     const start = Date.now();
     const cmd = args[0];
     const rest = args.slice(1);
+    const { timedOut, clearTimeoutFn } = this.createTimeout();
 
+    const execution = await this.executeCueInDirectory(cmd, rest, clearTimeoutFn);
+
+    return this.buildResult(execution, start, timedOut());
+  }
+
+  /**
+   * Creates a timeout tracker for command execution.
+   */
+  private createTimeout(): { timedOut: () => boolean; clearTimeoutFn: () => void } {
+    let hasTimedOut = false;
+    const timeout = setTimeout(() => {
+      hasTimedOut = true;
+    }, this.timeoutMs);
+
+    return {
+      timedOut: () => hasTimedOut,
+      clearTimeoutFn: () => clearTimeout(timeout),
+    };
+  }
+
+  /**
+   * Executes a CUE command in the configured directory.
+   */
+  private async executeCueInDirectory(
+    cmd: string,
+    rest: string[],
+    clearTimeoutFn: () => void,
+  ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     let stdout = "";
     let stderr = "";
     let exitCode = 0;
-    let timedOut = false;
-
-    const timeout = setTimeout(() => {
-      timedOut = true;
-    }, this.timeoutMs);
 
     try {
       const prevCwd = process.cwd();
       process.chdir(this.cwd);
       try {
-        const flags =
-          cmd === "export" ? { "--out": "json" } : cmd === "fmt" || cmd === "vet" ? {} : {};
-        const result = await cue(cmd, rest, flags);
-        if (typeof result === "string") {
-          stdout = result;
-        } else if (result && typeof result === "object") {
-          stdout = (result as any).stdout ?? "";
-          stderr = (result as any).stderr ?? "";
-          exitCode = typeof (result as any).code === "number" ? (result as any).code : 0;
-        }
+        const result = await this.invokeCue(cmd, rest);
+        ({ stdout, stderr, exitCode } = this.parseResult(result));
       } finally {
         process.chdir(prevCwd);
       }
     } catch (error: any) {
-      exitCode = -1;
-      stdout = typeof error?.stdout === "string" ? error.stdout : "";
-      stderr = typeof error?.stderr === "string" ? error.stderr : (error?.message ?? String(error));
+      ({ stdout, stderr, exitCode } = this.handleCueError(error));
     } finally {
-      clearTimeout(timeout);
+      clearTimeoutFn();
     }
 
+    return { stdout, stderr, exitCode };
+  }
+
+  /**
+   * Invokes the CUE command with appropriate flags.
+   */
+  private async invokeCue(cmd: string, rest: string[]): Promise<unknown> {
+    const flags = cmd === "export" ? { "--out": "json" } : {};
+    return cue(cmd, rest, flags);
+  }
+
+  /**
+   * Parses CUE command result into structured output.
+   */
+  private parseResult(result: unknown): { stdout: string; stderr: string; exitCode: number } {
+    if (typeof result === "string") {
+      return { stdout: result, stderr: "", exitCode: 0 };
+    }
+    if (result && typeof result === "object") {
+      const r = result as Record<string, unknown>;
+      return {
+        stdout: (r.stdout as string) ?? "",
+        stderr: (r.stderr as string) ?? "",
+        exitCode: typeof r.code === "number" ? r.code : 0,
+      };
+    }
+    return { stdout: "", stderr: "", exitCode: 0 };
+  }
+
+  /**
+   * Handles CUE command errors.
+   */
+  private handleCueError(error: any): { stdout: string; stderr: string; exitCode: number } {
     return {
-      success: !timedOut && exitCode === 0,
-      exitCode,
-      stdout: String(stdout).trim(),
-      stderr: String(stderr).trim(),
+      exitCode: -1,
+      stdout: typeof error?.stdout === "string" ? error.stdout : "",
+      stderr: typeof error?.stderr === "string" ? error.stderr : (error?.message ?? String(error)),
+    };
+  }
+
+  /**
+   * Builds the final result object.
+   */
+  private buildResult(
+    execution: { stdout: string; stderr: string; exitCode: number },
+    start: number,
+    timedOut: boolean,
+  ): ExternalToolResult {
+    return {
+      success: !timedOut && execution.exitCode === 0,
+      exitCode: execution.exitCode,
+      stdout: String(execution.stdout).trim(),
+      stderr: String(execution.stderr).trim(),
       durationMs: Date.now() - start,
       timedOut,
     };

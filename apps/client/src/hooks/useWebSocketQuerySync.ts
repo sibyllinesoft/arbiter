@@ -6,7 +6,7 @@
  */
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import type { NormalizedWebSocketEvent } from "../services/websocket";
 import { useWebSocketEvent, useWebSocketState } from "./useWebSocket";
 
@@ -33,6 +33,82 @@ export function useWebSocketQuerySync({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _notifications = showToastNotifications; // kept for future use, currently unused
 
+  const invalidateProjectCaches = useCallback(
+    (id: string) => {
+      queryClient.invalidateQueries({
+        queryKey: ["resolved-spec", id],
+        refetchType: "all",
+      });
+      queryClient.invalidateQueries({ queryKey: ["projects"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["project", id], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["projects", id], refetchType: "all" });
+    },
+    [queryClient],
+  );
+
+  const invalidateValidation = useCallback(
+    (id: string) => {
+      queryClient.invalidateQueries({ queryKey: ["resolved-spec", id] });
+      queryClient.invalidateQueries({ queryKey: ["validation", id] });
+    },
+    [queryClient],
+  );
+
+  const invalidateGit = useCallback(
+    (id: string) => {
+      queryClient.invalidateQueries({ queryKey: ["resolved-spec", id] });
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({ queryKey: ["git-status", id] });
+    },
+    [queryClient],
+  );
+
+  const invalidateEvents = useCallback(
+    (id: string) => {
+      queryClient.invalidateQueries({ queryKey: ["events", id] });
+      queryClient.invalidateQueries({ queryKey: ["resolved-spec", id] });
+    },
+    [queryClient],
+  );
+
+  const registry = useMemo<
+    Record<NormalizedWebSocketEvent["type"], (targetProjectId: string) => void>
+  >(
+    () => ({
+      project_created: () => queryClient.invalidateQueries({ queryKey: ["projects"] }),
+      project_deleted: () => queryClient.invalidateQueries({ queryKey: ["projects"] }),
+      fragment_created: (id) => invalidateProjectCaches(id),
+      fragment_updated: (id) => invalidateProjectCaches(id),
+      fragment_deleted: (id) => invalidateProjectCaches(id),
+      entity_created: (id) => invalidateProjectCaches(id),
+      entity_updated: (id) => invalidateProjectCaches(id),
+      entity_deleted: (id) => invalidateProjectCaches(id),
+      entity_restored: (id) => invalidateProjectCaches(id),
+      fragment_revision_created: (id) => {
+        queryClient.invalidateQueries({ queryKey: ["resolved-spec", id] });
+        queryClient.invalidateQueries({ queryKey: ["fragments", id] });
+      },
+      validation_started: (id) => invalidateValidation(id),
+      validation_completed: (id) => invalidateValidation(id),
+      validation_failed: (id) => invalidateValidation(id),
+      version_frozen: (id) => {
+        queryClient.invalidateQueries({ queryKey: ["versions", id] });
+        queryClient.invalidateQueries({ queryKey: ["projects"] });
+      },
+      git_push_processed: (id) => invalidateGit(id),
+      git_merge_processed: (id) => invalidateGit(id),
+      event_head_updated: (id) => invalidateEvents(id),
+      events_reverted: (id) => invalidateEvents(id),
+      events_reapplied: (id) => invalidateEvents(id),
+      connection_established: () => {},
+      subscription_confirmed: () => {},
+      global_subscription_confirmed: () => {},
+      ping: () => {},
+      pong: () => {},
+    }),
+    [invalidateEvents, invalidateGit, invalidateProjectCaches, invalidateValidation, queryClient],
+  );
+
   const handleEvent = useCallback(
     (message: NormalizedWebSocketEvent) => {
       const eventType = message.type;
@@ -48,79 +124,16 @@ export function useWebSocketQuerySync({
         return;
       }
 
-      // Map event types to query invalidations
-      switch (eventType) {
-        // Fragment/Entity CRUD operations - invalidate resolved spec and project list
-        case "fragment_created":
-        case "fragment_updated":
-        case "fragment_deleted":
-        case "entity_created":
-        case "entity_updated":
-        case "entity_deleted":
-        case "entity_restored":
-          queryClient.invalidateQueries({
-            queryKey: ["resolved-spec", projectId],
-            refetchType: "all",
-          });
-          queryClient.invalidateQueries({ queryKey: ["projects"], refetchType: "all" });
-          queryClient.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
-          queryClient.invalidateQueries({ queryKey: ["projects", projectId], refetchType: "all" });
-          break;
-
-        // Fragment revision - invalidate specs and revisions
-        case "fragment_revision_created":
-          queryClient.invalidateQueries({ queryKey: ["resolved-spec", projectId] });
-          queryClient.invalidateQueries({ queryKey: ["fragments", projectId] });
-          break;
-
-        // Validation events - invalidate validation results
-        case "validation_started":
-        case "validation_completed":
-        case "validation_failed":
-          queryClient.invalidateQueries({ queryKey: ["resolved-spec", projectId] });
-          queryClient.invalidateQueries({ queryKey: ["validation", projectId] });
-          break;
-
-        // Version management - invalidate versions and specs
-        case "version_frozen":
-          queryClient.invalidateQueries({ queryKey: ["versions", projectId] });
-          queryClient.invalidateQueries({ queryKey: ["projects"] });
-          break;
-
-        // Git operations - invalidate project and specs
-        case "git_push_processed":
-        case "git_merge_processed":
-          queryClient.invalidateQueries({ queryKey: ["resolved-spec", projectId] });
-          queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-          queryClient.invalidateQueries({ queryKey: ["git-status", projectId] });
-          break;
-
-        // Event log operations - invalidate event history
-        case "event_head_updated":
-        case "events_reverted":
-        case "events_reapplied":
-          queryClient.invalidateQueries({ queryKey: ["events", projectId] });
-          queryClient.invalidateQueries({ queryKey: ["resolved-spec", projectId] });
-          break;
-
-        // Connection events - mostly informational
-        case "connection_established":
-        case "subscription_confirmed":
-        case "global_subscription_confirmed":
-          break;
-
-        // Ping/pong - no action
-        case "ping":
-        case "pong":
-          break;
-
-        default:
-          console.warn("[WebSocket Query Sync] Unknown event type:", eventType);
-          queryClient.invalidateQueries({ queryKey: ["resolved-spec", projectId] });
-          queryClient.invalidateQueries({ queryKey: ["projects"] });
+      const handler = registry[eventType];
+      if (handler) {
+        handler(targetProjectId);
+      } else {
+        console.warn("[WebSocket Query Sync] Unknown event type:", eventType);
+        queryClient.invalidateQueries({ queryKey: ["resolved-spec", projectId] });
+        queryClient.invalidateQueries({ queryKey: ["projects"] });
       }
     },
-    [projectId, queryClient],
+    [projectId, queryClient, registry],
   );
 
   useWebSocketEvent("*", handleEvent);

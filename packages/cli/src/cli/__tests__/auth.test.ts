@@ -1,8 +1,9 @@
+/** @packageDocumentation CLI command tests */
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import * as authStore from "@/auth-store.js";
-import { createAuthCommand } from "@/cli/auth.js";
+import { createAuthCommand } from "@/cli/commands/auth.js";
+import * as authStore from "@/io/api/auth-store.js";
 import * as authService from "@/services/auth/index.js";
 
 const minimalConfig = {

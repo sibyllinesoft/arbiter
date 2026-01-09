@@ -50,11 +50,11 @@
           ]
         }
       },
-      "epic": {
+      "group": {
         "inherits": "custom-base",
-        "name": "Epic",
-        "title": "[EPIC] [{{team}}] {{priority}}: {{name}}",
-        "labels": ["epic", "priority:{{priority}}", "team:{{team}}"],
+        "name": "Group",
+        "title": "[GROUP] [{{team}}] {{priority}}: {{name}}",
+        "labels": ["group", "priority:{{priority}}", "team:{{team}}"],
         "sections": {
           "additional": {
             "roadmap": "## 🗺️ Roadmap Impact\n\n**Quarter:** {{quarter}}\n**Initiative:** {{initiative}}\n\n",
@@ -66,7 +66,7 @@
         "inherits": "custom-base",
         "name": "Task",
         "title": "[{{type}}] [{{team}}] {{priority}}: {{name}}",
-        "labels": ["type:{{type}}", "priority:{{priority}}", "team:{{team}}", "epic:{{epicId}}"],
+        "labels": ["type:{{type}}", "priority:{{priority}}", "team:{{team}}", "group:{{groupId}}"],
         "sections": {
           "additional": {
             "definition": "## 🎯 Definition of Done\n\n- [ ] Code implemented and reviewed\n- [ ] Tests written and passing\n- [ ] Documentation updated\n- [ ] Stakeholder approval received\n\n"

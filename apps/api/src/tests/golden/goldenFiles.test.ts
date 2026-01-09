@@ -4,10 +4,16 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { IRGenerator } from "../../ir.ts";
-import { SpecEngine } from "../../specEngine.ts";
-import type { Fragment, ServerConfig } from "../../types.ts";
-import { generateId } from "../../utils.ts";
+import { IRGenerator } from "../../io/ir";
+import { generateId } from "../../io/utils";
+import { SpecEngine } from "../../util/specEngine";
+import type { ServerConfig } from "../../util/types";
+import {
+  compareWithTolerance,
+  loadExpectedFile as loadExpected,
+  loadGoldenFragments as loadFragments,
+  validateIRStructure,
+} from "./comparison-utils";
 
 const GOLDEN_PROJECT_PATH = "/home/nathan/Projects/arbiter/golden-test-project";
 const GOLDEN_AVAILABLE = existsSync(join(GOLDEN_PROJECT_PATH, "ui.routes.cue"));
@@ -35,11 +41,6 @@ const GOLDEN_AVAILABLE = existsSync(join(GOLDEN_PROJECT_PATH, "ui.routes.cue"));
       spec_workdir: tempWorkdir,
       jq_binary_path: "jq",
       auth_required: false,
-      rate_limit: {
-        max_tokens: 10,
-        refill_rate: 1,
-        window_ms: 10000,
-      },
       external_tool_timeout_ms: 15000, // Longer timeout for golden tests
       websocket: {
         max_connections: 100,
@@ -60,98 +61,17 @@ const GOLDEN_AVAILABLE = existsSync(join(GOLDEN_PROJECT_PATH, "ui.routes.cue"));
     }
   });
 
-  /**
-   * Load golden test project fragments
-   */
-  async function loadGoldenFragments(): Promise<Fragment[]> {
-    if (!goldenAvailable) {
-      return [];
-    }
+  const FRAGMENT_FILES = ["ui.routes.cue", "locators.cue", "flows.cue", "completion.cue"];
 
-    const fragments: Fragment[] = [];
-    const projectId = "golden-test-project";
+  // Wrapper functions that use the imported utilities with local context
+  const loadGoldenFragments = () =>
+    goldenAvailable ? loadFragments(goldenProjectPath, FRAGMENT_FILES) : Promise.resolve([]);
 
-    const fragmentFiles = ["ui.routes.cue", "locators.cue", "flows.cue", "completion.cue"];
+  const loadExpectedFile = (filename: string) =>
+    goldenAvailable ? loadExpected(goldenProjectPath, filename) : Promise.resolve({});
 
-    for (const filename of fragmentFiles) {
-      const filePath = join(goldenProjectPath, filename);
-      const content = await Bun.file(filePath).text();
-
-      fragments.push({
-        id: generateId(),
-        project_id: projectId,
-        path: filename,
-        content,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-    }
-
-    return fragments;
-  }
-
-  /**
-   * Load expected golden file content
-   */
-  async function loadExpectedFile(filename: string): Promise<any> {
-    if (!goldenAvailable) {
-      return {};
-    }
-
-    const filePath = join(goldenProjectPath, "expected", filename);
-    const content = await Bun.file(filePath).text();
-    return JSON.parse(content);
-  }
-
-  /**
-   * Deep comparison with tolerance for timestamps and generated IDs
-   */
-  function _compareWithTolerance(actual: any, expected: any, path = ""): void {
-    if (typeof expected !== typeof actual) {
-      throw new Error(
-        `Type mismatch at ${path}: expected ${typeof expected}, got ${typeof actual}`,
-      );
-    }
-
-    if (expected === null || actual === null) {
-      expect(actual).toBe(expected);
-      return;
-    }
-
-    if (typeof expected === "object") {
-      if (Array.isArray(expected)) {
-        expect(Array.isArray(actual)).toBe(true);
-        expect(actual.length).toBe(expected.length);
-
-        for (let i = 0; i < expected.length; i++) {
-          _compareWithTolerance(actual[i], expected[i], `${path}[${i}]`);
-        }
-      } else {
-        for (const key in expected) {
-          if (key === "generated_at" || key === "created_at" || key === "updated_at") {
-            // Timestamps can vary, just check they exist and are valid
-            expect(actual[key]).toBeDefined();
-            expect(typeof actual[key]).toBe("string");
-            expect(new Date(actual[key]).getTime()).toBeGreaterThan(0);
-          } else if (
-            key === "id" &&
-            typeof expected[key] === "string" &&
-            expected[key].length > 10
-          ) {
-            // Generated IDs can vary, just check format
-            expect(actual[key]).toBeDefined();
-            expect(typeof actual[key]).toBe("string");
-            expect(actual[key].length).toBeGreaterThan(0);
-          } else {
-            expect(actual).toHaveProperty(key);
-            _compareWithTolerance(actual[key], expected[key], `${path}.${key}`);
-          }
-        }
-      }
-    } else {
-      expect(actual).toBe(expected);
-    }
-  }
+  // Use imported compareWithTolerance utility for deep comparison
+  const _compareWithTolerance = compareWithTolerance;
 
   const skipIfNoGolden = (): boolean => {
     if (!goldenAvailable) {

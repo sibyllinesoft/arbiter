@@ -16,7 +16,8 @@ describe("CUEManipulator", () => {
   let runnerSpy: any;
 
   beforeEach(() => {
-    manipulator = new CUEManipulator();
+    // Use appendOnly: false to test the parse/serialize flow
+    manipulator = new CUEManipulator({ appendOnly: false });
     safeSpy = spyOn(constraints, "safeFileOperation").mockImplementation(
       async (_op, filePath, writer) => writer(filePath),
     );

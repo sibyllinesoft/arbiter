@@ -143,7 +143,7 @@ while `check` validates CUE files by pattern.
 3. **Consistent Options**: `--dry-run`, `--force`, `--verbose` across commands
 4. **Exit Codes**: Proper exit codes for automation (0=success, 1=error,
    2=config error)
-5. **Agent Mode**: `--agent-mode` and `--ndjson-output` for programmatic
+5. **Agent Mode**: `--agent-mode` for programmatic
    consumption
 
 ---

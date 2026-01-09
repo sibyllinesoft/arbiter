@@ -212,7 +212,7 @@ package sibyllinestore
 			]
 		},
 	]
-	epics: [
+	groups: [
 		{
 			id:          "EP-001"
 			name:        "Catalog service foundation"

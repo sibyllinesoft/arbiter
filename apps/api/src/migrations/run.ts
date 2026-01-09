@@ -6,7 +6,7 @@ import { Database } from "bun:sqlite";
 import { existsSync } from "node:fs";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { logger } from "../utils.ts";
+import { logger } from "../io/utils";
 
 interface Migration {
   id: string;

@@ -1,10 +1,43 @@
 import React, { useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, type ToastContainerProps } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { clsx } from "clsx";
 
+/** Storage keys for error recovery */
+const STORAGE_KEYS = {
+  currentProject: "arbiter:currentProject",
+  editorState: "arbiter:editorState",
+} as const;
+
+/** Error boundary SVG icon path */
+const ERROR_ICON_PATH =
+  "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z";
+
+/** Toast container base configuration */
+const TOAST_CONFIG: Partial<ToastContainerProps> = {
+  position: "bottom-right",
+  autoClose: 2000,
+  hideProgressBar: false,
+  newestOnTop: true,
+  closeOnClick: true,
+  rtl: false,
+  pauseOnFocusLoss: false,
+  draggable: false,
+  pauseOnHover: false,
+  limit: 5,
+} as const;
+
+/** Check if error is related to CUE/spec parsing */
+const checkIsParsingError = (error: Error | null): boolean =>
+  Boolean(
+    error?.message?.includes("CUE") ||
+      error?.message?.includes("spec") ||
+      error?.message?.includes("parse"),
+  );
+
 import { AppProvider } from "./contexts/AppContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { ProjectProvider } from "./contexts/ProjectContext";
 import { WebSocketProvider } from "./contexts/WebSocketContext";
 // Providers
@@ -12,7 +45,7 @@ import { QueryProvider } from "./providers/QueryProvider";
 
 import { useTheme } from "./stores/ui-store";
 
-import { AuthGate } from "./components/AuthGate";
+import { AuthGate } from "./components/core/AuthGate";
 import { ConfigScreen } from "./pages/ConfigScreen";
 // Pages
 import { LandingPage } from "./pages/LandingPage";
@@ -38,27 +71,20 @@ export class ErrorBoundary extends React.Component<
   }
 
   handleReset = () => {
-    // Clear any corrupted state from localStorage
     try {
-      localStorage.removeItem("arbiter:currentProject");
-      localStorage.removeItem("arbiter:editorState");
+      localStorage.removeItem(STORAGE_KEYS.currentProject);
+      localStorage.removeItem(STORAGE_KEYS.editorState);
     } catch (e) {
       console.error("Failed to clear localStorage:", e);
     }
 
-    // Reset component state
     this.setState({ hasError: false, error: null });
-
-    // Reload the page to start fresh
     window.location.href = "/";
   };
 
   render() {
     if (this.state.hasError) {
-      const isSpecParsingError =
-        this.state.error?.message?.includes("CUE") ||
-        this.state.error?.message?.includes("spec") ||
-        this.state.error?.message?.includes("parse");
+      const hasParsingError = checkIsParsingError(this.state.error);
 
       return (
         <div className="min-h-screen bg-gray-50 dark:bg-graphite-950 flex items-center justify-center p-4">
@@ -75,15 +101,15 @@ export class ErrorBoundary extends React.Component<
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    d={ERROR_ICON_PATH}
                   />
                 </svg>
               </div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-graphite-25 mb-2">
-                {isSpecParsingError ? "Specification Error" : "Something went wrong"}
+                {hasParsingError ? "Specification Error" : "Something went wrong"}
               </h2>
               <p className="text-gray-600 dark:text-graphite-400 mb-4">
-                {isSpecParsingError
+                {hasParsingError
                   ? "The application encountered an error parsing your CUE specification."
                   : "The application encountered an unexpected error."}
               </p>
@@ -98,7 +124,7 @@ export class ErrorBoundary extends React.Component<
               </pre>
             </details>
 
-            {isSpecParsingError && (
+            {hasParsingError && (
               <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-left">
                 <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
                   Troubleshooting Tips:
@@ -160,64 +186,57 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryProvider>
-        <AppProvider>
-          <ProjectProvider>
-            <WebSocketProvider>
-              <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <AuthGate>
-                      <LandingPage />
-                    </AuthGate>
+        <AuthProvider>
+          <AppProvider>
+            <ProjectProvider>
+              <WebSocketProvider>
+                <Routes>
+                  <Route
+                    path="/"
+                    element={
+                      <AuthGate>
+                        <LandingPage />
+                      </AuthGate>
+                    }
+                  />
+                  <Route
+                    path="/project/:projectId"
+                    element={
+                      <AuthGate>
+                        <ProjectView />
+                      </AuthGate>
+                    }
+                  />
+                  <Route path="/oauth/callback" element={<OAuthCallback />} />
+                </Routes>
+                <ToastContainer
+                  {...TOAST_CONFIG}
+                  theme={isDark ? "dark" : "light"}
+                  toastClassName={(context) =>
+                    clsx(
+                      context?.defaultClassName,
+                      "graphite-toast",
+                      isDark ? "graphite-toast-dark" : "graphite-toast-light",
+                    )
+                  }
+                  bodyClassName={(context) =>
+                    clsx(
+                      context?.defaultClassName,
+                      "graphite-toast-body",
+                      isDark ? "graphite-toast-body-dark" : "graphite-toast-body-light",
+                    )
+                  }
+                  progressClassName={(context) =>
+                    clsx(
+                      context?.defaultClassName,
+                      isDark ? "graphite-toast-progress-dark" : "graphite-toast-progress-light",
+                    )
                   }
                 />
-                <Route
-                  path="/project/:projectId"
-                  element={
-                    <AuthGate>
-                      <ProjectView />
-                    </AuthGate>
-                  }
-                />
-                <Route path="/oauth/callback" element={<OAuthCallback />} />
-              </Routes>
-              <ToastContainer
-                position="bottom-right"
-                autoClose={2000}
-                hideProgressBar={false}
-                newestOnTop={true}
-                closeOnClick={true}
-                rtl={false}
-                pauseOnFocusLoss={false}
-                draggable={false}
-                pauseOnHover={false}
-                limit={5}
-                theme={isDark ? "dark" : "light"}
-                toastClassName={(context) =>
-                  clsx(
-                    context?.defaultClassName,
-                    "graphite-toast",
-                    isDark ? "graphite-toast-dark" : "graphite-toast-light",
-                  )
-                }
-                bodyClassName={(context) =>
-                  clsx(
-                    context?.defaultClassName,
-                    "graphite-toast-body",
-                    isDark ? "graphite-toast-body-dark" : "graphite-toast-body-light",
-                  )
-                }
-                progressClassName={(context) =>
-                  clsx(
-                    context?.defaultClassName,
-                    isDark ? "graphite-toast-progress-dark" : "graphite-toast-progress-light",
-                  )
-                }
-              />
-            </WebSocketProvider>
-          </ProjectProvider>
-        </AppProvider>
+              </WebSocketProvider>
+            </ProjectProvider>
+          </AppProvider>
+        </AuthProvider>
       </QueryProvider>
     </ErrorBoundary>
   );

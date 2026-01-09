@@ -2,7 +2,6 @@ import { describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
 import { safeFileOperation } from "@/constraints/index.js";
-import { GoPlugin } from "@/language-support/go.js";
 import {
   type BuildConfig,
   type ComponentConfig,
@@ -17,9 +16,10 @@ import {
   registerPlugin,
   registry,
 } from "@/language-support/index.js";
-import { PythonPlugin } from "@/language-support/python.js";
-import { RustPlugin } from "@/language-support/rust.js";
-import { TypeScriptPlugin } from "@/language-support/typescript.js";
+import { GoPlugin } from "@/language-support/languages/go.js";
+import { PythonPlugin } from "@/language-support/languages/python.js";
+import { RustPlugin } from "@/language-support/languages/rust.js";
+import { TypeScriptPlugin } from "@/language-support/languages/typescript.js";
 import fs from "fs-extra";
 
 describe("Language Plugin System", () => {

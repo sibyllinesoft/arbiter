@@ -1,4 +1,4 @@
-import { ArtifactCard } from "@/components/ArtifactCard";
+import { ArtifactCard } from "@/components/core/ArtifactCard";
 import React from "react";
 import { buildTaskCardData, buildTaskMetaRows } from "../dataBuilders";
 import type { TaskDetailCardProps } from "../types";

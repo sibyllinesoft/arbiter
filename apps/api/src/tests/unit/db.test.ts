@@ -2,9 +2,9 @@
  * Unit tests for the database layer with comprehensive coverage
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
-import { SpecWorkbenchDB } from "../../db.ts";
-import type { ServerConfig } from "../../types.ts";
-import { generateId } from "../../utils.ts";
+import { generateId } from "../../io/utils";
+import { SpecWorkbenchDB } from "../../util/db";
+import type { ServerConfig } from "../../util/types";
 
 describe("SpecWorkbenchDB", () => {
   let db: SpecWorkbenchDB;
@@ -20,11 +20,6 @@ describe("SpecWorkbenchDB", () => {
       spec_workdir: "/tmp/test-workdir",
       jq_binary_path: "jq",
       auth_required: false,
-      rate_limit: {
-        max_tokens: 10,
-        refill_rate: 1,
-        window_ms: 10000,
-      },
       external_tool_timeout_ms: 5000,
       websocket: {
         max_connections: 100,

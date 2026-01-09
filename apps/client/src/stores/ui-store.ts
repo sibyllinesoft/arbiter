@@ -35,48 +35,59 @@ interface UiState {
 const THEME_KEY = "arbiter:theme";
 const isBrowser = typeof window !== "undefined";
 
+/** Safely read saved theme from localStorage */
+function getSavedTheme(): string | null {
+  if (!isBrowser) return null;
+  try {
+    return window.localStorage.getItem(THEME_KEY);
+  } catch (error) {
+    console.warn("Failed to read theme from localStorage", error);
+    return null;
+  }
+}
+
+/** Detect system dark mode preference */
+function getSystemPrefersDark(): boolean {
+  if (!isBrowser) return false;
+  try {
+    const media = window.matchMedia?.("(prefers-color-scheme: dark)");
+    return media?.matches ?? false;
+  } catch {
+    return false;
+  }
+}
+
+/** Persist theme preference to localStorage */
+function persistTheme(isDark: boolean): void {
+  if (!isBrowser) return;
+  try {
+    window.localStorage.setItem(THEME_KEY, isDark ? "dark" : "light");
+  } catch (error) {
+    console.warn("Failed to persist theme to localStorage", error);
+  }
+}
+
+/** Determine initial dark mode setting */
+function getInitialDarkMode(): boolean {
+  const savedTheme = getSavedTheme();
+  if (savedTheme === "dark") return true;
+  if (savedTheme === "light") return false;
+  return getSystemPrefersDark();
+}
+
 export const useUiStore = zukeeper(
-  create<UiState>((set, get) => {
-    // Load initial theme from localStorage
-    let savedTheme: string | null = null;
-    let prefersDark = false;
-
-    if (isBrowser) {
-      try {
-        savedTheme = window.localStorage.getItem(THEME_KEY);
-      } catch (error) {
-        console.warn("Failed to read theme from localStorage", error);
-      }
-      try {
-        const media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
-        prefersDark = media ? media.matches : false;
-      } catch (error) {
-        prefersDark = false;
-      }
-    }
-
-    const initialDark = savedTheme === "dark" ? true : savedTheme === "light" ? false : prefersDark;
-
-    return {
-      leftTab: "source",
-      rightTab: "architecture",
-      isDark: initialDark,
-      setLeftTab: (tab: LeftTab) => set({ leftTab: tab }),
-      setRightTab: (tab: RightTab) => set({ rightTab: tab }),
-      toggleTheme: () => {
-        const current = get().isDark;
-        const newTheme = !current;
-        set({ isDark: newTheme });
-        if (isBrowser) {
-          try {
-            window.localStorage.setItem(THEME_KEY, newTheme ? "dark" : "light");
-          } catch (error) {
-            console.warn("Failed to persist theme to localStorage", error);
-          }
-        }
-      },
-    };
-  }),
+  create<UiState>((set, get) => ({
+    leftTab: "source",
+    rightTab: "architecture",
+    isDark: getInitialDarkMode(),
+    setLeftTab: (tab: LeftTab) => set({ leftTab: tab }),
+    setRightTab: (tab: RightTab) => set({ rightTab: tab }),
+    toggleTheme: () => {
+      const newTheme = !get().isDark;
+      set({ isDark: newTheme });
+      persistTheme(newTheme);
+    },
+  })),
 );
 
 // Convenience hooks for specific parts of the state

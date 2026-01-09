@@ -1,6 +1,6 @@
 # Arbiter Documentation System
 
-MkDocs now owns the published Arbiter documentation experience. Authored and generated Markdown continues to live under `docs/content`, while theming, navigation, and build behavior are centralized in `mkdocs.yml`.
+MkDocs now owns the published Arbiter documentation experience. Authored and generated Markdown continues to live under `docs/content`, while theming, navigation, and build behavior are centralized in `docs/config/mkdocs.yml`.
 
 ## Directory layout
 
@@ -8,7 +8,7 @@ MkDocs now owns the published Arbiter documentation experience. Authored and gen
 - `content/assets/` – shared images, favicons, and other static assets referenced by docs or the MkDocs theme.
 - `content/reference/api/tsdoc/` – generated TypeDoc Markdown (ignored by git). Regenerated automatically before each MkDocs build.
 - `requirements.txt` – Python dependencies for MkDocs + extensions (install into a virtualenv).
-- `../mkdocs.yml` – top-level MkDocs configuration (nav, theme, plugins, Markdown extensions).
+- `config/mkdocs.yml` – MkDocs configuration (nav, theme, plugins, Markdown extensions).
 
 Legacy orchestration scripts (`scripts/docs-*`) remain available and are documented in `content/internal/doc-pipeline.md`, but MkDocs is now the single source of truth for anything published publicly.
 
@@ -35,7 +35,7 @@ bun run docs:site:serve
 
 ## Authoring workflow
 
-1. Edit Markdown inside `docs/content`. Fold related docs into subfolders so the navigation in `mkdocs.yml` stays predictable.
+1. Edit Markdown inside `docs/content`. Fold related docs into subfolders so the navigation in `docs/config/mkdocs.yml` stays predictable.
 2. For API surface changes, ensure TSDoc comments exist and rerun `bun run docs:tsdoc` to refresh `reference/api/tsdoc/`.
 3. Preview the site with `bun run docs:site:dev`. MkDocs watches the content directory automatically.
 4. Open a PR. GitHub Pages rebuilds from `.github/workflows/docs-site.yml` when changes land on `main`.

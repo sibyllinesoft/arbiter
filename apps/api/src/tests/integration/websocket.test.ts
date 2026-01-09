@@ -2,10 +2,10 @@
  * Integration tests for WebSocket real-time collaboration functionality
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
-import { SpecWorkbenchDB } from "../../db.ts";
-import { SpecWorkbenchServer } from "../../server.ts";
-import type { ServerConfig } from "../../types.ts";
-import { generateId } from "../../utils.ts";
+import { generateId } from "../../io/utils";
+import { SpecWorkbenchServer } from "../../server";
+import { SpecWorkbenchDB } from "../../util/db";
+import type { ServerConfig } from "../../util/types";
 
 // Mock WebSocket for testing
 class MockWebSocket {
@@ -79,11 +79,6 @@ class MockWebSocket {
         spec_workdir: `/tmp/ws-test-${Date.now()}`,
         jq_binary_path: "jq",
         auth_required: false,
-        rate_limit: {
-          max_tokens: 100,
-          refill_rate: 10,
-          window_ms: 10000,
-        },
         external_tool_timeout_ms: 10000,
         websocket: {
           max_connections: 50,

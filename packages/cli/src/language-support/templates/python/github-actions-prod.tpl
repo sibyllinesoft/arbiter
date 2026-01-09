@@ -32,5 +32,5 @@ jobs:
       env:
         DOCKER_REGISTRY: your-registry.com
       run: |
-        docker build -f Dockerfile.prod -t $DOCKER_REGISTRY/your-app:${{ github.sha }} .
+        docker build -f Dockerfile -t $DOCKER_REGISTRY/your-app:${{ github.sha }} .
         docker push $DOCKER_REGISTRY/your-app:${{ github.sha }}

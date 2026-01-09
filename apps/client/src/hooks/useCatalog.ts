@@ -1,9 +1,14 @@
+/**
+ * Catalog hook for resolved spec data and UI options.
+ * Provides spec data, refresh capabilities, and modal state.
+ */
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
 import { DEFAULT_UI_OPTION_CATALOG, type UiOptionCatalog } from "@/components/modals/entityTypes";
 import { useResolvedSpec, useUiOptionCatalog } from "@/hooks/api-hooks";
 
+/** State returned by the catalog hook */
 export interface CatalogState<TResolved = unknown> {
   data: TResolved | undefined;
   isLoading: boolean;
@@ -16,9 +21,16 @@ export interface CatalogState<TResolved = unknown> {
   closeAdd: () => void;
 }
 
-export const useCatalog = <TResolved = unknown>(projectId?: string): CatalogState<TResolved> => {
+/**
+ * Hook for accessing resolved spec catalog with UI options.
+ * @param projectId - Project to fetch catalog for
+ * @returns Catalog state with data, loading state, and modal controls
+ */
+export const useCatalog = <TResolved = unknown>(
+  projectId: string | null = null,
+): CatalogState<TResolved> => {
   const queryClient = useQueryClient();
-  const { data, isLoading, isError, error } = useResolvedSpec(projectId);
+  const { data, isLoading, isError, error } = useResolvedSpec(projectId ?? null);
   const { data: uiOptions } = useUiOptionCatalog();
 
   const uiOptionCatalog = useMemo<UiOptionCatalog>(
@@ -29,7 +41,7 @@ export const useCatalog = <TResolved = unknown>(projectId?: string): CatalogStat
   const refresh = useCallback(
     async (_options: { silent?: boolean } = {}) => {
       if (!projectId) return;
-      await queryClient.invalidateQueries({ queryKey: ["resolved-spec", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["resolved-spec", projectId ?? null] });
     },
     [projectId, queryClient],
   );

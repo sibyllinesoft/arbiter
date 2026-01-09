@@ -14,11 +14,6 @@ const mockConfig: ServerConfig = {
   spec_workdir: "/tmp",
   jq_binary_path: "jq",
   auth_required: false,
-  rate_limit: {
-    max_tokens: 100,
-    refill_rate: 10,
-    window_ms: 60000,
-  },
   external_tool_timeout_ms: 30000,
   websocket: {
     max_connections: 100,

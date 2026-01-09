@@ -1,3 +1,4 @@
+/** @packageDocumentation Utility tests */
 import { describe, expect, it } from "bun:test";
 import {
   createTextProgressBar,
@@ -13,7 +14,7 @@ import {
   formatValidationTable,
   formatWarningDetails,
   formatYaml,
-} from "@/utils/formatting.js";
+} from "@/utils/util/output/formatting.js";
 import chalk from "chalk";
 
 const sampleResult = (overrides: Partial<any> = {}) => ({

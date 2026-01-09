@@ -1,98 +1,85 @@
+/**
+ * @packageDocumentation
+ * Language detection for the integrate command.
+ *
+ * Provides functionality to:
+ * - Detect project languages by manifest files
+ * - Identify TypeScript, Python, Go, Rust projects
+ * - Detect frameworks like Bun, Node.js
+ */
+
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { ProjectLanguage } from "@/services/integrate/types.js";
 
-export async function detectProjectLanguages(projectPath: string): Promise<ProjectLanguage[]> {
-  const languages: ProjectLanguage[] = [];
-
-  await Promise.all([
-    detectNode(projectPath, languages),
-    detectPython(projectPath, languages),
-    detectRust(projectPath, languages),
-    detectGo(projectPath, languages),
-  ]);
-
-  return languages;
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-async function detectNode(projectPath: string, collector: ProjectLanguage[]): Promise<void> {
+async function detectByManifest(
+  projectPath: string,
+  manifestFile: string,
+  name: string,
+  framework: string,
+): Promise<ProjectLanguage | null> {
+  const manifestPath = path.join(projectPath, manifestFile);
+  if (await fileExists(manifestPath)) {
+    return { name, detected: true, files: [manifestFile], framework };
+  }
+  return null;
+}
+
+function detectNodeFramework(dependencies?: Record<string, unknown>): string {
+  if (!dependencies) return "node";
+  if (dependencies.next) return "next";
+  if (dependencies.react) return "react";
+  if (dependencies.vue) return "vue";
+  return "node";
+}
+
+async function detectNode(projectPath: string): Promise<ProjectLanguage | null> {
   const packageJsonPath = path.join(projectPath, "package.json");
   try {
     const packageContent = await fs.readFile(packageJsonPath, "utf-8");
-    const pkg = JSON.parse(packageContent);
-    collector.push({
+    const pkg = JSON.parse(packageContent) as { dependencies?: Record<string, unknown> };
+    return {
       name: "typescript",
       detected: true,
       files: ["package.json"],
-      framework: pkg.dependencies?.next
-        ? "next"
-        : pkg.dependencies?.react
-          ? "react"
-          : pkg.dependencies?.vue
-            ? "vue"
-            : "node",
-    });
+      framework: detectNodeFramework(pkg.dependencies),
+    };
   } catch {
-    // No package.json found
+    return null;
   }
 }
 
-async function detectPython(projectPath: string, collector: ProjectLanguage[]): Promise<void> {
-  const pyprojectPath = path.join(projectPath, "pyproject.toml");
-  const requirementsPath = path.join(projectPath, "requirements.txt");
+async function detectPython(projectPath: string): Promise<ProjectLanguage | null> {
+  const pyprojectResult = await detectByManifest(projectPath, "pyproject.toml", "python", "python");
+  if (pyprojectResult) return pyprojectResult;
 
-  try {
-    await fs.access(pyprojectPath);
-    collector.push({
-      name: "python",
-      detected: true,
-      files: ["pyproject.toml"],
-      framework: "python",
-    });
-    return;
-  } catch {
-    // Continue checking requirements.txt
-  }
-
-  try {
-    await fs.access(requirementsPath);
-    collector.push({
-      name: "python",
-      detected: true,
-      files: ["requirements.txt"],
-      framework: "python",
-    });
-  } catch {
-    // Not a Python project
-  }
+  return detectByManifest(projectPath, "requirements.txt", "python", "python");
 }
 
-async function detectRust(projectPath: string, collector: ProjectLanguage[]): Promise<void> {
-  const cargoPath = path.join(projectPath, "Cargo.toml");
-  try {
-    await fs.access(cargoPath);
-    collector.push({
-      name: "rust",
-      detected: true,
-      files: ["Cargo.toml"],
-      framework: "rust",
-    });
-  } catch {
-    // Not a Rust project
-  }
+async function detectRust(projectPath: string): Promise<ProjectLanguage | null> {
+  return detectByManifest(projectPath, "Cargo.toml", "rust", "rust");
 }
 
-async function detectGo(projectPath: string, collector: ProjectLanguage[]): Promise<void> {
-  const goModPath = path.join(projectPath, "go.mod");
-  try {
-    await fs.access(goModPath);
-    collector.push({
-      name: "go",
-      detected: true,
-      files: ["go.mod"],
-      framework: "go",
-    });
-  } catch {
-    // Not a Go project
-  }
+async function detectGo(projectPath: string): Promise<ProjectLanguage | null> {
+  return detectByManifest(projectPath, "go.mod", "go", "go");
+}
+
+export async function detectProjectLanguages(projectPath: string): Promise<ProjectLanguage[]> {
+  const results = await Promise.all([
+    detectNode(projectPath),
+    detectPython(projectPath),
+    detectRust(projectPath),
+    detectGo(projectPath),
+  ]);
+
+  return results.filter((lang): lang is ProjectLanguage => lang !== null);
 }

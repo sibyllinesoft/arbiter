@@ -132,7 +132,7 @@ export interface LanguagePlugin {
   initializeProject(config: ProjectConfig): Promise<GenerationResult>;
 
   // Build configuration
-  generateBuildConfig(config: BuildConfig): Promise<GenerationResult>;
+  generateBuildConfig?(config: BuildConfig): Promise<GenerationResult>;
 
   // Language-specific utilities
   validateConfig?(config: any): Promise<boolean>;
@@ -251,11 +251,11 @@ export async function generateBuildConfig(
   return plugin.generateBuildConfig(config);
 }
 
-import { GoPlugin } from "@/language-support/go.js";
-import { PythonPlugin } from "@/language-support/python.js";
-import { RustPlugin } from "@/language-support/rust.js";
+import { GoPlugin } from "@/language-support/languages/go.js";
+import { PythonPlugin } from "@/language-support/languages/python.js";
+import { RustPlugin } from "@/language-support/languages/rust.js";
 // Import and register all plugins
-import { TypeScriptPlugin } from "@/language-support/typescript.js";
+import { TypeScriptPlugin } from "@/language-support/languages/typescript.js";
 
 // Auto-register plugins
 registerPlugin(new TypeScriptPlugin());

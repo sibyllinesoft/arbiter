@@ -240,7 +240,7 @@ Use layouts to share a skeleton and override only what you need.
 Lightweight checks keep templates stable:
 
 - Co-locate fixtures in `__tests__/fixtures/` beside the template.
-- Use `TemplateResolver` (from `@arbiter/cli`) to render a template with a small JSON context and assert on key strings.
+- Use `TemplateResolver` (from `@sibyllinesoft/arbiter-cli`) to render a template with a small JSON context and assert on key strings.
 - Add one integration test that runs `generateCommand` against a tiny demo assembly to confirm wiring and file paths.
 - Snapshot tests are great for big outputs; prefer focused string assertions for small ones.
 

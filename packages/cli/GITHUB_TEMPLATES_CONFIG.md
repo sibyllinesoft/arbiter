@@ -39,11 +39,11 @@ Add GitHub templates configuration to your `.arbiter/config.json`:
         },
         "labels": ["org:managed"]
       },
-      "epic": {
+      "group": {
         "inherits": "custom-base",
-        "name": "Epic",
-        "title": "[EPIC] {{priority}}: {{name}}",
-        "labels": ["epic", "priority:{{priority}}"]
+        "name": "Group",
+        "title": "[GROUP] {{priority}}: {{name}}",
+        "labels": ["group", "priority:{{priority}}"]
       }
     }
   }
@@ -87,17 +87,17 @@ Base templates define common structure and can be inherited by other templates:
 }
 ```
 
-### Epic Templates
+### Group Templates
 
-Epic templates inherit from base templates and add epic-specific sections:
+Group templates inherit from base templates and add group-specific sections:
 
 ```json
 {
-  "epic": {
+  "group": {
     "inherits": "company-standard",
-    "name": "Epic",
-    "title": "[EPIC] [{{team}}] {{priority}}: {{name}}",
-    "labels": ["epic", "priority:{{priority}}", "team:{{team}}"],
+    "name": "Group",
+    "title": "[GROUP] [{{team}}] {{priority}}: {{name}}",
+    "labels": ["group", "priority:{{priority}}", "team:{{team}}"],
     "sections": {
       "additional": {
         "scope": "## 🎯 Scope\\n\\n**In Scope:**\\n{{#each inScope}}\\n- {{this}}\\n{{/each}}\\n\\n"
@@ -255,7 +255,7 @@ arbiter github-templates --list --format json
 ### Show Template Details
 
 ```bash
-arbiter github-templates --show epic
+arbiter github-templates --show group
 arbiter github-templates --show task --format yaml
 ```
 
@@ -294,21 +294,21 @@ The new system is fully backward compatible. Existing static templates continue 
 Before (static):
 ```markdown
 ---
-name: Epic
-title: '[EPIC] '
-labels: 'epic'
+name: Group
+title: '[GROUP] '
+labels: 'group'
 ---
 ## Description
-<!-- Epic description -->
+<!-- Group description -->
 ```
 
 After (configuration):
 ```json
 {
-  "epic": {
-    "name": "Epic",
-    "title": "[EPIC] {{priority}}: {{name}}",
-    "labels": ["epic", "priority:{{priority}}"],
+  "group": {
+    "name": "Group",
+    "title": "[GROUP] {{priority}}: {{name}}",
+    "labels": ["group", "priority:{{priority}}"],
     "sections": {
       "description": "## 📋 Description\\n\\n{{description}}\\n\\n"
     }
@@ -365,7 +365,7 @@ After (configuration):
 arbiter github-templates --validate
 
 # Show generated template
-arbiter github-templates --show epic
+arbiter github-templates --show group
 
 # Check available data
 arbiter github-templates --list --format json
@@ -376,7 +376,7 @@ arbiter github-templates --list --format json
 See `example-github-templates.json` for a complete configuration example showing:
 
 - Base template with organization standards
-- Epic templates with roadmap integration
+- Group templates with roadmap integration
 - Task templates with definition of done
 - Bug reports with severity classification
 - Custom labels and repository configuration

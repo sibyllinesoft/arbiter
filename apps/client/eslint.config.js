@@ -6,7 +6,16 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config([
-  globalIgnores(["dist"]),
+  globalIgnores([
+    "dist",
+    "coverage",
+    ".valknut",
+    "**/tests/**",
+    "**/*.stories.tsx",
+    "**/*.stories.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+  ]),
   {
     files: ["**/*.{ts,tsx}"],
     extends: [

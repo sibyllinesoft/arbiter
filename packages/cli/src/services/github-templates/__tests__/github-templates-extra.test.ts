@@ -5,7 +5,7 @@ import path from "node:path";
 
 import * as constraints from "@/constraints/index.js";
 import { githubTemplatesCommand } from "@/services/github-templates/index.js";
-import * as manager from "@/utils/unified-github-template-manager.js";
+import * as manager from "@/utils/github/templates/unified-github-template-manager.js";
 
 const baseConfig: any = {
   projectDir: process.cwd(),
@@ -23,7 +23,7 @@ describe("github templates command - extended coverage", () => {
     await mkdir(sourceDir, { recursive: true });
     const templateNames = [
       "base.hbs",
-      "epic.hbs",
+      "group.hbs",
       "task.hbs",
       "bug-report.hbs",
       "feature-request.hbs",
@@ -48,19 +48,19 @@ describe("github templates command - extended coverage", () => {
   });
 
   it("generates template examples and handles unknown types", async () => {
-    const epicSpy = spyOn(
+    const groupSpy = spyOn(
       manager.UnifiedGitHubTemplateManager.prototype,
-      "generateEpicTemplate",
-    ).mockResolvedValue({ title: "Epic", body: "Body", labels: [] });
+      "generateGroupTemplate",
+    ).mockResolvedValue({ title: "Group", body: "Body", labels: [] });
 
-    const ok = await githubTemplatesCommand({ generate: "epic" } as any, baseConfig);
+    const ok = await githubTemplatesCommand({ generate: "group" } as any, baseConfig);
     expect(ok).toBe(0);
-    expect(epicSpy).toHaveBeenCalled();
+    expect(groupSpy).toHaveBeenCalled();
 
     const bad = await githubTemplatesCommand({ generate: "unknown-type" } as any, baseConfig);
     expect(bad).toBe(1);
 
-    epicSpy.mockRestore();
+    groupSpy.mockRestore();
   });
 
   it("reports unimplemented add path and missing removal target", async () => {

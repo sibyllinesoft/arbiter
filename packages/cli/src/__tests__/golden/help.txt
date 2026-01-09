@@ -6,9 +6,8 @@ Options:
   -V, --version                         output the version number
   -c, --config <path>                   path to configuration file
   --no-color                            disable colored output
-  --api-url <url>                       API server URL
-  --arbiter-url <url>                   Arbiter server URL (alias for
-                                        --api-url)
+  --api-url <url>                       Arbiter API server URL (overrides
+                                        config)
   --timeout <ms>                        request timeout in milliseconds
   --local                               operate in offline mode using local CUE
                                         files only
@@ -16,15 +15,10 @@ Options:
   -h, --help                            display help for command
 
 Commands:
-  init [options] [display-name]         initialize a new CUE project with
-                                        templates in current directory
-  watch [options] [path]                cross-platform file watcher with live
-                                        validation and planning
+  init [options] [display-name]         initialize a new project from a preset
   surface [options] <language>          extract API surface from source code
                                         and generate project-specific surface
                                         file
-  spec-import [options] [cue-file]      import a local CUE spec fragment into
-                                        the Arbiter service
   check [options] [patterns...]         validate CUE files in the current
                                         directory
   list [options] <type>                 list components of a specific type in
@@ -38,63 +32,39 @@ Commands:
                                         with modular generators
   remove                                remove components from the project
                                         specification
-  version                               semver-aware version planning and
-                                        release management
   generate [options] [spec-name]        generate project files from stored
                                         specifications
-  docs                                  generate documentation from CUE schemas
-                                        and API surfaces
-  examples [options] <type>             generate example projects by profile or
-                                        language type
-  execute [options] <epic>              execute Arbiter epics for
-                                        deterministic, agent-first code
-                                        generation
   explain [options]                     generate plain-English summary of
                                         project specifications
-  rename [options]                      migrate existing files to
-                                        project-specific naming
   sync [options]                        synchronize project manifests
                                         (package.json, pyproject.toml, etc.)
                                         with Arbiter
-  integrate [options]                   generate CI/CD workflows with contract
-                                        coverage and quality gates
-  github-templates [options]            manage GitHub issue templates
-                                        configuration
-  import                                manage trusted import registry for CUE
-                                        files
-  tests                                 test management, scaffolding, and
-                                        coverage analysis
+  import [options] [file]               import a CUE specification file to the
+                                        Arbiter server
   auth [options]                        Authenticate the Arbiter CLI using
                                         OAuth
-  help [command]                        display help for command
+  plan                                  Interactive feature planning assistant
+                                        for AI agents
+  design                                Interactive technical design assistant
+                                        for AI agents
 
 Arbiter CLI - Agent-Friendly Specification Management
 
 Core Workflows:
 
-  1. SPEC FRAGMENT MANAGEMENT (Git-Style):
-    arbiter init my-app --schema=app     # Initialize with app-centric schema 
+  1. FEATURE PLANNING (AI-Assisted):
+    arbiter plan                         # Interactive feature planning prompt
+    arbiter design                       # Detailed technical design (after plan)
+
+  2. SPEC FRAGMENT MANAGEMENT (Git-Style):
+    arbiter init my-app --preset web-app # Initialize from a hosted preset
     arbiter add service billing          # Add service specification
     arbiter add api/order                # Add API endpoint specification
     arbiter add flow checkout            # Add user flow specification
     arbiter generate                     # Generate code from specifications
 
-  2. VALIDATION & FEEDBACK:
+  3. VALIDATION & FEEDBACK:
     arbiter check                        # Validate all specifications
-    arbiter watch                        # Watch mode with live validation
-
-  3. RELEASE MANAGEMENT:
-    arbiter version plan                 # Plan version changes
-    arbiter integrate                    # Generate CI/CD workflows
-
-Schema Formats:
-  app: Complete application modeling
-
-Agent-Friendly Features:
-  • Non-interactive commands (no prompts)
-  • Structured JSON output (--format=json)
-  • Exit codes: 0=success, 1=error, 2=config
-  • NDJSON streaming (--ndjson-output)
 
 Examples:
   arbiter check **/*.cue --format=json  # Validate with JSON output
@@ -102,4 +72,3 @@ Examples:
   arbiter health                        # Check server connectivity
 
 For detailed help: arbiter <command> --help
-

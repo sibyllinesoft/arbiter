@@ -1,6 +1,14 @@
+/**
+ * Terraform configuration parser.
+ * Extracts resource and module counts from Terraform (*.tf) files.
+ */
 import path from "node:path";
 import type { FileParser } from "./base";
 
+/**
+ * Parser for Terraform configuration files (.tf and .tf.json).
+ * Counts resources and modules defined in the configuration.
+ */
 export const terraformParser: FileParser = {
   name: "terraform",
   priority: 4,

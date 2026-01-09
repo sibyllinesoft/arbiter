@@ -1,4 +1,4 @@
-import { __generateTesting } from "@/services/generate/index.js";
+import { __generateTesting } from "@/services/generate/io/index.js";
 import { describe, expect, it } from "vitest";
 
 const structure = {

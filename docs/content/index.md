@@ -213,7 +213,7 @@ The CLI-built structure keeps you organized. Direct editing gives you full CUE p
 Arbiter is built for AI assistants and automation from day one:
 
 - **Non-Interactive Commands**: Every command works without prompts or user input. Perfect for scripting and agent workflows.
-- **Structured Outputs**: JSON, NDJSON, and table formats. Parse and act on results programmatically.
+- **Structured Outputs**: JSON and table formats. Parse and act on results programmatically.
 - **Clear Next Steps**: Each command tells you what to do next. Agents stay on track without guessing.
 - **Proper Exit Codes**: 0 for success, 1 for errors, 2 for configuration issues. Automation-friendly.
 - **Incremental Building**: Start simple, add complexity step by step. No giant config files to wrangle.

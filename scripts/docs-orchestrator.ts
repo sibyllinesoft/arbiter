@@ -142,7 +142,7 @@ export async function main(): Promise<void> {
     .name("docs-orchestrator")
     .description("Unified documentation pipeline orchestration")
     .version("1.0.0")
-    .option("-c, --config <path>", "configuration file path", "./docs-config.yaml")
+    .option("-c, --config <path>", "configuration file path", "./docs/config/docs-config.yaml")
     .option("-t, --types <types>", "documentation types to generate (comma-separated)", "all")
     .option("--dry-run", "preview operations without executing")
     .option("--fail-fast", "stop on first error")
@@ -183,7 +183,7 @@ export async function main(): Promise<void> {
   program
     .command("status")
     .description("check documentation pipeline status")
-    .option("-c, --config <path>", "configuration file path", "./docs-config.yaml")
+    .option("-c, --config <path>", "configuration file path", "./docs/config/docs-config.yaml")
     .action(async (options) => {
       try {
         await showPipelineStatus(options.config);
@@ -196,7 +196,7 @@ export async function main(): Promise<void> {
   program
     .command("validate")
     .description("validate documentation quality and completeness")
-    .option("-c, --config <path>", "configuration file path", "./docs-config.yaml")
+    .option("-c, --config <path>", "configuration file path", "./docs/config/docs-config.yaml")
     .option("--fix", "attempt to fix issues automatically")
     .action(async (options) => {
       try {
@@ -889,7 +889,7 @@ function printPipelineResult(result: PipelineResult): void {
 }
 
 async function initializeConfiguration(template: string): Promise<void> {
-  const configPath = "./docs-config.yaml";
+  const configPath = "./docs/config/docs-config.yaml";
   const config = await loadConfiguration(); // Get default config
 
   const yamlContent = YAML.stringify(config, {

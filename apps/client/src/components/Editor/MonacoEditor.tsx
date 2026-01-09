@@ -126,4 +126,3 @@ export function MonacoEditor({
 }
 
 export default MonacoEditor;
-// @ts-nocheck

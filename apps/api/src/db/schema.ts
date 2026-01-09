@@ -1,6 +1,11 @@
+/**
+ * Database schema definitions using Drizzle ORM.
+ * Defines all tables, columns, indexes, and type exports for the SQLite database.
+ */
 import { sql } from "drizzle-orm";
 import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
+/** Projects table for storing workspace configurations */
 export const projects = sqliteTable(
   "projects",
   {
@@ -17,6 +22,7 @@ export const projects = sqliteTable(
   }),
 );
 
+/** Fragments table for storing CUE specification files */
 export const fragments = sqliteTable(
   "fragments",
   {
@@ -36,6 +42,7 @@ export const fragments = sqliteTable(
   }),
 );
 
+/** Fragment revisions table for version history */
 export const fragmentRevisions = sqliteTable(
   "fragment_revisions",
   {
@@ -59,6 +66,7 @@ export const fragmentRevisions = sqliteTable(
   }),
 );
 
+/** Versions table for frozen specification snapshots */
 export const versions = sqliteTable(
   "versions",
   {
@@ -80,6 +88,7 @@ export const versions = sqliteTable(
   }),
 );
 
+/** Events table for tracking project changes and actions */
 export const events = sqliteTable(
   "events",
   {
@@ -100,6 +109,7 @@ export const events = sqliteTable(
   }),
 );
 
+/** Artifacts table for storing analyzed project components */
 export const artifacts = sqliteTable(
   "artifacts",
   {
@@ -123,13 +133,20 @@ export const artifacts = sqliteTable(
   }),
 );
 
+/** Type for a project row selected from the database */
 export type ProjectRow = typeof projects.$inferSelect;
+/** Type for a fragment row selected from the database */
 export type FragmentRow = typeof fragments.$inferSelect;
+/** Type for a fragment revision row selected from the database */
 export type FragmentRevisionRow = typeof fragmentRevisions.$inferSelect;
+/** Type for a version row selected from the database */
 export type VersionRow = typeof versions.$inferSelect;
+/** Type for an event row selected from the database */
 export type EventRow = typeof events.$inferSelect;
+/** Type for an artifact row selected from the database */
 export type ArtifactRow = typeof artifacts.$inferSelect;
 
+/** Combined schema object for Drizzle ORM */
 export const schema = {
   projects,
   fragments,

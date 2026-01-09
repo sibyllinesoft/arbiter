@@ -21,159 +21,184 @@ interface DetectionData {
   packages: PackageDetectionData[];
 }
 
+const CLI_FRAMEWORKS = [
+  "commander",
+  "yargs",
+  "inquirer",
+  "oclif",
+  "meow",
+  "caporal",
+  "cac",
+  "clipanion",
+];
+const WEB_FRAMEWORKS = [
+  "express",
+  "fastify",
+  "koa",
+  "hono",
+  "hapi",
+  "nestjs",
+  "restify",
+  "sails",
+  "feathers",
+  "apollo-server",
+  "graphql-yoga",
+  "trpc",
+  "socket.io",
+  "ws",
+];
+const DATABASES = [
+  "mongoose",
+  "sequelize",
+  "typeorm",
+  "prisma",
+  "drizzle-orm",
+  "pg",
+  "mysql",
+  "mysql2",
+  "mongodb",
+  "redis",
+  "ioredis",
+  "knex",
+  "objection",
+  "mikro-orm",
+];
+const BUILD_TOOLS = [
+  "webpack",
+  "rollup",
+  "parcel",
+  "esbuild",
+  "turbopack",
+  "tsup",
+  "vite",
+  "snowpack",
+];
+const FRONTEND_FRAMEWORKS = [
+  "react",
+  "vue",
+  "angular",
+  "svelte",
+  "solid",
+  "preact",
+  "next",
+  "nuxt",
+  "gatsby",
+];
+
+function getMergedDependencies(packageJson: PackageJsonData): Record<string, unknown> {
+  const pkg = packageJson as Record<string, unknown>;
+  return {
+    ...((pkg.dependencies as Record<string, unknown>) || {}),
+    ...((pkg.devDependencies as Record<string, unknown>) || {}),
+  };
+}
+
+function hasDependencyMatching(deps: Record<string, unknown>, patterns: string[]): boolean {
+  return Object.keys(deps).some((dep) => patterns.some((p) => dep.toLowerCase().includes(p)));
+}
+
+function isTypesPackage(name: string, packageJson: PackageJsonData): boolean {
+  const lowerName = name.toLowerCase();
+  return (
+    lowerName.includes("types") ||
+    lowerName.includes("type-definitions") ||
+    (!!packageJson.types && !packageJson.main) ||
+    (!!packageJson.typings && !packageJson.main)
+  );
+}
+
+function hasServerScript(packageJson: PackageJsonData): boolean {
+  const pkg = packageJson as Record<string, unknown>;
+  const scripts = pkg.scripts as Record<string, string> | undefined;
+  if (!scripts) return false;
+  return (
+    scripts.start?.includes("server") ||
+    scripts.start?.includes("src/server") ||
+    scripts.dev?.includes("server") ||
+    !!scripts.serve ||
+    (pkg.main as string | undefined)?.includes("server") === true
+  );
+}
+
+function isComponentLibrary(packageJson: PackageJsonData): boolean {
+  if (!packageJson.peerDependencies) return false;
+  return Object.keys(packageJson.peerDependencies).some((peer) =>
+    FRONTEND_FRAMEWORKS.some((fw) => peer.toLowerCase().includes(fw)),
+  );
+}
+
+/**
+ * Detection context for package type detection
+ */
+interface DetectionContext {
+  name: string;
+  packageJson: PackageJsonData;
+  deps: Record<string, unknown>;
+  hasCliFramework: boolean;
+  hasWebFramework: boolean;
+  hasDatabase: boolean;
+  hasBuildTool: boolean;
+  hasFrontendFramework: boolean;
+}
+
+/**
+ * Build detection context from package data
+ */
+function buildDetectionContext(pkg: PackageDetectionData): DetectionContext {
+  const { packageJson } = pkg;
+  const deps = getMergedDependencies(packageJson);
+
+  return {
+    name: packageJson.name || "",
+    packageJson,
+    deps,
+    hasCliFramework: hasDependencyMatching(deps, CLI_FRAMEWORKS),
+    hasWebFramework: hasDependencyMatching(deps, WEB_FRAMEWORKS),
+    hasDatabase: hasDependencyMatching(deps, DATABASES),
+    hasBuildTool: hasDependencyMatching(deps, BUILD_TOOLS),
+    hasFrontendFramework: hasDependencyMatching(deps, FRONTEND_FRAMEWORKS),
+  };
+}
+
+/**
+ * Package type detection rule
+ */
+type DetectionRule = (ctx: DetectionContext) => string | null;
+
+/**
+ * Detection rules in priority order
+ */
+const DETECTION_RULES: DetectionRule[] = [
+  // 1. CLI - Has bin field
+  (ctx) => (ctx.packageJson.bin ? "tool" : null),
+  // 2. CLI framework (non-private)
+  (ctx) => (ctx.hasCliFramework && !ctx.packageJson.private ? "tool" : null),
+  // 3. Types packages
+  (ctx) => (isTypesPackage(ctx.name, ctx.packageJson) ? "package" : null),
+  // 4. Web Service
+  (ctx) =>
+    ctx.hasWebFramework || ctx.hasDatabase || hasServerScript(ctx.packageJson) ? "service" : null,
+  // 5. Build tools (non-private, non-browser)
+  (ctx) =>
+    ctx.hasBuildTool && !ctx.packageJson.private && !ctx.packageJson.browserslist ? "tool" : null,
+  // 6. Frontend framework - component library
+  (ctx) => (ctx.hasFrontendFramework && isComponentLibrary(ctx.packageJson) ? "package" : null),
+  // 7. Frontend framework - application
+  (ctx) =>
+    ctx.hasFrontendFramework && (ctx.packageJson.private || ctx.packageJson.browserslist)
+      ? "frontend"
+      : null,
+];
+
 // Simplified detection logic for testing
 function detectPackageType(pkg: PackageDetectionData): string {
-  const { packageJson } = pkg;
-  const name = packageJson.name;
+  const ctx = buildDetectionContext(pkg);
 
-  // Merge all dependencies for checking
-  const depsObj = packageJson as any;
-  const deps = { ...(depsObj.dependencies || {}), ...(depsObj.devDependencies || {}) };
-
-  // 1. CLI - Has bin field or CLI framework
-  if (packageJson.bin) {
-    return "tool";
+  for (const rule of DETECTION_RULES) {
+    const result = rule(ctx);
+    if (result) return result;
   }
 
-  // Check for CLI frameworks even without bin field
-  const cliFrameworks = [
-    "commander",
-    "yargs",
-    "inquirer",
-    "oclif",
-    "meow",
-    "caporal",
-    "cac",
-    "clipanion",
-  ];
-  const hasCliFramework = Object.keys(deps).some((dep) =>
-    cliFrameworks.some((cli) => dep.toLowerCase().includes(cli)),
-  );
-
-  if (hasCliFramework && !packageJson.private) {
-    return "tool";
-  }
-
-  // 2. Types packages - Special case for type definition packages
-  // These are libraries even if they have web framework dependencies
-  const isTypesPackage =
-    name.toLowerCase().includes("types") ||
-    name.toLowerCase().includes("type-definitions") ||
-    (packageJson.types && !packageJson.main) ||
-    (packageJson.typings && !packageJson.main);
-
-  if (isTypesPackage) {
-    return "package";
-  }
-
-  // 3. Web Service - Has web framework, database driver, or server-related scripts
-  const webFrameworks = [
-    "express",
-    "fastify",
-    "koa",
-    "hono",
-    "hapi",
-    "nestjs",
-    "restify",
-    "sails",
-    "feathers",
-    "apollo-server",
-    "graphql-yoga",
-    "trpc",
-    "socket.io",
-    "ws",
-  ];
-  const databases = [
-    "mongoose",
-    "sequelize",
-    "typeorm",
-    "prisma",
-    "drizzle-orm",
-    "pg",
-    "mysql",
-    "mysql2",
-    "mongodb",
-    "redis",
-    "ioredis",
-    "knex",
-    "objection",
-    "mikro-orm",
-  ];
-
-  const hasWebFramework = Object.keys(deps).some((dep) =>
-    webFrameworks.some((fw) => dep.toLowerCase().includes(fw)),
-  );
-
-  const hasDatabase = Object.keys(deps).some((dep) =>
-    databases.some((db) => dep.toLowerCase().includes(db)),
-  );
-
-  const hasServerScript =
-    (packageJson as any).scripts &&
-    (((packageJson as any).scripts.start as string)?.includes("server") ||
-      ((packageJson as any).scripts.start as string)?.includes("src/server") ||
-      ((packageJson as any).scripts.dev as string)?.includes("server") ||
-      ((packageJson as any).scripts.serve as string | boolean) ||
-      ((packageJson as any).main as string)?.includes("server"));
-
-  if (hasWebFramework || hasDatabase || hasServerScript) {
-    return "service";
-  }
-
-  // 4. Build tools - webpack, rollup, etc.
-  const buildTools = [
-    "webpack",
-    "rollup",
-    "parcel",
-    "esbuild",
-    "turbopack",
-    "tsup",
-    "vite",
-    "snowpack",
-  ];
-  const hasBuildTool = Object.keys(deps).some((dep) =>
-    buildTools.some((tool) => dep.toLowerCase().includes(tool)),
-  );
-
-  // Check if it's primarily a build tool (not a frontend app using vite)
-  const isBuildTool = hasBuildTool && !packageJson.private && !packageJson.browserslist;
-  if (isBuildTool) {
-    return "tool";
-  }
-
-  // 5. Frontend - Has frontend framework AND is private or has browserslist
-  const frontendFrameworks = [
-    "react",
-    "vue",
-    "angular",
-    "svelte",
-    "solid",
-    "preact",
-    "next",
-    "nuxt",
-    "gatsby",
-  ];
-  const hasFrontendFramework = Object.keys(deps).some((dep) =>
-    frontendFrameworks.some((fw) => dep.toLowerCase().includes(fw)),
-  );
-
-  if (hasFrontendFramework) {
-    const isComponentLibrary =
-      packageJson.peerDependencies &&
-      Object.keys(packageJson.peerDependencies).some((peer) =>
-        frontendFrameworks.some((fw) => peer.toLowerCase().includes(fw)),
-      );
-
-    if (isComponentLibrary) {
-      return "package";
-    }
-
-    if (packageJson.private || packageJson.browserslist) {
-      return "frontend";
-    }
-  }
-
-  // 6. Package - Everything else
   return "package";
 }
 

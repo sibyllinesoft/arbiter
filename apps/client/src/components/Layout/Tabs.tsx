@@ -1,4 +1,4 @@
-import Badge from "@/components/Badge";
+import Badge from "@/components/api/Badge";
 import { clsx } from "clsx";
 import React, { useEffect } from "react";
 import type { TabItem, TabsProps } from "../../types/ui";

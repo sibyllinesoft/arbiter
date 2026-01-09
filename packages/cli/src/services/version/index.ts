@@ -1,10 +1,21 @@
+/**
+ * @packageDocumentation
+ * Version command - Semantic version planning and analysis.
+ *
+ * Provides functionality to:
+ * - Analyze API surface changes to determine version bump
+ * - Detect breaking changes (MAJOR), new features (MINOR), and fixes (PATCH)
+ * - Generate version plans based on surface comparison
+ * - Support strict mode for library compliance
+ */
+
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { safeFileOperation } from "@/constraints/index.js";
 import type { APISurface } from "@/services/surface/index.js";
 import type { CLIConfig } from "@/types.js";
-import { FILE_PATTERNS, resolveSmartNaming } from "@/utils/smart-naming.js";
+import { FILE_PATTERNS, resolveSmartNaming } from "@/utils/util/core/smart-naming.js";
 import chalk from "chalk";
 
 /**
@@ -48,6 +59,37 @@ export interface VersionReleaseOptions {
   tests?: boolean;
 }
 
+function validateSurfaceFiles(currentPath: string, previousPath: string): boolean {
+  if (!existsSync(currentPath)) {
+    console.error(chalk.red(`Current surface file not found: ${currentPath}`));
+    return false;
+  }
+  if (!existsSync(previousPath)) {
+    console.error(chalk.red(`Previous surface file not found: ${previousPath}`));
+    return false;
+  }
+  return true;
+}
+
+async function loadSurfaces(
+  currentPath: string,
+  previousPath: string,
+): Promise<{ current: APISurface; previous: APISurface }> {
+  const current = JSON.parse(await readFile(currentPath, "utf-8")) as APISurface;
+  const previous = JSON.parse(await readFile(previousPath, "utf-8")) as APISurface;
+  return { current, previous };
+}
+
+async function writePlanOutput(
+  outputPath: string,
+  plan: ReturnType<typeof analyzeSurfaceChanges>,
+): Promise<void> {
+  await safeFileOperation("write", outputPath, async (validatedPath) => {
+    await writeFile(validatedPath, JSON.stringify(plan, null, 2), "utf-8");
+  });
+  console.log(chalk.green(`✅ Version plan generated at ${outputPath}`));
+}
+
 /**
  * Generate a version plan by comparing API surfaces
  */
@@ -61,30 +103,15 @@ export async function versionPlanCommand(
     const currentPath = options.current || "surface.json";
     const previousPath = options.previous || "surface.prev.json";
 
-    if (!existsSync(currentPath)) {
-      console.error(chalk.red(`Current surface file not found: ${currentPath}`));
-      return 1;
-    }
+    if (!validateSurfaceFiles(currentPath, previousPath)) return 1;
 
-    if (!existsSync(previousPath)) {
-      console.error(chalk.red(`Previous surface file not found: ${previousPath}`));
-      return 1;
-    }
-
-    const currentSurface = JSON.parse(await readFile(currentPath, "utf-8")) as APISurface;
-    const previousSurface = JSON.parse(await readFile(previousPath, "utf-8")) as APISurface;
-
-    const plan = analyzeSurfaceChanges(currentSurface, previousSurface, {
+    const { current, previous } = await loadSurfaces(currentPath, previousPath);
+    const plan = analyzeSurfaceChanges(current, previous, {
       strict: options.strict,
       verbose: options.verbose,
     });
 
-    const outputPath = options.output || "version-plan.json";
-    await safeFileOperation("write", outputPath, async (validatedPath) => {
-      await writeFile(validatedPath, JSON.stringify(plan, null, 2), "utf-8");
-    });
-
-    console.log(chalk.green(`✅ Version plan generated at ${outputPath}`));
+    await writePlanOutput(options.output || "version-plan.json", plan);
     return 0;
   } catch (error) {
     console.error(
@@ -95,51 +122,78 @@ export async function versionPlanCommand(
   }
 }
 
+interface ReleaseContext {
+  surfacePath: string;
+  planPath: string;
+  planContent: any;
+  version: string;
+  notesPath: string;
+}
+
+/**
+ * Resolve paths and load plan content for release.
+ */
+async function resolveReleaseContext(options: VersionReleaseOptions): Promise<ReleaseContext> {
+  const naming = await resolveSmartNaming("surface");
+  const surfacePath = naming.fullPath || join(process.cwd(), FILE_PATTERNS.surface.default);
+  const planPath = options.plan || "version-plan.json";
+  const planContent = JSON.parse(await readFile(planPath, "utf-8"));
+  const version = options.version || planContent.targetVersion || "0.1.0";
+  const notesPath = options.notes || "RELEASE_NOTES.md";
+
+  return { surfacePath, planPath, planContent, version, notesPath };
+}
+
+/**
+ * Handle dry run mode output.
+ */
+function handleDryRun(version: string): number {
+  console.log(chalk.yellow("Dry run mode - no changes will be applied"));
+  console.log(chalk.dim(`Planned version: ${version}`));
+  return 0;
+}
+
+/**
+ * Write release notes and run optional tests.
+ */
+async function executeRelease(ctx: ReleaseContext, runTests: boolean): Promise<void> {
+  const notesContent = generateReleaseNotes(ctx.version, ctx.planContent);
+
+  await safeFileOperation("write", ctx.notesPath, async (validatedPath) => {
+    await writeFile(validatedPath, notesContent, "utf-8");
+  });
+
+  console.log(
+    chalk.green(`✅ Release prepared for version ${ctx.version} (notes: ${ctx.notesPath})`),
+  );
+
+  if (runTests) {
+    console.log(chalk.blue("🧪 Running integration tests (stub)..."));
+  }
+}
+
 /**
  * Execute a version release plan
  */
 export async function versionReleaseCommand(
   options: VersionReleaseOptions,
-  config: CLIConfig,
+  _config: CLIConfig,
 ): Promise<number> {
   try {
     console.log(chalk.blue("🚀 Executing version release..."));
 
-    const naming = await resolveSmartNaming("surface");
-    const effectivePlan = options.plan || "version-plan.json";
-    const surfacePath = naming.fullPath || join(process.cwd(), FILE_PATTERNS.surface.default);
+    const ctx = await resolveReleaseContext(options);
 
-    if (!existsSync(surfacePath)) {
-      console.error(chalk.red(`Surface file not found: ${surfacePath}`));
+    if (!existsSync(ctx.surfacePath)) {
+      console.error(chalk.red(`Surface file not found: ${ctx.surfacePath}`));
       return 1;
     }
 
-    const planContent = JSON.parse(await readFile(effectivePlan, "utf-8"));
-    const version = options.version || planContent.targetVersion || "0.1.0";
-
     if (options.dryRun) {
-      console.log(chalk.yellow("Dry run mode - no changes will be applied"));
-      console.log(chalk.dim(`Planned version: ${version}`));
-      return 0;
+      return handleDryRun(ctx.version);
     }
 
-    // Placeholder release workflow: write release metadata
-    const releaseNotesPath = options.notes || "RELEASE_NOTES.md";
-    const notesContent = generateReleaseNotes(version, planContent);
-
-    await safeFileOperation("write", releaseNotesPath, async (validatedPath) => {
-      await writeFile(validatedPath, notesContent, "utf-8");
-    });
-
-    console.log(
-      chalk.green(`✅ Release prepared for version ${version} (notes: ${releaseNotesPath})`),
-    );
-
-    if (options.tests) {
-      console.log(chalk.blue("🧪 Running integration tests (stub)..."));
-      // Integration tests would go here
-    }
-
+    await executeRelease(ctx, options.tests ?? false);
     return 0;
   } catch (error) {
     console.error(

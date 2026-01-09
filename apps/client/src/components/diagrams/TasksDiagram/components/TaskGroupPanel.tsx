@@ -5,7 +5,7 @@ import type { NormalizedTask, TaskGroupPanelProps } from "../types";
 import { TaskDetailCard } from "./TaskDetailCard";
 import { TaskFlow } from "./TaskFlow";
 
-export function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupPanelProps) {
+export function TaskGroupPanel({ group, isActive, onTaskClick, onGroupEdit }: TaskGroupPanelProps) {
   const [selectedTask, setSelectedTask] = useState<NormalizedTask | null>(null);
   const flowContainerRef = useRef<HTMLDivElement | null>(null);
   const [hasMeasuredSize, setHasMeasuredSize] = useState(false);
@@ -170,7 +170,7 @@ export function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: Tas
                 className="relative h-full w-full overflow-hidden bg-white dark:bg-graphite-950"
                 style={{ minHeight: `${adjustedHeight}px` }}
               >
-                {group.type === "epic" && group.description && (
+                {group.type === "group" && group.description && (
                   <div className="pointer-events-none absolute left-2 top-2 z-[999] flex justify-start">
                     <div
                       className="pointer-events-none rounded-lg border border-white/30 bg-white/50 p-3 text-xs leading-relaxed text-gray-900 shadow-xl backdrop-blur-[10px] dark:border-white/10 dark:bg-graphite-900/50 dark:text-graphite-50"
@@ -206,8 +206,8 @@ export function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: Tas
           ) : (
             <div className="flex h-full w-full items-center justify-center px-6 text-base font-semibold text-gray-700 text-center dark:text-graphite-100">
               {group.type === "unscoped"
-                ? "No unscoped tasks yet. Use Add Task to capture work that has not been assigned to an epic."
-                : "No tasks have been added to this epic yet. Use Add Task to start planning the work."}
+                ? "No unscoped tasks yet. Use Add Task to capture work that has not been assigned to an group."
+                : "No tasks have been added to this group yet. Use Add Task to start planning the work."}
             </div>
           )}
         </div>

@@ -1,8 +1,18 @@
+/**
+ * @packageDocumentation
+ * Documentation generator strategy for artifact generation.
+ *
+ * Provides functionality to:
+ * - Generate README files from specifications
+ * - Generate API documentation from app specs
+ * - Support custom documentation implementations
+ */
+
 import {
   ArtifactGenerator,
   type ArtifactGeneratorContext,
 } from "@/services/generate/strategies/base.js";
-import type { GenerateOptions } from "@/services/generate/types.js";
+import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { ProjectStructureConfig } from "@/types.js";
 import type { AppSpec } from "@arbiter/shared";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { parseGitUrl } from "../git-url";
+import { parseGitUrl } from "../git/git-url";
 
 describe("parseGitUrl", () => {
   it("parses ssh github urls", () => {

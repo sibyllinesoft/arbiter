@@ -1,97 +1,43 @@
+/**
+ * Parser helper functions for analyzing package manifests and project structure.
+ * Provides utilities for framework detection, language classification, and artifact generation.
+ */
 import { createHash } from "node:crypto";
 import path from "node:path";
+import {
+  DOCKER_COMPOSE_FILES,
+  KUBERNETES_KEYWORDS,
+  NODE_CLI_FRAMEWORKS,
+  NODE_FRONTEND_FRAMEWORKS,
+  NODE_WEB_FRAMEWORKS,
+  RUST_CLI_FRAMEWORKS,
+  RUST_WEB_FRAMEWORKS,
+  TSOA_ROUTE_PATTERN,
+  TYPESCRIPT_SIGNALS,
+} from "./constants";
 
-export const DOCKER_COMPOSE_FILES = new Set(["docker-compose.yml", "docker-compose.yaml"]);
-export const PACKAGE_MANIFESTS = new Set(["package.json", "bunfig.toml"]);
-export const DATABASE_HINTS = [
-  "schema.prisma",
-  "schema.sql",
-  "migration.sql",
-  "docker-compose.db",
-  "docker-compose.database",
-];
-export const KUBERNETES_KEYWORDS = [
-  "deployment",
-  "statefulset",
-  "daemonset",
-  "service",
-  "configmap",
-  "secret",
-  "ingress",
-  "namespace",
-];
+// Re-export constants for backward compatibility
+export {
+  DATABASE_HINTS,
+  DOCKER_COMPOSE_FILES,
+  KUBERNETES_KEYWORDS,
+  NODE_CLI_FRAMEWORKS,
+  NODE_FRONTEND_FRAMEWORKS,
+  NODE_WEB_FRAMEWORKS,
+  PACKAGE_MANIFESTS,
+  ROUTE_HINT_PATTERN,
+  RUST_CLI_FRAMEWORKS,
+  RUST_WEB_FRAMEWORKS,
+  TSOA_ROUTE_PATTERN,
+  TYPESCRIPT_SIGNALS,
+} from "./constants";
 
-export const ROUTE_HINT_PATTERN =
-  /<Route\s|createBrowserRouter|createRoutesFromElements|react-router/;
-
-export const NODE_WEB_FRAMEWORKS = [
-  "express",
-  "fastify",
-  "koa",
-  "hapi",
-  "nest",
-  "adonis",
-  "meteor",
-  "sails",
-  "loopback",
-  "restify",
-  "hono",
-];
-
-export const NODE_FRONTEND_FRAMEWORKS = [
-  "react",
-  "react-dom",
-  "next",
-  "vue",
-  "angular",
-  "svelte",
-  "solid-js",
-  "preact",
-  "nuxt",
-  "gatsby",
-];
-
-export const NODE_CLI_FRAMEWORKS = [
-  "commander",
-  "yargs",
-  "inquirer",
-  "oclif",
-  "meow",
-  "cac",
-  "clipanion",
-];
-
-export const TYPESCRIPT_SIGNALS = [
-  "typescript",
-  "ts-node",
-  "ts-node-dev",
-  "tsx",
-  "tsup",
-  "@swc/core",
-];
-
-export const TSOA_ROUTE_PATTERN = /controller|route|api/i;
-
-export const RUST_WEB_FRAMEWORKS = [
-  "axum",
-  "warp",
-  "actix-web",
-  "rocket",
-  "tide",
-  "gotham",
-  "nickel",
-  "hyper",
-  "poem",
-  "salvo",
-  "tower-web",
-];
-
-export const RUST_CLI_FRAMEWORKS = ["clap", "structopt", "argh", "gumdrop"];
-
+/** Normalize path separators to forward slashes */
 export function normalizeSlashes(value: string): string {
   return value.replace(/\\+/g, "/");
 }
 
+/** Collect all dependencies from a package.json manifest */
 export function collectPackageDependencies(pkg: any): Record<string, string> {
   return {
     ...(pkg.dependencies || {}),
@@ -101,11 +47,13 @@ export function collectPackageDependencies(pkg: any): Record<string, string> {
   };
 }
 
+/** Detect web frameworks used in a Node.js package */
 export function detectPackageFrameworks(pkg: any): string[] {
   const deps = collectPackageDependencies(pkg);
   return NODE_WEB_FRAMEWORKS.filter((dep) => Boolean(deps[dep]));
 }
 
+/** Check if a package uses TypeScript based on dependencies and configuration */
 export function packageUsesTypeScript(pkg: any): boolean {
   const deps = collectPackageDependencies(pkg);
   if (TYPESCRIPT_SIGNALS.some((signal) => Boolean(deps[signal]))) {
@@ -123,47 +71,50 @@ export function packageUsesTypeScript(pkg: any): boolean {
     .some((command) => scriptSignals.some((signal) => command.includes(signal)));
 }
 
-export function classifyPackageManifest(pkg: any): {
+/** Classification result type */
+type PackageClassification = {
   type: "service" | "frontend" | "tool" | "package";
   detectedType: string;
   reason: string;
-} {
-  const deps = collectPackageDependencies(pkg);
-  const depNames = Object.keys(deps).map((dep) => dep.toLowerCase());
-  const runtimeDepNames = new Set<string>([
+};
+
+/** Build set of runtime dependency names (lowercase) */
+function buildRuntimeDepSet(pkg: any): Set<string> {
+  return new Set<string>([
     ...Object.keys(pkg.dependencies || {}).map((dep) => dep.toLowerCase()),
     ...Object.keys(pkg.optionalDependencies || {}).map((dep) => dep.toLowerCase()),
     ...Object.keys(pkg.peerDependencies || {}).map((dep) => dep.toLowerCase()),
   ]);
+}
 
-  const hasRuntimeDependency = (candidates: string[]) =>
-    candidates.some((candidate) => runtimeDepNames.has(candidate));
-  const hasDependency = (candidates: string[]) =>
-    candidates.some((candidate) => depNames.includes(candidate));
+/** Check if package has any matching runtime dependency */
+function hasRuntimeDep(runtimeDeps: Set<string>, candidates: string[]): boolean {
+  return candidates.some((candidate) => runtimeDeps.has(candidate));
+}
 
-  if (hasRuntimeDependency(NODE_WEB_FRAMEWORKS)) {
-    return {
-      type: "service",
-      detectedType: "web_service",
-      reason: "web-framework",
-    };
+/** Check if package has a bin entry */
+function hasBinEntry(pkg: any): boolean {
+  return typeof pkg.bin === "string" || (pkg.bin && Object.keys(pkg.bin).length > 0);
+}
+
+/** Classify a Node.js package as service, frontend, tool, or library */
+export function classifyPackageManifest(pkg: any): PackageClassification {
+  const deps = collectPackageDependencies(pkg);
+  const depNames = Object.keys(deps).map((dep) => dep.toLowerCase());
+  const runtimeDeps = buildRuntimeDepSet(pkg);
+
+  if (hasRuntimeDep(runtimeDeps, NODE_WEB_FRAMEWORKS)) {
+    return { type: "service", detectedType: "web_service", reason: "web-framework" };
   }
 
-  const hasFrontendFramework =
-    hasRuntimeDependency(NODE_FRONTEND_FRAMEWORKS) || Boolean(pkg.browserslist);
-  if (hasFrontendFramework) {
-    return {
-      type: "frontend",
-      detectedType: "frontend",
-      reason: "frontend-framework",
-    };
+  if (hasRuntimeDep(runtimeDeps, NODE_FRONTEND_FRAMEWORKS) || pkg.browserslist) {
+    return { type: "frontend", detectedType: "frontend", reason: "frontend-framework" };
   }
 
-  const hasBin = Boolean(
-    typeof pkg.bin === "string" || (pkg.bin && Object.keys(pkg.bin).length > 0),
-  );
-  const hasCliDependency = hasDependency(NODE_CLI_FRAMEWORKS);
-  if (hasBin || hasCliDependency) {
+  const hasBin = hasBinEntry(pkg);
+  const hasCliDep = NODE_CLI_FRAMEWORKS.some((f) => depNames.includes(f));
+
+  if (hasBin || hasCliDep) {
     return {
       type: "tool",
       detectedType: "tool",
@@ -171,13 +122,10 @@ export function classifyPackageManifest(pkg: any): {
     };
   }
 
-  return {
-    type: "package",
-    detectedType: "package",
-    reason: "default-module",
-  };
+  return { type: "package", detectedType: "package", reason: "default-module" };
 }
 
+/** Detect the primary language used in a Node.js package */
 export function detectNodePackageLanguage(pkg: any): string | null {
   const deps = collectPackageDependencies(pkg);
   const depNames = new Set<string>(Object.keys(deps).map((dep) => dep.toLowerCase()));
@@ -205,6 +153,7 @@ function normalizeCargoDependencyName(name: string): string {
   return name.toLowerCase().replace(/_/g, "-");
 }
 
+/** Collect all dependency names from a Cargo.toml manifest */
 export function collectCargoDependencyNames(cargo: any): string[] {
   const sections = ["dependencies", "dev-dependencies", "build-dependencies"];
   const names = new Set<string>();
@@ -220,31 +169,29 @@ export function collectCargoDependencyNames(cargo: any): string[] {
   return Array.from(names);
 }
 
+/** Extract binary name from a single bin entry */
+function extractBinaryName(entry: unknown): string | null {
+  if (typeof entry === "string") return entry;
+  if (entry && typeof entry === "object") {
+    const name = (entry as Record<string, unknown>).name;
+    if (typeof name === "string") return name;
+  }
+  return null;
+}
+
+/** Extract binary target names from a Cargo.toml bin section */
 export function extractCargoBinaryNames(binSection: unknown): string[] {
   if (!binSection) return [];
 
   if (Array.isArray(binSection)) {
-    return binSection
-      .map((entry) => {
-        if (typeof entry === "string") return entry;
-        if (entry && typeof entry === "object" && typeof (entry as any).name === "string") {
-          return (entry as any).name as string;
-        }
-        return null;
-      })
-      .filter((value): value is string => Boolean(value));
+    return binSection.map(extractBinaryName).filter((value): value is string => Boolean(value));
   }
 
-  if (typeof binSection === "object") {
-    const name = (binSection as Record<string, unknown>).name;
-    if (typeof name === "string") {
-      return [name];
-    }
-  }
-
-  return [];
+  const name = extractBinaryName(binSection);
+  return name ? [name] : [];
 }
 
+/** Classify a Rust crate as service, package, or tool based on dependencies */
 export function classifyCargoManifest(options: {
   dependencyNames: string[];
   hasBinaries: boolean;
@@ -289,6 +236,7 @@ export function classifyCargoManifest(options: {
   };
 }
 
+/** Strip the package root prefix from a file path */
 export function stripPackageRoot(filePath: string, packageRoot: string): string {
   if (!packageRoot) return filePath;
   if (filePath === packageRoot) return "";
@@ -298,6 +246,38 @@ export function stripPackageRoot(filePath: string, packageRoot: string): string 
   return filePath;
 }
 
+/** Check if file belongs to package scope */
+function isFileInPackageScope(file: string, normalizedRoot: string): boolean {
+  if (file.endsWith(".d.ts")) return false;
+  if (!normalizedRoot) return !file.startsWith("node_modules/");
+  return file === normalizedRoot || file.startsWith(`${normalizedRoot}/`);
+}
+
+/** Filter files relevant to a package and strip root prefix */
+function getPackageRelevantFiles(allFiles: string[], normalizedRoot: string): string[] {
+  return allFiles
+    .map(normalizeSlashes)
+    .filter((file) => isFileInPackageScope(file, normalizedRoot))
+    .map((file) => stripPackageRoot(file, normalizedRoot))
+    .filter((rel) => rel && !rel.startsWith("node_modules/"));
+}
+
+/** Check if file is a potential TSOA controller candidate */
+function isControllerCandidate(rel: string): boolean {
+  if (!TSOA_ROUTE_PATTERN.test(rel)) return false;
+  if (/\.d\.ts$/i.test(rel)) return false;
+  if (/\btests?\//i.test(rel) || /__tests__\//i.test(rel)) return false;
+  return true;
+}
+
+/** Extract scripts that use tsoa from package.json */
+function getTsoaScripts(scripts: Record<string, unknown>): string[] {
+  return Object.entries(scripts)
+    .filter(([, command]) => typeof command === "string" && command.includes("tsoa"))
+    .map(([name]) => name);
+}
+
+/** Build TSOA analysis data from a TypeScript package */
 export function buildTsoaAnalysisFromPackage(
   packageJsonPath: string,
   pkg: any,
@@ -314,47 +294,21 @@ export function buildTsoaAnalysisFromPackage(
   recommendedCommands: string[];
 } | null {
   const frameworks = detectPackageFrameworks(pkg);
-  if (frameworks.length === 0) return null;
-  if (!packageUsesTypeScript(pkg)) return null;
+  if (frameworks.length === 0 || !packageUsesTypeScript(pkg)) return null;
 
   const packageDir = normalizeSlashes(path.dirname(packageJsonPath));
   const normalizedRoot = packageDir === "." ? "" : packageDir;
-  const deps = collectPackageDependencies(pkg);
-  const hasTsoaDependency = Boolean(deps.tsoa);
-  const scripts = pkg.scripts || {};
+  const hasTsoaDependency = Boolean(collectPackageDependencies(pkg).tsoa);
 
-  const relevantFiles = allFiles
-    .map(normalizeSlashes)
-    .filter((file) => {
-      if (file.endsWith(".d.ts")) return false;
-      if (!normalizedRoot) {
-        return !file.startsWith("node_modules/");
-      }
-      return file === normalizedRoot || file.startsWith(`${normalizedRoot}/`);
-    })
-    .map((file) => stripPackageRoot(file, normalizedRoot))
-    .filter((rel) => rel && !rel.startsWith("node_modules/"));
-
-  if (relevantFiles.length === 0) {
-    return null;
-  }
+  const relevantFiles = getPackageRelevantFiles(allFiles, normalizedRoot);
+  if (relevantFiles.length === 0) return null;
 
   const tsFiles = relevantFiles.filter((rel) => /\.(ts|tsx)$/i.test(rel));
-  if (tsFiles.length === 0) {
-    return null;
-  }
+  if (tsFiles.length === 0) return null;
 
-  const controllerCandidates = tsFiles
-    .filter((rel) => TSOA_ROUTE_PATTERN.test(rel))
-    .filter((rel) => !/\.d\.ts$/i.test(rel))
-    .filter((rel) => !/\btests?\//i.test(rel) && !/__tests__\//i.test(rel))
-    .slice(0, 50);
-
+  const controllerCandidates = tsFiles.filter(isControllerCandidate).slice(0, 50);
   const configFiles = relevantFiles.filter((rel) => /tsoa\.json$/i.test(rel)).slice(0, 10);
-
-  const scriptsUsingTsoa = Object.entries(scripts)
-    .filter(([, command]) => typeof command === "string" && command.includes("tsoa"))
-    .map(([name]) => name);
+  const scriptsUsingTsoa = getTsoaScripts(pkg.scripts || {});
 
   if (controllerCandidates.length === 0 && configFiles.length === 0 && !hasTsoaDependency) {
     return null;
@@ -375,11 +329,13 @@ export function buildTsoaAnalysisFromPackage(
   };
 }
 
+/** Generate a unique artifact ID from project and file path */
 export function makeArtifactId(projectId: string, filePath: string): string {
   const hash = createHash("sha1").update(`${projectId}:${filePath}`).digest("hex");
   return `artifact-${hash}`;
 }
 
+/** Convert a file path to a human-readable name */
 export function prettifyName(filePath: string): string {
   const base = path.basename(filePath);
   const withoutExt = base.replace(path.extname(base), "");
@@ -391,11 +347,13 @@ export function prettifyName(filePath: string): string {
   );
 }
 
+/** Check if a YAML file is infrastructure-related (Docker, Kubernetes) */
 export function isInfrastructureYaml(base: string): boolean {
   if (DOCKER_COMPOSE_FILES.has(base)) return true;
   return KUBERNETES_KEYWORDS.some((keyword) => base.includes(keyword));
 }
 
+/** Check if a JSON file is a configuration or manifest file */
 export function isConfigJson(base: string): boolean {
   return base === "package.json" || base.endsWith("config.json") || base.includes("manifest");
 }

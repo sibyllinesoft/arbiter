@@ -5,7 +5,7 @@ import {
   __generateTesting,
   collectClientTargets,
   normalizeCapabilities,
-} from "@/services/generate/index.js";
+} from "@/services/generate/io/index.js";
 import type { AppSpec } from "@arbiter/shared";
 import fs from "fs-extra";
 
@@ -73,7 +73,7 @@ describe("generate coverage spot checks", () => {
     expect(content).toContain("Checkout");
   });
 
-  it("derives service endpoints from paths and flows", () => {
+  it("derives service endpoints from paths and behaviors", () => {
     const appSpec = {
       services: {
         Orders: {
@@ -81,7 +81,7 @@ describe("generate coverage spot checks", () => {
           domains: ["orders"],
         },
       },
-      flows: [
+      behaviors: [
         {
           id: "place-order",
           steps: [

@@ -1,10 +1,19 @@
+/**
+ * @packageDocumentation
+ * Base types and interfaces for artifact generation strategies.
+ *
+ * Defines the core abstractions for:
+ * - Artifact generator context shared across strategies
+ * - Artifact generator interface for strategy implementations
+ */
+
 import type {
   ClientGenerationTarget,
   ServiceGenerationTarget,
-} from "@/services/generate/contexts.js";
-import type { GenerateOptions } from "@/services/generate/types.js";
+} from "@/services/generate/io/contexts.js";
+import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
-import type { PackageManagerCommandSet } from "@/utils/package-manager.js";
+import type { PackageManagerCommandSet } from "@/utils/io/package-manager.js";
 import type { AppSpec, ConfigWithVersion } from "@arbiter/shared";
 
 export interface ArtifactGeneratorContext {
@@ -18,6 +27,7 @@ export interface ArtifactGeneratorContext {
   clientTargets: ClientGenerationTarget[];
   testsWorkspaceRelative?: string;
   services?: ServiceGenerationTarget[];
+  reporter: import("@/services/generate/util/types.js").GenerationReporter;
 }
 
 export interface ArtifactGenerator {

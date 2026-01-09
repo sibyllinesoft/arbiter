@@ -1,16 +1,21 @@
-import { describe, expect, it, spyOn } from "bun:test";
+/** @packageDocumentation CLI command tests */
+import { afterEach, describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import { createUtilitiesCommands } from "@/cli/utilities.js";
-import * as importSvc from "@/services/import/index.js";
-import * as testsSvc from "@/services/tests/index.js";
+import { createUtilitiesCommands } from "@/cli/commands/utilities.js";
+import { __contextTesting } from "@/cli/context.js";
+import * as specImportSvc from "@/services/spec-import/index.js";
+
+afterEach(() => {
+  __contextTesting.setActiveConfig(null);
+});
 
 const baseConfig = {
   apiUrl: "https://api",
   timeout: 1,
   format: "json",
   color: false,
-  localMode: true,
+  localMode: false,
   projectDir: process.cwd(),
   projectStructure: {
     clientsDirectory: "clients",
@@ -26,81 +31,46 @@ const baseConfig = {
 function buildProgram(): Command {
   const program = new Command("arbiter");
   (program as any).config = baseConfig;
+  __contextTesting.setActiveConfig(baseConfig as any);
   createUtilitiesCommands(program);
   return program;
 }
 
 describe("utilities CLI", () => {
-  it("validates imports with registry options", async () => {
-    const importSpy = spyOn(importSvc, "importCommand").mockResolvedValue(0);
+  it("imports spec file with options", async () => {
+    const importSpy = spyOn(specImportSvc, "importSpec").mockResolvedValue(0);
     const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as any);
 
     const program = buildProgram();
-    await program.parseAsync(["import", "validate", "file1.cue", "file2.cue", "--global"], {
-      from: "user",
-    });
+    await program.parseAsync(
+      ["import", "myspec.cue", "--project", "my-project", "--message", "Initial import"],
+      { from: "user" },
+    );
 
     expect(importSpy).toHaveBeenCalledWith(
-      "validate",
-      undefined,
-      expect.objectContaining({ files: ["file1.cue", "file2.cue"], global: true }),
+      "myspec.cue",
+      expect.objectContaining({ project: "my-project", message: "Initial import" }),
+      baseConfig,
     );
 
     importSpy.mockRestore();
     exitSpy.mockRestore();
   });
 
-  it("scaffolds tests with options", async () => {
-    const scaffoldSpy = spyOn(testsSvc, "scaffoldCommand").mockResolvedValue(0);
+  it("imports default spec file when no file specified", async () => {
+    const importSpy = spyOn(specImportSvc, "importSpec").mockResolvedValue(0);
     const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as any);
 
     const program = buildProgram();
-    await program.parseAsync(
-      [
-        "tests",
-        "scaffold",
-        "--output",
-        "custom",
-        "--format",
-        "vitest",
-        "--include-integration",
-        "--include-e2e",
-      ],
-      { from: "user" },
-    );
+    await program.parseAsync(["import", "--skip-validate"], { from: "user" });
 
-    expect(scaffoldSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        output: "custom",
-        format: "vitest",
-        includeIntegration: true,
-        includeE2e: true,
-      }),
+    expect(importSpy).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ skipValidate: true }),
       baseConfig,
     );
 
-    scaffoldSpy.mockRestore();
-    exitSpy.mockRestore();
-  });
-
-  it("runs coverage with numeric thresholds", async () => {
-    const coverSpy = spyOn(testsSvc, "coverCommand").mockResolvedValue(0);
-    const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as any);
-
-    const program = buildProgram();
-    await program.parseAsync(
-      ["tests", "cover", "--threshold", "90", "--format", "json", "--include-branches"],
-      {
-        from: "user",
-      },
-    );
-
-    expect(coverSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ threshold: 90, format: "json", includeBranches: true }),
-      baseConfig,
-    );
-
-    coverSpy.mockRestore();
+    importSpy.mockRestore();
     exitSpy.mockRestore();
   });
 });

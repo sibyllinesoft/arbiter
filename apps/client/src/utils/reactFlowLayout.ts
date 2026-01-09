@@ -1,17 +1,35 @@
+/**
+ * ReactFlow layout utilities.
+ * Provides automatic positioning of ReactFlow nodes using diagram layout algorithms.
+ */
 import type { Edge, Node } from "reactflow";
 import { Position } from "reactflow";
 
 import type { DiagramComponent, DiagramConnection } from "@/types/architecture";
 import { DiagramLayoutEngine } from "./diagramLayout";
 
+/** Options for ReactFlow layout */
 export type ReactFlowLayoutOptions = {
+  /** Layout algorithm to use */
   layout?: "layered" | "force_directed" | "flow";
+  /** Default node dimensions */
   defaultSize?: { width: number; height: number };
+  /** Flow direction (top-to-bottom or left-to-right) */
   direction?: "TB" | "LR";
 };
 
+/** Shared layout engine instance */
 const engine = new DiagramLayoutEngine();
 
+/**
+ * Apply automatic layout to ReactFlow nodes and edges.
+ * Converts nodes to diagram components, applies layout algorithm,
+ * and maps positions back to ReactFlow nodes.
+ * @param nodes - ReactFlow nodes to layout
+ * @param edges - ReactFlow edges for connectivity
+ * @param options - Layout configuration options
+ * @returns Positioned nodes, edges, and calculated viewport size
+ */
 export function layoutReactFlow<T = any>(
   nodes: Node<T>[],
   edges: Edge[],

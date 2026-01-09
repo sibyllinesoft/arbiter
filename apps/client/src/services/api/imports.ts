@@ -1,7 +1,13 @@
 import { ApiClient } from "./client";
 
 export class ImportService {
-  constructor(private readonly client: ApiClient) {}
+  private readonly client: ApiClient;
+
+  constructor(client: ApiClient) {
+    this.client = client;
+  }
+
+  // provide explicit method typings to satisfy erasableSyntaxOnly
 
   async scanGitUrl(gitUrl: string): Promise<{
     success: boolean;

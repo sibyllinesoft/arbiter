@@ -1,3 +1,4 @@
+/** @packageDocumentation Constraint system tests */
 import { describe, expect, it, spyOn } from "bun:test";
 import { EventEmitter } from "node:events";
 
@@ -5,9 +6,9 @@ import {
   initializeCLIConstraints,
   withConstraintEnforcement,
 } from "@/constraints/cli-integration.js";
-import { ConstraintViolationError } from "@/constraints/core.js";
+import { ConstraintViolationError } from "@/constraints/core/core.js";
+import * as monitoring from "@/constraints/core/monitoring.js";
 import * as constraintIndex from "@/constraints/index.js";
-import * as monitoring from "@/constraints/monitoring.js";
 
 describe("CLI constraint integration (light)", () => {
   it("skips initialization when disabled", () => {

@@ -4,7 +4,7 @@ import { EventEmitter } from "node:events";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { extractGoSurface } from "@/surface-extraction/go-extractor.js";
+import { extractGoSurface } from "@/surface-extraction/extractors/go-extractor.js";
 import * as globModule from "glob";
 
 describe("extractGoSurface", () => {

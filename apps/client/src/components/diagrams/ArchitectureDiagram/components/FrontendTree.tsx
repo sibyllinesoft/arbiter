@@ -95,7 +95,16 @@ interface FlattenedNode {
   isLeaf: boolean;
 }
 
+/** Layout constants */
 const INDENT_SIZE = 16;
+const CHEVRON_PATH = "M9 5l7 7-7 7";
+
+/** Node type to style class mapping */
+const NODE_TYPE_STYLES: Record<TreeNodeType, string> = {
+  package: "font-semibold text-gray-900 dark:text-graphite-25",
+  folder: "text-gray-700 dark:text-graphite-200",
+  item: "text-gray-600 dark:text-graphite-300",
+};
 
 const collapseSingleChildFolders = (node: TreeNode): TreeNode => {
   if (!node.children || node.children.size === 0) {
@@ -136,108 +145,149 @@ const collapseSingleChildFolders = (node: TreeNode): TreeNode => {
   };
 };
 
+/** Navigate through tree segments, creating nodes as needed */
+const navigateToNode = (
+  root: TreeNode,
+  segments: string[],
+  packageName: string,
+  mode: "components" | "routes",
+): TreeNode => {
+  let current = root;
+  segments.forEach((segment, index) => {
+    if (!current.children) current.children = new Map();
+    const key = `${current.id}/${segment}`;
+    if (!current.children.has(segment)) {
+      current.children.set(segment, {
+        id: key,
+        label: segment,
+        depth: current.depth + 1,
+        type: index === segments.length - 1 && mode === "components" ? "item" : "folder",
+        packageName,
+        filePath: segments.slice(0, index + 1).join("/"),
+        children: new Map(),
+      });
+    }
+    current = current.children.get(segment)!;
+  });
+  return current;
+};
+
+/** Insert a synthetic child node for empty paths */
+const insertSyntheticNode = (
+  parent: TreeNode,
+  displayLabel: string,
+  relPath: string,
+  extra: Record<string, any>,
+): void => {
+  if (!parent.children) parent.children = new Map();
+  const syntheticId = `${parent.id}/${displayLabel}`;
+  parent.children.set(syntheticId, {
+    id: syntheticId,
+    label: displayLabel,
+    depth: parent.depth + 1,
+    type: "item",
+    packageName: parent.packageName,
+    filePath: relPath,
+    extra,
+  });
+};
+
+/** Build component extra metadata */
+const buildComponentExtra = (component: NonNullable<FrontendPackage["components"]>[number]) => ({
+  componentName: component.name,
+  description: component.description,
+  framework: component.framework,
+  props: component.props,
+});
+
+/** Build route extra metadata */
+const buildRouteExtra = (
+  route: NonNullable<FrontendPackage["routes"]>[number],
+  displayLabel: string,
+) => ({
+  routePath: route.path,
+  routerType: route.routerType,
+  displayLabel,
+  controllerPath: route.filePath,
+  httpMethods: route.httpMethods,
+  endpoints: route.endpoints,
+  isBaseRoute: route.isBaseRoute,
+  metadata: route.metadata,
+});
+
+/** Get route display label */
+const getRouteDisplayLabel = (route: NonNullable<FrontendPackage["routes"]>[number]): string => {
+  const candidate = route.displayLabel || route.path || route.filePath || "";
+  return candidate.length > 0 ? candidate : "route";
+};
+
+/** Insert node into tree at given path */
+const insertNodeAtPath = (
+  rootNode: TreeNode,
+  relPath: string,
+  displayLabel: string,
+  extra: Record<string, any>,
+  packageName: string,
+  mode: "components" | "routes",
+): void => {
+  const segments = relPath.replace(/\\/g, "/").split("/").filter(Boolean);
+
+  if (mode === "routes" && segments.length === 0) {
+    rootNode.extra = { ...rootNode.extra, ...extra };
+    rootNode.filePath = relPath;
+    return;
+  }
+
+  const current = navigateToNode(rootNode, segments, packageName, mode);
+
+  if (segments.length === 0) {
+    insertSyntheticNode(current, displayLabel, relPath, extra);
+    return;
+  }
+
+  if (mode === "routes") current.type = "item";
+  current.extra = { ...current.extra, ...extra };
+  current.filePath = segments.join("/");
+};
+
+/** Build package root node */
+const createPackageRootNode = (pkg: FrontendPackage, mode: "components" | "routes"): TreeNode => ({
+  id: `${mode}-${pkg.packageName}`,
+  label: pkg.packageName,
+  depth: 0,
+  type: "package",
+  packageName: pkg.packageName,
+  extra: { frameworks: pkg.frameworks, packageRoot: pkg.packageRoot },
+  children: new Map(),
+});
+
 const buildHierarchy = (packages: FrontendPackage[], mode: "components" | "routes"): TreeNode[] => {
   return packages.map((pkg) => {
-    const rootId = `${mode}-${pkg.packageName}`;
-    const rootNode: TreeNode = {
-      id: rootId,
-      label: pkg.packageName,
-      depth: 0,
-      type: "package",
-      packageName: pkg.packageName,
-      extra: {
-        frameworks: pkg.frameworks,
-        packageRoot: pkg.packageRoot,
-      },
-      children: new Map(),
-    };
-
-    const insertNode = (relPath: string, displayLabel: string, extra: Record<string, any>) => {
-      const normalized = relPath.replace(/\\/g, "/");
-      const segments = normalized === "" ? [] : normalized.split("/").filter(Boolean);
-
-      if (mode === "routes" && segments.length === 0) {
-        rootNode.extra = {
-          ...(rootNode.extra || {}),
-          ...extra,
-        };
-        rootNode.filePath = relPath;
-        return;
-      }
-
-      let current = rootNode;
-
-      segments.forEach((segment, index) => {
-        if (!current.children) {
-          current.children = new Map();
-        }
-        const key = `${current.id}/${segment}`;
-        if (!current.children.has(segment)) {
-          current.children.set(segment, {
-            id: key,
-            label: segment,
-            depth: current.depth + 1,
-            type: index === segments.length - 1 && mode === "components" ? "item" : "folder",
-            packageName: pkg.packageName,
-            filePath: segments.slice(0, index + 1).join("/"),
-            children: new Map(),
-          });
-        }
-        current = current.children.get(segment)!;
-      });
-
-      if (segments.length === 0) {
-        if (!current.children) {
-          current.children = new Map();
-        }
-        const syntheticId = `${current.id}/${displayLabel}`;
-        current.children.set(syntheticId, {
-          id: syntheticId,
-          label: displayLabel,
-          depth: current.depth + 1,
-          type: "item",
-          packageName: pkg.packageName,
-          filePath: relPath,
-          extra,
-        });
-        return;
-      }
-
-      if (mode === "routes" && current) {
-        current.type = "item";
-      }
-
-      current.extra = {
-        ...(current.extra || {}),
-        ...extra,
-      };
-      current.filePath = segments.join("/");
-    };
+    const rootNode = createPackageRootNode(pkg, mode);
 
     if (mode === "components") {
       (pkg.components ?? []).forEach((component) => {
-        insertNode(component.filePath ?? "", component.name, {
-          componentName: component.name,
-          description: component.description,
-          framework: component.framework,
-          props: component.props,
-        });
+        insertNodeAtPath(
+          rootNode,
+          component.filePath ?? "",
+          component.name,
+          buildComponentExtra(component),
+          pkg.packageName,
+          mode,
+        );
       });
     } else {
       (pkg.routes ?? []).forEach((route) => {
         const treeTarget = route.treePath ?? route.path ?? route.filePath ?? "";
-        const labelCandidate = route.displayLabel || route.path || route.filePath || "";
-        const displayLabel = labelCandidate && labelCandidate.length > 0 ? labelCandidate : "route";
-        insertNode(treeTarget, displayLabel, {
-          routePath: route.path,
-          routerType: route.routerType,
+        const displayLabel = getRouteDisplayLabel(route);
+        insertNodeAtPath(
+          rootNode,
+          treeTarget,
           displayLabel,
-          controllerPath: route.filePath,
-          httpMethods: route.httpMethods,
-          endpoints: route.endpoints,
-          isBaseRoute: route.isBaseRoute,
-          metadata: route.metadata,
-        });
+          buildRouteExtra(route, displayLabel),
+          pkg.packageName,
+          mode,
+        );
       });
     }
 
@@ -396,14 +446,7 @@ export const FrontendTreeSection: React.FC<FrontendTreeProps> = ({ title, packag
                     <span className="w-5 h-5" />
                   )}
 
-                  <span
-                    className={clsx("truncate", {
-                      "font-semibold text-gray-900 dark:text-graphite-25": node.type === "package",
-                      "text-gray-700 dark:text-graphite-200": node.type === "folder",
-                      "text-gray-600 dark:text-graphite-300": node.type === "item",
-                    })}
-                    title={label}
-                  >
+                  <span className={clsx("truncate", NODE_TYPE_STYLES[node.type])} title={label}>
                     {label}
                   </span>
 

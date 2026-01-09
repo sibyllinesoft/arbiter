@@ -34,33 +34,33 @@ export class KubernetesPlugin implements ImporterPlugin {
     );
   }
 
+  /**
+   * Parse YAML documents and filter to valid objects.
+   */
+  private parseYamlDocuments(fileContent: string): any[] {
+    const documents = yaml.parseAllDocuments(fileContent);
+    return documents
+      .map((doc) => doc.toJSON())
+      .filter((item) => item && typeof item === "object" && item !== null);
+  }
+
   async parse(filePath: string, fileContent?: string, context?: ParseContext): Promise<Evidence[]> {
     if (!fileContent) {
       throw new Error("File content required for Kubernetes parsing");
     }
 
-    const evidence: Evidence[] = [];
-    const basename = path.basename(filePath).toLowerCase();
     const projectRoot = context?.projectRoot || process.cwd();
 
     try {
-      const documents = yaml.parseAllDocuments(fileContent);
-      if (documents.length === 0) {
-        return evidence;
-      }
-      const parsedItems = documents
-        .map((doc) => doc.toJSON())
-        .filter((item) => item && typeof item === "object" && item !== null);
+      const parsedItems = this.parseYamlDocuments(fileContent);
       if (parsedItems.length === 0) {
-        return evidence;
+        return [];
       }
-      const kubeEvidence = this.parseKubernetesManifest(parsedItems, filePath, projectRoot);
-      evidence.push(...kubeEvidence);
+      return this.parseKubernetesManifest(parsedItems, filePath, projectRoot);
     } catch (error) {
       console.warn(`Failed to parse Kubernetes file ${filePath}:`, error);
+      return [];
     }
-
-    return evidence;
   }
 
   private parseKubernetesManifest(parsed: any, filePath: string, projectRoot: string): Evidence[] {
@@ -118,74 +118,30 @@ export class KubernetesPlugin implements ImporterPlugin {
   }
 
   async infer(evidence: Evidence[], context: InferenceContext): Promise<InferredArtifact[]> {
-    const artifacts: InferredArtifact[] = [];
-
-    // Filter Kubernetes evidence
     const kubeEvidence = evidence.filter(
       (e) => e.source === this.name() && e.type === "infrastructure",
     );
 
-    if (kubeEvidence.length === 0) return artifacts;
+    if (kubeEvidence.length === 0) return [];
 
-    // Group by root directory (find common ancestor for all kube files)
     const rootDir = this.findRootDirectory(kubeEvidence, context.projectRoot || process.cwd());
-    if (!rootDir) return artifacts;
+    if (!rootDir) return [];
 
-    for (const e of kubeEvidence) {
-      const data = e.data as KubernetesData;
-      const safeName = (data.name || `resource-${data.index}`).replace(/[^a-zA-Z0-9-]/g, "-");
-      const artifactId = `${data.kind.toLowerCase()}-${safeName}`;
-      const artifactName = data.name || `Unnamed Resource`;
-      const fullParsed = (data as any).fullParsed;
-      let description: string;
-      if (!fullParsed) {
-        description = `Kubernetes ${data.kind} resource`;
-      } else {
-        switch (data.kind) {
-          case "Deployment": {
-            const replicas = fullParsed.spec?.replicas || 1;
-            const containers = fullParsed.spec?.template?.spec?.containers || [];
-            const images = containers.map((c: any) => c.image).join(", ");
-            description = `Deploys ${data.name || "unnamed"} with ${replicas} replicas using images: ${images}`;
-            if (data.namespace) description += ` in namespace ${data.namespace}`;
-            break;
-          }
-          case "Service": {
-            const portValues = (fullParsed.spec?.ports || [])
-              .map((p: any) => p?.port)
-              .filter(
-                (port: any) =>
-                  typeof port === "number" || (typeof port === "string" && port.trim().length > 0),
-              );
-            const selector = JSON.stringify(fullParsed.spec?.selector || {});
-            const portSegment =
-              portValues.length > 0
-                ? `on ports ${portValues.join(", ")}`
-                : "without explicit port configuration";
-            description = `Exposes service ${data.name || "unnamed"} ${portSegment} selecting pods by ${selector}`;
-            if (data.namespace) description += ` in namespace ${data.namespace}`;
-            break;
-          }
-          case "ConfigMap": {
-            const keys = Object.keys(fullParsed.data || {}).length;
-            description = `Provides configuration for ${data.name || "unnamed"} with ${keys} key-value pairs`;
-            if (data.namespace) description += ` in namespace ${data.namespace}`;
-            break;
-          }
-          case "Secret": {
-            const secretType = fullParsed.type || "Opaque";
-            const dataKeys = Object.keys(fullParsed.data || {}).length;
-            description = `Stores ${secretType} secret ${data.name || "unnamed"} with ${dataKeys} entries`;
-            if (data.namespace) description += ` in namespace ${data.namespace}`;
-            break;
-          }
-          default:
-            description = `Kubernetes ${data.kind} named ${data.name || "unnamed"}`;
-            if (data.namespace) description += ` in namespace ${data.namespace}`;
-        }
-      }
+    return kubeEvidence.map((e) => this.buildArtifactFromEvidence(e, rootDir));
+  }
 
-      const artifact = {
+  /**
+   * Builds an InferredArtifact from a single evidence item.
+   */
+  private buildArtifactFromEvidence(e: Evidence, rootDir: string): InferredArtifact {
+    const data = e.data as KubernetesData;
+    const safeName = (data.name || `resource-${data.index}`).replace(/[^a-zA-Z0-9-]/g, "-");
+    const artifactId = `${data.kind.toLowerCase()}-${safeName}`;
+    const artifactName = data.name || `Unnamed Resource`;
+    const description = this.generateResourceDescription(data);
+
+    return {
+      artifact: {
         id: artifactId,
         type: "infrastructure" as const,
         name: artifactName,
@@ -200,22 +156,76 @@ export class KubernetesPlugin implements ImporterPlugin {
           namespace: data.namespace,
           index: data.index,
         },
-      };
+      },
+      provenance: {
+        evidence: [e.id],
+        plugins: [this.name()],
+        rules: ["kube-parsing", "resource-extraction"],
+        timestamp: Date.now(),
+        pipelineVersion: "1.0.0",
+      },
+      relationships: [],
+    };
+  }
 
-      artifacts.push({
-        artifact,
-        provenance: {
-          evidence: [e.id],
-          plugins: [this.name()],
-          rules: ["kube-parsing", "resource-extraction"],
-          timestamp: Date.now(),
-          pipelineVersion: "1.0.0",
-        },
-        relationships: [],
-      });
+  /**
+   * Generates a human-readable description for a Kubernetes resource.
+   */
+  private generateResourceDescription(data: KubernetesData): string {
+    const fullParsed = data.fullParsed;
+    const nameFragment = data.name || "unnamed";
+    const namespaceFragment = data.namespace ? ` in namespace ${data.namespace}` : "";
+
+    if (!fullParsed) {
+      return `Kubernetes ${data.kind} resource`;
     }
 
-    return artifacts;
+    const descriptionGenerators: Record<string, () => string> = {
+      Deployment: () => this.describeDeployment(fullParsed, nameFragment, namespaceFragment),
+      Service: () => this.describeService(fullParsed, nameFragment, namespaceFragment),
+      ConfigMap: () => this.describeConfigMap(fullParsed, nameFragment, namespaceFragment),
+      Secret: () => this.describeSecret(fullParsed, nameFragment, namespaceFragment),
+    };
+
+    const generator = descriptionGenerators[data.kind];
+    if (generator) {
+      return generator();
+    }
+
+    return `Kubernetes ${data.kind} named ${nameFragment}${namespaceFragment}`;
+  }
+
+  private describeDeployment(parsed: any, name: string, namespace: string): string {
+    const replicas = parsed.spec?.replicas || 1;
+    const containers = parsed.spec?.template?.spec?.containers || [];
+    const images = containers.map((c: any) => c.image).join(", ");
+    return `Deploys ${name} with ${replicas} replicas using images: ${images}${namespace}`;
+  }
+
+  private describeService(parsed: any, name: string, namespace: string): string {
+    const portValues = (parsed.spec?.ports || [])
+      .map((p: any) => p?.port)
+      .filter(
+        (port: any) =>
+          typeof port === "number" || (typeof port === "string" && port.trim().length > 0),
+      );
+    const selector = JSON.stringify(parsed.spec?.selector || {});
+    const portSegment =
+      portValues.length > 0
+        ? `on ports ${portValues.join(", ")}`
+        : "without explicit port configuration";
+    return `Exposes service ${name} ${portSegment} selecting pods by ${selector}${namespace}`;
+  }
+
+  private describeConfigMap(parsed: any, name: string, namespace: string): string {
+    const keys = Object.keys(parsed.data || {}).length;
+    return `Provides configuration for ${name} with ${keys} key-value pairs${namespace}`;
+  }
+
+  private describeSecret(parsed: any, name: string, namespace: string): string {
+    const secretType = parsed.type || "Opaque";
+    const dataKeys = Object.keys(parsed.data || {}).length;
+    return `Stores ${secretType} secret ${name} with ${dataKeys} entries${namespace}`;
   }
 
   private findRootDirectory(evidence: Evidence[], projectRoot: string): string | null {

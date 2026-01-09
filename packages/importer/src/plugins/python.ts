@@ -68,86 +68,112 @@ export class PythonPlugin implements ImporterPlugin {
     return [];
   }
 
+  /**
+   * Build inference context data for a single evidence item
+   */
+  private buildInferenceData(ev: Evidence, context: InferenceContext) {
+    const pkg = ev.data as PythonPackageData;
+    const projectRoot = context.projectRoot ?? context.fileIndex.root ?? "";
+    const pkgDir = path.dirname(ev.filePath);
+    const relativeDir = this.normalize(path.relative(projectRoot, pkgDir)) || ".";
+    const dirCtx =
+      context.directoryContexts.get(relativeDir) || context.directoryContexts.get(".") || undefined;
+
+    const dependencies = [
+      ...this.collectNormalizedDependencies(pkg.dependencies),
+      ...this.collectNormalizedDependencies(pkg.devDependencies),
+    ];
+
+    return {
+      pkg,
+      projectRoot,
+      pkgDir,
+      relativeDir,
+      dirCtx,
+      dependencies,
+      filePatterns: dirCtx?.filePatterns ?? [],
+      hasDocker: Boolean(dirCtx?.hasDockerfile || dirCtx?.hasComposeService),
+      dockerBuild: dirCtx?.dockerBuild,
+    };
+  }
+
+  /**
+   * Build metadata for the artifact
+   */
+  private buildPythonMetadata(
+    ev: Evidence,
+    data: ReturnType<typeof this.buildInferenceData>,
+    classification: { type: ArtifactType; tags: string[] },
+    framework: string | undefined,
+  ): Record<string, unknown> {
+    const metadata: Record<string, unknown> = {
+      sourceFile: data.projectRoot ? path.relative(data.projectRoot, ev.filePath) : ev.filePath,
+      root: data.relativeDir === "." ? "" : data.relativeDir,
+      manifest: data.pkg.configType,
+      language: "python",
+      classification,
+    };
+
+    if (data.hasDocker) {
+      metadata.dockerContext = data.relativeDir;
+    }
+    if (framework) {
+      metadata.framework = framework;
+    }
+    if (data.dockerBuild) {
+      metadata.buildContext = this.toRelative(data.projectRoot, data.dockerBuild.buildContext);
+      metadata.dockerfilePath = this.toRelative(data.projectRoot, data.dockerBuild.dockerfile);
+    }
+
+    return metadata;
+  }
+
+  /**
+   * Infer a single artifact from Python package evidence
+   */
+  private inferFromPythonEvidence(ev: Evidence, context: InferenceContext): InferredArtifact {
+    const data = this.buildInferenceData(ev, context);
+    const structuralSignals = this.detectStructuralSignals(data.filePatterns);
+
+    const classification = context.classifier.classify({
+      dependencies: data.dependencies,
+      filePatterns: data.filePatterns,
+      scripts: data.pkg.scripts ?? {},
+      language: "python",
+      hasDocker: data.hasDocker,
+      hasBinaryEntry: this.hasConsoleEntry(data.pkg),
+    });
+
+    const artifactType = this.applyHeuristics(classification.type, structuralSignals);
+    const framework = this.detectFramework(data.dependencies) ?? structuralSignals.framework;
+    const metadata = this.buildPythonMetadata(ev, data, classification, framework);
+    const artifactName = data.pkg.name || path.basename(data.pkgDir);
+
+    return {
+      artifact: {
+        id: artifactName,
+        type: artifactType,
+        name: artifactName,
+        description: data.pkg.description || `Python ${artifactType}`,
+        tags: Array.from(new Set<string>([...classification.tags, "python", artifactType])),
+        metadata,
+      },
+      provenance: {
+        evidence: [ev.id],
+        plugins: [this.name()],
+        rules: ["manifest-classifier"],
+        timestamp: Date.now(),
+        pipelineVersion: "1.1.0",
+      },
+      relationships: [],
+    };
+  }
+
   async infer(evidence: Evidence[], context: InferenceContext): Promise<InferredArtifact[]> {
     const pythonEvidence = evidence.filter((e) => e.source === this.name() && e.type === "config");
     if (!pythonEvidence.length) return [];
 
-    const artifacts: InferredArtifact[] = [];
-
-    for (const ev of pythonEvidence) {
-      const pkg = ev.data as PythonPackageData;
-      const projectRoot = context.projectRoot ?? context.fileIndex.root ?? "";
-      const pkgDir = path.dirname(ev.filePath);
-      const relativeDir = this.normalize(path.relative(projectRoot, pkgDir)) || ".";
-      const dirCtx =
-        context.directoryContexts.get(relativeDir) ||
-        context.directoryContexts.get(".") ||
-        undefined;
-
-      const dependencies = [
-        ...this.collectNormalizedDependencies(pkg.dependencies),
-        ...this.collectNormalizedDependencies(pkg.devDependencies),
-      ];
-
-      const filePatterns = dirCtx?.filePatterns ?? [];
-      const hasDocker = Boolean(dirCtx?.hasDockerfile || dirCtx?.hasComposeService);
-      const structuralSignals = this.detectStructuralSignals(filePatterns);
-      const dockerBuild = dirCtx?.dockerBuild;
-
-      const classification = context.classifier.classify({
-        dependencies,
-        filePatterns,
-        scripts: pkg.scripts ?? {},
-        language: "python",
-        hasDocker,
-        hasBinaryEntry: this.hasConsoleEntry(pkg),
-      });
-
-      let artifactType = this.applyHeuristics(classification.type, structuralSignals);
-      const framework = this.detectFramework(dependencies) ?? structuralSignals.framework;
-
-      const metadata: Record<string, unknown> = {
-        sourceFile: projectRoot ? path.relative(projectRoot, ev.filePath) : ev.filePath,
-        root: relativeDir === "." ? "" : relativeDir,
-        manifest: pkg.configType,
-        language: "python",
-        classification,
-      };
-
-      if (hasDocker) {
-        metadata.dockerContext = relativeDir;
-      }
-      if (framework) {
-        metadata.framework = framework;
-      }
-      if (dockerBuild) {
-        metadata.buildContext = this.toRelative(projectRoot, dockerBuild.buildContext);
-        metadata.dockerfilePath = this.toRelative(projectRoot, dockerBuild.dockerfile);
-      }
-
-      const artifactName = pkg.name || path.basename(pkgDir);
-
-      artifacts.push({
-        artifact: {
-          id: artifactName,
-          type: artifactType,
-          name: artifactName,
-          description: pkg.description || `Python ${artifactType}`,
-          tags: Array.from(new Set<string>([...classification.tags, "python", artifactType])),
-          metadata,
-        },
-        provenance: {
-          evidence: [ev.id],
-          plugins: [this.name()],
-          rules: ["manifest-classifier"],
-          timestamp: Date.now(),
-          pipelineVersion: "1.1.0",
-        },
-        relationships: [],
-      });
-    }
-
-    return artifacts;
+    return pythonEvidence.map((ev) => this.inferFromPythonEvidence(ev, context));
   }
 
   // ---------- Parsing helpers ----------
@@ -158,7 +184,9 @@ export class PythonPlugin implements ImporterPlugin {
     const description = this.extractPythonStringField(content, "description");
     const dependencies = this.extractPythonListField(content, "install_requires");
     const extraRequires = this.extractPythonDictField(content, "extras_require");
-    const devDependencies = Object.values(extraRequires).flat();
+    const devDependencies = Object.values(extraRequires)
+      .flat()
+      .filter((dep): dep is string => typeof dep === "string");
     const entryPoints = this.extractPythonDictField(content, "entry_points");
     const scripts = this.convertToScripts(entryPoints as any, []);
 
@@ -327,11 +355,15 @@ export class PythonPlugin implements ImporterPlugin {
 
   private hasConsoleEntry(pkg: PythonPackageData): boolean {
     const entryPoints = pkg.entryPoints || {};
-    const scripts =
-      typeof entryPoints === "object" && entryPoints
-        ? (entryPoints as Record<string, Record<string, string>>).console_scripts
-        : undefined;
-    return Boolean(scripts && Object.keys(scripts).length > 0);
+    const consoleScripts = (entryPoints as any)?.console_scripts;
+    if (!consoleScripts) return false;
+    if (Array.isArray(consoleScripts)) {
+      return consoleScripts.length > 0;
+    }
+    if (typeof consoleScripts === "object") {
+      return Object.keys(consoleScripts as Record<string, unknown>).length > 0;
+    }
+    return false;
   }
 
   private applyHeuristics(

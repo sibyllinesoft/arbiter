@@ -1,4 +1,3 @@
-\
     package schema
 
     #DefaultCompletion: #CompletionProfile & {

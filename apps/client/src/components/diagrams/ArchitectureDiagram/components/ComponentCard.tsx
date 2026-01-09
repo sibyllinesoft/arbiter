@@ -2,7 +2,7 @@ import {
   ArtifactCard,
   type ArtifactCardMetaRow,
   type ArtifactCardProps,
-} from "@/components/ArtifactCard";
+} from "@/components/core/ArtifactCard";
 import {
   BookOpenCheck,
   Clock4,
@@ -17,6 +17,7 @@ import {
   Target,
   Users,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import React, { useMemo } from "react";
 
 export type ComponentCardProps = ArtifactCardProps;
@@ -36,9 +37,7 @@ const friendlyCase = (value: string): string =>
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
 const safeText = (value: unknown): string | undefined => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
+  if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 };
@@ -49,110 +48,144 @@ const countLabel = (count: number, noun: string): string =>
 const asRecord = (value: unknown): ComponentMetadata | undefined =>
   value && typeof value === "object" ? (value as ComponentMetadata) : undefined;
 
+const getArrayLength = (value: unknown): number => (Array.isArray(value) ? value.length : 0);
+
+/** Create a meta row with icon */
+const createRow = (key: string, Icon: LucideIcon, content: string): ArtifactCardMetaRow => ({
+  key,
+  icon: <Icon className="w-3.5 h-3.5" />,
+  content,
+});
+
+/** Add a simple text row if value exists */
+const addTextRow = (
+  rows: ArtifactCardMetaRow[],
+  key: string,
+  Icon: LucideIcon,
+  value: string | undefined,
+  transform: (v: string) => string = friendlyCase,
+): void => {
+  if (value) rows.push(createRow(key, Icon, transform(value)));
+};
+
+/** Add a count row if count > 0 */
+const addCountRow = (
+  rows: ArtifactCardMetaRow[],
+  key: string,
+  Icon: LucideIcon,
+  arr: unknown,
+  noun: string,
+): void => {
+  const count = getArrayLength(arr);
+  if (count > 0) rows.push(createRow(key, Icon, countLabel(count, noun)));
+};
+
+/** Build module type-specific rows */
+const buildModuleTypeRows = (
+  rows: ArtifactCardMetaRow[],
+  moduleType: string,
+  metadata: ComponentMetadata,
+): void => {
+  switch (moduleType) {
+    case "capability":
+      addTextRow(rows, "capabilityKind", Shield, safeText(metadata["kind"]));
+      break;
+    case "flow":
+      addCountRow(rows, "flowSteps", ListChecks, metadata["steps"], "step");
+      break;
+    case "data-schema": {
+      const schema = asRecord(metadata["schema"]);
+      const tables = getArrayLength(schema?.["tables"]);
+      const engine = safeText(schema?.["engine"]);
+      const content = [
+        engine ? friendlyCase(engine) : "Schema",
+        tables > 0 ? `• ${countLabel(tables, "table")}` : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      rows.push(createRow("schemaEngine", Database, content));
+      break;
+    }
+    case "documentation": {
+      const api = asRecord(metadata["api"]);
+      const format = safeText(api?.["format"]);
+      const version = safeText(api?.["version"]);
+      const content = [
+        format ? friendlyCase(format) : "Documentation",
+        version ? `v${version}` : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      rows.push(createRow("apiDocs", BookOpenCheck, content));
+      break;
+    }
+    case "runbook": {
+      const runbook = asRecord(metadata["runbook"]);
+      rows.push(createRow("runbookPath", FileText, safeText(runbook?.["path"]) ?? "Runbook"));
+      break;
+    }
+    case "performance": {
+      const config = asRecord(metadata["config"]);
+      const sla = asRecord(config?.["sla"]);
+      const uptime = safeText(sla?.["uptime"]);
+      if (uptime) rows.push(createRow("performanceSla", Target, `SLA ${uptime}`));
+      break;
+    }
+  }
+};
+
 const buildModuleMetaRows = (data: DiagramComponentData): ArtifactCardMetaRow[] => {
   const metadata: ComponentMetadata = data.metadata ?? {};
   const rows: ArtifactCardMetaRow[] = [];
   const moduleType = safeText(metadata["moduleType"]) || safeText(metadata["kind"]);
-  const owner = safeText(metadata["owner"]);
 
-  if (moduleType) {
-    rows.push({
-      key: "moduleType",
-      icon: <Layers className="w-3.5 h-3.5" />,
-      content: friendlyCase(moduleType),
-    });
-  }
+  addTextRow(rows, "moduleType", Layers, moduleType);
+  addTextRow(rows, "moduleOwner", Users, safeText(metadata["owner"]), (v) => v);
 
-  if (owner) {
-    rows.push({
-      key: "moduleOwner",
-      icon: <Users className="w-3.5 h-3.5" />,
-      content: owner,
-    });
-  }
-
-  if (moduleType === "capability") {
-    const capabilityKind = safeText(metadata["kind"]);
-    if (capabilityKind) {
-      rows.push({
-        key: "capabilityKind",
-        icon: <Shield className="w-3.5 h-3.5" />,
-        content: friendlyCase(capabilityKind),
-      });
-    }
-  }
-
-  if (moduleType === "flow" && Array.isArray(metadata["steps"])) {
-    rows.push({
-      key: "flowSteps",
-      icon: <ListChecks className="w-3.5 h-3.5" />,
-      content: countLabel((metadata["steps"] as unknown[]).length, "step"),
-    });
-  }
-
-  if (moduleType === "data-schema") {
-    const schema = asRecord(metadata["schema"]);
-    const tables = Array.isArray(schema?.["tables"])
-      ? (schema?.["tables"] as unknown[]).length
-      : null;
-    const engine = safeText(schema?.["engine"]);
-    rows.push({
-      key: "schemaEngine",
-      icon: <Database className="w-3.5 h-3.5" />,
-      content: [
-        engine ? friendlyCase(engine) : "Schema",
-        tables ? `• ${countLabel(tables, "table")}` : null,
-      ]
-        .filter(Boolean)
-        .join(" "),
-    });
-  }
-
-  if (moduleType === "documentation") {
-    const api = asRecord(metadata["api"]);
-    const format = safeText(api?.["format"]);
-    const version = safeText(api?.["version"]);
-    rows.push({
-      key: "apiDocs",
-      icon: <BookOpenCheck className="w-3.5 h-3.5" />,
-      content: [format ? friendlyCase(format) : "Documentation", version ? `v${version}` : null]
-        .filter(Boolean)
-        .join(" "),
-    });
-  }
-
-  if (moduleType === "runbook") {
-    const runbook = asRecord(metadata["runbook"]);
-    const path = safeText(runbook?.["path"]);
-    rows.push({
-      key: "runbookPath",
-      icon: <FileText className="w-3.5 h-3.5" />,
-      content: path ?? "Runbook",
-    });
-  }
-
-  if (moduleType === "performance") {
-    const config = asRecord(metadata["config"]);
-    const sla = asRecord(config?.["sla"]);
-    const uptime = safeText(sla?.["uptime"]);
-    if (uptime) {
-      rows.push({
-        key: "performanceSla",
-        icon: <Target className="w-3.5 h-3.5" />,
-        content: `SLA ${uptime}`,
-      });
-    }
-  }
-
-  if (Array.isArray(metadata["deliverables"])) {
-    rows.push({
-      key: "moduleDeliverables",
-      icon: <ListChecks className="w-3.5 h-3.5" />,
-      content: countLabel((metadata["deliverables"] as unknown[]).length, "deliverable"),
-    });
-  }
+  if (moduleType) buildModuleTypeRows(rows, moduleType, metadata);
+  addCountRow(rows, "moduleDeliverables", ListChecks, metadata["deliverables"], "deliverable");
 
   return rows;
+};
+
+/** Add environment category rows */
+const addEnvironmentRows = (rows: ArtifactCardMetaRow[], metadata: ComponentMetadata): void => {
+  const environment = asRecord(metadata["environment"]);
+  addTextRow(rows, "environmentDomain", Globe, safeText(environment?.["domain"]), (v) => v);
+  addTextRow(rows, "environmentGate", Shield, safeText(environment?.["releaseGate"]));
+  addCountRow(rows, "environmentSecrets", FileText, environment?.["secrets"], "secret");
+};
+
+/** Add observability category rows */
+const addObservabilityRows = (rows: ArtifactCardMetaRow[], metadata: ComponentMetadata): void => {
+  const config = asRecord(metadata["config"]);
+  const logging = asRecord(config?.["logging"]);
+  const monitoring = asRecord(config?.["monitoring"]);
+  const loggingLevel = safeText(logging?.["level"]);
+  const metricsProvider = safeText(monitoring?.["metricsProvider"]);
+
+  if (loggingLevel)
+    rows.push(createRow("observabilityLogging", Shield, `Logs ${friendlyCase(loggingLevel)}`));
+  addTextRow(rows, "observabilityMetrics", Target, metricsProvider);
+  addCountRow(rows, "observabilityAlerts", Clock4, monitoring?.["alerts"], "alert");
+};
+
+/** Add database migration category rows */
+const addMigrationRows = (rows: ArtifactCardMetaRow[], metadata: ComponentMetadata): void => {
+  const config = asRecord(metadata["config"]);
+  addTextRow(rows, "migrationTool", Database, safeText(config?.["tool"]));
+  addTextRow(rows, "migrationStrategy", Layers, safeText(config?.["strategy"]));
+  addTextRow(rows, "migrationSchedule", Clock4, safeText(config?.["schedule"]));
+};
+
+/** Infrastructure category handlers */
+const INFRA_CATEGORY_HANDLERS: Record<
+  string,
+  (rows: ArtifactCardMetaRow[], metadata: ComponentMetadata) => void
+> = {
+  environment: addEnvironmentRows,
+  observability: addObservabilityRows,
+  "database-migration": addMigrationRows,
 };
 
 const buildInfrastructureMetaRows = (data: DiagramComponentData): ArtifactCardMetaRow[] => {
@@ -160,132 +193,29 @@ const buildInfrastructureMetaRows = (data: DiagramComponentData): ArtifactCardMe
   const rows: ArtifactCardMetaRow[] = [];
   const category = safeText(metadata["category"]);
 
-  if (category) {
-    rows.push({
-      key: "infraCategory",
-      icon: <Network className="w-3.5 h-3.5" />,
-      content: friendlyCase(category),
-    });
-  }
-
+  addTextRow(rows, "infraCategory", Network, category);
   if (metadata["scope"]) {
-    rows.push({
-      key: "infraScope",
-      icon: <Map className="w-3.5 h-3.5" />,
-      content: friendlyCase(String(metadata["scope"])),
-    });
+    rows.push(createRow("infraScope", Map, friendlyCase(String(metadata["scope"]))));
   }
 
-  if (category === "environment") {
-    const environment = asRecord(metadata["environment"]);
-    const domain = safeText(environment?.["domain"]);
-    if (domain) {
-      rows.push({
-        key: "environmentDomain",
-        icon: <Globe className="w-3.5 h-3.5" />,
-        content: domain,
-      });
-    }
-
-    const releaseGate = safeText(environment?.["releaseGate"]);
-    if (releaseGate) {
-      rows.push({
-        key: "environmentGate",
-        icon: <Shield className="w-3.5 h-3.5" />,
-        content: friendlyCase(releaseGate),
-      });
-    }
-
-    const secrets = Array.isArray(environment?.["secrets"])
-      ? (environment?.["secrets"] as unknown[]).length
-      : 0;
-    if (secrets > 0) {
-      rows.push({
-        key: "environmentSecrets",
-        icon: <FileText className="w-3.5 h-3.5" />,
-        content: countLabel(secrets, "secret"),
-      });
-    }
-  }
-
-  if (category === "observability") {
-    const config = asRecord(metadata["config"]);
-    const logging = asRecord(config?.["logging"]);
-    const monitoring = asRecord(config?.["monitoring"]);
-    const loggingLevel = safeText(logging?.["level"]);
-    const metricsProvider = safeText(monitoring?.["metricsProvider"]);
-
-    if (loggingLevel) {
-      rows.push({
-        key: "observabilityLogging",
-        icon: <Shield className="w-3.5 h-3.5" />,
-        content: `Logs ${friendlyCase(loggingLevel)}`,
-      });
-    }
-
-    if (metricsProvider) {
-      rows.push({
-        key: "observabilityMetrics",
-        icon: <Target className="w-3.5 h-3.5" />,
-        content: friendlyCase(metricsProvider),
-      });
-    }
-
-    const alertCount = Array.isArray(monitoring?.["alerts"])
-      ? (monitoring?.["alerts"] as unknown[]).length
-      : 0;
-    if (alertCount > 0) {
-      rows.push({
-        key: "observabilityAlerts",
-        icon: <Clock4 className="w-3.5 h-3.5" />,
-        content: countLabel(alertCount, "alert"),
-      });
-    }
-  }
-
-  if (category === "database-migration") {
-    const config = asRecord(metadata["config"]);
-    const tool = safeText(config?.["tool"]);
-    const strategy = safeText(config?.["strategy"]);
-    const schedule = safeText(config?.["schedule"]);
-
-    if (tool) {
-      rows.push({
-        key: "migrationTool",
-        icon: <Database className="w-3.5 h-3.5" />,
-        content: friendlyCase(tool),
-      });
-    }
-
-    if (strategy) {
-      rows.push({
-        key: "migrationStrategy",
-        icon: <Layers className="w-3.5 h-3.5" />,
-        content: friendlyCase(strategy),
-      });
-    }
-
-    if (schedule) {
-      rows.push({
-        key: "migrationSchedule",
-        icon: <Clock4 className="w-3.5 h-3.5" />,
-        content: friendlyCase(schedule),
-      });
-    }
+  if (category) {
+    const handler = INFRA_CATEGORY_HANDLERS[category];
+    if (handler) handler(rows, metadata);
   }
 
   return rows;
 };
 
+/** Type-to-builder lookup */
+const TYPE_BUILDERS: Record<string, (data: DiagramComponentData) => ArtifactCardMetaRow[]> = {
+  package: buildModuleMetaRows,
+  infrastructure: buildInfrastructureMetaRows,
+};
+
 const deriveMetaRows = (data: DiagramComponentData): ArtifactCardMetaRow[] => {
   const type = safeText(data?.type)?.toLowerCase();
-  if (type === "package") {
-    return buildModuleMetaRows(data);
-  }
-  if (type === "infrastructure") {
-    return buildInfrastructureMetaRows(data);
-  }
-  return [];
+  const builder = type ? TYPE_BUILDERS[type] : undefined;
+  return builder ? builder(data) : [];
 };
 
 export const ComponentCard: React.FC<ComponentCardProps> = ({ metaRows, data, ...rest }) => {

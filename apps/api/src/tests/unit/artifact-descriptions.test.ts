@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { SpecWorkbenchDB } from "../../db.ts";
-import type { ServerConfig } from "../../types.ts";
-import { generateId } from "../../utils.ts";
+import { generateId } from "../../io/utils";
+import { SpecWorkbenchDB } from "../../util/db";
+import type { ServerConfig } from "../../util/types";
 
 describe("Artifact description persistence", () => {
   let db: SpecWorkbenchDB;
@@ -15,11 +15,6 @@ describe("Artifact description persistence", () => {
       spec_workdir: `/tmp/artifact-description-test-${Date.now()}`,
       jq_binary_path: "jq",
       auth_required: false,
-      rate_limit: {
-        max_tokens: 10,
-        refill_rate: 1,
-        window_ms: 1000,
-      },
       external_tool_timeout_ms: 5000,
       websocket: {
         max_connections: 10,

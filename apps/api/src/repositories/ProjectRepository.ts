@@ -1,7 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import type { SpecWorkbenchDrizzle } from "../db/client";
 import { type ProjectRow, projects } from "../db/schema";
-import { getCurrentTimestamp } from "../utils";
+import { getCurrentTimestamp } from "../io/utils";
 import { getRowsAffected, mapProjectRow } from "./helpers";
 import type { DbProject } from "./types";
 

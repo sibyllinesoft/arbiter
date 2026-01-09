@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 
-import { DEFAULT_PROJECT_STRUCTURE } from "@/config.js";
+import { DEFAULT_PROJECT_STRUCTURE } from "@/io/config/config.js";
 import { importSpec } from "@/services/spec-import/index.js";
 import { determineRemotePath } from "@/services/spec-import/index.js";
 import type { CLIConfig } from "@/types.js";
@@ -100,12 +100,21 @@ describe("importSpec", () => {
     const remoteRelative = determineRemotePath("/root", "/root/.arbiter/assembly.cue");
     expect(remoteRelative).toBe(".arbiter/assembly.cue".replace(/^\.\/+/, ""));
 
+    // Override is used as-is (only normalizes backslashes and strips leading ./)
     const remoteOverride = determineRemotePath(
       "/root",
       "/elsewhere/spec.cue",
-      "@/services/spec-import/__tests__/foo/bar.cue",
+      "custom/path/spec.cue",
     );
-    expect(remoteOverride).toBe("foo/bar.cue");
+    expect(remoteOverride).toBe("custom/path/spec.cue");
+
+    // Leading ./ is stripped from override
+    const remoteOverrideWithDot = determineRemotePath(
+      "/root",
+      "/elsewhere/spec.cue",
+      "./foo/bar.cue",
+    );
+    expect(remoteOverrideWithDot).toBe("foo/bar.cue");
 
     const remoteFallback = determineRemotePath("/root", "/other/spec.cue");
     expect(remoteFallback).toBe("spec.cue");

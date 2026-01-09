@@ -3,7 +3,10 @@ import * as os from "os";
 import * as path from "path";
 import * as fs from "fs-extra";
 import { DockerPlugin } from "../plugins/docker";
+import { GoPlugin } from "../plugins/go";
 import { NodeJSPlugin } from "../plugins/nodejs";
+import { PythonPlugin } from "../plugins/python";
+import { RustPlugin } from "../plugins/rust";
 import { ScannerRunner } from "../scanner";
 
 describe("dockerfile naming and consolidation", () => {
@@ -29,6 +32,7 @@ describe("dockerfile naming and consolidation", () => {
           name: "@myorg/mattermost-proxy",
           version: "1.0.0",
           description: "Mattermost steering proxy service",
+          main: "dist/index.js",
           scripts: {
             start: "node server.js",
           },
@@ -71,17 +75,10 @@ CMD ["node", "server.js"]
     // Should have metadata from both sources
     const metadata = service.artifact.metadata as Record<string, unknown>;
     expect(metadata.language).toBe("javascript");
-    expect(metadata.dockerfileContent).toBeDefined();
-    expect(typeof metadata.dockerfileContent).toBe("string");
-
-    // Should have both plugins in provenance
+    // Should only include package-based plugin in provenance
     const plugins = service.provenance?.plugins || [];
     expect(plugins).toContain("nodejs");
-    expect(plugins).toContain("docker");
-
-    // Should have consolidation rule
-    const rules = service.provenance?.rules || [];
-    expect(rules).toContain("service-consolidation");
+    expect(plugins).not.toContain("docker");
   });
 
   it("names service from go.mod when Dockerfile is present", async () => {
@@ -116,20 +113,20 @@ CMD ["./main"]
 
     const scanner = new ScannerRunner({
       projectRoot: projectDir,
-      plugins: [new DockerPlugin()],
+      plugins: [new DockerPlugin(), new GoPlugin()],
     });
 
     const manifest = await scanner.scan();
 
     // Find the docker service artifact
-    const dockerServices = manifest.artifacts.filter(
-      (a) => a.artifact.type === "service" && a.provenance?.plugins?.includes("docker"),
-    );
-    expect(dockerServices.length).toBeGreaterThan(0);
+    const services = manifest.artifacts.filter((a) => a.artifact.type === "service");
+    expect(services.length).toBe(1);
 
-    const service = dockerServices[0];
+    const service = services[0];
     // Should extract name from go.mod
     expect(service.artifact.name).toBe("go-service");
+    expect(service.provenance?.plugins).toContain("go");
+    expect(service.provenance?.plugins).not.toContain("docker");
   });
 
   it("names service from Cargo.toml when Dockerfile is present", async () => {
@@ -164,19 +161,19 @@ CMD ["./target/release/rust-api"]
 
     const scanner = new ScannerRunner({
       projectRoot: projectDir,
-      plugins: [new DockerPlugin()],
+      plugins: [new DockerPlugin(), new RustPlugin()],
     });
 
     const manifest = await scanner.scan();
 
-    const dockerServices = manifest.artifacts.filter(
-      (a) => a.artifact.type === "service" && a.provenance?.plugins?.includes("docker"),
-    );
-    expect(dockerServices.length).toBeGreaterThan(0);
+    const services = manifest.artifacts.filter((a) => a.artifact.type === "service");
+    expect(services.length).toBe(1);
 
-    const service = dockerServices[0];
+    const service = services[0];
     // Should extract name from Cargo.toml
     expect(service.artifact.name).toBe("rust-api");
+    expect(service.provenance?.plugins).toContain("rust");
+    expect(service.provenance?.plugins).not.toContain("docker");
   });
 
   it("names service from pyproject.toml when Dockerfile is present", async () => {
@@ -208,32 +205,34 @@ CMD ["python", "main.py"]
 
     const scanner = new ScannerRunner({
       projectRoot: projectDir,
-      plugins: [new DockerPlugin()],
+      plugins: [new DockerPlugin(), new PythonPlugin()],
     });
 
     const manifest = await scanner.scan();
 
-    const dockerServices = manifest.artifacts.filter(
-      (a) => a.artifact.type === "service" && a.provenance?.plugins?.includes("docker"),
-    );
-    expect(dockerServices.length).toBeGreaterThan(0);
+    const services = manifest.artifacts.filter((a) => a.artifact.type === "service");
+    expect(services.length).toBe(1);
 
-    const service = dockerServices[0];
+    const service = services[0];
     // Should extract name from pyproject.toml
     expect(service.artifact.name).toBe("python-service");
+    expect(service.provenance?.plugins).toContain("python");
+    expect(service.provenance?.plugins).not.toContain("docker");
   });
 
   it("falls back to directory name when no package file exists", async () => {
     const projectDir = path.join(tempDir, "project-no-package");
     await fs.ensureDir(projectDir);
 
-    // Create only Dockerfile, no package files
-    await fs.writeFile(
-      path.join(projectDir, "Dockerfile"),
-      `FROM nginx:alpine
-COPY index.html /usr/share/nginx/html/
-`,
-    );
+    // Compose service with only image (no package files or dockerfile build)
+    const compose = `version: '3.9'
+services:
+  nginx-proxy:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+`;
+    await fs.writeFile(path.join(projectDir, "docker-compose.yml"), compose);
 
     const scanner = new ScannerRunner({
       projectRoot: projectDir,
@@ -242,14 +241,56 @@ COPY index.html /usr/share/nginx/html/
 
     const manifest = await scanner.scan();
 
-    const dockerServices = manifest.artifacts.filter(
-      (a) => a.artifact.type === "service" && a.provenance?.plugins?.includes("docker"),
-    );
-    expect(dockerServices.length).toBeGreaterThan(0);
+    const services = manifest.artifacts.filter((a) => a.artifact.type === "service");
+    expect(services.length).toBe(1);
 
-    const service = dockerServices[0];
-    // Should fall back to directory name
-    expect(service.artifact.name).toBe("project-no-package");
+    const service = services[0];
+    expect(service.artifact.name).toBe("nginx-proxy");
+    expect(service.artifact.tags).toContain("external");
+    const metadata = service.artifact.metadata as Record<string, unknown>;
+    expect(metadata.external).toBe(true);
+    expect(metadata.composeOnly).toBe(true);
+    expect(metadata.docker).toBeDefined();
+  });
+
+  it("does not emit compose external when package exists without main", async () => {
+    const projectDir = path.join(tempDir, "project-compose-package-no-main");
+    await fs.ensureDir(projectDir);
+
+    await fs.writeFile(
+      path.join(projectDir, "package.json"),
+      JSON.stringify(
+        {
+          name: "api-types",
+          version: "0.1.0",
+          dependencies: { express: "^4.18.2" },
+        },
+        null,
+        2,
+      ),
+    );
+
+    const compose = `version: '3.9'
+services:
+  api-types:
+    image: node:20-alpine
+    command: ["node", "index.js"]
+`;
+    await fs.writeFile(path.join(projectDir, "docker-compose.yml"), compose);
+
+    const scanner = new ScannerRunner({
+      projectRoot: projectDir,
+      plugins: [new DockerPlugin(), new NodeJSPlugin()],
+    });
+
+    const manifest = await scanner.scan();
+
+    const services = manifest.artifacts.filter((a) => a.artifact.type === "service");
+    expect(services.length).toBe(0);
+
+    const packages = manifest.artifacts.filter((a) => a.artifact.type === "package");
+    expect(packages.length).toBe(1);
+    expect(packages[0].artifact.name).toBe("api-types");
   });
 
   it("handles scoped npm package names correctly", async () => {
@@ -262,6 +303,9 @@ COPY index.html /usr/share/nginx/html/
         {
           name: "@mycompany/super-service",
           version: "1.0.0",
+          main: "dist/index.js",
+          scripts: { start: "node dist/index.js" },
+          dependencies: { express: "^4.18.2" },
         },
         null,
         2,
@@ -277,7 +321,7 @@ CMD ["node", "index.js"]
 
     const scanner = new ScannerRunner({
       projectRoot: projectDir,
-      plugins: [new DockerPlugin(), new NodeJSPlugin()],
+      plugins: [new NodeJSPlugin()],
     });
 
     const manifest = await scanner.scan();
@@ -288,5 +332,50 @@ CMD ["node", "index.js"]
     const service = serviceArtifacts[0];
     // Should strip @mycompany/ prefix
     expect(service.artifact.name).toBe("super-service");
+    expect(service.provenance?.plugins).toContain("nodejs");
+    expect(service.provenance?.plugins).not.toContain("docker");
+  });
+
+  it("skips compose-only external when a package service with main exists", async () => {
+    const projectDir = path.join(tempDir, "project-compose-and-package");
+    await fs.ensureDir(projectDir);
+
+    await fs.writeFile(
+      path.join(projectDir, "package.json"),
+      JSON.stringify(
+        {
+          name: "compose-app",
+          version: "1.0.0",
+          main: "dist/index.js",
+          scripts: { start: "node dist/index.js" },
+          dependencies: { express: "^4.18.2" },
+        },
+        null,
+        2,
+      ),
+    );
+
+    const compose = `version: '3.9'
+services:
+  compose-app:
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+`;
+    await fs.writeFile(path.join(projectDir, "docker-compose.yml"), compose);
+
+    const scanner = new ScannerRunner({
+      projectRoot: projectDir,
+      plugins: [new DockerPlugin(), new NodeJSPlugin()],
+    });
+
+    const manifest = await scanner.scan();
+
+    const services = manifest.artifacts.filter((a) => a.artifact.type === "service");
+    expect(services.length).toBe(1);
+    expect(services[0].artifact.name).toBe("compose-app");
+    expect(services[0].provenance?.plugins).toContain("nodejs");
+    expect(services[0].provenance?.plugins).not.toContain("docker");
   });
 });

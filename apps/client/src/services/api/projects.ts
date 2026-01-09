@@ -1,6 +1,12 @@
+/**
+ * @module ProjectService
+ * API service for project and event operations.
+ * Handles project CRUD, event management, and event revision history.
+ */
 import type { Event, Project } from "@/types/api";
 import { ApiClient } from "./client";
 
+/** Response from fetching project events */
 export interface ProjectEventsResponse {
   success: boolean;
   events: Event[];
@@ -25,7 +31,11 @@ export interface RevertEventsResponse {
 }
 
 export class ProjectService {
-  constructor(private readonly client: ApiClient) {}
+  private readonly client: ApiClient;
+
+  constructor(client: ApiClient) {
+    this.client = client;
+  }
 
   async getProjects(): Promise<Project[]> {
     const response = await this.client.request<{ projects: Project[] }>("/api/projects");
@@ -159,20 +169,20 @@ export class ProjectService {
     });
   }
 
+  /** Normalize a single entity value */
+  private normalizeValue(value: unknown): unknown {
+    if (Array.isArray(value) || (value && typeof value === "object")) {
+      return value;
+    }
+    if (typeof value === "number" || typeof value === "boolean") {
+      return value;
+    }
+    return typeof value === "string" ? value : String(value ?? "");
+  }
+
   private normalizeEntityValues(values: Record<string, unknown>): Record<string, unknown> {
     return Object.fromEntries(
-      Object.entries(values).map(([key, value]) => {
-        if (Array.isArray(value)) {
-          return [key, value];
-        }
-        if (value && typeof value === "object") {
-          return [key, value];
-        }
-        if (typeof value === "number" || typeof value === "boolean") {
-          return [key, value];
-        }
-        return [key, typeof value === "string" ? value : String(value ?? "")];
-      }),
+      Object.entries(values).map(([key, value]) => [key, this.normalizeValue(value)]),
     );
   }
 }

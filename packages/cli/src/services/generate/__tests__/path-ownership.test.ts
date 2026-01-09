@@ -7,7 +7,7 @@ import {
   determinePathOwnership,
   isTypeScriptServiceLanguage,
   pathBelongsToService,
-} from "@/services/generate/index.js";
+} from "@/services/generate/io/index.js";
 
 describe("generate helpers - path ownership and proxies", () => {
   it("detects TypeScript friendly service languages", () => {
@@ -64,7 +64,7 @@ describe("generate helpers - path ownership and proxies", () => {
           "/billing/pay": {},
         },
       },
-      flows: [
+      behaviors: [
         {
           id: "checkout-flow",
           steps: [

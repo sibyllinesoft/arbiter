@@ -1,3 +1,4 @@
+/** @packageDocumentation CLI command tests */
 import { afterEach, describe, expect, it, spyOn } from "bun:test";
 
 describe("cli entry index", () => {

@@ -11,4 +11,5 @@ export interface AddEntityModalProps {
   titleOverride?: string | undefined;
   descriptionOverride?: string | undefined;
   mode?: "create" | "edit";
+  loading?: boolean;
 }

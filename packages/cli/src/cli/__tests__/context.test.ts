@@ -1,8 +1,13 @@
-import { describe, expect, it } from "bun:test";
-import { requireCommandConfig } from "@/cli/context";
+/** @packageDocumentation CLI command tests */
+import { beforeEach, describe, expect, it } from "bun:test";
+import { __contextTesting, requireCommandConfig } from "@/cli/context";
 import { Command } from "commander";
 
 describe("cli context helpers", () => {
+  beforeEach(() => {
+    __contextTesting.setActiveConfig(null);
+  });
+
   it("walks up command tree to find config", () => {
     const root = new Command("root");
     (root as any).config = { apiUrl: "http://localhost:4000" };

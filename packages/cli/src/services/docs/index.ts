@@ -1,10 +1,29 @@
 #!/usr/bin/env node
+/**
+ * @packageDocumentation
+ * Docs command - Generate documentation from CUE specifications.
+ *
+ * Provides functionality to:
+ * - Generate Markdown, HTML, or JSON documentation
+ * - Extract schema and field documentation
+ * - Support custom templates for output
+ * - Include usage examples in generated docs
+ */
 
 import fs from "node:fs/promises";
 import path from "node:path";
 import { safeFileOperation } from "@/constraints/index.js";
 import type { CLIConfig } from "@/types.js";
 import chalk from "chalk";
+import {
+  CLI_EXAMPLE_TEMPLATE,
+  type FieldDoc,
+  LIBRARY_EXAMPLE_TEMPLATE,
+  type SchemaDoc,
+  generateCssStyles,
+  generateHtmlDocs,
+  generateMarkdownDocs,
+} from "./templates.js";
 
 /**
  * Options for docs command
@@ -16,27 +35,6 @@ export interface DocsOptions {
   template?: string;
   interactive?: boolean;
   examples?: boolean;
-}
-
-/**
- * CUE Schema Documentation Structure
- */
-interface SchemaDoc {
-  name: string;
-  description: string;
-  fields: FieldDoc[];
-  examples: string[];
-  constraints: string[];
-  imports: string[];
-}
-
-interface FieldDoc {
-  name: string;
-  type: string;
-  description: string;
-  required: boolean;
-  default?: string;
-  constraints: string[];
 }
 
 /**
@@ -103,6 +101,59 @@ export async function docsGenerateCommand(options: any, _config: CLIConfig): Pro
 }
 
 /**
+ * Check for assembly file existence
+ */
+async function checkAssemblyFile(assemblyPath: string): Promise<boolean> {
+  try {
+    await fs.access(assemblyPath);
+    console.log(chalk.green("✅ Found arbiter.assembly.cue"));
+    return true;
+  } catch {
+    console.log(chalk.red("❌ No arbiter.assembly.cue found in current directory"));
+    console.log(chalk.dim("Run: arbiter init --preset <id> to create one"));
+    return false;
+  }
+}
+
+/**
+ * Resolve output path based on options
+ */
+function resolveDocOutputPath(options: DocsOptions): string {
+  const format = options.format || "markdown";
+  const outputDir = options.outputDir || ".";
+  const filename =
+    options.output ||
+    `schema-docs.${format === "json" ? "json" : format === "html" ? "html" : "md"}`;
+  return path.isAbsolute(filename) ? filename : path.join(outputDir, filename);
+}
+
+/**
+ * Render documentation content based on format
+ */
+function renderDocumentationContent(schemaInfo: SchemaDoc, format: string): string {
+  switch (format) {
+    case "markdown":
+      return generateMarkdownDocs(schemaInfo);
+    case "html":
+      return generateHtmlDocs(schemaInfo);
+    case "json":
+      return JSON.stringify(schemaInfo, null, 2);
+    default:
+      throw new Error(`Unsupported format: ${format}`);
+  }
+}
+
+/**
+ * Display next steps after documentation generation
+ */
+function showDocGenerationNextSteps(outputPath: string): void {
+  console.log(chalk.blue("\n🎯 Next steps:"));
+  console.log(chalk.dim(`  📖 View documentation: ${outputPath}`));
+  console.log(chalk.dim("  🔄 Regenerate automatically: arbiter watch --docs"));
+  console.log(chalk.dim("  🌐 Serve docs: arbiter docs serve (coming soon)"));
+}
+
+/**
  * Generate schema documentation from arbiter.assembly.cue
  */
 async function generateSchemaDocumentation(
@@ -111,72 +162,34 @@ async function generateSchemaDocumentation(
 ): Promise<number> {
   console.log(chalk.blue("📚 Generating schema documentation from CUE definitions..."));
 
-  // Check for assembly file
   const assemblyPath = path.resolve("arbiter.assembly.cue");
-
-  try {
-    await fs.access(assemblyPath);
-    console.log(chalk.green("✅ Found arbiter.assembly.cue"));
-  } catch {
-    console.log(chalk.red("❌ No arbiter.assembly.cue found in current directory"));
-    console.log(chalk.dim("Run: arbiter init --template <type> to create one"));
+  if (!(await checkAssemblyFile(assemblyPath))) {
     return 1;
   }
 
-  // Read and parse the assembly file
   const assemblyContent = await fs.readFile(assemblyPath, "utf-8");
-
-  // Parse CUE content to extract schema information
   const schemaInfo = await parseCueSchema(assemblyContent);
 
-  // Generate documentation based on format
   const format = options.format || "markdown";
-  const outputDir = options.outputDir || ".";
-  const filename =
-    options.output ||
-    `schema-docs.${format === "json" ? "json" : format === "html" ? "html" : "md"}`;
-  const outputPath = path.isAbsolute(filename) ? filename : path.join(outputDir, filename);
-
-  // Ensure output directory exists
+  const outputPath = resolveDocOutputPath(options);
   const outputDirPath = path.dirname(outputPath);
   await fs.mkdir(outputDirPath, { recursive: true });
 
   console.log(chalk.blue(`📝 Generating ${format.toUpperCase()} documentation...`));
   console.log(chalk.dim(`Output: ${outputPath}`));
 
-  let documentationContent: string;
+  const documentationContent = renderDocumentationContent(schemaInfo, format);
 
-  switch (format) {
-    case "markdown":
-      documentationContent = generateMarkdownDocs(schemaInfo);
-      break;
-    case "html":
-      documentationContent = generateHtmlDocs(schemaInfo);
-      break;
-    case "json":
-      documentationContent = JSON.stringify(schemaInfo, null, 2);
-      break;
-    default:
-      throw new Error(`Unsupported format: ${format}`);
-  }
-
-  // Write documentation file
   await safeFileOperation("write", outputPath, async (validatedPath) => {
     await fs.writeFile(validatedPath, documentationContent, "utf-8");
   });
   console.log(chalk.green(`✅ Generated documentation: ${outputPath}`));
 
-  // Generate examples if requested
   if (options.examples) {
     await generateExampleFiles(schemaInfo, outputDirPath);
   }
 
-  // Show next steps
-  console.log(chalk.blue("\n🎯 Next steps:"));
-  console.log(chalk.dim(`  📖 View documentation: ${outputPath}`));
-  console.log(chalk.dim("  🔄 Regenerate automatically: arbiter watch --docs"));
-  console.log(chalk.dim("  🌐 Serve docs: arbiter docs serve (coming soon)"));
-
+  showDocGenerationNextSteps(outputPath);
   return 0;
 }
 
@@ -235,473 +248,129 @@ export const __docsTesting = {
   generateApiDocs,
 };
 
+interface ParseContext {
+  schemaDoc: SchemaDoc;
+  commentBuffer: string[];
+}
+
+/**
+ * Try to extract an import from a CUE line.
+ */
+function tryExtractImport(line: string, ctx: ParseContext): boolean {
+  if (!line.startsWith("import ")) return false;
+  const importMatch = line.match(/import\s+"([^"]+)"/);
+  if (importMatch) {
+    ctx.schemaDoc.imports.push(importMatch[1]);
+  }
+  return true;
+}
+
+/**
+ * Try to extract a comment from a CUE line.
+ */
+function tryExtractComment(line: string, ctx: ParseContext): boolean {
+  if (!line.startsWith("//")) return false;
+  ctx.commentBuffer.push(line.replace(/^\/\/\s*/, ""));
+  return true;
+}
+
+/**
+ * Determine if a field is required based on its type definition.
+ */
+function isFieldRequired(fieldType: string, line: string): boolean {
+  return !fieldType.includes("?") && !line.includes("default:");
+}
+
+/**
+ * Extract default value from a line if present.
+ */
+function extractDefaultValue(line: string): string | undefined {
+  if (!line.includes("default:")) return undefined;
+  const defaultMatch = line.match(/default:\s*([^,}]+)/);
+  return defaultMatch?.[1]?.trim();
+}
+
+/**
+ * Create a field documentation entry.
+ */
+function createFieldDoc(
+  fieldName: string,
+  fieldType: string,
+  line: string,
+  commentBuffer: string[],
+): FieldDoc {
+  return {
+    name: fieldName,
+    type: fieldType,
+    description: commentBuffer.join(" "),
+    required: isFieldRequired(fieldType, line),
+    constraints: [],
+    default: extractDefaultValue(line),
+  };
+}
+
+/**
+ * Try to extract a field definition from a CUE line.
+ */
+function tryExtractField(line: string, ctx: ParseContext): boolean {
+  if (!line.includes(":") || line.startsWith("//")) return false;
+
+  const fieldMatch = line.match(/^([^:]+):\s*(.+)$/);
+  if (!fieldMatch) return false;
+
+  const fieldName = fieldMatch[1].trim();
+  const fieldType = fieldMatch[2].trim();
+
+  // Skip internal fields
+  if (fieldName.startsWith("_")) return true;
+
+  const field = createFieldDoc(fieldName, fieldType, line, ctx.commentBuffer);
+  ctx.schemaDoc.fields.push(field);
+
+  // Reset comment buffer after processing a field
+  ctx.commentBuffer = [];
+  return true;
+}
+
+/**
+ * Process a single line from CUE content.
+ */
+function processCueLine(line: string, ctx: ParseContext): void {
+  const trimmedLine = line.trim();
+
+  if (tryExtractImport(trimmedLine, ctx)) return;
+  if (tryExtractComment(trimmedLine, ctx)) return;
+
+  // If we process a field (or try to), reset comment buffer
+  if (tryExtractField(trimmedLine, ctx)) return;
+
+  // Non-matching lines reset the comment buffer
+  if (trimmedLine && !trimmedLine.startsWith("//")) {
+    ctx.commentBuffer = [];
+  }
+}
+
 /**
  * Parse CUE schema to extract documentation information
  */
 async function parseCueSchema(content: string): Promise<SchemaDoc> {
-  // This is a simplified parser - in production you'd use the CUE API
-  // For now, we'll extract basic structure from the assembly file
-
-  const lines = content.split("\n");
-  const schemaDoc: SchemaDoc = {
-    name: "Arbiter Assembly",
-    description: "Arbiter project configuration schema",
-    fields: [],
-    examples: [],
-    constraints: [],
-    imports: [],
+  const ctx: ParseContext = {
+    schemaDoc: {
+      name: "Arbiter Assembly",
+      description: "Arbiter project configuration schema",
+      fields: [],
+      examples: [],
+      constraints: [],
+      imports: [],
+    },
+    commentBuffer: [],
   };
 
-  const _currentField: FieldDoc | null = null;
-  let _inComment = false;
-  let commentBuffer: string[] = [];
-
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-
-    // Extract imports
-    if (trimmedLine.startsWith("import ")) {
-      const importMatch = trimmedLine.match(/import\s+"([^"]+)"/);
-      if (importMatch) {
-        schemaDoc.imports.push(importMatch[1]);
-      }
-    }
-
-    // Extract comments
-    if (trimmedLine.startsWith("//")) {
-      commentBuffer.push(trimmedLine.replace(/^\/\/\s*/, ""));
-      _inComment = true;
-      continue;
-    }
-
-    // Extract field definitions
-    if (trimmedLine.includes(":") && !trimmedLine.startsWith("//")) {
-      const fieldMatch = trimmedLine.match(/^([^:]+):\s*(.+)$/);
-      if (fieldMatch) {
-        const fieldName = fieldMatch[1].trim();
-        const fieldType = fieldMatch[2].trim();
-
-        // Skip internal fields
-        if (fieldName.startsWith("_")) continue;
-
-        const field: FieldDoc = {
-          name: fieldName,
-          type: fieldType,
-          description: commentBuffer.join(" "),
-          required: !fieldType.includes("?") && !trimmedLine.includes("default:"),
-          constraints: [],
-        };
-
-        // Extract default values
-        if (trimmedLine.includes("default:")) {
-          const defaultMatch = trimmedLine.match(/default:\s*([^,}]+)/);
-          if (defaultMatch) {
-            field.default = defaultMatch[1].trim();
-          }
-        }
-
-        schemaDoc.fields.push(field);
-      }
-
-      // Reset comment buffer
-      commentBuffer = [];
-      _inComment = false;
-    }
+  for (const line of content.split("\n")) {
+    processCueLine(line, ctx);
   }
 
-  return schemaDoc;
-}
-
-/**
- * Generate Markdown documentation
- */
-function generateMarkdownDocs(schemaInfo: SchemaDoc): string {
-  let md = "";
-
-  // Header
-  md += `# ${schemaInfo.name}\n\n`;
-  md += `${schemaInfo.description}\n\n`;
-
-  // Auto-generated notice
-  md += "> 🤖 This documentation is auto-generated from CUE definitions.\n";
-  md += `> Last updated: ${new Date().toISOString()}\n\n`;
-
-  // Table of Contents
-  md += "## Table of Contents\n\n";
-  md += "- [Schema Overview](#schema-overview)\n";
-  md += "- [Fields](#fields)\n";
-  md += "- [Imports](#imports)\n";
-  md += "- [Examples](#examples)\n";
-  md += "- [Constraints](#constraints)\n\n";
-
-  // Schema Overview
-  md += "## Schema Overview\n\n";
-  md += "This schema defines the structure for Arbiter project configurations.\n\n";
-
-  // Fields
-  md += "## Fields\n\n";
-  md += "| Field | Type | Required | Default | Description |\n";
-  md += "|-------|------|----------|---------|-------------|\n";
-
-  for (const field of schemaInfo.fields) {
-    const required = field.required ? "✅" : "❌";
-    const defaultVal = field.default ? `\`${field.default}\`` : "-";
-    md += `| \`${field.name}\` | \`${field.type}\` | ${required} | ${defaultVal} | ${field.description || "No description"} |\n`;
-  }
-
-  md += "\n";
-
-  // Imports
-  if (schemaInfo.imports.length > 0) {
-    md += "## Imports\n\n";
-    md += "This schema imports the following modules:\n\n";
-
-    for (const importPath of schemaInfo.imports) {
-      md += `- \`${importPath}\`\n`;
-    }
-
-    md += "\n";
-  }
-
-  // Examples
-  md += "## Examples\n\n";
-  md += "### Basic Configuration\n\n";
-  md += "```cue\n";
-  md += "// Basic library configuration\n";
-  md += `import "github.com/arbiter-framework/schemas/artifact"\n`;
-  md += `import "github.com/arbiter-framework/schemas/profiles"\n\n`;
-  md += "Artifact: artifact.#Artifact & {\n";
-  md += `  kind: "library"\n`;
-  md += `  language: "typescript"\n`;
-  md += "  build: {\n";
-  md += `    tool: "bun"\n`;
-  md += `    targets: ["@/services/docs/src"]\n`;
-  md += "  }\n";
-  md += "}\n\n";
-  md += "Profile: profiles.#library & {\n";
-  md += `  semver: "strict"\n`;
-  md += "  apiSurface: {\n";
-  md += `    source: "generated"\n`;
-  md += `    file: "@/services/docs/dist/api-surface.json"\n`;
-  md += "  }\n";
-  md += "}\n";
-  md += "```\n\n";
-
-  md += "### CLI Configuration\n\n";
-  md += "```cue\n";
-  md += "Artifact: artifact.#Artifact & {\n";
-  md += `  kind: "cli"\n`;
-  md += `  language: "typescript"\n`;
-  md += "}\n\n";
-  md += "Profile: profiles.#cli & {\n";
-  md += "  commands: [\n";
-  md += "    {\n";
-  md += `      name: "main"\n`;
-  md += `      summary: "Main command"\n`;
-  md += "      args: []\n";
-  md += "      flags: [\n";
-  md += `        {name: "help", type: "bool", default: false}\n`;
-  md += "      ]\n";
-  md += "    }\n";
-  md += "  ]\n";
-  md += "}\n";
-  md += "```\n\n";
-
-  // Footer
-  md += "---\n\n";
-  md +=
-    "**Generated by Arbiter CLI** - [Learn more](https://github.com/arbiter-framework/arbiter)\n";
-
-  return md;
-}
-
-/**
- * Generate HTML documentation
- */
-function generateHtmlDocs(schemaInfo: SchemaDoc): string {
-  let html = "";
-
-  html += "<!DOCTYPE html>\n";
-  html += `<html lang="en">\n`;
-  html += "<head>\n";
-  html += `  <meta charset="UTF-8">\n`;
-  html += `  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n`;
-  html += `  <title>${schemaInfo.name} - Schema Documentation</title>\n`;
-  html += "  <style>\n";
-  html += generateCssStyles();
-  html += "  </style>\n";
-  html += "</head>\n";
-  html += "<body>\n";
-
-  // Header
-  html += "  <header>\n";
-  html += `    <h1>${schemaInfo.name}</h1>\n`;
-  html += `    <p class="description">${schemaInfo.description}</p>\n`;
-  html += `    <div class="meta">Auto-generated on ${new Date().toLocaleString()}</div>\n`;
-  html += "  </header>\n";
-
-  // Navigation
-  html += "  <nav>\n";
-  html += "    <ul>\n";
-  html += `      <li><a href="#overview">Overview</a></li>\n`;
-  html += `      <li><a href="#fields">Fields</a></li>\n`;
-  html += `      <li><a href="#examples">Examples</a></li>\n`;
-  html += "    </ul>\n";
-  html += "  </nav>\n";
-
-  // Main content
-  html += "  <main>\n";
-
-  // Overview
-  html += `    <section id="overview">\n`;
-  html += "      <h2>Schema Overview</h2>\n";
-  html += "      <p>This schema defines the structure for Arbiter project configurations.</p>\n";
-
-  if (schemaInfo.imports.length > 0) {
-    html += "      <h3>Imports</h3>\n";
-    html += "      <ul>\n";
-    for (const importPath of schemaInfo.imports) {
-      html += `        <li><code>${importPath}</code></li>\n`;
-    }
-    html += "      </ul>\n";
-  }
-
-  html += "    </section>\n";
-
-  // Fields
-  html += `    <section id="fields">\n`;
-  html += "      <h2>Fields</h2>\n";
-  html += "      <table>\n";
-  html += "        <thead>\n";
-  html += "          <tr>\n";
-  html += "            <th>Field</th>\n";
-  html += "            <th>Type</th>\n";
-  html += "            <th>Required</th>\n";
-  html += "            <th>Default</th>\n";
-  html += "            <th>Description</th>\n";
-  html += "          </tr>\n";
-  html += "        </thead>\n";
-  html += "        <tbody>\n";
-
-  for (const field of schemaInfo.fields) {
-    const required = field.required
-      ? '<span class="required">Yes</span>'
-      : '<span class="optional">No</span>';
-    const defaultVal = field.default ? `<code>${field.default}</code>` : "-";
-    html += "          <tr>\n";
-    html += `            <td><code>${field.name}</code></td>\n`;
-    html += `            <td><code>${field.type}</code></td>\n`;
-    html += `            <td>${required}</td>\n`;
-    html += `            <td>${defaultVal}</td>\n`;
-    html += `            <td>${field.description || "No description"}</td>\n`;
-    html += "          </tr>\n";
-  }
-
-  html += "        </tbody>\n";
-  html += "      </table>\n";
-  html += "    </section>\n";
-
-  // Examples
-  html += `    <section id="examples">\n`;
-  html += "      <h2>Examples</h2>\n";
-  html += `      <div class="example">\n`;
-  html += "        <h3>Basic Library Configuration</h3>\n";
-  html += `        <pre><code class="language-cue">`;
-  html += `// Basic library configuration
-import "github.com/arbiter-framework/schemas/artifact"
-import "github.com/arbiter-framework/schemas/profiles"
-
-Artifact: artifact.#Artifact & {
-  kind: "library"
-  language: "typescript"
-  build: {
-    tool: "bun"
-    targets: ["@/services/docs/src"]
-  }
-}
-
-Profile: profiles.#library & {
-  semver: "strict"
-  apiSurface: {
-    source: "generated"
-    file: "@/services/docs/dist/api-surface.json"
-  }
-}`;
-  html += "</code></pre>\n";
-  html += "      </div>\n";
-  html += "    </section>\n";
-
-  html += "  </main>\n";
-
-  // Footer
-  html += "  <footer>\n";
-  html += "    <p>Generated by <strong>Arbiter CLI</strong></p>\n";
-  html += "  </footer>\n";
-
-  html += "</body>\n";
-  html += "</html>\n";
-
-  return html;
-}
-
-/**
- * Generate CSS styles for HTML documentation
- */
-function generateCssStyles(): string {
-  return `
-    * {
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 20px;
-      background: #fafafa;
-    }
-    
-    header {
-      border-bottom: 3px solid #007acc;
-      margin-bottom: 2rem;
-      padding-bottom: 1rem;
-    }
-    
-    header h1 {
-      color: #007acc;
-      margin: 0;
-    }
-    
-    .description {
-      font-size: 1.1rem;
-      color: #666;
-      margin: 0.5rem 0;
-    }
-    
-    .meta {
-      font-size: 0.9rem;
-      color: #888;
-    }
-    
-    nav {
-      background: white;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 2rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    nav ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: flex;
-      gap: 2rem;
-    }
-    
-    nav a {
-      color: #007acc;
-      text-decoration: none;
-      font-weight: 500;
-    }
-    
-    nav a:hover {
-      text-decoration: underline;
-    }
-    
-    main {
-      background: white;
-      border-radius: 8px;
-      padding: 2rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    section {
-      margin-bottom: 3rem;
-    }
-    
-    h2 {
-      color: #007acc;
-      border-bottom: 1px solid #eee;
-      padding-bottom: 0.5rem;
-    }
-    
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 1rem 0;
-    }
-    
-    th, td {
-      border: 1px solid #ddd;
-      padding: 12px;
-      text-align: left;
-    }
-    
-    th {
-      background: #f8f9fa;
-      font-weight: 600;
-    }
-    
-    tr:nth-child(even) {
-      background: #f8f9fa;
-    }
-    
-    code {
-      background: #f1f3f4;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-family: 'Monaco', 'Menlo', monospace;
-      font-size: 0.9em;
-    }
-    
-    pre {
-      background: #1e1e1e;
-      color: #d4d4d4;
-      padding: 1.5rem;
-      border-radius: 6px;
-      overflow-x: auto;
-    }
-    
-    pre code {
-      background: none;
-      padding: 0;
-      color: inherit;
-    }
-    
-    .required {
-      color: #28a745;
-      font-weight: bold;
-    }
-    
-    .optional {
-      color: #6c757d;
-    }
-    
-    .example {
-      border: 1px solid #e1e4e8;
-      border-radius: 6px;
-      overflow: hidden;
-      margin: 1rem 0;
-    }
-    
-    .example h3 {
-      background: #f6f8fa;
-      margin: 0;
-      padding: 1rem;
-      border-bottom: 1px solid #e1e4e8;
-    }
-    
-    footer {
-      text-align: center;
-      padding: 2rem;
-      color: #666;
-      border-top: 1px solid #eee;
-      margin-top: 3rem;
-    }
-  `;
+  return ctx.schemaDoc;
 }
 
 /**
@@ -715,49 +384,78 @@ function generateApiDocs(surfaceData: any, format: string): string {
 }
 
 /**
+ * Generate markdown header for API docs.
+ */
+function generateApiDocsHeader(): string {
+  return `# API Documentation
+
+> 🤖 Auto-generated from source code analysis
+> Last updated: ${new Date().toISOString()}
+
+`;
+}
+
+/**
+ * Generate markdown for function parameters.
+ */
+function generateParametersMarkdown(
+  parameters: Array<{ name: string; type: string; description?: string }>,
+): string {
+  if (!parameters || parameters.length === 0) return "";
+
+  let md = "**Parameters:**\n\n";
+  for (const param of parameters) {
+    md += `- \`${param.name}\` (${param.type}): ${param.description || "No description"}\n`;
+  }
+  return md + "\n";
+}
+
+/**
+ * Generate markdown for function return value.
+ */
+function generateReturnsMarkdown(
+  returns: { type: string; description?: string } | undefined,
+): string {
+  if (!returns) return "";
+
+  let md = `**Returns:** \`${returns.type}\`\n\n`;
+  if (returns.description) {
+    md += `${returns.description}\n\n`;
+  }
+  return md;
+}
+
+/**
+ * Generate markdown for a single function.
+ */
+function generateFunctionMarkdown(func: any): string {
+  let md = `### \`${func.name}\`\n\n`;
+
+  if (func.description) {
+    md += `${func.description}\n\n`;
+  }
+
+  md += generateParametersMarkdown(func.parameters);
+  md += generateReturnsMarkdown(func.returns);
+
+  if (func.example) {
+    md += `**Example:**\n\n\`\`\`typescript\n${func.example}\`\`\`\n\n`;
+  }
+
+  md += "---\n\n";
+  return md;
+}
+
+/**
  * Generate API documentation in Markdown format
  */
 function generateApiDocsMarkdown(surfaceData: any): string {
-  let md = "";
-
-  md += "# API Documentation\n\n";
-  md += "> 🤖 Auto-generated from source code analysis\n";
-  md += `> Last updated: ${new Date().toISOString()}\n\n`;
+  let md = generateApiDocsHeader();
 
   if (surfaceData.functions && surfaceData.functions.length > 0) {
     md += "## Functions\n\n";
-
     for (const func of surfaceData.functions) {
-      md += `### \`${func.name}\`\n\n`;
-
-      if (func.description) {
-        md += `${func.description}\n\n`;
-      }
-
-      // Parameters
-      if (func.parameters && func.parameters.length > 0) {
-        md += "**Parameters:**\n\n";
-        for (const param of func.parameters) {
-          md += `- \`${param.name}\` (${param.type}): ${param.description || "No description"}\n`;
-        }
-        md += "\n";
-      }
-
-      // Returns
-      if (func.returns) {
-        md += `**Returns:** \`${func.returns.type}\`\n\n`;
-        if (func.returns.description) {
-          md += `${func.returns.description}\n\n`;
-        }
-      }
-
-      // Example
-      if (func.example) {
-        md += "**Example:**\n\n";
-        md += `\`\`\`typescript\n${func.example}\`\`\`\n\n`;
-      }
-
-      md += "---\n\n";
+      md += generateFunctionMarkdown(func);
     }
   }
 
@@ -765,10 +463,10 @@ function generateApiDocsMarkdown(surfaceData: any): string {
 }
 
 /**
- * Generate API documentation in HTML format
+ * Generate HTML document header with styles
  */
-function generateApiDocsHtml(surfaceData: any): string {
-  let html = `<!DOCTYPE html>
+function generateHtmlHeader(): string {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -781,57 +479,91 @@ function generateApiDocsHtml(surfaceData: any): string {
     <h1>API Documentation</h1>
     <div class="meta">Auto-generated on ${new Date().toLocaleString()}</div>
   </header>
-  
+
   <main>`;
+}
 
-  if (surfaceData.functions && surfaceData.functions.length > 0) {
-    html += `
-    <section id="functions">
-      <h2>Functions</h2>`;
-
-    for (const func of surfaceData.functions) {
-      html += `
-      <div class="function">
-        <h3><code>${func.name}</code></h3>`;
-
-      if (func.description) {
-        html += `<p>${func.description}</p>`;
-      }
-
-      if (func.parameters && func.parameters.length > 0) {
-        html += `
-        <h4>Parameters</h4>
-        <ul>`;
-        for (const param of func.parameters) {
-          html += `<li><code>${param.name}</code> (${param.type}): ${param.description || "No description"}</li>`;
-        }
-        html += "</ul>";
-      }
-
-      if (func.returns) {
-        html += "<h4>Returns</h4>";
-        html += `<p><code>${func.returns.type}</code></p>`;
-        if (func.returns.description) {
-          html += `<p>${func.returns.description}</p>`;
-        }
-      }
-
-      html += "</div>";
-    }
-
-    html += "</section>";
-  }
-
-  html += `
+/**
+ * Generate HTML footer
+ */
+function generateHtmlFooter(): string {
+  return `
   </main>
-  
+
   <footer>
     <p>Generated by <strong>Arbiter CLI</strong></p>
   </footer>
 </body>
 </html>`;
+}
 
+/**
+ * Generate HTML for function parameters
+ */
+function generateParametersHtml(
+  parameters: Array<{ name: string; type: string; description?: string }>,
+): string {
+  if (!parameters || parameters.length === 0) return "";
+
+  const paramItems = parameters
+    .map(
+      (param) =>
+        `<li><code>${param.name}</code> (${param.type}): ${param.description || "No description"}</li>`,
+    )
+    .join("");
+
+  return `
+        <h4>Parameters</h4>
+        <ul>${paramItems}</ul>`;
+}
+
+/**
+ * Generate HTML for function return value
+ */
+function generateReturnsHtml(returns: { type: string; description?: string } | undefined): string {
+  if (!returns) return "";
+
+  let html = `<h4>Returns</h4><p><code>${returns.type}</code></p>`;
+  if (returns.description) {
+    html += `<p>${returns.description}</p>`;
+  }
   return html;
+}
+
+/**
+ * Generate HTML for a single function
+ */
+function generateFunctionHtml(func: any): string {
+  const descriptionHtml = func.description ? `<p>${func.description}</p>` : "";
+  const parametersHtml = generateParametersHtml(func.parameters);
+  const returnsHtml = generateReturnsHtml(func.returns);
+
+  return `
+      <div class="function">
+        <h3><code>${func.name}</code></h3>${descriptionHtml}${parametersHtml}${returnsHtml}</div>`;
+}
+
+/**
+ * Generate HTML for functions section
+ */
+function generateFunctionsSectionHtml(functions: any[]): string {
+  if (!functions || functions.length === 0) return "";
+
+  const functionsHtml = functions.map(generateFunctionHtml).join("");
+  return `
+    <section id="functions">
+      <h2>Functions</h2>${functionsHtml}</section>`;
+}
+
+/**
+ * Generate API documentation in HTML format
+ */
+function generateApiDocsHtml(surfaceData: any): string {
+  return (
+    generateHtmlHeader() +
+    generateFunctionsSectionHtml(surfaceData.functions) +
+    generateHtmlFooter()
+  );
 }
 
 /**
@@ -841,94 +573,12 @@ async function generateExampleFiles(_schemaInfo: SchemaDoc, outputDir: string): 
   const examplesDir = path.join(outputDir, "examples");
   await fs.mkdir(examplesDir, { recursive: true });
 
-  // Generate basic library example
-  const libraryExample = `// Example: Basic Library Configuration
-import "github.com/arbiter-framework/schemas/artifact"
-import "github.com/arbiter-framework/schemas/profiles"
-
-Artifact: artifact.#Artifact & {
-  kind: "library"
-  language: "typescript"
-  
-  build: {
-    tool: "bun"
-    targets: ["@/services/docs/src"]
-    matrix: {
-      versions: ["18", "20", "latest"]
-      os: ["linux", "darwin"]
-    }
-  }
-  
-  packaging: {
-    publish: true
-    registry: "npm"
-  }
-}
-
-Profile: profiles.#library & {
-  semver: "strict"
-  apiSurface: {
-    source: "generated"
-    file: "@/services/docs/dist/api-surface.json"
-  }
-  contracts: {
-    forbidBreaking: true
-    invariants: [
-      // Your invariants here
-    ]
-  }
-}
-`;
-
   await safeFileOperation("write", path.join(examplesDir, "library.cue"), async (validatedPath) => {
-    await fs.writeFile(validatedPath, libraryExample);
+    await fs.writeFile(validatedPath, LIBRARY_EXAMPLE_TEMPLATE);
   });
 
-  // Generate CLI example
-  const cliExample = `// Example: CLI Tool Configuration
-import "github.com/arbiter-framework/schemas/artifact"
-import "github.com/arbiter-framework/schemas/profiles"
-
-Artifact: artifact.#Artifact & {
-  kind: "cli"
-  language: "typescript"
-  
-  build: {
-    tool: "bun"
-    targets: ["@/services/docs/src/cli.ts"]
-  }
-}
-
-Profile: profiles.#cli & {
-  commands: [
-    {
-      name: "main"
-      summary: "Main command"
-      args: [
-        {name: "input", type: "string", description: "Input file"}
-      ]
-      flags: [
-        {name: "help", type: "bool", default: false}
-        {name: "verbose", type: "bool", default: false}
-        {name: "output", type: "string", default: "stdout"}
-      ]
-      exits: [
-        {code: 0, meaning: "success"}
-        {code: 1, meaning: "error"}
-      ]
-    }
-  ]
-  
-  tests: {
-    golden: [
-      {name: "help_output", command: ["--help"]}
-    ]
-  }
-}
-`;
-
   await safeFileOperation("write", path.join(examplesDir, "cli.cue"), async (validatedPath) => {
-    await fs.writeFile(validatedPath, cliExample);
+    await fs.writeFile(validatedPath, CLI_EXAMPLE_TEMPLATE);
   });
 
   console.log(chalk.green(`✅ Generated example files in ${examplesDir}`));

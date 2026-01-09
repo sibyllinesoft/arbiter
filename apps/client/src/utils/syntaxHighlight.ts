@@ -1,7 +1,13 @@
+/**
+ * Syntax highlighting utilities for code display.
+ * Supports JSON, YAML, Dockerfile, shell, and Gherkin languages.
+ */
 import yaml from "yaml";
 
+/** Supported syntax highlighting languages */
 type HighlightLanguage = "json" | "yaml" | "dockerfile" | "shell" | "gherkin";
 
+/** Language name aliases for normalization */
 const LANGUAGE_ALIASES: Record<string, HighlightLanguage> = {
   json: "json",
   yaml: "yaml",
@@ -16,8 +22,10 @@ const LANGUAGE_ALIASES: Record<string, HighlightLanguage> = {
   gherkin: "gherkin",
 };
 
+/** Indentation unit for JSON rendering */
 const INDENT = "  ";
 
+/** Escape HTML special characters for safe display */
 const escapeHtml = (value: string): string =>
   value
     .replace(/&/g, "&amp;")
@@ -26,8 +34,10 @@ const escapeHtml = (value: string): string =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
+/** Generate indentation string for given nesting level */
 const indentFor = (level: number): string => INDENT.repeat(Math.max(level, 0));
 
+/** Highlight a JSON primitive value (null, string, number, boolean) */
 const highlightJsonPrimitive = (value: unknown): string => {
   if (value === null) {
     return '<span class="syntax-null">null</span>';
@@ -44,6 +54,7 @@ const highlightJsonPrimitive = (value: unknown): string => {
   }
 };
 
+/** Recursively render JSON with syntax highlighting */
 const renderJson = (value: unknown, depth = 0): string => {
   if (Array.isArray(value)) {
     if (value.length === 0) {
@@ -74,34 +85,56 @@ const renderJson = (value: unknown, depth = 0): string => {
   return highlightJsonPrimitive(value);
 };
 
+/** Toggle quote state based on current character and quote states */
+const updateQuoteState = (
+  char: string,
+  inSingle: boolean,
+  inDouble: boolean,
+): { inSingle: boolean; inDouble: boolean } => {
+  if (char === "'" && !inDouble) return { inSingle: !inSingle, inDouble };
+  if (char === '"' && !inSingle) return { inSingle, inDouble: !inDouble };
+  return { inSingle, inDouble };
+};
+
+/** Check if character is a comment start outside quotes */
+const isUnquotedComment = (char: string, inSingle: boolean, inDouble: boolean): boolean =>
+  char === "#" && !inSingle && !inDouble;
+
+/** Find the index of a comment character (#) outside of quotes */
 const findCommentIndex = (line: string): number => {
   let inSingle = false;
   let inDouble = false;
   for (let index = 0; index < line.length; index += 1) {
     const char = line[index];
-    if (char === "'" && !inDouble) {
-      inSingle = !inSingle;
-    } else if (char === '"' && !inSingle) {
-      inDouble = !inDouble;
-    } else if (char === "#" && !inSingle && !inDouble) {
-      return index;
-    }
+    if (isUnquotedComment(char, inSingle, inDouble)) return index;
+    const newState = updateQuoteState(char, inSingle, inDouble);
+    inSingle = newState.inSingle;
+    inDouble = newState.inDouble;
   }
   return -1;
 };
 
+/** Regex patterns for YAML scalar classification */
+const YAML_SCALAR_PATTERNS: Array<{ pattern: RegExp; className: string }> = [
+  { pattern: /^['"].*['"]$/, className: "syntax-string" },
+  { pattern: /^(true|false)$/i, className: "syntax-boolean" },
+  { pattern: /^null$/i, className: "syntax-null" },
+  { pattern: /^-?\d+(?:\.\d+)?$/, className: "syntax-number" },
+  { pattern: /^[A-Z_][A-Z0-9_]*$/, className: "syntax-directive" },
+  { pattern: /^(![a-zA-Z]+)/, className: "syntax-directive" },
+];
+
+/** Classify a YAML scalar value and return its CSS class */
 const classifyScalar = (value: string): string | null => {
   const trimmed = value.trim();
   if (!trimmed) return null;
-  if (/^['"].*['"]$/.test(trimmed)) return "syntax-string";
-  if (/^(true|false)$/i.test(trimmed)) return "syntax-boolean";
-  if (/^null$/i.test(trimmed)) return "syntax-null";
-  if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) return "syntax-number";
-  if (/^[A-Z_][A-Z0-9_]*$/.test(trimmed)) return "syntax-directive";
-  if (/^(![a-zA-Z]+)/.test(trimmed)) return "syntax-directive";
+  for (const { pattern, className } of YAML_SCALAR_PATTERNS) {
+    if (pattern.test(trimmed)) return className;
+  }
   return null;
 };
 
+/** Apply syntax highlighting to a YAML scalar value */
 const highlightScalar = (value: string): string => {
   if (!value) return "";
   const trailingWhitespace = value.match(/\s*$/)?.[0] ?? "";
@@ -114,6 +147,7 @@ const highlightScalar = (value: string): string => {
   return `${highlightedCore}${escapeHtml(trailingWhitespace)}`;
 };
 
+/** Highlight a YAML value segment including comments */
 const highlightYamlValue = (segment: string): string => {
   if (!segment) return "";
   const trimmedIndex = segment.search(/\S/);
@@ -136,6 +170,7 @@ const highlightYamlValue = (segment: string): string => {
   return `${escapeHtml(leading)}${highlightedContent}${highlightedComment}`;
 };
 
+/** Highlight YAML list item dash */
 const highlightDash = (dashPart: string): string => {
   if (!dashPart) return "";
   const before = dashPart.match(/^\s*/)?.[0] ?? "";
@@ -143,43 +178,66 @@ const highlightDash = (dashPart: string): string => {
   return `${escapeHtml(before)}<span class="syntax-symbol">-</span>${escapeHtml(after)}`;
 };
 
-const highlightYaml = (code: string): string =>
-  code
-    .replace(/\r\n?/g, "\n")
-    .split("\n")
-    .map((line) => {
-      if (!line) return "";
-      const indent = line.match(/^\s*/)?.[0] ?? "";
-      const rest = line.slice(indent.length);
-      if (!rest) {
-        return indent;
-      }
-      if (rest.trimStart().startsWith("#")) {
-        return `${indent}<span class="syntax-comment">${escapeHtml(rest.trimStart())}</span>`;
-      }
-      const keyMatch = rest.match(/^(-\s*)?([^:#]+?)(\s*:\s*)(.*)$/);
-      if (keyMatch) {
-        const [, dashPartRaw = "", keyRaw = "", separatorRaw = "", remainderRaw = ""] = keyMatch;
-        const dashPart = dashPartRaw ?? "";
-        const key = keyRaw ?? "";
-        const separator = separatorRaw ?? "";
-        const remainder = remainderRaw ?? "";
-        const highlightedDash = dashPart ? highlightDash(dashPart) : "";
-        const highlightedKey = `<span class="syntax-key">${escapeHtml(key.trimEnd())}</span>`;
-        const highlightedValue = highlightYamlValue(remainder);
-        return `${indent}${highlightedDash}${highlightedKey}${escapeHtml(separator)}${highlightedValue}`;
-      }
-      if (rest.trimStart().startsWith("-")) {
-        const dashSplit = rest.match(/^(-\s*)(.*)$/);
-        if (dashSplit) {
-          const [, dashPart = "", remainder = ""] = dashSplit;
-          return `${indent}${highlightDash(dashPart)}${highlightYamlValue(remainder)}`;
-        }
-      }
-      return `${indent}${highlightYamlValue(rest)}`;
-    })
-    .join("\n");
+/** Regex for YAML key-value pattern */
+const YAML_KEY_VALUE_REGEX = /^(-\s*)?([^:#]+?)(\s*:\s*)(.*)$/;
 
+/** Regex for YAML list item pattern */
+const YAML_LIST_ITEM_REGEX = /^(-\s*)(.*)$/;
+
+/** Highlight a YAML comment line */
+const highlightYamlCommentLine = (indent: string, rest: string): string =>
+  `${indent}<span class="syntax-comment">${escapeHtml(rest.trimStart())}</span>`;
+
+/** Highlight a YAML key-value line */
+const highlightYamlKeyValueLine = (indent: string, match: RegExpMatchArray): string => {
+  const [, dashPartRaw = "", keyRaw = "", separatorRaw = "", remainderRaw = ""] = match;
+  const dashPart = dashPartRaw ?? "";
+  const key = keyRaw ?? "";
+  const separator = separatorRaw ?? "";
+  const remainder = remainderRaw ?? "";
+  const highlightedDash = dashPart ? highlightDash(dashPart) : "";
+  const highlightedKey = `<span class="syntax-key">${escapeHtml(key.trimEnd())}</span>`;
+  const highlightedValue = highlightYamlValue(remainder);
+  return `${indent}${highlightedDash}${highlightedKey}${escapeHtml(separator)}${highlightedValue}`;
+};
+
+/** Highlight a YAML list item line */
+const highlightYamlListItemLine = (indent: string, match: RegExpMatchArray): string => {
+  const [, dashPart = "", remainder = ""] = match;
+  return `${indent}${highlightDash(dashPart)}${highlightYamlValue(remainder)}`;
+};
+
+/** Process a single YAML line for highlighting */
+const processYamlLine = (line: string): string => {
+  if (!line) return "";
+  const indent = line.match(/^\s*/)?.[0] ?? "";
+  const rest = line.slice(indent.length);
+  if (!rest) return indent;
+
+  if (rest.trimStart().startsWith("#")) {
+    return highlightYamlCommentLine(indent, rest);
+  }
+
+  const keyMatch = rest.match(YAML_KEY_VALUE_REGEX);
+  if (keyMatch) {
+    return highlightYamlKeyValueLine(indent, keyMatch);
+  }
+
+  if (rest.trimStart().startsWith("-")) {
+    const dashSplit = rest.match(YAML_LIST_ITEM_REGEX);
+    if (dashSplit) {
+      return highlightYamlListItemLine(indent, dashSplit);
+    }
+  }
+
+  return `${indent}${highlightYamlValue(rest)}`;
+};
+
+/** Apply syntax highlighting to YAML code */
+const highlightYaml = (code: string): string =>
+  code.replace(/\r\n?/g, "\n").split("\n").map(processYamlLine).join("\n");
+
+/** Highlight shell variable and string tokens */
 const highlightShellTokens = (content: string): string => {
   if (!content) return "";
   const tokenPattern = /(\$\{?[A-Za-z_][A-Za-z0-9_]*\}?|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
@@ -204,6 +262,7 @@ const highlightShellTokens = (content: string): string => {
   return result;
 };
 
+/** Highlight a single shell script line */
 const highlightShellLine = (line: string): string => {
   if (!line) return "";
   const commentIndex = findCommentIndex(line);
@@ -220,6 +279,7 @@ const highlightShellLine = (line: string): string => {
   return `${highlightedContent}${highlightedComment}`;
 };
 
+/** Apply syntax highlighting to shell script code */
 const highlightShell = (code: string): string =>
   code
     .replace(/\r\n?/g, "\n")
@@ -231,27 +291,36 @@ const highlightShell = (code: string): string =>
     })
     .join("\n");
 
+/** Regex for matching Dockerfile directives */
 const DOCKER_DIRECTIVE = /^([A-Z][A-Z0-9_]*)(\s+)(.*)$/;
 
-const highlightDockerfile = (code: string): string =>
-  code
-    .replace(/\r\n?/g, "\n")
-    .split("\n")
-    .map((line) => {
-      const indent = line.match(/^\s*/)?.[0] ?? "";
-      const rest = line.slice(indent.length);
-      if (!rest) return indent;
-      const directiveMatch = rest.match(DOCKER_DIRECTIVE);
-      if (directiveMatch) {
-        const [, directive = "", spacing = "", remainder = ""] = directiveMatch;
-        const highlightedDirective = `<span class="syntax-directive">${escapeHtml(directive)}</span>`;
-        const highlightedRemainder = highlightShellLine(remainder);
-        return `${indent}${highlightedDirective}${escapeHtml(spacing)}${highlightedRemainder}`;
-      }
-      return `${indent}${highlightShellLine(rest)}`;
-    })
-    .join("\n");
+/** Highlight a Dockerfile directive match */
+const highlightDockerDirective = (indent: string, match: RegExpMatchArray): string => {
+  const [, directive = "", spacing = "", remainder = ""] = match;
+  const highlightedDirective = `<span class="syntax-directive">${escapeHtml(directive)}</span>`;
+  const highlightedRemainder = highlightShellLine(remainder);
+  return `${indent}${highlightedDirective}${escapeHtml(spacing)}${highlightedRemainder}`;
+};
 
+/** Process a single Dockerfile line for highlighting */
+const processDockerfileLine = (line: string): string => {
+  const indent = line.match(/^\s*/)?.[0] ?? "";
+  const rest = line.slice(indent.length);
+  if (!rest) return indent;
+
+  const directiveMatch = rest.match(DOCKER_DIRECTIVE);
+  if (directiveMatch) {
+    return highlightDockerDirective(indent, directiveMatch);
+  }
+
+  return `${indent}${highlightShellLine(rest)}`;
+};
+
+/** Apply syntax highlighting to Dockerfile code */
+const highlightDockerfile = (code: string): string =>
+  code.replace(/\r\n?/g, "\n").split("\n").map(processDockerfileLine).join("\n");
+
+/** Parse and highlight JSON code with error fallback */
 const highlightJson = (code: string): string => {
   try {
     const parsed = JSON.parse(code);
@@ -262,6 +331,7 @@ const highlightJson = (code: string): string => {
   }
 };
 
+/** Parse and re-serialize YAML before highlighting for consistency */
 const highlightYamlWithParser = (code: string): string => {
   try {
     const parsed = yaml.parse(code);
@@ -272,54 +342,57 @@ const highlightYamlWithParser = (code: string): string => {
   }
 };
 
+/** Regex for matching Gherkin keywords */
 const GHERKIN_KEYWORD_REGEX =
   /^(\s*)(Scenario Outline|Scenario|Feature|Background|Examples|Given|When|Then|And|But)(\b|:)(.*)$/i;
 
-const highlightGherkin = (code: string): string =>
-  code
-    .replace(/\r\n?/g, "\n")
-    .split("\n")
-    .map((line) => {
-      if (!line) return "";
-      const trimmed = line.trim();
-      if (!trimmed) {
-        return "";
-      }
-      if (trimmed.startsWith("#")) {
-        return `<span class="syntax-comment">${escapeHtml(line)}</span>`;
-      }
-      if (trimmed.startsWith("@")) {
-        return `<span class="syntax-key">${escapeHtml(line)}</span>`;
-      }
-      const keywordMatch = line.match(GHERKIN_KEYWORD_REGEX);
-      if (keywordMatch) {
-        const [, indent = "", keyword = "", boundary = "", rest = ""] = keywordMatch;
-        const remaining = rest ?? "";
-        return `${escapeHtml(indent)}<span class="syntax-key">${escapeHtml(keyword)}</span>${escapeHtml(boundary)}${escapeHtml(
-          remaining,
-        )}`;
-      }
-      return escapeHtml(line);
-    })
-    .join("\n");
-
-const highlightByLanguage = (code: string, language: HighlightLanguage): string => {
-  switch (language) {
-    case "json":
-      return highlightJson(code);
-    case "yaml":
-      return highlightYamlWithParser(code);
-    case "dockerfile":
-      return highlightDockerfile(code);
-    case "shell":
-      return highlightShell(code);
-    case "gherkin":
-      return highlightGherkin(code);
-    default:
-      return escapeHtml(code);
-  }
+/** Highlight a Gherkin keyword match */
+const highlightGherkinKeyword = (match: RegExpMatchArray): string => {
+  const [, indent = "", keyword = "", boundary = "", rest = ""] = match;
+  const remaining = rest ?? "";
+  return `${escapeHtml(indent)}<span class="syntax-key">${escapeHtml(keyword)}</span>${escapeHtml(boundary)}${escapeHtml(remaining)}`;
 };
 
+/** Process a single Gherkin line for highlighting */
+const processGherkinLine = (line: string): string => {
+  if (!line) return "";
+  const trimmed = line.trim();
+  if (!trimmed) return "";
+
+  if (trimmed.startsWith("#")) {
+    return `<span class="syntax-comment">${escapeHtml(line)}</span>`;
+  }
+
+  if (trimmed.startsWith("@")) {
+    return `<span class="syntax-key">${escapeHtml(line)}</span>`;
+  }
+
+  const keywordMatch = line.match(GHERKIN_KEYWORD_REGEX);
+  if (keywordMatch) {
+    return highlightGherkinKeyword(keywordMatch);
+  }
+
+  return escapeHtml(line);
+};
+
+/** Apply syntax highlighting to Gherkin feature files */
+const highlightGherkin = (code: string): string =>
+  code.replace(/\r\n?/g, "\n").split("\n").map(processGherkinLine).join("\n");
+
+/** Language-specific highlighters */
+const HIGHLIGHTERS: Record<HighlightLanguage, (code: string) => string> = {
+  json: highlightJson,
+  yaml: highlightYamlWithParser,
+  dockerfile: highlightDockerfile,
+  shell: highlightShell,
+  gherkin: highlightGherkin,
+};
+
+/** Route to appropriate highlighter based on language */
+const highlightByLanguage = (code: string, language: HighlightLanguage): string =>
+  (HIGHLIGHTERS[language] ?? escapeHtml)(code);
+
+/** Normalize language name to supported highlight language */
 export const normalizeSyntaxLanguage = (
   language?: string | null,
 ): HighlightLanguage | undefined => {
@@ -328,11 +401,9 @@ export const normalizeSyntaxLanguage = (
   return normalized;
 };
 
+/** Get syntax-highlighted HTML for code in the given language */
 export const getHighlightedCode = (code: string, language?: string | null): string | null => {
   const normalized = normalizeSyntaxLanguage(language ?? undefined);
   if (!normalized) return null;
   return highlightByLanguage(code, normalized);
 };
-
-export const isHighlightLanguage = (language?: string | null): boolean =>
-  Boolean(normalizeSyntaxLanguage(language ?? undefined));

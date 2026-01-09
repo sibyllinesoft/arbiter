@@ -9,6 +9,7 @@
 import * as path from "path";
 import * as fs from "fs-extra";
 import { glob } from "glob";
+import { ArtifactClassifier } from "./detection/classifier";
 import { NodeJSPlugin } from "./plugins/nodejs";
 import type { PackageJsonData } from "./plugins/nodejs";
 import type { InferenceContext } from "./types";
@@ -117,6 +118,8 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
         projectRoot: projectPath,
         fileIndex,
         allEvidence: fullEvidence,
+        directoryContexts: new Map(),
+        classifier: new ArtifactClassifier(),
         options: {
           minConfidence: 0.3,
           inferRelationships: true,

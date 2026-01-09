@@ -1,0 +1,85 @@
+site_name: Arbiter Documentation
+site_description: CUE-driven specification workflows, CLI automation, and platform internals for Arbiter.
+site_url: https://arbiter.sibylline.dev/
+repo_url: https://github.com/sibyllinesoft/arbiter
+repo_name: sibyllinesoft/arbiter
+docs_dir: ../content
+site_dir: ../public
+theme:
+  name: material
+  logo: assets/img/logo.svg
+  favicon: assets/img/favicon.svg
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - content.code.annotate
+    - content.code.copy
+    - toc.follow
+plugins:
+  - search
+  - git-revision-date-localized:
+      fallback_to_build_date: true
+      type: datetime
+hooks:
+  - ../hooks.py
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - meta
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: "__span"
+      pygments_style: material
+      guess_lang: false
+      default_lang: typescript
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+nav:
+  - Home: index.md
+  - Overview:
+      - Core Concepts: overview/core-concepts.md
+      - Code Generation Overview: overview/code-generation-overview.md
+  - Guides:
+      - Generation Architecture: guides/code-generation-architecture.md
+      - Generation Configuration: guides/code-generation-configuration.md
+      - Template Development: guides/template-development-guide.md
+      - CUE Authoring: guides/arbiter-cue-authoring.md
+      - Generation Best Practices: guides/generation-best-practices.md
+      - GitHub Sync: guides/github-sync.md
+      - Server Monitoring: guides/server-monitoring.md
+  - Reference:
+      - CLI Reference: reference/cli-reference.md
+      - Arbiter CUE Schema: reference/arbiter-cue-schema.md
+      - Generation API Reference: reference/api/generation-api-reference.md
+      - API TypeDoc: reference/api/tsdoc/README.md
+  - Tutorials:
+      - Getting Started Lab: tutorials/basics/Readme.md
+      - Kubernetes Playbooks: tutorials/kubernetes/README.md
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sibyllinesoft/arbiter
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/highlightjs-cue@1.0.0/dist/cue.min.js
+  - assets/js/cue-highlight.js
+  - https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js
+  - assets/js/mermaid-init.js

@@ -32,7 +32,11 @@ interface UiOptionsResponse {
 }
 
 export class SystemService {
-  constructor(private readonly client: ApiClient) {}
+  private readonly client: ApiClient;
+
+  constructor(client: ApiClient) {
+    this.client = client;
+  }
 
   async getEnvironmentInfo(): Promise<EnvironmentInfo> {
     return this.client.request<EnvironmentInfo>("/api/environment");

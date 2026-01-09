@@ -1,6 +1,28 @@
 # Arbiter Code Generation Architecture
 
-This document provides a comprehensive overview of Arbiter's code generation system, covering the complete pipeline from CUE specifications to generated code artifacts.
+This guide explains how Arbiter transforms your specifications into working code. Whether you're debugging generation issues, customizing templates, or building language plugins, understanding the generation pipeline will help you work more effectively.
+
+## How Generation Works (The Short Version)
+
+When you run `arbiter generate`, here's what happens:
+
+1. **Load** — Arbiter reads your `.arbiter/assembly.cue` specification
+2. **Resolve** — It figures out what services, clients, and schemas need code
+3. **Match** — Each artifact is paired with the right language plugin and templates
+4. **Render** — Templates produce actual source files using your spec data
+5. **Write** — Files land in your project directory, ready for use
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Your Spec      │ ──► │  Generator      │ ──► │  Source Code    │
+│  (assembly.cue) │     │  (plugins +     │     │  (services,     │
+│                 │     │   templates)    │     │   clients, etc) │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+For most users, that's all you need to know. The sections below dive deeper for those who want to customize or extend the system.
+
+---
 
 ## Table of Contents
 
@@ -12,6 +34,8 @@ This document provides a comprehensive overview of Arbiter's code generation sys
 - [Language Plugins](#language-plugins)
 - [Context Providers](#context-providers)
 - [Hooks and Customization](#hooks-and-customization)
+
+---
 
 ## Architecture Overview
 
@@ -43,67 +67,57 @@ flowchart LR
 
 ## Generation Pipeline
 
-The generation pipeline consists of five main phases:
+The generation pipeline consists of five main phases. Understanding each phase helps you debug issues and know where to customize behavior.
 
 ### 1. Specification Discovery and Loading
 
-- Discovers CUE specification files in `.arbiter/` directories
-- Loads and validates specifications against the unified Arbiter application schema
-- Resolves spec fragments and imports
-- Validates specification completeness
+Arbiter looks for your specification in `.arbiter/assembly.cue` (or sharded files if you have a large project). It:
 
-```typescript
-// Entry point: packages/cli/src/commands/generate.ts
-export async function generateCommand(
-  options: GenerateOptions,
-  config: CLIConfig,
-  specName?: string,
-): Promise<number>
-```
+- Validates the CUE syntax and structure
+- Resolves any imports or references between files
+- Ensures all required fields are present
+
+**Troubleshooting:** If generation fails early, run `arbiter check` to see validation errors before the generator even starts.
 
 ### 2. Context Resolution
 
-- Creates generation contexts for services and clients
-- Extracts variables and metadata from CUE specifications
-- Resolves project structure and the active project directory
-- Prepares language-specific contexts
+Once the spec is loaded, Arbiter builds a "context" for each artifact that needs generation. Think of context as the data package that templates will use:
 
-```typescript
-// Context creation in packages/cli/src/services/generate/index.ts
-function createClientContext(
-  appSpec: AppSpec,
-  structure: ProjectStructureConfig,
-  projectDir: string,
-): ClientGenerationContext
+- **What's being built** — service name, language, framework, ports
+- **Where it goes** — output directory paths based on your project structure
+- **What it depends on** — database connections, other services, schemas
 
-function createServiceContext(
-  serviceName: string,
-  serviceConfig: any,
-  structure: ProjectStructureConfig,
-  projectDir: string,
-): ServiceGenerationContext
-```
+This is where your project structure config (`clientsDirectory`, `servicesDirectory`, etc.) gets applied.
 
 ### 3. Template Resolution and Processing
 
-- Resolves templates from override directories and defaults
-- Streams the full context payload into the declared implementor command (any executable)
-- Built-in helpers call the same interface directly for performance but remain opt-in
-- Applies template inheritance/composition before execution
+Now Arbiter matches each artifact to the right template:
+
+1. Checks if you have custom templates in your project's override directories
+2. Falls back to built-in templates for your language/framework
+3. Prepares the template engine (Handlebars by default, but you can use external tools)
+
+**Customization point:** Add your own templates to override defaults. See [Template Development Guide](./template-development-guide.md).
 
 ### 4. Code Generation
 
-- Executes language-specific generators via plugin system
-- Generates services, components, Docker configurations, CI/CD pipelines
-- Applies hooks for custom generation logic
-- Handles file writing with proper permissions
+This is where files actually get written:
+
+- Language plugins (TypeScript, Python, Rust, Go) handle framework-specific generation
+- Templates render with your spec data interpolated
+- Docker files, CI/CD configs, and tests are generated alongside source code
+- Hooks run before/after each file write if you've configured them
+
+**Tip:** Use `arbiter generate --dry-run` to preview what files will be created without actually writing them.
 
 ### 5. Post-Generation Processing
 
-- Validates generated code structure
-- Executes post-generation hooks
-- Updates project manifests and configurations
-- Optionally synchronizes with GitHub repositories
+After all files are written:
+
+- Generated code structure is validated
+- Post-generation hooks run (for things like formatting, linting)
+- Project manifests (`package.json`, `go.mod`, etc.) are updated if needed
+- Optionally, changes can sync to GitHub
 
 ## Core Components
 

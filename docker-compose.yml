@@ -1,18 +1,16 @@
-version: '3.8'
-
 services:
   # Spec Workbench Backend
   spec-workbench:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
     ports:
       - '5050:5050'
     environment:
       - NODE_ENV=development
       - PORT=5050
       - NATS_URL=nats://nats:4222
-      - DATABASE_PATH=/app/data/spec_workbench.db
+      - DATABASE_PATH=/app/data/spec_workbe nch.db
     volumes:
       - ./data:/app/data
       - ./examples:/app/examples:ro
@@ -51,22 +49,6 @@ services:
       - nats
     networks:
       - spec-workbench
-
-  # Example External Agent
-  example-agent:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent
-    environment:
-      - NATS_URL=nats://nats:4222
-      - AGENT_NAME=ExampleAnalysisAgent
-    depends_on:
-      - nats
-      - spec-workbench
-    networks:
-      - spec-workbench
-    profiles:
-      - agents # Only start with --profile agents
 
 networks:
   spec-workbench:

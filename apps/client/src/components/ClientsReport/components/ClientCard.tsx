@@ -2,7 +2,7 @@ import { clsx } from "clsx";
 import { ChevronUp, Layout, Plus, Trash2 } from "lucide-react";
 import React, { type FC, useState } from "react";
 
-import { ARTIFACT_PANEL_CLASS } from "../../ArtifactPanel";
+import { ARTIFACT_PANEL_CLASS } from "../../core/ArtifactPanel";
 import type { NormalizedClient } from "../types";
 
 export const ClientCard: FC<{

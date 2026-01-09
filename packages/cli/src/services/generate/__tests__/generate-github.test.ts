@@ -1,45 +1,46 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import type { Mock } from "bun:test";
 
 const storageInstances: any[] = [];
 const githubClients: any[] = [];
 
-vi.mock("@/services/utils/git-detection.js", () => ({
-  getSmartRepositoryConfig: vi.fn(),
-  validateRepositoryConfig: vi.fn(),
+// Mock modules before importing
+mock.module("@/utils/io/git-detection.js", () => ({
+  getSmartRepositoryConfig: mock(() => null),
+  validateRepositoryConfig: mock(() => ({ valid: true, errors: [], suggestions: [] })),
 }));
 
-vi.mock("@/services/utils/sharded-storage.js", () => ({
-  ShardedCUEStorage: vi.fn().mockImplementation(() => {
+mock.module("@/utils/github/sharded-storage.js", () => ({
+  ShardedCUEStorage: mock(() => {
     const instance = {
-      initialize: vi.fn().mockResolvedValue(undefined),
-      listEpics: vi.fn().mockResolvedValue([]),
+      initialize: mock(() => Promise.resolve(undefined)),
+      listGroups: mock(() => Promise.resolve([])),
     };
     storageInstances.push(instance);
     return instance;
   }),
 }));
 
-vi.mock("@/services/utils/github-sync.js", () => ({
-  GitHubSyncClient: vi.fn().mockImplementation(() => {
+mock.module("@/utils/github/github-sync.js", () => ({
+  GitHubSyncClient: mock(() => {
     const client = {
-      generateSyncPreview: vi.fn().mockResolvedValue({
-        epics: { create: [], update: [], close: [] },
-        tasks: { create: [], update: [], close: [] },
-        milestones: { create: [], update: [], close: [] },
-      }),
-      syncToGitHub: vi.fn().mockResolvedValue([]),
+      generateSyncPreview: mock(() =>
+        Promise.resolve({
+          groups: { create: [], update: [], close: [] },
+          tasks: { create: [], update: [], close: [] },
+          milestones: { create: [], update: [], close: [] },
+        }),
+      ),
+      syncToGitHub: mock(() => Promise.resolve([])),
     };
     githubClients.push(client);
     return client;
   }),
 }));
 
-import { __generateTesting } from "@/services/generate/index.js";
-import {
-  getSmartRepositoryConfig,
-  validateRepositoryConfig,
-} from "@/services/utils/git-detection.js";
-import { GitHubSyncClient } from "@/services/utils/github-sync.js";
+import { __generateTesting } from "@/services/generate/io/index.js";
+import { GitHubSyncClient } from "@/utils/github/sync/github-sync.js";
+import { getSmartRepositoryConfig, validateRepositoryConfig } from "@/utils/io/git-detection.js";
 
 describe("handleGitHubSync", () => {
   beforeEach(() => {
@@ -47,81 +48,80 @@ describe("handleGitHubSync", () => {
     githubClients.length = 0;
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   it("exits early when repository cannot be determined", async () => {
-    vi.mocked(getSmartRepositoryConfig).mockReturnValue(null as any);
-    const logError = vi.spyOn(console, "error").mockImplementation(() => {});
+    (getSmartRepositoryConfig as Mock<typeof getSmartRepositoryConfig>).mockReturnValue(
+      null as any,
+    );
+    const logError = spyOn(console, "error").mockImplementation(() => {});
 
     await __generateTesting.handleGitHubSync({ githubDryRun: true } as any, { github: {} } as any);
 
     expect(logError).toHaveBeenCalled();
-    expect(vi.mocked(GitHubSyncClient)).not.toHaveBeenCalled();
+    expect(GitHubSyncClient as Mock<any>).not.toHaveBeenCalled();
   });
 
-  it("shows dry-run preview using detected epics", async () => {
-    vi.mocked(getSmartRepositoryConfig).mockReturnValue({
+  it("shows dry-run preview using detected groups", async () => {
+    (getSmartRepositoryConfig as Mock<typeof getSmartRepositoryConfig>).mockReturnValue({
       repo: { owner: "acme", repo: "shop" },
       source: "config",
     } as any);
-    vi.mocked(validateRepositoryConfig).mockReturnValue({
+    (validateRepositoryConfig as Mock<typeof validateRepositoryConfig>).mockReturnValue({
       valid: true,
       errors: [],
       suggestions: [],
     } as any);
 
-    const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
+    const consoleLog = spyOn(console, "log").mockImplementation(() => {});
 
-    const epics = [
-      { name: "Epic A", tasks: [{ name: "Task 1", type: "feature" }] },
-      { name: "Epic B", tasks: [] },
+    const groups = [
+      { name: "Group A", tasks: [{ name: "Task 1", type: "feature" }] },
+      { name: "Group B", tasks: [] },
     ];
 
-    // configure storage mock to return epics
-    const storageFactory = (await import("@/services/utils/sharded-storage.js")) as any;
-    vi.spyOn(storageFactory, "ShardedCUEStorage").mockImplementation(() => {
+    // configure storage mock to return groups
+    const storageFactory = (await import("@/utils/github/sharded-storage.js")) as any;
+    spyOn(storageFactory, "ShardedCUEStorage").mockImplementation(() => {
       const instance = {
-        initialize: vi.fn().mockResolvedValue(undefined),
-        listEpics: vi.fn().mockResolvedValue(epics),
+        initialize: mock(() => Promise.resolve(undefined)),
+        listGroups: mock(() => Promise.resolve(groups)),
       };
       storageInstances.push(instance);
       return instance;
     });
 
     // configure GitHub preview output with data to hit loops
-    vi.spyOn(
-      await import("@/services/utils/github-sync.js"),
-      "GitHubSyncClient",
-    ).mockImplementation(() => {
-      const client = {
-        generateSyncPreview: vi.fn().mockResolvedValue({
-          epics: {
-            create: [{ name: "New Epic" }],
-            update: [{ epic: { name: "Epic A" } }],
-            close: [{ epic: { name: "Epic B", status: "done" } }],
-          },
-          tasks: {
-            create: [{ name: "Task X", type: "bug" }],
-            update: [{ task: { name: "Task Y", type: "feature" } }],
-            close: [{ task: { name: "Task Z", status: "done", type: "bug" } }],
-          },
-          milestones: {
-            create: [{ name: "MS1" }],
-            update: [{ epic: { name: "Epic B" } }],
-            close: [{ epic: { name: "Epic A", status: "done" } }],
-          },
-        }),
-        syncToGitHub: vi.fn(),
-      };
-      githubClients.push(client);
-      return client as any;
-    });
+    spyOn(await import("@/utils/github/github-sync.js"), "GitHubSyncClient").mockImplementation(
+      () => {
+        const client = {
+          generateSyncPreview: mock(() =>
+            Promise.resolve({
+              groups: {
+                create: [{ name: "New Group" }],
+                update: [{ group: { name: "Group A" } }],
+                close: [{ group: { name: "Group B", status: "done" } }],
+              },
+              tasks: {
+                create: [{ name: "Task X", type: "bug" }],
+                update: [{ task: { name: "Task Y", type: "feature" } }],
+                close: [{ task: { name: "Task Z", status: "done", type: "bug" } }],
+              },
+              milestones: {
+                create: [{ name: "MS1" }],
+                update: [{ group: { name: "Group B" } }],
+                close: [{ group: { name: "Group A", status: "done" } }],
+              },
+            }),
+          ),
+          syncToGitHub: mock(() => Promise.resolve()),
+        };
+        githubClients.push(client);
+        return client as any;
+      },
+    );
 
     await __generateTesting.handleGitHubSync({ githubDryRun: true } as any, { github: {} } as any);
 
-    expect(storageInstances.at(-1)?.listEpics).toHaveBeenCalled();
+    expect(storageInstances.at(-1)?.listGroups).toHaveBeenCalled();
     expect(githubClients.at(-1)?.generateSyncPreview).toHaveBeenCalled();
     expect(consoleLog).toHaveBeenCalled();
   });

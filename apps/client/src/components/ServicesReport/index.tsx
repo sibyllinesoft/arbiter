@@ -1,8 +1,14 @@
+/**
+ * @module ServicesReport
+ * Component for displaying and managing service entities in a project.
+ * Handles internal services, external services, endpoints, and containers.
+ */
 import { clsx } from "clsx";
 import { Network } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
+import { shouldTreatAsInternalService } from "@/components/services/internal-service-classifier";
 import { useTabBadgeUpdater } from "@/contexts/TabBadgeContext";
 import { Button } from "@/design-system";
 import {
@@ -16,7 +22,7 @@ import { useCatalog } from "@/hooks/useCatalog";
 import { useProjectEntityPersistence } from "@/hooks/useProjectEntityPersistence";
 import { apiService } from "@/services/api";
 import type { ResolvedSpecResponse } from "@/types/api";
-import { ArtifactCard } from "../ArtifactCard";
+import { ArtifactCard } from "../core/ArtifactCard";
 import AddEntityModal from "../modals/AddEntityModal";
 import EndpointModal from "../modals/EndpointModal";
 import {
@@ -24,7 +30,6 @@ import {
   type FieldValue,
   type UiOptionCatalog,
 } from "../modals/entityTypes";
-import { shouldTreatAsInternalService } from "../services/internal-service-classifier";
 import {
   buildEndpointInitialValues,
   buildExternalServiceInitialValues,
@@ -37,6 +42,99 @@ import type {
   NormalizedService,
   ServicesReportProps,
 } from "./types";
+
+/** Extract and normalize services from the source data */
+function extractNormalizedServices(servicesSource: unknown): NormalizedService[] {
+  const serviceEntries: Array<[string, unknown]> = [];
+  if (Array.isArray(servicesSource)) {
+    servicesSource.forEach((service, index) => {
+      serviceEntries.push([`service-${index + 1}`, service]);
+    });
+  } else if (servicesSource && typeof servicesSource === "object") {
+    Object.entries(servicesSource as Record<string, unknown>).forEach(([key, service]) => {
+      serviceEntries.push([key, service]);
+    });
+  }
+  return serviceEntries
+    .map(([key, service]) => normalizeService(key, service as Record<string, unknown>))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+/** Classify services into internal and external categories */
+function classifyServices(normalizedServices: NormalizedService[]): {
+  internal: NormalizedService[];
+  external: ExternalArtifactCard[];
+} {
+  const internal: NormalizedService[] = [];
+  const external: ExternalArtifactCard[] = [];
+  normalizedServices.forEach((service) => {
+    if (shouldTreatAsInternalService(service)) {
+      internal.push(service);
+    } else {
+      external.push(createExternalArtifactCard(service.identifier, service.raw));
+    }
+  });
+  return { internal, external };
+}
+
+/** Extract root paths from internal services for deduplication */
+function extractInternalServiceRoots(internal: NormalizedService[]): Set<string> {
+  const roots = new Set<string>();
+  internal.forEach((service) => {
+    const metadata =
+      service.raw && typeof service.raw === "object"
+        ? (service.raw as Record<string, unknown>).metadata
+        : undefined;
+    const root =
+      metadata && typeof metadata === "object"
+        ? (metadata as Record<string, unknown>).root
+        : undefined;
+    if (typeof root === "string") {
+      roots.add(root.toLowerCase());
+    }
+  });
+  return roots;
+}
+
+/** Filter external services that share roots with internal services */
+function filterExternalByRoots(
+  external: ExternalArtifactCard[],
+  internalRoots: Set<string>,
+): ExternalArtifactCard[] {
+  return external.filter((card) => {
+    const metadata = card.data?.metadata;
+    const root =
+      metadata && typeof metadata === "object"
+        ? (metadata as Record<string, unknown>).root
+        : undefined;
+    const rootPath = typeof root === "string" ? root.toLowerCase() : null;
+    return rootPath ? !internalRoots.has(rootPath) : true;
+  });
+}
+
+/** Build a set of known identifiers from services and external cards */
+function buildKnownIdentifiers(
+  normalizedServices: NormalizedService[],
+  filteredExternal: ExternalArtifactCard[],
+): Set<string> {
+  return new Set<string>([
+    ...normalizedServices.map((service) => service.identifier),
+    ...filteredExternal.map((card) => card.key),
+  ]);
+}
+
+/** Deduplicate external cards by key or name */
+function deduplicateExternalCards(cards: ExternalArtifactCard[]): ExternalArtifactCard[] {
+  return Array.from(
+    cards.reduce((acc, card) => {
+      const dedupeKey = card.key || card.name;
+      if (!acc.has(dedupeKey)) {
+        acc.set(dedupeKey, card);
+      }
+      return acc;
+    }, new Map<string, ExternalArtifactCard>()),
+  ).map(([, card]) => card);
+}
 
 export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, className }) => {
   const catalog = useCatalog<ResolvedSpecResponse>(projectId);
@@ -247,120 +345,19 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
   );
 
   const { internalServices, externalCards } = useMemo(() => {
-    const resolved = data?.resolved as Record<string, any> | undefined;
-    const spec = resolved?.spec ?? resolved;
-    const servicesSource = spec?.services ?? {};
-    const containers = spec?.infrastructure?.containers;
+    const resolved = (data?.resolved as Record<string, unknown> | undefined) ?? {};
+    const spec = ((resolved as any).spec ?? resolved) as Record<string, unknown>;
+    const servicesSource = (spec as any).services ?? {};
+    const containers = (spec as any).infrastructure?.containers ?? [];
 
-    const serviceEntries: Array<[string, any]> = [];
-    if (Array.isArray(servicesSource)) {
-      servicesSource.forEach((service, index) => {
-        serviceEntries.push([`service-${index + 1}`, service]);
-      });
-    } else if (servicesSource && typeof servicesSource === "object") {
-      Object.entries(servicesSource).forEach(([key, service]) => {
-        serviceEntries.push([key, service]);
-      });
-    }
-
-    const normalizedServices = serviceEntries
-      .map(([key, service]) => normalizeService(key, service))
-      .sort((a, b) => a.displayName.localeCompare(b.displayName));
-
-    const internal: NormalizedService[] = [];
-    const external: ExternalArtifactCard[] = [];
-
-    // DEBUG: Log all services data in one object
-    console.log("=== ALL SERVICES DEBUG DUMP ===", {
-      totalServices: normalizedServices.length,
-      services: normalizedServices.map((service) => ({
-        identifier: service.identifier,
-        displayName: service.displayName,
-        isInternal: shouldTreatAsInternalService(service),
-        type: service.raw?.type,
-        hasMetadata: Boolean(service.raw?.metadata),
-        manifest: (service.raw?.metadata as any)?.manifest,
-        metadataType: (service.raw?.metadata as any)?.type,
-        metadataKeys: service.raw?.metadata ? Object.keys(service.raw.metadata) : [],
-        rawKeys: service.raw ? Object.keys(service.raw) : [],
-        fullRaw: service.raw,
-      })),
-    });
-
-    normalizedServices.forEach((service) => {
-      if (shouldTreatAsInternalService(service)) {
-        internal.push(service);
-      } else {
-        external.push(createExternalArtifactCard(service.identifier, service.raw));
-      }
-    });
-
-    // Create a set of internal service root paths for deduplication
-    const internalServiceRoots = new Set<string>();
-    console.log(
-      `[DEDUP] Found ${internal.length} internal services, ${external.length} external services`,
-    );
-
-    internal.forEach((service) => {
-      // Use the root path from metadata as the dedup key
-      const metadata =
-        service.raw && typeof service.raw === "object"
-          ? (service.raw as Record<string, unknown>).metadata
-          : undefined;
-      const root =
-        metadata && typeof metadata === "object"
-          ? (metadata as Record<string, unknown>).root
-          : undefined;
-
-      if (typeof root === "string") {
-        internalServiceRoots.add(root.toLowerCase());
-        console.log(`[DEDUP] Internal service "${service.displayName}" - root: ${root}`);
-      }
-    });
-
-    console.log(`[DEDUP] Internal service roots:`, Array.from(internalServiceRoots));
-
-    // Filter out external services that have the same root as an internal service
-    const filteredExternal = external.filter((card) => {
-      const metadata = card.data?.metadata;
-      const root =
-        metadata && typeof metadata === "object"
-          ? (metadata as Record<string, unknown>).root
-          : undefined;
-
-      const rootPath = typeof root === "string" ? root.toLowerCase() : null;
-      const matchesInternal = rootPath ? internalServiceRoots.has(rootPath) : false;
-
-      console.log(
-        `[DEDUP] External service "${card.name}" - root: ${rootPath}, matches: ${matchesInternal}`,
-      );
-
-      if (matchesInternal) {
-        console.log(
-          `[DEDUP] ✅ Filtering out external service "${card.name}" - same root as internal service`,
-        );
-      }
-
-      return !matchesInternal;
-    });
-
-    const knownIdentifiers = new Set<string>([
-      ...normalizedServices.map((service) => service.identifier),
-      ...filteredExternal.map((card) => card.key),
-    ]);
-
+    const normalizedServices = extractNormalizedServices(servicesSource);
+    const { internal, external } = classifyServices(normalizedServices);
+    const internalServiceRoots = extractInternalServiceRoots(internal);
+    const filteredExternal = filterExternalByRoots(external, internalServiceRoots);
+    const knownIdentifiers = buildKnownIdentifiers(normalizedServices, filteredExternal);
     const containerCards = normalizeContainersAsExternalCards(containers, knownIdentifiers);
     containerCards.forEach((card) => filteredExternal.push(card));
-
-    const dedupedExternal = Array.from(
-      filteredExternal.reduce((acc, card) => {
-        const dedupeKey = card.key || card.name;
-        if (!acc.has(dedupeKey)) {
-          acc.set(dedupeKey, card);
-        }
-        return acc;
-      }, new Map<string, ExternalArtifactCard>()),
-    ).map(([, card]) => card);
+    const dedupedExternal = deduplicateExternalCards(filteredExternal);
 
     return {
       internalServices: internal,

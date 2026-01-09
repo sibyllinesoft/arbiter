@@ -4,8 +4,8 @@ import os from "node:os";
 import path from "node:path";
 
 import * as constraints from "@/constraints/index.js";
-import { addSchema } from "@/services/add/subcommands/schema.js";
-import * as schemaModule from "@/services/add/subcommands/schema.js";
+import { addSchema } from "@/services/add/subcommands/definitions/schema.js";
+import * as schemaModule from "@/services/add/subcommands/definitions/schema.js";
 import fs from "fs-extra";
 
 const manipulator = {

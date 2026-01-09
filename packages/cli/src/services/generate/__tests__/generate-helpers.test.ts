@@ -1,4 +1,4 @@
-import { __generateTesting } from "@/services/generate/index.js";
+import { __generateTesting } from "@/services/generate/io/index.js";
 import type { AppSpec } from "@arbiter/shared";
 import { describe, expect, it } from "vitest";
 
@@ -8,7 +8,7 @@ describe("generate helper utilities", () => {
       product: { name: "Test App" },
       ui: { routes: [] },
       locators: {},
-      flows: [
+      behaviors: [
         {
           id: "checkout",
           steps: [
@@ -51,7 +51,7 @@ describe("generate helper utilities", () => {
       product: { name: "Proxy App" },
       ui: { routes: [] },
       locators: {},
-      flows: [],
+      behaviors: [],
       services: {
         Orders: { language: "typescript", ports: [{ port: 4000 }] },
         Payments: { language: "python", ports: [{ port: 5001 }] },
@@ -78,7 +78,7 @@ describe("generate helper utilities", () => {
         "button:submit": 'data-testid="submit-btn"',
         "page:checkout": 'data-testid="checkout-root"',
       },
-      flows: [
+      behaviors: [
         {
           id: "checkout",
           steps: [

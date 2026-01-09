@@ -59,19 +59,6 @@ arbiter init my-api --preset api-service
 arbiter init my-service --preset microservice
 ```
 
-**From a template:**
-
-```bash
-# Create a basic CUE project
-arbiter init my-project --template basic
-
-# Create a Kubernetes configuration project
-arbiter init k8s-config --template kubernetes
-
-# Create an API schema project
-arbiter init api-schema --template api
-```
-
 ### 2. Add Components to Your Specification
 
 ```bash
@@ -114,10 +101,9 @@ arbiter watch
 
 | Purpose              | Flag                            | Env Var                    | Notes                               |
 |----------------------|---------------------------------|----------------------------|-------------------------------------|
-| API base URL         | `--api-url https://...`         | `ARBITER_URL` or `ARBITER_API_URL` | Defaults to `http://localhost:5050` |
+| API base URL         | `--api-url https://...`         | `ARBITER_API_URL`          | Defaults to `http://localhost:5050` |
 | Auth token           | `--token <jwt>`                 | `ARBITER_TOKEN`            | Stored in `~/.arbiter/auth.json`    |
 | Verbose logging      | `--verbose`                     | `ARBITER_VERBOSE=1`        | Shows request/response bodies       |
-| Fetch debug traces   | `--fetch-debug`                 | `ARBITER_FETCH_DEBUG=1`    | Helpful for HTTP troubleshooting    |
 | Non-interactive use  | `--ci`                          | `CI=1`                     | Suppresses prompts                  |
 | Output format        | `--format json|table|yaml`      | `ARBITER_FORMAT`           | Defaults to `table`                 |
 
@@ -145,9 +131,6 @@ arbiter design
 arbiter add service api --language typescript --port 3000
 arbiter add endpoint /users --method GET --service api
 arbiter list service
-
-# CI/CD workflow generation
-arbiter integrate
 
 # Inspect or update fragments through the API
 arbiter surface typescript
@@ -335,23 +318,17 @@ arbiter generate
 - \`arbiter list <type>\` - List components by type
 - \`arbiter status\` - Show project status
 
-### Development
+### Development & Integration
 
 - \`arbiter generate\` - Generate code from specifications
 - \`arbiter check [patterns...]\` - Validate CUE files
-- \`arbiter watch [path]\` - Watch files with live validation
 - \`arbiter diff <old> <new>\` - Compare CUE schemas
-
-### Integration
-
-- \`arbiter integrate\` - Generate CI/CD workflows
 - \`arbiter sync\` - Synchronize project manifests
 - \`arbiter surface <language>\` - Extract API surface from code
 
 ### Utilities
 
 - \`arbiter health\` - Check server health
-- \`arbiter version\` - Show version information
 
 ## Entity Types
 
@@ -380,7 +357,7 @@ The CLI supports 26+ entity types:
 - \`capability\` - Business capabilities
 
 **Project Management:**
-- \`epic\` - Project epics
+- \`group\` - Project groups
 - \`task\` - Tasks
 - \`tool\` - Developer tools
 

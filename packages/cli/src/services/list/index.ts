@@ -1,9 +1,19 @@
+/**
+ * @packageDocumentation
+ * List command - List specification components.
+ *
+ * Provides functionality to:
+ * - List services, clients, endpoints, routes
+ * - List flows, schemas, packages, and tools
+ * - Output in table, JSON, or YAML format
+ */
+
 import path from "node:path";
-import { ApiClient } from "@/api-client.js";
 import { getCueManipulator } from "@/constraints/cli-integration.js";
+import { ApiClient } from "@/io/api/api-client.js";
 import type { CLIConfig } from "@/types.js";
-import { formatComponentTable, formatJson, formatYaml } from "@/utils/formatting.js";
-import { withProgress } from "@/utils/progress.js";
+import { withProgress } from "@/utils/api/progress.js";
+import { formatComponentTable, formatJson, formatYaml } from "@/utils/util/output/formatting.js";
 import chalk from "chalk";
 import fs from "fs-extra";
 
@@ -34,7 +44,7 @@ const VALID_TYPES = [
   "load-balancer",
   "tool",
   "infrastructure",
-  "epic",
+  "group",
   "task",
   "contract",
   "capability",
@@ -42,57 +52,88 @@ const VALID_TYPES = [
 
 type ValidType = (typeof VALID_TYPES)[number];
 
+/**
+ * Validate component type
+ */
+function isValidType(type: string): type is ValidType {
+  return VALID_TYPES.includes(type as ValidType);
+}
+
+/**
+ * Report invalid type error
+ */
+function reportInvalidType(type: string): void {
+  console.error(chalk.red(`Invalid type: ${type}`));
+  console.error(chalk.gray(`Valid types: ${VALID_TYPES.join(", ")}`));
+}
+
+/**
+ * Output components in the specified format
+ */
+function outputComponents(components: any[], format: string | undefined): void {
+  switch (format) {
+    case "json":
+      console.log(formatJson(components));
+      break;
+    case "yaml":
+      console.log(formatYaml(components));
+      break;
+    case "table":
+    default:
+      console.log(formatComponentTable(components));
+      break;
+  }
+}
+
+/**
+ * List components from remote API
+ */
+async function listComponentsRemotely(
+  type: ValidType,
+  options: ListOptions,
+  config: CLIConfig,
+): Promise<number> {
+  const client = new ApiClient(config);
+  const result = await withProgress({ text: `Listing ${type}s...` }, () =>
+    client.listComponents(type),
+  );
+
+  if (!result.success) {
+    console.error(chalk.red("List failed:"), result.error);
+    return 1;
+  }
+
+  const components = result.data || [];
+  if (components.length === 0) {
+    console.log(chalk.yellow(`No ${type}s found`));
+    return 0;
+  }
+
+  outputComponents(components, options.format || config.format);
+
+  if (options.verbose) {
+    console.log(chalk.gray(`\nFound ${components.length} ${type}(s)`));
+  }
+
+  return 0;
+}
+
 export async function listCommand(
   type: string,
   options: ListOptions,
   config: CLIConfig,
 ): Promise<number> {
   try {
-    if (!VALID_TYPES.includes(type as ValidType)) {
-      console.error(chalk.red(`Invalid type: ${type}`));
-      console.error(chalk.gray(`Valid types: ${VALID_TYPES.join(", ")}`));
+    if (!isValidType(type)) {
+      reportInvalidType(type);
       return 1;
     }
 
     if (config.localMode) {
-      return await listComponentsLocally(type as ValidType, options, config);
+      return await listComponentsLocally(type, options, config);
     }
 
-    const client = new ApiClient(config);
-    const result = await withProgress({ text: `Listing ${type}s...` }, () =>
-      client.listComponents(type),
-    );
-
-    if (!result.success) {
-      console.error(chalk.red("List failed:"), result.error);
-      return 1;
-    }
-
-    const components = result.data || [];
-    if (components.length === 0) {
-      console.log(chalk.yellow(`No ${type}s found`));
-      return 0;
-    }
-
-    const outputFormat = options.format || config.format;
-    switch (outputFormat) {
-      case "json":
-        console.log(formatJson(components));
-        break;
-      case "yaml":
-        console.log(formatYaml(components));
-        break;
-      case "table":
-      default:
-        console.log(formatComponentTable(components));
-        break;
-    }
-
-    if (options.verbose) {
-      console.log(chalk.gray(`\nFound ${components.length} ${type}(s)`));
-    }
-
-    return 0;
+    return await listComponentsRemotely(type, options, config);
   } catch (error) {
     console.error(chalk.red("List command failed:"), (error as Error).message);
     return 2;
@@ -152,139 +193,136 @@ async function loadLocalAssemblySpec(_config: CLIConfig): Promise<any | null> {
   }
 }
 
-function buildComponentsFromSpec(spec: Record<string, any>, type: ValidType): any[] {
-  switch (type) {
-    case "service":
-      return Object.entries((spec?.services ?? {}) as Record<string, any>).map(
-        ([name, service]) => {
-          const svc = service as Record<string, any>;
-          return {
-            name,
-            type,
-            language: svc.language || "unknown",
-            endpoints: Object.keys(svc.endpoints ?? {}),
-          };
-        },
-      );
-    case "client":
-      return Object.entries((spec?.modules ?? {}) as Record<string, any>)
-        .filter(([, module]) => (module as any)?.metadata?.type === "frontend")
-        .map(([name, module]) => {
-          const mod = module as Record<string, any>;
-          return {
-            name,
-            type,
-            language: mod.language || "unknown",
-            framework: mod.metadata?.framework || "unknown",
-          };
-        });
-    case "endpoint":
-      return Object.entries((spec?.paths ?? {}) as Record<string, any>).flatMap(
-        ([service, paths]) =>
-          Object.entries((paths as Record<string, any>) || {}).map(([endpointPath, handlers]) => ({
-            name: `${service}${endpointPath}`,
-            service,
-            path: endpointPath,
-            methods: Object.keys(handlers || {}),
-            type,
-          })),
-      );
-    case "route":
-      return (spec?.ui?.routes ?? []).map((route: any) => ({
-        name: route.id || route.path,
-        path: route.path,
-        capabilities: route.capabilities || [],
+type SpecRecord = Record<string, unknown>;
+type ComponentMapper = (spec: SpecRecord, type: ValidType) => SpecRecord[];
+
+function getEntries(data: unknown): Array<[string, SpecRecord]> {
+  if (!data || typeof data !== "object") return [];
+  return Object.entries(data as Record<string, SpecRecord>);
+}
+
+function mapEntries(
+  data: unknown,
+  mapper: (name: string, item: SpecRecord) => SpecRecord,
+): SpecRecord[] {
+  return getEntries(data).map(([name, item]) => mapper(name, item));
+}
+
+const componentMappers: Partial<Record<ValidType, ComponentMapper>> = {
+  service: (spec, type) =>
+    mapEntries(spec.services, (name, svc) => ({
+      name,
+      type,
+      language: svc.language || "unknown",
+      endpoints: Object.keys((svc.endpoints as SpecRecord) ?? {}),
+    })),
+
+  client: (spec, type) =>
+    getEntries(spec.modules)
+      .filter(([, mod]) => (mod.metadata as SpecRecord)?.type === "frontend")
+      .map(([name, mod]) => ({
+        name,
         type,
-      }));
-    case "view":
-      return (spec?.ui?.views ?? []).map((view: any) => ({
-        name: view.id || view.name,
-        path: view.filePath,
+        language: mod.language || "unknown",
+        framework: (mod.metadata as SpecRecord)?.framework || "unknown",
+      })),
+
+  endpoint: (spec, type) =>
+    getEntries(spec.paths).flatMap(([service, paths]) =>
+      getEntries(paths).map(([endpointPath, handlers]) => ({
+        name: `${service}${endpointPath}`,
+        service,
+        path: endpointPath,
+        methods: Object.keys((handlers as SpecRecord) ?? {}),
         type,
-      }));
-    case "schema":
-      return Object.entries((spec?.schemas ?? {}) as Record<string, any>).map(([name, schema]) => {
-        const schemaObj = schema as Record<string, any>;
-        return {
-          name,
-          type,
-          references: Object.keys(schemaObj.references ?? {}),
-        };
-      });
-    case "database":
-      return Object.entries((spec?.databases ?? {}) as Record<string, any>).map(
-        ([name, database]) => {
-          const db = database as Record<string, any>;
-          return {
-            name,
-            type,
-            engine: db.engine || "unknown",
-          };
-        },
-      );
-    case "package":
-      return Object.entries(
-        ((spec?.packages ?? spec?.modules ?? {}) as Record<string, any>) || {},
-      ).map(([name, pkg]) => {
-        const pkgData = pkg as Record<string, any>;
-        return {
-          name,
-          type,
-          language: pkgData.language || "unknown",
-        };
-      });
-    case "tool":
-      return Object.entries((spec?.tools ?? {}) as Record<string, any>).map(([name, tool]) => {
-        const toolData = tool as Record<string, any>;
-        return {
-          name,
-          type,
-          commands: toolData.commands || [],
-        };
-      });
-    case "infrastructure":
-      return (spec?.infrastructure?.containers ?? []).map((container: any) => ({
+      })),
+    ),
+
+  route: (spec, type) =>
+    (((spec.ui as SpecRecord)?.routes as Array<SpecRecord>) ?? []).map((route) => ({
+      name: route.id || route.path,
+      path: route.path,
+      capabilities: route.capabilities || [],
+      type,
+    })),
+
+  view: (spec, type) =>
+    (((spec.ui as SpecRecord)?.views as Array<SpecRecord>) ?? []).map((view) => ({
+      name: view.id || view.name,
+      path: view.filePath,
+      type,
+    })),
+
+  schema: (spec, type) =>
+    mapEntries(spec.schemas, (name, schema) => ({
+      name,
+      type,
+      references: Object.keys((schema.references as SpecRecord) ?? {}),
+    })),
+
+  database: (spec, type) =>
+    mapEntries(spec.databases, (name, db) => ({
+      name,
+      type,
+      engine: db.engine || "unknown",
+    })),
+
+  package: (spec, type) =>
+    mapEntries(spec.packages ?? spec.modules, (name, pkg) => ({
+      name,
+      type,
+      language: pkg.language || "unknown",
+    })),
+
+  tool: (spec, type) =>
+    mapEntries(spec.tools, (name, tool) => ({
+      name,
+      type,
+      commands: tool.commands || [],
+    })),
+
+  infrastructure: (spec, type) =>
+    (((spec.infrastructure as SpecRecord)?.containers as Array<SpecRecord>) ?? []).map(
+      (container) => ({
         name: container.name,
         type,
         scope: container.scope,
         image: container.image,
-      }));
-    case "contract":
-      return Object.entries((spec?.contracts?.workflows ?? {}) as Record<string, any>).map(
-        ([name, contract]) => {
-          const contractData = contract as Record<string, any>;
-          return {
-            name,
-            type,
-            operations: Object.keys(contractData.operations ?? {}),
-          };
-        },
-      );
-    case "flow":
-      return Object.entries(
-        spec?.processes ?? spec?.domain?.processes ?? spec?.domain?.stateMachines ?? {},
-      ).map(([name, flow]) => {
-        const flowData = flow as Record<string, any>;
-        return {
-          name,
-          type,
-          states: Object.keys(flowData.states ?? {}),
-        };
-      });
-    case "capability":
-      return Object.entries((spec?.modules ?? {}) as Record<string, any>)
-        .filter(([, module]) => (module as any)?.type === "capability")
-        .map(([name, module]) => {
-          const mod = module as Record<string, any>;
-          return {
-            name,
-            type,
-            description: mod.description || "",
-          };
-        });
-    default:
-      return [];
-  }
+      }),
+    ),
+
+  contract: (spec, type) =>
+    mapEntries((spec.contracts as SpecRecord)?.workflows, (name, contract) => ({
+      name,
+      type,
+      operations: Object.keys((contract.operations as SpecRecord) ?? {}),
+    })),
+
+  flow: (spec, type) =>
+    mapEntries(
+      spec.processes ??
+        (spec.domain as SpecRecord)?.processes ??
+        (spec.domain as SpecRecord)?.stateMachines,
+      (name, flow) => ({
+        name,
+        type,
+        states: Object.keys((flow.states as SpecRecord) ?? {}),
+      }),
+    ),
+
+  capability: (spec, type) =>
+    getEntries(spec.modules)
+      .filter(([, mod]) => mod.type === "capability")
+      .map(([name, mod]) => ({
+        name,
+        type,
+        description: mod.description || "",
+      })),
+};
+
+function buildComponentsFromSpec(spec: SpecRecord, type: ValidType): SpecRecord[] {
+  const mapper = componentMappers[type];
+  return mapper ? mapper(spec, type) : [];
 }
 
 // Expose internal helpers for unit testing

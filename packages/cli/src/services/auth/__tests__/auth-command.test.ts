@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 
-import { DEFAULT_PROJECT_STRUCTURE } from "@/config.js";
+import { DEFAULT_PROJECT_STRUCTURE } from "@/io/config/config.js";
 import { runAuthCommand } from "@/services/auth/index.js";
 import type { CLIConfig } from "@/types.js";
 
@@ -8,7 +8,7 @@ const clearAuthSession = mock(async () => {});
 const saveAuthSession = mock(async () => {});
 const getAuthStorePath = mock(() => "/tmp/auth-store.json");
 
-mock.module("@/auth-store.js", () => ({
+mock.module("@/io/api/auth-store.js", () => ({
   clearAuthSession,
   saveAuthSession,
   getAuthStorePath,

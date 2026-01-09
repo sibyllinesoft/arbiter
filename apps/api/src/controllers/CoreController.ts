@@ -1,8 +1,8 @@
 import path from "path";
 import fs from "fs-extra";
 import { glob } from "glob";
-import { isCloudflareRuntime } from "../runtime-env";
-import type { ServerConfig } from "../types";
+import { isCloudflareRuntime } from "../util/runtime-env";
+import type { ServerConfig } from "../util/types";
 
 type Dependencies = Record<string, unknown>;
 
@@ -12,6 +12,56 @@ interface SearchResult {
   path: string;
   content: string;
   relevance: number;
+}
+
+interface LineMatch {
+  relevance: number;
+  matchingLines: string[];
+}
+
+const SEARCH_PATTERNS: Record<string, string[]> = {
+  all: ["**/*.md", "**/*.ts", "**/*.js", "**/*.cue", "**/*.json", "**/*.yaml", "**/*.yml"],
+  specs: ["**/*.cue", "**/spec/**/*", "**/specs/**/*"],
+  docs: ["**/*.md", "**/docs/**/*", "**/README*"],
+};
+
+const IGNORE_PATTERNS = ["**/node_modules/**", "**/dist/**", "**/.git/**", "**/build/**"];
+const MAX_FILE_SIZE = 100000;
+
+function calculateLineRelevance(
+  line: string,
+  queryLower: string,
+  lineNumber: number,
+): LineMatch | null {
+  const lineLower = line.toLowerCase();
+  if (!lineLower.includes(queryLower)) return null;
+
+  let relevance = 1;
+  const trimmed = line.trim();
+  if (trimmed.startsWith("#") || line.includes("title:") || line.includes("name:")) {
+    relevance += 3;
+  }
+
+  return {
+    relevance,
+    matchingLines: [`${lineNumber + 1}: ${trimmed}`],
+  };
+}
+
+function analyzeFileContent(content: string, queryLower: string): LineMatch {
+  const lines = content.split("\n");
+  let totalRelevance = 0;
+  const allMatchingLines: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = calculateLineRelevance(lines[i], queryLower, i);
+    if (match) {
+      totalRelevance += match.relevance;
+      allMatchingLines.push(...match.matchingLines);
+    }
+  }
+
+  return { relevance: totalRelevance, matchingLines: allMatchingLines };
 }
 
 export class CoreController {
@@ -29,61 +79,41 @@ export class CoreController {
     };
   }
 
+  private async processFile(filePath: string, queryLower: string): Promise<SearchResult | null> {
+    if (!(await fs.pathExists(filePath))) return null;
+
+    const stat = await fs.stat(filePath);
+    if (!stat.isFile() || stat.size > MAX_FILE_SIZE) return null;
+
+    const content = await fs.readFile(filePath, "utf-8");
+    const { relevance, matchingLines } = analyzeFileContent(content, queryLower);
+
+    if (relevance === 0) return null;
+
+    return {
+      title: path.basename(filePath),
+      type: path.extname(filePath).slice(1) || "file",
+      path: path.relative(this.projectRoot, filePath),
+      content: matchingLines.slice(0, 5).join("\n"),
+      relevance,
+    };
+  }
+
   async search(query: string, searchType: string, limit: number): Promise<SearchResult[]> {
     const results: SearchResult[] = [];
     const queryLower = query.toLowerCase();
-
-    const searchPatterns: Record<string, string[]> = {
-      all: ["**/*.md", "**/*.ts", "**/*.js", "**/*.cue", "**/*.json", "**/*.yaml", "**/*.yml"],
-      specs: ["**/*.cue", "**/spec/**/*", "**/specs/**/*"],
-      docs: ["**/*.md", "**/docs/**/*", "**/README*"],
-    };
-
-    const patterns = searchPatterns[searchType] || searchPatterns.all;
+    const patterns = SEARCH_PATTERNS[searchType] || SEARCH_PATTERNS.all;
 
     for (const pattern of patterns) {
       const files = await glob(pattern, {
         cwd: this.projectRoot,
-        ignore: ["**/node_modules/**", "**/dist/**", "**/.git/**", "**/build/**"],
+        ignore: IGNORE_PATTERNS,
         absolute: true,
       });
 
       for (const filePath of files) {
-        if (!(await fs.pathExists(filePath))) continue;
-
-        const stat = await fs.stat(filePath);
-        if (!stat.isFile() || stat.size > 100000) continue;
-
-        const content = await fs.readFile(filePath, "utf-8");
-        const lines = content.split("\n");
-
-        let relevance = 0;
-        const matchingLines: string[] = [];
-
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          const lineLower = line.toLowerCase();
-          if (lineLower.includes(queryLower)) {
-            relevance++;
-            matchingLines.push(`${i + 1}: ${line.trim()}`);
-            if (line.trim().startsWith("#") || line.includes("title:") || line.includes("name:")) {
-              relevance += 3;
-            }
-          }
-        }
-
-        if (relevance > 0) {
-          const relativePath = path.relative(this.projectRoot, filePath);
-          const fileType = path.extname(filePath).slice(1) || "file";
-
-          results.push({
-            title: path.basename(filePath),
-            type: fileType,
-            path: relativePath,
-            content: matchingLines.slice(0, 5).join("\n"),
-            relevance,
-          });
-        }
+        const result = await this.processFile(filePath, queryLower);
+        if (result) results.push(result);
       }
     }
 

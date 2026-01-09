@@ -45,64 +45,83 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
     });
   }, []);
 
-  // Handle file selection
+  // Helper: update selection and notify parent
+  const updateSelection = useCallback(
+    (newSelection: Set<string>) => {
+      setSelectedFiles(newSelection);
+      onSelectionChange?.(Array.from(newSelection));
+    },
+    [onSelectionChange],
+  );
+
+  // Helper: toggle single file in selection
+  const toggleFileSelection = useCallback(
+    (fragmentId: string) => {
+      setSelectedFiles((prev) => {
+        const newSelection = new Set(prev);
+        if (newSelection.has(fragmentId)) {
+          newSelection.delete(fragmentId);
+        } else {
+          newSelection.add(fragmentId);
+        }
+        onSelectionChange?.(Array.from(newSelection));
+        return newSelection;
+      });
+    },
+    [onSelectionChange],
+  );
+
+  // Helper: range selection between last selected and current
+  const selectRange = useCallback(
+    (fragmentId: string, fragments: Fragment[]) => {
+      const currentIndex = fragments.findIndex((f) => f.id === fragmentId);
+      const lastSelectedId = Array.from(selectedFiles).pop();
+      const lastIndex = fragments.findIndex((f) => f.id === lastSelectedId);
+
+      if (currentIndex === -1 || lastIndex === -1) return;
+
+      const start = Math.min(currentIndex, lastIndex);
+      const end = Math.max(currentIndex, lastIndex);
+      const rangeIds = fragments.slice(start, end + 1).map((f) => f.id);
+
+      setSelectedFiles((prev) => {
+        const newSelection = new Set([...prev, ...rangeIds]);
+        onSelectionChange?.(Array.from(newSelection));
+        return newSelection;
+      });
+    },
+    [selectedFiles, onSelectionChange],
+  );
+
+  // Handle file selection with support for multi-select modes
   const handleFileSelect = useCallback(
     (fragmentId: string, event?: React.MouseEvent) => {
       if (multiSelect && event) {
-        if (event.ctrlKey || event.metaKey) {
-          // Toggle selection for ctrl/cmd+click
-          setSelectedFiles((prev) => {
-            const newSelection = new Set(prev);
-            if (newSelection.has(fragmentId)) {
-              newSelection.delete(fragmentId);
-            } else {
-              newSelection.add(fragmentId);
-            }
-            // Notify parent of selection change
-            if (onSelectionChange) {
-              onSelectionChange(Array.from(newSelection));
-            }
-            return newSelection;
-          });
-        } else if (event.shiftKey && selectedFiles.size > 0) {
-          // Range selection for shift+click
-          const fragments = editorState.fragments;
-          const currentIndex = fragments.findIndex((f) => f.id === fragmentId);
-          const lastSelectedId = Array.from(selectedFiles).pop();
-          const lastIndex = fragments.findIndex((f) => f.id === lastSelectedId);
+        const isToggle = event.ctrlKey || event.metaKey;
+        const isRange = event.shiftKey && selectedFiles.size > 0;
 
-          if (currentIndex !== -1 && lastIndex !== -1) {
-            const start = Math.min(currentIndex, lastIndex);
-            const end = Math.max(currentIndex, lastIndex);
-            const rangeIds = fragments.slice(start, end + 1).map((f) => f.id);
-
-            setSelectedFiles((prev) => {
-              const newSelection = new Set([...prev, ...rangeIds]);
-              if (onSelectionChange) {
-                onSelectionChange(Array.from(newSelection));
-              }
-              return newSelection;
-            });
-          }
+        if (isToggle) {
+          toggleFileSelection(fragmentId);
+        } else if (isRange) {
+          selectRange(fragmentId, editorState.fragments);
         } else {
-          // Single selection
-          setSelectedFiles(new Set([fragmentId]));
-          if (onSelectionChange) {
-            onSelectionChange([fragmentId]);
-          }
+          updateSelection(new Set([fragmentId]));
         }
       } else if (!multiSelect) {
-        // Clear selection when not in multiSelect mode
-        setSelectedFiles(new Set());
-        if (onSelectionChange) {
-          onSelectionChange([]);
-        }
+        updateSelection(new Set());
       }
 
-      // Always set active fragment for editing
       setActiveFragment(fragmentId);
     },
-    [setActiveFragment, multiSelect, selectedFiles, editorState.fragments, onSelectionChange],
+    [
+      setActiveFragment,
+      multiSelect,
+      selectedFiles,
+      editorState.fragments,
+      toggleFileSelection,
+      selectRange,
+      updateSelection,
+    ],
   );
 
   // Expose methods via ref

@@ -2,6 +2,7 @@
  * Editor pane combining file tree and Monaco editor
  */
 
+import { apiService } from "@services/api";
 import { clsx } from "clsx";
 import { CheckCircle2, Circle, Code2, FileText, Save } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
@@ -13,7 +14,6 @@ import {
   useStatus,
 } from "../../contexts/AppContext";
 import { useCurrentProject } from "../../contexts/ProjectContext";
-import { apiService } from "../../services/api";
 import SplitPane from "../Layout/SplitPane";
 import FileTree from "./FileTree";
 import MonacoEditor from "./MonacoEditor";

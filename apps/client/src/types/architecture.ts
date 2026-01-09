@@ -12,7 +12,7 @@ export interface ArchitecturalElement {
    */
   kind?: string;
   description?: string | undefined;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export type ElementType =
@@ -55,7 +55,7 @@ export interface DiagramComponent extends ArchitecturalElement {
   flowSteps?: FlowStep[];
 
   // From state machines
-  states?: Record<string, any>;
+  states?: Record<string, unknown>;
   transitions?: Record<string, string>;
 }
 
@@ -83,7 +83,7 @@ export interface DiagramConnection {
   metadata?: {
     // From flows
     userAction?: string;
-    expectation?: any;
+    expectation?: unknown;
 
     // From API paths
     method?: string;
@@ -112,7 +112,7 @@ export interface FlowStep {
   type: "visit" | "click" | "fill" | "expect" | "expect_api";
   target?: string;
   value?: string;
-  expectation?: any;
+  expectation?: unknown;
 }
 
 // Layout configuration for different diagram types
@@ -168,23 +168,23 @@ export type DiagramType =
 // CUE parsing results
 export interface CueArchitectureData {
   // v1 schema elements
-  services?: Record<string, any>;
-  resources?: Record<string, any> | any[];
-  infrastructure?: Record<string, any>;
-  environments?: Record<string, any>;
+  services?: Record<string, unknown>;
+  resources?: Record<string, unknown> | unknown[];
+  infrastructure?: Record<string, unknown>;
+  environments?: Record<string, unknown>;
 
   // application schema elements
-  product?: any;
-  ui?: { routes: any[] };
-  behaviors?: any[];
-  flows?: any[];
-  capabilities?: Record<string, any>;
-  paths?: Record<string, any>;
-  processes?: Record<string, any>;
+  product?: unknown;
+  ui?: { routes: unknown[] };
+  behaviors?: unknown[];
+  flows?: unknown[];
+  capabilities?: Record<string, unknown>;
+  paths?: Record<string, unknown>;
+  processes?: Record<string, unknown>;
   /**
    * @deprecated use processes
    */
-  stateModels?: Record<string, any>;
+  stateModels?: Record<string, unknown>;
   locators?: Record<string, string>;
 
   // Additional metadata

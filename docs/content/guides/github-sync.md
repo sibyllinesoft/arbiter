@@ -1,6 +1,6 @@
 # GitHub Synchronization
 
-The Arbiter CLI can synchronize epics and tasks to GitHub issues (and optional milestones). This page reflects the simplified config shape—`prefixes`, `labels`, and `automation`—used by `GitHubSyncConfig`.
+The Arbiter CLI can synchronize groups and tasks to GitHub issues (and optional milestones). This page reflects the simplified config shape—`prefixes`, `labels`, and `automation`—used by `GitHubSyncConfig`.
 
 ## Configuration
 
@@ -15,12 +15,12 @@ Add a `github` block to `.arbiter/config.json`:
       "tokenEnv": "GITHUB_TOKEN"
     },
     "prefixes": {
-      "epic": "[Epic]",
+      "group": "[Group]",
       "task": "[Task]"
     },
     "labels": {
       "default": ["arbiter-generated"],
-      "epics": {
+      "groups": {
         "critical": ["priority:critical"],
         "high": ["priority:high"]
       },
@@ -47,17 +47,17 @@ Add a `github` block to `.arbiter/config.json`:
 - `baseUrl`: Custom GitHub API URL (GitHub Enterprise).
 
 ### Prefixes
-- `epic`: Title prefix for epic issues (e.g., `[Epic]`).
+- `group`: Title prefix for group issues (e.g., `[Group]`).
 - `task`: Title prefix for task issues (e.g., `[Task]`).
 
 ### Labels
 - `default`: Labels applied to every synced issue.
-- `epics`: Priority → labels map (`"critical": ["priority:critical"]`).
+- `groups`: Priority → labels map (`"critical": ["priority:critical"]`).
 - `tasks`: Type → labels map (`"bug": ["type:bug"]`).
 
 ### Automation
-- `createMilestones`: Create/maintain milestones from epics.
-- `autoClose`: Close GitHub issues when epics/tasks complete.
+- `createMilestones`: Create/maintain milestones from groups.
+- `autoClose`: Close GitHub issues when groups/tasks complete.
 - `syncAcceptanceCriteria`: Include acceptance criteria in task bodies.
 - `syncAssignees`: Mirror assignees to GitHub.
 
@@ -90,8 +90,8 @@ Use a personal access token with `repo` scope (or `public_repo` for public repos
 - Re-running sync produces the same result.
 
 ## Title & Label Logic (conceptual)
-- Titles use `prefixes.epic` / `prefixes.task` plus the epic/task name.
-- Labels combine `labels.default`, mapped priority/type labels, status/priority tags, and any labels already present on the epic/task in Arbiter.
+- Titles use `prefixes.group` / `prefixes.task` plus the group/task name.
+- Labels combine `labels.default`, mapped priority/type labels, status/priority tags, and any labels already present on the group/task in Arbiter.
 
 ## Troubleshooting
 - **Missing config**: ensure `.arbiter/config.json` contains a `github` block.

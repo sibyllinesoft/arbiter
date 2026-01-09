@@ -1,9 +1,27 @@
 import type { SQL } from "drizzle-orm";
-import { and, eq, gte } from "drizzle-orm";
-import { events, type ArtifactRow, type EventRow, type ProjectRow, projects } from "../db/schema";
-import type { Event, EventType } from "../types";
-import { logger } from "../utils";
+import { eq, gte } from "drizzle-orm";
+import { events, type ArtifactRow, type EventRow, type ProjectRow } from "../db/schema";
+import { logger } from "../io/utils";
+import type { Event, EventType } from "../util/types";
 import type { DbProject, WithMetadata } from "./types";
+
+/** Safely parse JSON string, returning fallback on error */
+function safeJsonParse<T>(
+  json: string | null | undefined,
+  fallback: T,
+  context: { id: string; type: string },
+): T {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json) as T;
+  } catch (error) {
+    logger.warn(`Failed to parse ${context.type}`, {
+      id: context.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return fallback;
+  }
+}
 
 export function mapProjectRow(row: ProjectRow): DbProject {
   return {
@@ -19,19 +37,8 @@ export function mapProjectRow(row: ProjectRow): DbProject {
 
 export function parseEventData(row: EventRow): Record<string, unknown> {
   if (!row.data) return {};
-  if (typeof row.data === "string") {
-    try {
-      return JSON.parse(row.data) as Record<string, unknown>;
-    } catch (error) {
-      logger.warn("Failed to parse event data", {
-        eventId: row.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return {};
-    }
-  }
-
-  return row.data as Record<string, unknown>;
+  if (typeof row.data !== "string") return row.data as Record<string, unknown>;
+  return safeJsonParse(row.data, {}, { id: row.id, type: "event data" });
 }
 
 export function mapEventRow(row: EventRow): Event {
@@ -47,38 +54,24 @@ export function mapEventRow(row: EventRow): Event {
 }
 
 export function mapArtifactRow(row: ArtifactRow): WithMetadata<any> {
-  let metadata: Record<string, unknown> | null = null;
-  if (row.metadata) {
-    try {
-      metadata = JSON.parse(row.metadata) as Record<string, unknown>;
-      if (metadata && typeof metadata === "object") {
-        (metadata as Record<string, unknown>).artifactId = row.id;
-      }
-    } catch (error) {
-      logger.warn("Failed to parse artifact metadata", {
-        artifactId: row.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+  const metadata = safeJsonParse<Record<string, unknown> | null>(row.metadata, null, {
+    id: row.id,
+    type: "artifact metadata",
+  });
+
+  if (metadata) {
+    metadata.artifactId = row.id;
   }
 
-  return {
-    ...row,
-    metadata,
-  };
+  return { ...row, metadata };
 }
 
+/** Extract rows affected count from database result */
 export function getRowsAffected(result: unknown): number {
   if (!result || typeof result !== "object") return 0;
-
-  if ("rowsAffected" in result && typeof (result as any).rowsAffected === "number") {
-    return (result as { rowsAffected: number }).rowsAffected;
-  }
-
-  if ("changes" in result && typeof (result as any).changes === "number") {
-    return (result as { changes: number }).changes;
-  }
-
+  const r = result as Record<string, unknown>;
+  if (typeof r.rowsAffected === "number") return r.rowsAffected;
+  if (typeof r.changes === "number") return r.changes;
   return 0;
 }
 
@@ -98,19 +91,7 @@ export function buildEventFilters(
   includeDangling = true,
 ): SQL[] {
   const conditions: SQL[] = [eq(events.projectId, projectId)];
-
-  if (since) {
-    conditions.push(gte(events.createdAt, toSqliteTimestamp(isoFallback(since))));
-  }
-
-  if (!includeDangling) {
-    conditions.push(eq(events.isActive, 1));
-  }
-
+  if (since) conditions.push(gte(events.createdAt, toSqliteTimestamp(since)));
+  if (!includeDangling) conditions.push(eq(events.isActive, 1));
   return conditions;
-}
-
-function isoFallback(value: string): string {
-  // Be forgiving for invalid ISO strings by passing through unchanged
-  return value;
 }

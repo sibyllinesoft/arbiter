@@ -1,10 +1,26 @@
 /* eslint-disable react-refresh/only-export-components */
 import { buildFieldConfig } from "@/config/entity-definitions";
 import type { FieldConfig, FieldValue, UiOptionCatalog } from "@/types/forms";
-import { parseEnvironmentText } from "@/utils/environment";
 import type { KeyValueEntry } from "@amalto/key-value-editor";
 
 import { FIELD_RECORD_KEYS } from "./constants";
+
+/** Parse environment variable text (KEY=value format) into a record */
+function parseEnvironmentText(text: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIndex = trimmed.indexOf("=");
+    if (eqIndex > 0) {
+      const key = trimmed.slice(0, eqIndex).trim();
+      const value = trimmed.slice(eqIndex + 1).trim();
+      if (key) result[key] = value;
+    }
+  }
+  return result;
+}
 
 const extractRecordString = (record: Record<string, unknown> | undefined | null): string => {
   if (!record) return "";
@@ -165,3 +181,99 @@ export function toSingularLabel(label: string, fallback: string): string {
   }
   return base;
 }
+
+/** Compare two string arrays for equality */
+export const arraysEqual = (a: string[], b: string[]): boolean => {
+  if (a.length !== b.length) return false;
+  return a.every((value, index) => value === b[index]);
+};
+
+/** Normalize a field value for comparison */
+export const normalizeForComparison = (
+  targetField: FieldConfig | undefined,
+  value: FieldValue | undefined,
+): string => {
+  if (targetField?.component === "key-value") {
+    return JSON.stringify(toKeyValuePairs(value));
+  }
+  if (Array.isArray(value) && !targetField?.multiple) {
+    return JSON.stringify(value);
+  }
+  return coerceFieldValueToString(value);
+};
+
+/** Prepare a value for storage based on field type */
+export const prepareValueForStorage = (
+  field: FieldConfig | undefined,
+  value: FieldValue,
+): FieldValue => {
+  if (field?.component === "key-value") {
+    return toKeyValuePairs(value);
+  }
+  return value;
+};
+
+/** Check if a value has changed compared to another */
+export const hasValueChanged = (
+  field: FieldConfig | undefined,
+  prevValue: FieldValue | undefined,
+  nextValue: FieldValue | undefined,
+): boolean => {
+  if (field?.multiple === true) {
+    return !arraysEqual(coerceFieldValueToArray(prevValue), coerceFieldValueToArray(nextValue));
+  }
+  return normalizeForComparison(field, prevValue) !== normalizeForComparison(field, nextValue);
+};
+
+/** Validation result type */
+type ValidationResult = { error: string | null; payload: FieldValue | null };
+
+/** Validate key-value field type */
+const validateKeyValueField = (field: FieldConfig, rawValue: FieldValue): ValidationResult => {
+  const pairs = toKeyValuePairs(rawValue);
+  if (field.required && pairs.length === 0) {
+    return { error: `${field.label} is required`, payload: null };
+  }
+  return { error: null, payload: pairs };
+};
+
+/** Validate multiple-value field type */
+const validateMultipleField = (field: FieldConfig, rawValue: FieldValue): ValidationResult => {
+  const normalizedValues = coerceFieldValueToArray(rawValue)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (field.required && normalizedValues.length === 0) {
+    return { error: `${field.label} is required`, payload: null };
+  }
+
+  const shouldInclude = normalizedValues.length > 0 || field.required;
+  return { error: null, payload: shouldInclude ? normalizedValues : null };
+};
+
+/** Validate single-value field type */
+const validateSingleField = (field: FieldConfig, rawValue: FieldValue): ValidationResult => {
+  const stringValue = coerceFieldValueToString(rawValue);
+  const trimmedValue = stringValue.trim();
+  const useRawValue = field.markdown === true;
+
+  if (field.required && trimmedValue.length === 0) {
+    return { error: `${field.label} is required`, payload: null };
+  }
+
+  const hasValue = useRawValue ? stringValue.length > 0 : trimmedValue.length > 0;
+  const shouldInclude = hasValue || field.required;
+  const finalValue = useRawValue ? stringValue : trimmedValue;
+  return { error: null, payload: shouldInclude ? finalValue : null };
+};
+
+/** Validate a single field and return error message if invalid */
+export const validateField = (field: FieldConfig, rawValue: FieldValue): ValidationResult => {
+  if (field.component === "key-value") {
+    return validateKeyValueField(field, rawValue);
+  }
+  if (field.multiple) {
+    return validateMultipleField(field, rawValue);
+  }
+  return validateSingleField(field, rawValue);
+};

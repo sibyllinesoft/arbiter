@@ -11,6 +11,40 @@ import {
 const FRONTEND_DEPS = ["react", "react-dom", "next", "vue", "svelte", "solid-js", "preact"];
 const SERVER_DEPS = ["express", "fastify", "koa", "hapi", "nest", "hono", "restify"];
 const CLI_DEPS = ["commander", "yargs", "inquirer", "ora", "chalk", "boxen", "cli-table3", "oclif"];
+const SERVER_FILE_HINTS = [
+  "server.",
+  "server/",
+  "/server",
+  "api/",
+  "/api/",
+  "handler.",
+  "handlers/",
+];
+
+export interface PackageJsonData extends Record<string, any> {
+  name?: string;
+  description?: string;
+  fullPackage?: any;
+  filePath: string;
+  type?: string;
+  private?: boolean;
+  bin?: string | Record<string, string>;
+  main?: string;
+  types?: string;
+  typings?: string;
+  peerDependencies?: Record<string, string>;
+  browserslist?: unknown;
+}
+
+interface HeuristicsContext {
+  depsLower: Set<string>;
+  hasMain: boolean;
+  hasServerSignal: boolean;
+  hasBin: boolean;
+  hasFrontendDeps: boolean;
+  hasBuildScript: boolean;
+  hasCliDep: boolean;
+}
 
 export class NodeJSPlugin implements ImporterPlugin {
   name(): string {
@@ -63,81 +97,164 @@ export class NodeJSPlugin implements ImporterPlugin {
     const artifacts: InferredArtifact[] = [];
 
     for (const pkgEv of packageEvidence) {
-      const pkg = (pkgEv.data as any).fullPackage ?? pkgEv.data;
-      if (!pkg) continue;
-
-      const scripts = pkg.scripts ?? {};
-      const dependenciesMap = this.collectDependencies(pkg);
-      const dependencyNames = Object.keys(dependenciesMap);
-      const projectRoot = context.projectRoot ?? context.fileIndex.root ?? "";
-      const packageDir = path.dirname(pkgEv.filePath);
-      const relativeDir = this.normalize(path.relative(projectRoot, packageDir)) || ".";
-      const dirCtx =
-        context.directoryContexts.get(relativeDir) ||
-        context.directoryContexts.get(".") ||
-        undefined;
-
-      const filePatterns = dirCtx?.filePatterns ?? [];
-      const hasDocker = Boolean(dirCtx?.hasDockerfile || dirCtx?.hasComposeService);
-      const usesTS = this.usesTypeScript(pkg, scripts);
-      const hasBin = this.hasBinEntry(pkg);
-      const dockerBuild = dirCtx?.dockerBuild;
-
-      const classification = context.classifier.classify({
-        dependencies: dependencyNames,
-        filePatterns,
-        scripts,
-        language: usesTS ? "typescript" : "javascript",
-        hasDocker,
-        hasBinaryEntry: hasBin,
-      });
-
-      let artifactType = classification.type;
-      artifactType = this.applyIntentHeuristics(artifactType, pkg, scripts, dependencyNames);
-
-      const metadata: Record<string, unknown> = {
-        sourceFile: projectRoot ? path.relative(projectRoot, pkgEv.filePath) : pkgEv.filePath,
-        root: relativeDir === "." ? "" : relativeDir,
-        manifest: "package.json",
-        language: usesTS ? "typescript" : "javascript",
-        classification,
-      };
-
-      if (dockerBuild) {
-        metadata.buildContext = this.toRelative(projectRoot, dockerBuild.buildContext);
-        metadata.dockerfilePath = this.toRelative(projectRoot, dockerBuild.dockerfile);
+      const artifact = this.inferFromPackageEvidence(pkgEv, context);
+      if (artifact) {
+        artifacts.push(artifact);
       }
+    }
 
-      if (hasDocker) {
-        metadata.dockerContext = relativeDir;
-      }
+    return artifacts;
+  }
 
-      const rawName = typeof pkg.name === "string" ? pkg.name : path.basename(packageDir);
-      const artifactName = this.stripScope(rawName);
+  /**
+   * Infer a single artifact from package.json evidence
+   */
+  private inferFromPackageEvidence(
+    pkgEv: Evidence,
+    context: InferenceContext,
+  ): InferredArtifact | null {
+    const pkg = (pkgEv.data as any).fullPackage ?? pkgEv.data;
+    if (!pkg) return null;
 
-      const artifact = {
+    const inferenceData = this.buildInferenceData(pkg, pkgEv, context);
+    const classification = this.classifyPackage(pkg, inferenceData, context);
+    const artifactType = this.determineArtifactType(pkg, inferenceData, classification);
+    const metadata = this.buildArtifactMetadata(pkgEv, inferenceData, classification);
+    const artifactName = this.resolveArtifactName(pkg, inferenceData.packageDir);
+
+    return {
+      artifact: {
         id: artifactName,
         type: artifactType,
         name: artifactName,
         description: pkg.description || `Node.js ${artifactType}`,
         tags: Array.from(new Set<string>([...classification.tags, "nodejs", artifactType])),
         metadata,
-      };
+      },
+      provenance: {
+        evidence: [pkgEv.id],
+        plugins: [this.name()],
+        rules: ["manifest-classifier"],
+        timestamp: Date.now(),
+        pipelineVersion: "1.1.0",
+      },
+      relationships: [],
+    };
+  }
 
-      artifacts.push({
-        artifact,
-        provenance: {
-          evidence: [pkgEv.id],
-          plugins: [this.name()],
-          rules: ["manifest-classifier"],
-          timestamp: Date.now(),
-          pipelineVersion: "1.1.0",
-        },
-        relationships: [],
-      });
+  /**
+   * Build inference data from package and context
+   */
+  private buildInferenceData(pkg: any, pkgEv: Evidence, context: InferenceContext) {
+    const scripts = pkg.scripts ?? {};
+    const dependenciesMap = this.collectDependencies(pkg);
+    const dependencyNames = Object.keys(dependenciesMap);
+    const projectRoot = context.projectRoot ?? context.fileIndex.root ?? "";
+    const packageDir = path.dirname(pkgEv.filePath);
+    const relativeDir = this.normalize(path.relative(projectRoot, packageDir)) || ".";
+    const dirCtx =
+      context.directoryContexts.get(relativeDir) || context.directoryContexts.get(".") || undefined;
+
+    const depNamesLower = dependencyNames.map((d) => d.toLowerCase());
+    const hasServerDeps = SERVER_DEPS.some((dep) => depNamesLower.includes(dep));
+    const hasServerScriptFlag = this.hasServerScript(scripts);
+
+    return {
+      scripts,
+      dependencyNames,
+      projectRoot,
+      packageDir,
+      relativeDir,
+      dirCtx,
+      filePatterns: dirCtx?.filePatterns ?? [],
+      hasDocker: Boolean(dirCtx?.hasDockerfile || dirCtx?.hasComposeService),
+      usesTS: this.usesTypeScript(pkg, scripts),
+      hasBin: this.hasBinEntry(pkg),
+      dockerBuild: dirCtx?.dockerBuild,
+      hasMain: typeof pkg?.main === "string" && pkg.main.trim().length > 0,
+      hasServerSignal: hasServerScriptFlag && hasServerDeps,
+    };
+  }
+
+  /**
+   * Classify the package using the classifier
+   */
+  private classifyPackage(
+    pkg: any,
+    data: ReturnType<typeof this.buildInferenceData>,
+    context: InferenceContext,
+  ) {
+    return context.classifier.classify({
+      dependencies: data.dependencyNames,
+      filePatterns: data.filePatterns,
+      scripts: data.scripts,
+      language: data.usesTS ? "typescript" : "javascript",
+      hasDocker: data.hasDocker,
+      hasBinaryEntry: data.hasBin,
+    });
+  }
+
+  /**
+   * Determine the final artifact type with heuristics and hard rules
+   */
+  private determineArtifactType(
+    pkg: any,
+    data: ReturnType<typeof this.buildInferenceData>,
+    classification: { type: ArtifactType; tags: string[] },
+  ): ArtifactType {
+    let artifactType = this.applyIntentHeuristics(
+      classification.type,
+      pkg,
+      data.scripts,
+      data.dependencyNames,
+    );
+
+    // Hard rules: need a main entry AND both server deps and a server script to be a service
+    if (!data.hasMain) {
+      artifactType = data.hasBin ? "tool" : "package";
+    } else if (artifactType === "service" && !data.hasServerSignal) {
+      artifactType = "package";
     }
 
-    return artifacts;
+    return artifactType;
+  }
+
+  /**
+   * Build metadata for the artifact
+   */
+  private buildArtifactMetadata(
+    pkgEv: Evidence,
+    data: ReturnType<typeof this.buildInferenceData>,
+    classification: { type: ArtifactType; tags: string[] },
+  ): Record<string, unknown> {
+    const metadata: Record<string, unknown> = {
+      sourceFile: data.projectRoot
+        ? path.relative(data.projectRoot, pkgEv.filePath)
+        : pkgEv.filePath,
+      root: data.relativeDir === "." ? "" : data.relativeDir,
+      manifest: "package.json",
+      language: data.usesTS ? "typescript" : "javascript",
+      classification,
+    };
+
+    if (data.dockerBuild) {
+      metadata.buildContext = this.toRelative(data.projectRoot, data.dockerBuild.buildContext);
+      metadata.dockerfilePath = this.toRelative(data.projectRoot, data.dockerBuild.dockerfile);
+    }
+
+    if (data.hasDocker) {
+      metadata.dockerContext = data.relativeDir;
+    }
+
+    return metadata;
+  }
+
+  /**
+   * Resolve the artifact name from package.json or directory
+   */
+  private resolveArtifactName(pkg: any, packageDir: string): string {
+    const rawName = typeof pkg.name === "string" ? pkg.name : path.basename(packageDir);
+    return this.stripScope(rawName);
   }
 
   private collectDependencies(pkg: any): Record<string, string> {
@@ -165,39 +282,77 @@ export class NodeJSPlugin implements ImporterPlugin {
     return pkg.bin && typeof pkg.bin === "object" && Object.keys(pkg.bin).length > 0;
   }
 
+  /**
+   * Heuristics context for artifact type classification.
+   */
+  private buildHeuristicsContext(
+    pkg: any,
+    scripts: Record<string, string>,
+    dependencyNames: string[],
+  ): HeuristicsContext {
+    const depsLower = new Set(dependencyNames.map((d) => d.toLowerCase()));
+    const hasMain = typeof pkg?.main === "string" && pkg.main.trim().length > 0;
+    const hasServerScriptFlag = this.hasServerScript(scripts);
+    const hasServerDeps = SERVER_DEPS.some((dep) => depsLower.has(dep));
+
+    return {
+      depsLower,
+      hasMain,
+      hasServerSignal: hasServerScriptFlag && hasServerDeps,
+      hasBin: this.hasBinEntry(pkg),
+      hasFrontendDeps: FRONTEND_DEPS.some((dep) => depsLower.has(dep)),
+      hasBuildScript: this.hasBuildScript(scripts),
+      hasCliDep: CLI_DEPS.some((dep) => depsLower.has(dep)),
+    };
+  }
+
+  /** Heuristic rules evaluated in priority order */
+  private getHeuristicRules(baseType: ArtifactType): Array<{
+    name: string;
+    condition: (ctx: HeuristicsContext) => boolean;
+    result: ArtifactType;
+  }> {
+    return [
+      { name: "bin-entry", condition: (ctx) => ctx.hasBin, result: "tool" },
+      {
+        name: "server-signal",
+        condition: (ctx) => ctx.hasMain && ctx.hasServerSignal,
+        result: "service",
+      },
+      {
+        name: "frontend",
+        condition: (ctx) => ctx.hasFrontendDeps && ctx.hasBuildScript,
+        result: "frontend",
+      },
+      { name: "cli-dep", condition: (ctx) => ctx.hasCliDep, result: "tool" },
+      {
+        name: "service-downgrade",
+        condition: (ctx) => baseType === "service" && (!ctx.hasMain || !ctx.hasServerSignal),
+        result: "package",
+      },
+    ];
+  }
+
+  /**
+   * Apply heuristic rules to determine artifact type
+   */
+  private applyHeuristicRules(
+    ctx: ReturnType<typeof this.buildHeuristicsContext>,
+    baseType: ArtifactType,
+  ): ArtifactType | null {
+    const rules = this.getHeuristicRules(baseType);
+    const matchedRule = rules.find((rule) => rule.condition(ctx));
+    return matchedRule?.result ?? null;
+  }
+
   private applyIntentHeuristics(
     baseType: ArtifactType,
     pkg: any,
     scripts: Record<string, string>,
     dependencyNames: string[],
   ): ArtifactType {
-    const depsLower = new Set(dependencyNames.map((d) => d.toLowerCase()));
-
-    if (this.hasBinEntry(pkg)) {
-      return "tool";
-    }
-
-    if (this.hasServerScript(scripts)) {
-      return "service";
-    }
-
-    const hasFrontendDeps = FRONTEND_DEPS.some((dep) => depsLower.has(dep));
-    const hasBuildScript = this.hasBuildScript(scripts);
-    if (hasFrontendDeps && hasBuildScript) {
-      return "frontend";
-    }
-
-    const hasServerDeps = SERVER_DEPS.some((dep) => depsLower.has(dep));
-    if (hasServerDeps) {
-      return "service";
-    }
-
-    const hasCliDep = CLI_DEPS.some((dep) => depsLower.has(dep));
-    if (hasCliDep) {
-      return "tool";
-    }
-
-    return baseType;
+    const ctx = this.buildHeuristicsContext(pkg, scripts, dependencyNames);
+    return this.applyHeuristicRules(ctx, baseType) ?? baseType;
   }
 
   private hasServerScript(scripts: Record<string, string>): boolean {
@@ -205,7 +360,7 @@ export class NodeJSPlugin implements ImporterPlugin {
     return candidates.some((name) => {
       const command = scripts[name];
       if (typeof command !== "string") return false;
-      return /(node|ts-node|tsx|nest|fastify|koa|hono|express)/i.test(command);
+      return /(node|ts-node|tsx|nest|fastify|koa|hono|express|bun)/i.test(command);
     });
   }
 
@@ -215,6 +370,11 @@ export class NodeJSPlugin implements ImporterPlugin {
       (command) =>
         typeof command === "string" && candidates.some((token) => command.includes(token)),
     );
+  }
+
+  // Fallback for any cached references; we no longer rely on file hints.
+  private hasServerFile(_filePatterns: string[]): boolean {
+    return false;
   }
 
   private normalize(value: string): string {

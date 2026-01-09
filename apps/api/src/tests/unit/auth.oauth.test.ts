@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import { type JWK, type KeyLike, SignJWT, exportJWK, generateKeyPair } from "jose";
 import { AuthService } from "../../auth";
-import type { ServerConfig } from "../../types";
+import type { ServerConfig } from "../../util/types";
 
 const ISSUER = "https://auth.example.com";
 
@@ -109,7 +109,6 @@ describe("AuthService SuperTokens OAuth integration", () => {
       spec_workdir: "/tmp/spec-workbench",
       jq_binary_path: "jq",
       auth_required: true,
-      rate_limit: { max_tokens: 10, refill_rate: 1, window_ms: 1000 },
       external_tool_timeout_ms: 1000,
       websocket: { max_connections: 10, ping_interval_ms: 1000 },
       oauth: {

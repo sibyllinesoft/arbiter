@@ -3,7 +3,7 @@
  * Provides CLI interface for version compatibility validation and migration
  */
 
-import { LATEST_API_VERSION, VERSION_COMPATIBILITY } from "@/constraints/schema.js";
+import { LATEST_API_VERSION, VERSION_COMPATIBILITY } from "@/constraints/core/schema.js";
 import {
   CURRENT_VERSIONS,
   type CompatibilityResult,
@@ -59,6 +59,35 @@ export type MigrationOptions = z.infer<typeof MigrationOptionsSchema>;
 // COMPATIBILITY CHECK COMMAND
 // =============================================================================
 
+function logVerboseRuntimeInfo(runtimeInfo: RuntimeInfo, verbose?: boolean): void {
+  if (!verbose) return;
+  console.log("📋 Current Runtime Versions:");
+  console.table(runtimeInfo.versions);
+  console.log();
+}
+
+function logVerboseVersionsToCheck(versionsToCheck: Partial<VersionSet>, verbose?: boolean): void {
+  if (!verbose) return;
+  console.log("📥 Versions to Check:");
+  console.table(versionsToCheck);
+  console.log();
+}
+
+async function performCompatibilityCheck(
+  options: CompatCheckOptions,
+): Promise<{ result: CompatibilityResult; versionsToCheck: Partial<VersionSet> }> {
+  const runtimeInfo = getRuntimeVersionInfo();
+  logVerboseRuntimeInfo(runtimeInfo, options.verbose);
+
+  const versionsToCheck = await loadVersionsToCheck(options.input);
+  logVerboseVersionsToCheck(versionsToCheck, options.verbose);
+
+  const result = await checkCompatibility(versionsToCheck, options.allowCompat);
+  augmentWithApiVersionCheck(versionsToCheck, result, options.allowCompat);
+
+  return { result, versionsToCheck };
+}
+
 /**
  * Execute compatibility check command
  */
@@ -66,37 +95,13 @@ export async function runCompatCheck(options: CompatCheckOptions): Promise<void>
   try {
     console.log("🔍 Arbiter Compatibility Check v1.0 RC\n");
 
-    // Get runtime version information
-    const runtimeInfo = getRuntimeVersionInfo();
-
-    if (options.verbose) {
-      console.log("📋 Current Runtime Versions:");
-      console.table(runtimeInfo.versions);
-      console.log();
-    }
-
-    // Load versions to check against
-    const versionsToCheck = await loadVersionsToCheck(options.input);
-
-    if (options.verbose) {
-      console.log("📥 Versions to Check:");
-      console.table(versionsToCheck);
-      console.log();
-    }
-
-    // Perform compatibility check
-    const result = await checkCompatibility(versionsToCheck, options.allowCompat);
-    augmentWithApiVersionCheck(versionsToCheck, result, options.allowCompat);
-
-    // Output results
+    const { result, versionsToCheck } = await performCompatibilityCheck(options);
     await outputCompatibilityResult(result, options);
 
-    // Show migration paths if requested
     if (options.showMigrations && result.version_mismatches.length > 0) {
       await showMigrationPaths(versionsToCheck, options);
     }
 
-    // Exit with appropriate code
     process.exit(result.compatible ? 0 : 1);
   } catch (error) {
     console.error("❌ Compatibility check failed:", error instanceof Error ? error.message : error);

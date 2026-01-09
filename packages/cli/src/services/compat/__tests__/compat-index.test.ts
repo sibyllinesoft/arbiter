@@ -2,7 +2,7 @@ import { describe, expect, it, spyOn } from "bun:test";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { LATEST_API_VERSION } from "@/constraints/schema.js";
+import { LATEST_API_VERSION } from "@/constraints/core/schema.js";
 import {
   CompatCheckOptionsSchema,
   __compatTesting,

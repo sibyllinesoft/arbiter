@@ -1,12 +1,12 @@
 /**
- * CUE Manipulation Abstraction Layer
+ * @packageDocumentation
+ * CUE Manipulation Abstraction Layer.
  *
- * This module provides a proper AST-based approach to CUE file manipulation,
- * replacing fragile string concatenation with validated CUE tool integration.
+ * Provides AST-based CUE file manipulation with validated tool integration.
  *
  * Key Features:
  * - Parse CUE files using the CUE tool
- * - Manipulate CUE structures through JSON intermediate representation
+ * - Manipulate structures through JSON intermediate representation
  * - Format and validate using official CUE tooling
  * - Type-safe operations with proper error handling
  */
@@ -17,134 +17,79 @@ import { safeFileOperation } from "@/constraints/index.js";
 import { CueRunner } from "@arbiter/cue-runner";
 import fs from "fs-extra";
 
-/**
- * Platform-specific service types for popular cloud providers
- */
-export type PlatformServiceType =
-  // Generic types
-  | "bespoke"
-  | "prebuilt"
-  | "upstash_redis"
-  // Cloudflare platform
-  | "cloudflare_worker"
-  | "cloudflare_d1"
-  | "cloudflare_kv"
-  | "cloudflare_r2"
-  | "cloudflare_durable_object"
-  // Vercel platform
-  | "vercel_function"
-  | "vercel_edge_function"
-  | "vercel_kv"
-  | "vercel_postgres"
-  | "vercel_blob"
-  // Supabase platform
-  | "supabase_database"
-  | "supabase_auth"
-  | "supabase_storage"
-  | "supabase_functions"
-  | "supabase_realtime";
+// Re-export types for backwards compatibility
+export type {
+  PlatformServiceType,
+  InfrastructureType,
+  ServiceConfig,
+  EndpointConfig,
+  DatabaseConfig,
+  RouteConfig,
+  FlowConfig,
+  ValidationResult,
+} from "./types.js";
 
-/**
- * Configuration for a service in the CUE specification
- */
-export interface ServiceConfig {
-  serviceType?: PlatformServiceType;
-  type: "internal" | "external";
-  language: string;
-  workload?: "deployment" | "statefulset" | "serverless" | "managed";
-  sourceDirectory?: string;
-  image?: string;
-  // Platform-specific configurations
-  platform?: "cloudflare" | "vercel" | "supabase" | "kubernetes";
-  runtime?: string; // e.g., "durable_object", "edge", "nodejs18"
-  region?: string;
-  // Standard configurations
-  ports?: Array<{
-    name: string;
-    port: number;
-    targetPort: number;
-  }>;
-  volumes?: Array<{
-    name: string;
-    path: string;
-    size?: string;
-    type?: string;
-  }>;
-  env?: Record<string, string>;
-  healthCheck?: {
-    path: string;
-    port: number;
-  };
-  template?: string;
-}
+import type {
+  DatabaseConfig,
+  EndpointConfig,
+  FlowConfig,
+  RouteConfig,
+  ServiceConfig,
+  ValidationResult,
+} from "./types.js";
 
-/**
- * Configuration for an API endpoint
- */
-export interface EndpointConfig {
-  service: string;
-  path: string;
-  method: string;
-  summary?: string;
-  description?: string;
-  implements?: string;
-  endpointId?: string;
-  handler?: {
-    type: "module" | "endpoint";
-    module?: string;
-    function?: string;
-    service?: string;
-    endpoint?: string;
-  };
-  request?: {
-    $ref: string;
-  };
-  response?: {
-    $ref: string;
-  };
-}
+import { buildSectionMerge, formatCueObject, indentBlock } from "./utils/formatting.js";
 
-/**
- * Configuration for a database service
- */
-export interface DatabaseConfig extends ServiceConfig {
-  attachTo?: string;
-}
+import {
+  buildDefaultHandlerReference,
+  buildEndpointEntry,
+  buildEndpointIdentifier,
+  buildOperationObject,
+} from "./utils/endpoint-utils.js";
 
-/**
- * Configuration for a UI route
- */
-export interface RouteConfig {
-  id: string;
-  path: string;
-  capabilities: string[];
-  components?: string[];
-}
+import {
+  generateDbConnectionString,
+  generateDbEnvVars,
+  generatePlatformDbEnvVars,
+} from "./utils/db-utils.js";
 
-/**
- * Configuration for a user flow
- */
-export interface FlowConfig {
-  id: string;
-  steps: Array<any>;
-}
+import { removePathMethod, removeServiceEndpoint, sectionMap } from "./utils/removal-utils.js";
 
-/**
- * Result of CUE validation
- */
-export interface ValidationResult {
-  valid: boolean;
-  errors: string[];
-}
+import {
+  appendRemovalMarkerForSection,
+  canDeleteKey,
+  cleanupIfArrayEmpty,
+  cleanupIfEmpty,
+  traverseToParentAndKey,
+  traverseToSection,
+} from "./utils/section-manipulation.js";
+
+import {
+  appendRouteRemovalMarker,
+  hasRouteIdentifier,
+  matchesRouteIdentifier,
+} from "./utils/route-utils.js";
 
 /**
  * Main CUE manipulator class providing AST-based operations
  */
 export class CUEManipulator {
   private tempDir: string;
+  private readonly appendOnly: boolean;
 
-  constructor() {
+  constructor(options: { appendOnly?: boolean } = {}) {
     this.tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cue-manipulator-"));
+    this.appendOnly = options.appendOnly ?? true;
+  }
+
+  /**
+   * Extract error reason from export result
+   */
+  private extractExportError(result: {
+    diagnostics: { message: string }[];
+    error?: string;
+  }): string {
+    return result.diagnostics[0]?.message || result.error || "Unknown CUE export error";
   }
 
   /**
@@ -164,31 +109,33 @@ export class CUEManipulator {
         return exportResult.value;
       }
 
-      const firstDiagnostic = exportResult.diagnostics[0];
-      const reason = firstDiagnostic?.message || exportResult.error || "Unknown CUE export error";
-      throw new Error(reason);
+      throw new Error(this.extractExportError(exportResult));
     } catch (error) {
       throw new Error(`Failed to parse CUE content: ${error}`);
     }
   }
 
   /**
+   * Build append-only service fragment
+   */
+  private buildAppendOnlyServiceFragment(serviceName: string, config: ServiceConfig): string {
+    const serviceBlock = formatCueObject({ [serviceName]: config }, "  ");
+    return ["services: services &", serviceBlock].join("\n");
+  }
+
+  /**
    * Add a service to the CUE structure
    */
   async addService(content: string, serviceName: string, config: ServiceConfig): Promise<string> {
+    if (this.appendOnly) {
+      const fragment = this.buildAppendOnlyServiceFragment(serviceName, config);
+      return `${content.trimEnd()}\n\n${fragment}\n`;
+    }
+
     try {
-      // Parse existing content
       const ast = await this.parse(content);
-
-      // Ensure services section exists
-      if (!ast.services) {
-        ast.services = {};
-      }
-
-      // Add the service
+      if (!ast.services) ast.services = {};
       ast.services[serviceName] = config;
-
-      // Convert back to CUE and format
       return await this.serialize(ast, content);
     } catch (error) {
       throw new Error(
@@ -198,56 +145,100 @@ export class CUEManipulator {
   }
 
   /**
+   * Generate append-only endpoint fragment
+   */
+  private buildAppendOnlyEndpointFragment(config: EndpointConfig): string {
+    const methodKey = config.method.toLowerCase();
+    const operation = buildOperationObject(config);
+
+    const pathCue = formatCueObject(
+      { [config.service]: { [config.path]: { [methodKey]: operation } } },
+      "  ",
+    );
+    const pathFragment = ["paths: paths &", pathCue].join("\n");
+
+    const endpointId = config.endpointId ?? buildEndpointIdentifier(config);
+    const endpointEntry = buildEndpointEntry(config, endpointId);
+
+    const serviceFragment = [
+      "services: services & {",
+      `  "${config.service}": {`,
+      "    endpoints: endpoints &",
+      indentBlock(formatCueObject({ [endpointId]: endpointEntry }, "      "), 4),
+      "  }",
+      "}",
+    ].join("\n");
+
+    return `${pathFragment}\n\n${serviceFragment}`;
+  }
+
+  /**
+   * Ensure path structure exists in AST
+   */
+  private ensurePathStructure(ast: any, service: string, path: string): void {
+    if (!ast.paths) ast.paths = {};
+    if (!ast.paths[service]) ast.paths[service] = {};
+    if (!ast.paths[service][path]) ast.paths[service][path] = {};
+  }
+
+  /**
+   * Update service endpoints in AST
+   */
+  /**
+   * Merge methods into existing endpoint methods
+   */
+  private mergeEndpointMethods(existing: any, newMethod: string): string[] {
+    const existingMethods = Array.isArray(existing.methods) ? existing.methods : [];
+    const methodSet = new Set<string>(existingMethods.map((m: string) => m.toUpperCase()));
+    methodSet.add(newMethod.toUpperCase());
+    return Array.from(methodSet);
+  }
+
+  /**
+   * Build endpoint configuration object
+   */
+  private buildEndpointConfig(existing: any, config: EndpointConfig, methods: string[]): any {
+    return {
+      ...existing,
+      path: config.path,
+      methods,
+      ...(config.implements && { implements: config.implements }),
+      handler:
+        config.handler ??
+        existing.handler ??
+        buildDefaultHandlerReference(config.service, config.method, config.path),
+    };
+  }
+
+  private updateServiceEndpoints(ast: any, config: EndpointConfig): void {
+    if (!ast.services || !ast.services[config.service]) return;
+
+    const targetService = ast.services[config.service];
+    if (!targetService.endpoints) targetService.endpoints = {};
+
+    const endpointId = config.endpointId ?? buildEndpointIdentifier(config);
+    const existing = targetService.endpoints[endpointId] || {};
+    const methods = this.mergeEndpointMethods(existing, config.method);
+
+    targetService.endpoints[endpointId] = this.buildEndpointConfig(existing, config, methods);
+  }
+
+  /**
    * Add an endpoint to the CUE structure
    */
   async addEndpoint(content: string, config: EndpointConfig): Promise<string> {
+    if (this.appendOnly) {
+      const fragment = this.buildAppendOnlyEndpointFragment(config);
+      return `${content.trimEnd()}\n\n${fragment}\n`;
+    }
+
     try {
       const ast = await this.parse(content);
       const methodKey = config.method.toLowerCase();
 
-      if (!ast.paths) {
-        ast.paths = {};
-      }
-      if (!ast.paths[config.service]) {
-        ast.paths[config.service] = {};
-      }
-      if (!ast.paths[config.service][config.path]) {
-        ast.paths[config.service][config.path] = {};
-      }
-
-      const operation: Record<string, unknown> = {
-        ...(config.summary && { summary: config.summary }),
-        ...(config.description && { description: config.description }),
-        ...(config.implements && { implements: config.implements }),
-        ...(config.request && { request: config.request }),
-        ...(config.response && { response: config.response }),
-      };
-
-      ast.paths[config.service][config.path][methodKey] = operation;
-
-      if (ast.services && ast.services[config.service]) {
-        const targetService = ast.services[config.service];
-        if (!targetService.endpoints) {
-          targetService.endpoints = {};
-        }
-
-        const endpointId = config.endpointId ?? this.buildEndpointIdentifier(config);
-        const existing = targetService.endpoints[endpointId] || {};
-        const existingMethods = Array.isArray(existing.methods) ? existing.methods : [];
-        const methodSet = new Set<string>(existingMethods.map((m: string) => m.toUpperCase()));
-        methodSet.add(config.method.toUpperCase());
-
-        targetService.endpoints[endpointId] = {
-          ...existing,
-          path: config.path,
-          methods: Array.from(methodSet),
-          ...(config.implements && { implements: config.implements }),
-          handler:
-            config.handler ??
-            existing.handler ??
-            this.buildDefaultHandlerReference(config.service, config.method, config.path),
-        };
-      }
+      this.ensurePathStructure(ast, config.service, config.path);
+      ast.paths[config.service][config.path][methodKey] = buildOperationObject(config);
+      this.updateServiceEndpoints(ast, config);
 
       return await this.serialize(ast, content);
     } catch (error) {
@@ -256,41 +247,75 @@ export class CUEManipulator {
   }
 
   /**
+   * Build append-only database fragment
+   */
+  private buildAppendOnlyDbFragment(dbName: string, config: DatabaseConfig): string {
+    const baseDbCue = formatCueObject({ [dbName]: config }, "  ");
+    const fragments: string[] = ["services: services &", baseDbCue];
+
+    if (config.attachTo) {
+      const envVars = generateDbEnvVars(config, dbName);
+      const envCue = formatCueObject(envVars, "    ");
+      fragments.push(
+        "",
+        "services: services & {",
+        `  "${config.attachTo}": {`,
+        "    env: env &",
+        indentBlock(envCue, 4),
+        "  }",
+        "}",
+      );
+    }
+
+    return fragments.join("\n");
+  }
+
+  /**
+   * Resolve database env vars based on config type
+   */
+  private resolveDbEnvVars(config: DatabaseConfig, dbName: string): Record<string, string> {
+    if (config.image) {
+      const connectionString = generateDbConnectionString(
+        config.image,
+        dbName,
+        config.ports?.[0]?.port || 5432,
+      );
+      return { DATABASE_URL: connectionString };
+    }
+    if (config.serviceType && config.serviceType !== "prebuilt") {
+      return generatePlatformDbEnvVars(config.serviceType, dbName);
+    }
+    return {};
+  }
+
+  /**
+   * Attach database env vars to target service in AST
+   */
+  private attachDbEnvVarsToService(ast: any, config: DatabaseConfig, dbName: string): void {
+    if (!config.attachTo || !ast.services[config.attachTo]) return;
+
+    if (!ast.services[config.attachTo].env) {
+      ast.services[config.attachTo].env = {};
+    }
+
+    Object.assign(ast.services[config.attachTo].env, this.resolveDbEnvVars(config, dbName));
+  }
+
+  /**
    * Add a database to the CUE structure
    */
   async addDatabase(content: string, dbName: string, config: DatabaseConfig): Promise<string> {
+    if (this.appendOnly) {
+      const fragment = this.buildAppendOnlyDbFragment(dbName, config);
+      return `${content.trimEnd()}\n\n${fragment}\n`;
+    }
+
     try {
       const ast = await this.parse(content);
+      if (!ast.services) ast.services = {};
 
-      // Ensure services section exists
-      if (!ast.services) {
-        ast.services = {};
-      }
-
-      // Add the database service
       ast.services[dbName] = config;
-
-      // If attaching to another service, add connection environment variables
-      if (config.attachTo && ast.services[config.attachTo]) {
-        if (!ast.services[config.attachTo].env) {
-          ast.services[config.attachTo].env = {};
-        }
-
-        // Generate connection string based on service type
-        if (config.image) {
-          // Container-based database
-          const connectionString = this.generateDbConnectionString(
-            config.image,
-            dbName,
-            config.ports?.[0]?.port || 5432,
-          );
-          ast.services[config.attachTo].env.DATABASE_URL = connectionString;
-        } else if (config.serviceType && config.serviceType !== "prebuilt") {
-          // Platform-managed database - generate appropriate env vars
-          const envVars = this.generatePlatformDbEnvVars(config.serviceType, dbName);
-          Object.assign(ast.services[config.attachTo].env, envVars);
-        }
-      }
+      this.attachDbEnvVarsToService(ast, config, dbName);
 
       return await this.serialize(ast, content);
     } catch (error) {
@@ -300,24 +325,33 @@ export class CUEManipulator {
     }
   }
 
+  private buildAppendOnlyRouteFragment(route: RouteConfig): string {
+    const routeCue = formatCueObject(route, "    ");
+    return ["ui: ui & {", "  routes: [...,", indentBlock(routeCue, 2), "  ]", "}"].join("\n");
+  }
+
+  private addRouteToAst(ast: any, route: RouteConfig): void {
+    if (!ast.ui) {
+      ast.ui = {};
+    }
+    if (!ast.ui.routes) {
+      ast.ui.routes = [];
+    }
+    ast.ui.routes.push(route);
+  }
+
   /**
    * Add a route to the UI routes array
    */
   async addRoute(content: string, route: RouteConfig): Promise<string> {
+    if (this.appendOnly) {
+      const fragment = this.buildAppendOnlyRouteFragment(route);
+      return `${content.trimEnd()}\n\n${fragment}\n`;
+    }
+
     try {
       const ast = await this.parse(content);
-
-      // Ensure ui.routes exists
-      if (!ast.ui) {
-        ast.ui = {};
-      }
-      if (!ast.ui.routes) {
-        ast.ui.routes = [];
-      }
-
-      // Add the route
-      ast.ui.routes.push(route);
-
+      this.addRouteToAst(ast, route);
       return await this.serialize(ast, content);
     } catch (error) {
       throw new Error(
@@ -327,20 +361,35 @@ export class CUEManipulator {
   }
 
   /**
+   * Build append-only flow fragment
+   */
+  private buildAppendOnlyFlowFragment(flow: FlowConfig): string {
+    const flowCue = formatCueObject(flow, "    ");
+    return ["flows: [...,", indentBlock(flowCue, 2), "]"].join("\n");
+  }
+
+  /**
+   * Add flow to AST
+   */
+  private addFlowToAst(ast: any, flow: FlowConfig): void {
+    if (!ast.flows) {
+      ast.flows = [];
+    }
+    ast.flows.push(flow);
+  }
+
+  /**
    * Add a flow to the flows array
    */
   async addFlow(content: string, flow: FlowConfig): Promise<string> {
+    if (this.appendOnly) {
+      const fragment = this.buildAppendOnlyFlowFragment(flow);
+      return `${content.trimEnd()}\n\n${fragment}\n`;
+    }
+
     try {
       const ast = await this.parse(content);
-
-      // Ensure flows exists
-      if (!ast.flows) {
-        ast.flows = [];
-      }
-
-      // Add the flow
-      ast.flows.push(flow);
-
+      this.addFlowToAst(ast, flow);
       return await this.serialize(ast, content);
     } catch (error) {
       throw new Error(
@@ -350,26 +399,37 @@ export class CUEManipulator {
   }
 
   /**
+   * Navigate to nested section, creating path if needed
+   */
+  private navigateToSection(ast: any, section: string): any {
+    const sections = section.split(".");
+    let current = ast;
+
+    for (const sec of sections) {
+      if (!current[sec]) {
+        current[sec] = {};
+      }
+      current = current[sec];
+    }
+
+    return current;
+  }
+
+  /**
    * Add a key-value pair to a specific section
    */
   async addToSection(content: string, section: string, key: string, value: any): Promise<string> {
+    if (this.appendOnly) {
+      const sectionParts = section.split(".").filter(Boolean);
+      const valueCue = formatCueObject(value, "  ");
+      const nested = buildSectionMerge(sectionParts, key, valueCue);
+      return `${content.trimEnd()}\n\n${nested}\n`;
+    }
+
     try {
       const ast = await this.parse(content);
-
-      // Navigate to the section (support nested sections like "components.schemas")
-      const sections = section.split(".");
-      let current = ast;
-
-      for (const sec of sections) {
-        if (!current[sec]) {
-          current[sec] = {};
-        }
-        current = current[sec];
-      }
-
-      // Add the key-value pair
-      current[key] = value;
-
+      const target = this.navigateToSection(ast, section);
+      target[key] = value;
       return await this.serialize(ast, content);
     } catch (error) {
       throw new Error(
@@ -379,25 +439,68 @@ export class CUEManipulator {
   }
 
   /**
+   * Build append-only service removal marker.
+   */
+  private buildServiceRemovalMarker(serviceName: string): string {
+    const escapedName = serviceName.replace(/\"/g, '\\"');
+    return [
+      "// removal marker (append-only)",
+      "removals: removals & {",
+      `  services: [..., "${escapedName}"]`,
+      "}",
+    ].join("\n");
+  }
+
+  /**
+   * Remove service from AST and clean up empty services section.
+   */
+  private removeServiceFromAst(ast: any, serviceName: string): boolean {
+    if (!ast.services || !Object.prototype.hasOwnProperty.call(ast.services, serviceName)) {
+      return false;
+    }
+
+    delete ast.services[serviceName];
+
+    if (Object.keys(ast.services).length === 0) {
+      delete ast.services;
+    }
+
+    return true;
+  }
+
+  /**
    * Remove a service from the specification
    */
   async removeService(content: string, serviceName: string): Promise<string> {
+    if (this.appendOnly) {
+      const marker = this.buildServiceRemovalMarker(serviceName);
+      return `${content.trimEnd()}\n\n${marker}\n`;
+    }
+
     try {
       const ast = await this.parse(content);
-      if (!ast.services || !Object.prototype.hasOwnProperty.call(ast.services, serviceName)) {
+      if (!this.removeServiceFromAst(ast, serviceName)) {
         return content;
       }
-
-      delete ast.services[serviceName];
-
-      if (ast.services && Object.keys(ast.services).length === 0) {
-        delete ast.services;
-      }
-
       return await this.serialize(ast, content);
     } catch {
       return content;
     }
+  }
+
+  private buildAppendOnlyEndpointRemovalMarker(
+    serviceName: string,
+    endpointPath: string,
+    method?: string,
+  ): string {
+    const normalizedMethod = method ? method.toLowerCase() : undefined;
+    const methodClause = normalizedMethod ? ` method: "${normalizedMethod}",` : "";
+    return [
+      "// removal marker (append-only)",
+      "removals: removals & {",
+      `  endpoints: [..., { service: "${serviceName.replace(/\"/g, '\\"')}", path: "${endpointPath}",${methodClause} }]`,
+      "}",
+    ].join("\n");
   }
 
   /**
@@ -409,63 +512,17 @@ export class CUEManipulator {
     endpointPath: string,
     method?: string,
   ): Promise<string> {
+    if (this.appendOnly) {
+      const marker = this.buildAppendOnlyEndpointRemovalMarker(serviceName, endpointPath, method);
+      return `${content.trimEnd()}\n\n${marker}\n`;
+    }
+
     try {
       const ast = await this.parse(content);
-      if (!ast.paths || !ast.paths[serviceName] || !ast.paths[serviceName][endpointPath]) {
+      if (!removePathMethod(ast, serviceName, endpointPath, method)) {
         return content;
       }
-
-      if (method) {
-        const methodKey = method.toLowerCase();
-        if (!ast.paths[serviceName][endpointPath][methodKey]) {
-          return content;
-        }
-        delete ast.paths[serviceName][endpointPath][methodKey];
-        if (Object.keys(ast.paths[serviceName][endpointPath]).length === 0) {
-          delete ast.paths[serviceName][endpointPath];
-        }
-      } else {
-        delete ast.paths[serviceName][endpointPath];
-      }
-
-      if (ast.paths[serviceName] && Object.keys(ast.paths[serviceName]).length === 0) {
-        delete ast.paths[serviceName];
-      }
-      if (ast.paths && Object.keys(ast.paths).length === 0) {
-        delete ast.paths;
-      }
-
-      const serviceSpec = ast.services?.[serviceName];
-      if (serviceSpec?.endpoints) {
-        for (const [endpointId, endpointSpecValue] of Object.entries(serviceSpec.endpoints)) {
-          if (!endpointSpecValue || typeof endpointSpecValue !== "object") {
-            continue;
-          }
-
-          const endpointSpec = endpointSpecValue as Record<string, any>;
-
-          if (endpointSpec.path !== endpointPath) {
-            continue;
-          }
-
-          if (method) {
-            const updatedMethods = (endpointSpec.methods as string[] | undefined)?.filter(
-              (m) => m.toLowerCase() !== method.toLowerCase(),
-            );
-            if (updatedMethods && updatedMethods.length > 0) {
-              endpointSpec.methods = updatedMethods;
-              continue;
-            }
-          }
-
-          delete serviceSpec.endpoints[endpointId];
-        }
-
-        if (Object.keys(serviceSpec.endpoints).length === 0) {
-          delete serviceSpec.endpoints;
-        }
-      }
-
+      removeServiceEndpoint(ast, serviceName, endpointPath, method);
       return await this.serialize(ast, content);
     } catch {
       return content;
@@ -473,8 +530,26 @@ export class CUEManipulator {
   }
 
   /**
-   * Remove an item from an array-based section
+   * Apply filter to array and update parent if changed
    */
+  private applyArrayFilter(
+    parent: Record<string, any>,
+    key: string,
+    predicate: (item: any) => boolean,
+    segments: string[],
+    ast: any,
+  ): boolean {
+    const target = parent[key];
+    if (!Array.isArray(target)) return false;
+
+    const filtered = target.filter((item: any) => !predicate(item));
+    if (filtered.length === target.length) return false;
+
+    parent[key] = filtered;
+    cleanupIfArrayEmpty(parent, key, segments, ast);
+    return true;
+  }
+
   async removeFromArray(
     content: string,
     section: string,
@@ -482,35 +557,17 @@ export class CUEManipulator {
   ): Promise<string> {
     try {
       const ast = await this.parse(content);
-      const segments = section.split(".");
-      let parent: any = ast;
+      const result = traverseToParentAndKey(ast, section);
+      if (!result) return content;
 
-      for (let i = 0; i < segments.length - 1; i += 1) {
-        const segment = segments[i];
-        if (!parent || typeof parent !== "object" || !(segment in parent)) {
-          return content;
-        }
-        parent = parent[segment];
-      }
-
-      const key = segments[segments.length - 1];
-      const target = parent?.[key];
-      if (!Array.isArray(target)) {
-        return content;
-      }
-
-      const filtered = target.filter((item: any) => !predicate(item));
-      if (filtered.length === target.length) {
-        return content;
-      }
-
-      parent[key] = filtered;
-
-      if (Array.isArray(parent[key]) && parent[key].length === 0) {
-        this.cleanupEmptyContainers(segments, ast);
-      }
-
-      return await this.serialize(ast, content);
+      const changed = this.applyArrayFilter(
+        result.parent,
+        result.key,
+        predicate,
+        result.segments,
+        ast,
+      );
+      return changed ? await this.serialize(ast, content) : content;
     } catch {
       return content;
     }
@@ -520,23 +577,17 @@ export class CUEManipulator {
    * Remove a UI route by identifier
    */
   async removeRoute(content: string, identifier: { id?: string; path?: string }): Promise<string> {
-    const hasIdentifier = Boolean(identifier.id || identifier.path);
-    if (!hasIdentifier) {
+    if (this.appendOnly) {
+      return appendRouteRemovalMarker(content, identifier);
+    }
+
+    if (!hasRouteIdentifier(identifier)) {
       return content;
     }
 
-    return await this.removeFromArray(content, "ui.routes", (route) => {
-      const matchesId = identifier.id ? route.id === identifier.id : false;
-      const matchesPath = identifier.path ? route.path === identifier.path : false;
-
-      if (identifier.id && identifier.path) {
-        return matchesId || matchesPath;
-      }
-      if (identifier.id) {
-        return matchesId;
-      }
-      return matchesPath;
-    });
+    return await this.removeFromArray(content, "ui.routes", (route) =>
+      matchesRouteIdentifier(route, identifier),
+    );
   }
 
   /**
@@ -547,6 +598,16 @@ export class CUEManipulator {
       return content;
     }
 
+    if (this.appendOnly) {
+      const marker = [
+        "// removal marker (append-only)",
+        "removals: removals & {",
+        `  flows: [..., "${flowId.replace(/"/g, '\\"')}"]`,
+        "}",
+      ].join("\n");
+      return `${content.trimEnd()}\n\n${marker}\n`;
+    }
+
     return await this.removeFromArray(content, "flows", (flow) => flow.id === flowId);
   }
 
@@ -554,36 +615,49 @@ export class CUEManipulator {
    * Remove a key from a specific section
    */
   async removeFromSection(content: string, section: string, key: string): Promise<string> {
+    if (this.appendOnly) {
+      return appendRemovalMarkerForSection(content, section, key);
+    }
+
     try {
       const ast = await this.parse(content);
-      const segments = section.split(".");
-      const pathStack: Array<{ parent: any; key: string }> = [];
-      let current: any = ast;
+      const result = traverseToSection(ast, section);
+      if (!result) return content;
 
-      for (const segment of segments) {
-        if (!current || typeof current !== "object" || !(segment in current)) {
-          return content;
-        }
-        pathStack.push({ parent: current, key: segment });
-        current = current[segment];
-      }
+      const { target, pathStack } = result;
+      if (!canDeleteKey(target, key)) return content;
 
-      if (!current || typeof current !== "object" || !(key in current)) {
-        return content;
-      }
-
-      delete current[key];
-
-      if (typeof current === "object" && current && Object.keys(current).length === 0) {
-        this.cleanupEmptyContainers(
-          pathStack.map(({ key }) => key),
-          ast,
-        );
-      }
+      delete target[key];
+      cleanupIfEmpty(target, pathStack, ast);
 
       return await this.serialize(ast, content);
     } catch {
       return content;
+    }
+  }
+
+  /**
+   * Dispatch removal for special entity types (service, endpoint, route, flow)
+   */
+  private async dispatchSpecialRemoval(
+    content: string,
+    normalizedType: string,
+    target: string,
+    options: { method?: string; service?: string; id?: string },
+  ): Promise<string | null> {
+    switch (normalizedType) {
+      case "service":
+        return await this.removeService(content, target);
+      case "endpoint":
+        return options.service && target
+          ? await this.removeEndpoint(content, options.service, target, options.method)
+          : content;
+      case "route":
+        return await this.removeRoute(content, { id: options.id ?? target, path: target });
+      case "flow":
+        return await this.removeFlow(content, target);
+      default:
+        return null;
     }
   }
 
@@ -603,33 +677,18 @@ export class CUEManipulator {
     const target = options.identifier ?? options.id ?? "";
     const normalizedType = options.type.toLowerCase();
 
-    switch (normalizedType) {
-      case "service":
-        return await this.removeService(content, target);
-      case "endpoint":
-        if (options.service && target) {
-          return await this.removeEndpoint(content, options.service, target, options.method);
-        }
-        return content;
-      case "route":
-        return await this.removeRoute(content, { id: options.id ?? target, path: target });
-      case "flow":
-        return await this.removeFlow(content, target);
-      case "database":
-        return await this.removeFromSection(content, "databases", target);
-      case "package":
-        return await this.removeFromSection(content, "packages", target);
-      case "tool":
-        return await this.removeFromSection(content, "tools", target);
-      case "frontend":
-        return await this.removeFromSection(content, "frontends", target);
-      case "capability":
-        return await this.removeFromSection(content, "capabilities", target);
-      case "cache":
-        return await this.removeFromSection(content, "caches", target);
-      default:
-        return await this.removeFromSection(content, normalizedType, target);
+    const specialResult = await this.dispatchSpecialRemoval(
+      content,
+      normalizedType,
+      target,
+      options,
+    );
+    if (specialResult !== null) {
+      return specialResult;
     }
+
+    const section = sectionMap[normalizedType] ?? normalizedType;
+    return await this.removeFromSection(content, section, target);
   }
 
   /**
@@ -647,7 +706,7 @@ export class CUEManipulator {
       }
 
       // Use manual CUE formatting for better control
-      const cueBody = this.formatCueObject(ast);
+      const cueBody = formatCueObject(ast);
       const cueWithPackage = `${packageDeclaration}\n\n${cueBody}`;
 
       return await this.format(cueWithPackage);
@@ -679,6 +738,19 @@ export class CUEManipulator {
   }
 
   /**
+   * Extract errors from vet result
+   */
+  private extractVetErrors(result: {
+    diagnostics: { message: string }[];
+    raw: { stderr?: string };
+  }): string[] {
+    if (result.diagnostics.length) {
+      return result.diagnostics.map((diag) => diag.message);
+    }
+    return [result.raw.stderr || "cue vet failed"];
+  }
+
+  /**
    * Validate CUE content using the CUE tool
    */
   async validate(content: string): Promise<ValidationResult> {
@@ -695,11 +767,7 @@ export class CUEManipulator {
         return { valid: true, errors: [] };
       }
 
-      const errors = result.diagnostics.length
-        ? result.diagnostics.map((diag) => diag.message)
-        : [result.raw.stderr || "cue vet failed"];
-
-      return { valid: false, errors };
+      return { valid: false, errors: this.extractVetErrors(result) };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { valid: false, errors: [message] };
@@ -708,161 +776,6 @@ export class CUEManipulator {
 
   private createRunner(): CueRunner {
     return new CueRunner({ cwd: this.tempDir });
-  }
-
-  /**
-   * Format a JavaScript object as CUE syntax
-   */
-  private formatCueObject(obj: any, indent = ""): string {
-    if (typeof obj === "string") {
-      return `"${obj.replace(/"/g, '\\"')}"`;
-    }
-    if (typeof obj === "number" || typeof obj === "boolean") {
-      return String(obj);
-    }
-
-    if (Array.isArray(obj)) {
-      if (obj.length === 0) {
-        return "[]";
-      }
-      const items = obj.map((item) => `${indent}\t${this.formatCueObject(item, `${indent}\t`)}`);
-      return `[\n${items.join(",\n")}\n${indent}]`;
-    }
-
-    if (typeof obj === "object" && obj !== null) {
-      const entries = Object.entries(obj);
-      if (entries.length === 0) {
-        return "{}";
-      }
-      const formattedEntries = entries.map(([k, v]) => {
-        const key = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(k) ? k : `"${k}"`;
-        return `${indent}\t${key}: ${this.formatCueObject(v, `${indent}\t`)}`;
-      });
-      return `{\n${formattedEntries.join("\n")}\n${indent}}`;
-    }
-
-    return String(obj);
-  }
-
-  private buildEndpointIdentifier(config: EndpointConfig): string {
-    const normalized = config.path.replace(/^\//, "").replace(/[{}]/g, "");
-    const segments = normalized
-      .split(/[\/_-]+/)
-      .filter(Boolean)
-      .map((segment) => segment.toLowerCase());
-    const base = segments.length > 0 ? segments.join("-") : "root";
-    return `${config.method.toLowerCase()}-${base}`.replace(/-+/g, "-");
-  }
-
-  private buildDefaultHandlerReference(service: string, method: string, path: string) {
-    return {
-      type: "module",
-      module: `${service}/handlers/routes`,
-      function: this.buildHandlerFunctionName(method, path),
-    };
-  }
-
-  private buildHandlerFunctionName(method: string, path: string): string {
-    const cleaned = path
-      .replace(/^\//, "")
-      .replace(/[{}]/g, "")
-      .split(/[\/_-]+/)
-      .filter(Boolean)
-      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
-      .join("");
-    const suffix = cleaned || "Root";
-    const methodPrefix = method.toLowerCase();
-    return `${methodPrefix}${suffix}`;
-  }
-
-  /**
-   * Generate database connection string
-   */
-  private generateDbConnectionString(image: string, dbName: string, port: number): string {
-    if (!image) {
-      throw new Error("generateDbConnectionString called with undefined image");
-    }
-    if (image.includes("postgres")) {
-      return `postgresql://user:password@${dbName}:${port}/${dbName}`;
-    }
-    if (image.includes("mysql")) {
-      return `mysql://user:password@${dbName}:${port}/${dbName}`;
-    }
-    return `db://${dbName}:${port}/${dbName}`;
-  }
-
-  /**
-   * Generate platform-specific database environment variables
-   */
-  private generatePlatformDbEnvVars(serviceType: string, dbName: string): Record<string, string> {
-    switch (serviceType) {
-      case "cloudflare_d1":
-        return {
-          D1_DATABASE_ID: `${dbName}_id`,
-          D1_DATABASE_NAME: dbName,
-          DATABASE_URL: `d1://${dbName}`,
-        };
-      case "cloudflare_kv":
-        return {
-          KV_NAMESPACE_ID: `${dbName}_namespace_id`,
-          KV_BINDING_NAME: dbName.toUpperCase(),
-        };
-      case "vercel_postgres":
-        return {
-          POSTGRES_URL: `postgres://${dbName}`,
-          POSTGRES_PRISMA_URL: `postgres://${dbName}?pgbouncer=true`,
-          POSTGRES_URL_NON_POOLING: `postgres://${dbName}`,
-        };
-      case "vercel_kv":
-        return {
-          KV_REST_API_URL: `https://${dbName}.kv.vercel-storage.com`,
-          KV_REST_API_TOKEN: `${dbName}_token`,
-          KV_URL: `redis://${dbName}`,
-        };
-      case "supabase_database":
-        return {
-          SUPABASE_URL: `https://${dbName}.supabase.co`,
-          SUPABASE_ANON_KEY: `${dbName}_anon_key`,
-          SUPABASE_SERVICE_ROLE_KEY: `${dbName}_service_role_key`,
-          DATABASE_URL: `postgresql://${dbName}`,
-        };
-      default:
-        return {
-          DATABASE_URL: `${serviceType}://${dbName}`,
-        };
-    }
-  }
-
-  /**
-   * Cleanup temporary files
-   */
-  private cleanupEmptyContainers(segments: string[], ast: any): void {
-    const stack: Array<{ parent: any; key: string }> = [];
-    let current = ast;
-
-    for (const segment of segments) {
-      if (!current || typeof current !== "object" || !(segment in current)) {
-        return;
-      }
-      stack.push({ parent: current, key: segment });
-      current = current[segment];
-    }
-
-    for (let i = stack.length - 1; i >= 0; i -= 1) {
-      const { parent, key } = stack[i];
-      const value = parent[key];
-
-      if (
-        value &&
-        typeof value === "object" &&
-        !Array.isArray(value) &&
-        Object.keys(value).length === 0
-      ) {
-        delete parent[key];
-      } else {
-        break;
-      }
-    }
   }
 
   /**

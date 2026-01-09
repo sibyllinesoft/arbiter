@@ -128,6 +128,47 @@ export class TemplateOrchestrator {
   }
 
   /**
+   * Migrate legacy 'engines' field to 'implementors'
+   */
+  private migrateEnginesField(
+    content: TemplateConfig & { engines?: Record<string, TemplateImplementorConfig> },
+  ): TemplateConfig {
+    if (!content.implementors && content.engines) {
+      content.implementors = content.engines;
+      delete (content as any).engines;
+    }
+    return content;
+  }
+
+  /**
+   * Load config from existing file
+   */
+  private async loadConfigFromFile(targetPath: string): Promise<void> {
+    const content = (await fs.readJson(targetPath)) as TemplateConfig & {
+      engines?: Record<string, TemplateImplementorConfig>;
+    };
+    this.config = this.migrateEnginesField(content);
+    this.normalizeLegacyAliasFields();
+  }
+
+  /**
+   * Create and save default config when none exists
+   */
+  private async createDefaultConfig(targetPath: string): Promise<void> {
+    this.config = this.getDefaultConfig();
+    await this.saveConfig(targetPath);
+  }
+
+  /**
+   * Handle config load failure with fallback to defaults
+   */
+  private handleConfigLoadError(error: unknown): void {
+    console.warn(chalk.yellow(`Warning: Failed to load template config: ${error}`));
+    this.config = this.getDefaultConfig();
+    this.normalizeLegacyAliasFields();
+  }
+
+  /**
    * Load template configuration from file system
    */
   async loadConfig(configPath?: string): Promise<void> {
@@ -136,24 +177,12 @@ export class TemplateOrchestrator {
 
     try {
       if (await fs.pathExists(targetPath)) {
-        const content = (await fs.readJson(targetPath)) as TemplateConfig & {
-          engines?: Record<string, TemplateImplementorConfig>;
-        };
-        if (!content.implementors && content.engines) {
-          content.implementors = content.engines;
-          delete (content as any).engines;
-        }
-        this.config = content;
-        this.normalizeLegacyAliasFields();
+        await this.loadConfigFromFile(targetPath);
       } else {
-        // Create default config
-        this.config = this.getDefaultConfig();
-        await this.saveConfig(targetPath);
+        await this.createDefaultConfig(targetPath);
       }
     } catch (error) {
-      console.warn(chalk.yellow(`Warning: Failed to load template config: ${error}`));
-      this.config = this.getDefaultConfig();
-      this.normalizeLegacyAliasFields();
+      this.handleConfigLoadError(error);
     }
   }
 
@@ -377,21 +406,26 @@ export class TemplateOrchestrator {
     this.implementors.set(implementor.name, implementor);
   }
 
+  private migrateAliasEngineToImplementor(alias: TemplateAlias): void {
+    if (!alias.implementor && (alias as any).engine) {
+      alias.implementor = (alias as any).engine;
+      delete (alias as any).engine;
+    }
+  }
+
+  private migrateSettingsDefaultEngine(): void {
+    const settings = this.config?.settings;
+    if (settings && !settings.defaultImplementor && settings.defaultEngine) {
+      settings.defaultImplementor = settings.defaultEngine;
+    }
+  }
+
   private normalizeLegacyAliasFields(): void {
     if (!this.config) return;
-    Object.values(this.config.aliases).forEach((alias) => {
-      if (!alias.implementor && (alias as any).engine) {
-        alias.implementor = (alias as any).engine;
-        delete (alias as any).engine;
-      }
-    });
-
-    if (this.config.settings) {
-      const settings = this.config.settings;
-      if (!settings.defaultImplementor && settings.defaultEngine) {
-        settings.defaultImplementor = settings.defaultEngine;
-      }
-    }
+    Object.values(this.config.aliases).forEach((alias) =>
+      this.migrateAliasEngineToImplementor(alias),
+    );
+    this.migrateSettingsDefaultEngine();
   }
 }
 

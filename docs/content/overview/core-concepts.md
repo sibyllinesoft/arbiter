@@ -1,247 +1,188 @@
 # Core Concepts
 
-**Understanding Arbiter's layered architecture for specification-driven
-development**
+**A single system where everyone on the team contributes to software creation**
 
-Arbiter transforms complex system requirements into production-ready
-applications through a layered specification architecture. This guide explains
-the core concepts that make this transformation possible.
+Traditional software development forces constant translation: product managers write roadmaps, which become tickets, which become code, which becomes infrastructure. Each handoff loses context and introduces drift.
+
+Arbiter takes a different approach. Instead of separate artifacts that must be manually synchronized, you build a single specification that *is* the product definition, the technical design, and the deployment configuration—all in one place. The layered architecture lets each team member work at their natural level of abstraction while their contributions compose seamlessly into the final system.
+
+- **Product owners** define domain models and business processes
+- **Architects** design contracts and capability boundaries
+- **Engineers** implement services that fulfill those contracts
+- **Platform teams** configure execution environments
+
+No one has to translate another team's work into their own format. Arbiter handles the translation, generating exactly what each layer needs from the shared specification.
 
 > Looking for hands-on examples? Pair this explainer with the
 > [Code Generation Overview](./code-generation-overview.md), which applies the
 > same layers step-by-step using the CLI.
 
-## Core Concept Cheat Sheet
-
-| Layer | Primary Question | CLI Kickoff | Deep Dive |
+| Layer | Who Owns It | What They Define | What Gets Generated |
 | --- | --- | --- | --- |
-| Domain | What does the business care about? | `arbiter add schema`, `arbiter add state-machine` | [Code Generation Overview §1](./code-generation-overview.md#layer-1-%E2%80%94-domain-describe-the-schema) |
-| Contracts | How do systems communicate? | `arbiter add contract`, `arbiter add event` | [Section §2](./code-generation-overview.md#layer-2-%E2%80%94-contracts-bind-the-operations) |
-| Capabilities | Which services fulfill those contracts? | `arbiter add service`, `arbiter add endpoint` | [Section §3](./code-generation-overview.md#layer-3-%E2%80%94-capabilities-define-the-service) |
-| Execution | Where does everything run? | `arbiter add database`, `arbiter add cache` | [Section §4](./code-generation-overview.md#layer-4-%E2%80%94-execution-pin-the-runtime) |
+| **Domain** | Product / Domain Experts | Data models, statuses, business rules | DB schemas, validators, types, test fixtures |
+| **Contracts** | Architects / Tech Leads | APIs, events, SLAs | OpenAPI specs, SDKs, contract tests |
+| **Capabilities** | Engineers | Services, endpoints, handlers | Application code, routes, middleware |
+| **Execution** | Platform / DevOps | Environments, scaling, resources | Docker, Kubernetes, Terraform, CI/CD |
 
-> Already read the CLI walk-through? Treat that overview as the play-by-play. This page keeps the definitions, guardrails, and mental models in one place so you can quickly remind yourself *why* each layer exists.
+## One Tool, One Source of Truth
 
-## The Four-Layer Architecture
+Everyone on the team uses Arbiter. There's a single specification that captures business requirements, technical design, and deployment configuration. When anyone makes a change, `arbiter generate` produces the artifacts that used to require manual work.
 
-Arbiter organizes system specifications into four distinct layers, each building
-upon the previous one:
+| Traditional Process | What Arbiter Replaces It With |
+| --- | --- |
+| Write PRDs describing data and rules | Typed schemas that *generate* database tables, validators, and API types |
+| Write API spec documents | Contracts that *generate* OpenAPI specs, client SDKs, and request validation |
+| Manually write boilerplate code | Scaffolding generated from the spec (you write the business logic) |
+| Craft infrastructure configs by hand | IaC files inferred from service definitions and environment config |
+| Maintain separate documentation | Docs generated from the spec, always in sync |
 
-```mermaid
-flowchart TD
-    A[Domain Models<br/>What the system IS] --> B[Contracts<br/>How the system COMMUNICATES]
-    B --> C[Capabilities<br/>What the system DOES]
-    C --> D[Execution<br/>Where the system RUNS]
-    style A fill:#eef3ff,stroke:#4c63d9,stroke-width:2px,color:#111
-    style B fill:#ecfdf3,stroke:#1c8b5f,stroke-width:2px,color:#111
-    style C fill:#fffbe6,stroke:#c48a06,stroke-width:2px,color:#111
-    style D fill:#ffecef,stroke:#d6456a,stroke-width:2px,color:#111
-```
-
-This layered approach ensures that:
-
-- **Changes cascade predictably** from business requirements to deployment
-- **Each layer has clear responsibilities** and concerns
-- **Generated code maintains consistency** across all components
-- **System architecture remains coherent** as it evolves
+The spec doesn't replace where these artifacts live—your code still goes in GitHub, your docs can still go in Notion if policy requires it. What changes is *how* they're created. Instead of manually crafting each artifact and keeping them in sync, you define the intent once and generate the rest.
 
 ---
 
-## Layer 1: Domain Models
+## Layer 1: Domain
 
-The **Domain** layer defines the core business concepts and rules that your
-system embodies.
+The **Domain** layer is where product owners and domain experts define *what the business cares about*—using the same terms they already use in meetings and documents.
 
-### What Goes Here?
+### What You Define → What Gets Generated
 
-- **Schemas**: Core data structures with types (Entity, Value, Request, Response, Event)
-  - **Entity schemas**: Business objects with identity (Invoice, Customer, PaymentPlan)
-  - **Value schemas**: Immutable data structures (Address, Money, TaxConfig)
-  - **Request/Response schemas**: API input/output structures
-  - **Event schemas**: Things that happen in your business (InvoiceCreated, PaymentCaptured)
-- **State Machines**: Business process flows (InvoiceLifecycle, CollectionsEscalation)
-- **Business Rules**: Invariants and constraints that must always hold
+| You Define (PM/PO terms) | Arbiter Generates |
+| --- | --- |
+| **Data models** — What things exist? (Order, Customer, Invoice) | Database tables, API types, validation schemas |
+| **Fields and types** — What properties do they have? (order.total, customer.email) | Column definitions, TypeScript interfaces, Pydantic models |
+| **Statuses** — What states can things be in? (draft → submitted → fulfilled) | Enum types, status transition validators, audit trails |
+| **Business rules** — What constraints apply? (total ≥ 0, email must be valid) | Database constraints, runtime validators, error messages |
+| **Acceptance criteria** — How should it behave? (Given/When/Then) | Automated test suites, living documentation |
+
+### Example: Defining an Order
+
+A product owner describes an Order in plain terms:
+
+> "An Order has a customer, line items, and a total. It starts as a draft, then gets submitted, then fulfilled. The total must be positive."
+
+In Arbiter, this becomes:
+
+```bash
+arbiter add schema Order \
+  --fields "customerId:string, status:enum(draft,submitted,fulfilled), total:number" \
+  --rules "total >= 0"
+```
+
+From that single definition:
+- Frontend gets `Order` types in TypeScript with full autocomplete
+- Backend gets models, validation logic, and API boilerplate pre-generated
+- The database gets an `orders` table with the right columns and constraints
+- QA gets test fixtures with valid and invalid order examples
+- Docs get an always-current data dictionary
+
+No one asks "what are the valid order statuses?" — the spec answers that question for everyone.
 
 ### Capturing the Domain
 
-- **Capture vocabulary collaboratively**: run short interviews/whiteboard
-  sessions, then encode the nouns and verbs exactly once in the spec.
-- **Let the CLI do the formatting**: `arbiter add schema` (with type selection:
-  Entity, Value, Request, Response, Event) and `arbiter add state-machine` emit
-  valid CUE and keep the structure normalized.
-- **Define schemas with CUE syntax**: All schema fields (fields, validation rules,
-  relationships) use CUE syntax for type-safe, expressive definitions.
-- **Share the output**: `arbiter doc domain` produces a human-friendly glossary
-  that product, design, and engineering can reference together.
+- **Whiteboard first, then encode**: Run sessions with stakeholders, then use `arbiter add schema` to formalize what you discussed
+- **Use familiar terms**: Name things the way the business talks about them
+- **Write acceptance criteria**: Define Given/When/Then scenarios that become both documentation and executable tests
 
-> Want to see this layer in action? The
-> [Code Generation Overview](./code-generation-overview.md#layer-1-%E2%80%94-domain-describe-the-schema)
-> walks through the exact CLI flow for the Invoice/Order example.
-
-The result is a **single, enforceable source of truth**—every downstream layer
-references these definitions instead of re-implementing validation logic in
-code, databases, or docs.
+> See the [Code Generation Overview](./code-generation-overview.md#layer-1--domain-describe-the-schema) for a complete walkthrough.
 
 ---
 
 ## Layer 2: Contracts
 
-The **Contracts** layer defines how different parts of your system communicate
-with each other.
+The **Contracts** layer is where architects and tech leads define *how systems talk to each other*—the APIs and events that bind services together.
+
+### What You Define → What Gets Generated
+
+| You Define | Arbiter Generates |
+| --- | --- |
+| **Operation contracts** (CreateOrder, GetInvoice) | OpenAPI specs, client SDKs, request/response validation |
+| **Event contracts** (OrderCreated, PaymentFailed) | Message schemas, typed event classes |
 
 ### Types of Contracts
 
-Contracts capture the conversation between systems without leaking transport
-concerns. Model two complementary shapes:
+- **Operation contracts** describe request/response workflows. Services bind them to HTTP, gRPC, or queues by referencing the operation ID.
+- **Event contracts** capture async messages—who emits them, who subscribes, and the schema guarantees for each event.
 
-- **Operation contracts** describe request/response workflows. Services later
-  bind them to HTTP, gRPC, queues, etc., by referencing the operation id.
-- **Event contracts** capture asynchronous messages—who emits them, who
-  subscribes, and what schema guarantees travel with each event.
+Use the CLI (`arbiter add contract`, `arbiter add contract-operation`, `arbiter add event`) to author contracts so identifiers stay consistent.
 
-Author them with the CLI (`arbiter add contract`, `arbiter add contract-operation`,
-`arbiter add event`) so identifiers and compatibility metadata stay consistent.
+An architect defines a `CreateOrder` operation referencing the domain's `Order` schema. From that:
+- Frontend gets type-safe API clients
+- Backend knows exactly what to implement (and gets validation for free)
+- QA gets contract tests
+- Docs get auto-generated API references
 
-**Contract Definition**: When defining contracts, you specify:
-- **Name and SLA/Performance requirements** (upfront for visibility)
-- **Version** for compatibility tracking
-- **Operations, Request/Response schemas** using CUE syntax in Monaco editors
-- **Description** in markdown format
-
-All schema-related fields (operations, requestSchema, responseSchema) use CUE
-syntax for type-safe, expressive definitions.
-
-> For the full CLI walkthrough, see the
-> [Layer 2 section of the Code Generation Overview](./code-generation-overview.md#layer-2-%E2%80%94-contracts-bind-the-operations).
-
-### Designing Contracts Workflow
-
-1. **Map consumers first**: list every client, service, or partner that touches
-   the workflow so you know which guarantees matter.
-2. **Capture invariants inline**: assertions, retry budgets, or latency targets
-   live next to the contract so generated tests and monitors inherit them.
-3. **Promote to transports when ready**: use `arbiter sync --contracts` to emit
-   OpenAPI/AsyncAPI or client SDKs after the contract is reviewed.
-
-### Contract Versioning & Compatibility
-
-Arbiter enforces compatibility gates so breaking changes surface early:
-
-```cue
-contracts: {
-  compat: {
-    policy: "strict" | "loose" | "none"
-    breakingChangePolicy: "semver" | "explicit-migration"
-    deprecationGracePeriod: "30d" | "60d" | "90d"
-  }
-}
-```
-
-- **Strict** demands explicit migrations or version bumps.
-- **Loose** tolerates additive changes but still flags removals.
-- **None** is reserved for prototypes and should be temporary.
-
-### Gateways, meshes, and chaining
-
-Gateways or service meshes become regular services that forward to canonical
-endpoints by setting `handler.type: "endpoint"`. Because handlers point to named
-service endpoints, you can compose request flows (edge → mesh → core service)
-without duplicating routes. Middleware entries optionally reference existing
-modules when you're syncing a brownfield repo; greenfield projects can omit the
-paths and let Arbiter place the code automatically.
+> See [Layer 2 in the Code Generation Overview](./code-generation-overview.md#layer-2--contracts-bind-the-operations) for a complete walkthrough.
 
 ## Layer 3: Capabilities
 
-The **Capabilities** layer defines what your services actually do and how they
-fulfill the contracts.
+The **Capabilities** layer is where engineers define *what services exist*—specifying which contracts they implement and what dependencies they need.
+
+### What You Define → What Gets Generated
+
+| You Define | Arbiter Generates |
+| --- | --- |
+| **Services** (OrdersAPI, PaymentProcessor) | Application scaffolds with typed stubs for your business logic |
+| **Services with type** (postgres, redis, rabbitmq) | Container definitions, connection configuration, health checks |
+| **Endpoints** (/orders, /invoices/{id}) | Route definitions, request validation, response serialization |
+
+Databases, caches, and queues are just services with an additional `type` field. There are convenience commands (`arbiter add database`, `arbiter add cache`) but they all create service entries. The Execution layer determines where and how each service runs.
+
+### What This Makes Easier
+
+When you run `arbiter add service orders-api --language python --template fastapi`:
+
+- You get typed API stubs using the contracts defined by architects
+- Request/response types come from schemas defined by product owners
+- Baseline tests verify the API matches its contract
+- You write the business logic; Arbiter handles the boilerplate
+
+The spec ensures the API matches its contract and uses the right types. You're not manually wiring validation or copying type definitions between layers.
 
 ### Service Definition
 
-Services translate contracts into runnable behavior. Keep them declarative:
+- **Add application services** with `arbiter add service <name>`—language, template, and source directory
+- **Add infrastructure services** with `arbiter add database <name>` or `arbiter add cache <name>` (these create services with the appropriate type)
+- **Declare endpoints** via `arbiter add endpoint ... --service <name>` linking to contract operations
 
-- **Describe ownership** with `arbiter add service <name>`—language, template,
-  and source directory live alongside metadata (`type`, `workload`, dependencies).
-- **Declare endpoints** via `arbiter add endpoint ... --service <name>` so each
-  route points back to a contract operation and optional middleware chain.
-- **Reference existing code sparingly**: handler/middleware `module` paths are
-  optional overrides for brownfield repos. Greenfield specs let Arbiter place
-  files automatically.
-
-> Need a detailed example? Jump to
-> [Layer 3 in the Code Generation Overview](./code-generation-overview.md#layer-3-%E2%80%94-capabilities-define-the-service).
-
-**Service source hints**
-
-- `type: "internal"` pairs with `source.package`/`source.directory` so Arbiter
-  owns the implementation.
-- `type: "external"` documents SaaS/managed services via `source.url` or custom
-  metadata so generated docs/tests know about dependencies.
-- Use `dependencies` and `resource` blocks to describe upstream databases,
-  caches, or third-party APIs.
-
-_Only include handler or middleware `module` paths when anchoring the spec to
-existing code (brownfield imports or post-generation sync)._ Otherwise leave
-them undefined so Arbiter infers the correct location from the project
-structure.
-
-> **Brownfield override only**  
-> The `handler.module` and `middleware[].module` fields keep the spec in sync with repositories that already have hand-written code. New services should leave those paths blank and let the generator derive the location from `ProjectStructureConfig`. That keeps the spec portable while still letting you pin exact files when you need to.
-
-### Capability Types
-### Capability Types
-
-Arbiter supports various service capability patterns:
-
-- **HTTP Server**: REST APIs, GraphQL endpoints
-- **Event Consumer**: Message queue subscribers, event handlers
-- **Event Publisher**: Message producers, event emitters
-- **Scheduler**: Cron jobs, recurring tasks
-- **Worker**: Background job processors
-- **CLI**: Command-line interfaces
-- **Batch Processor**: Data processing pipelines
-
-### Workshop: Apply the Capabilities Layer
-
-1. **Assign ownership** by linking each capability to the entities/contracts it stewards (InvoiceService owns Invoice + InvoiceAPI).
-2. **Prototype execution hooks** (schedulers, consumers, workers) directly in CUE so the CLI scaffolds runnable services with identical wiring.
-3. **Keep runtime hints close**: languages, frameworks, and datastore affinities live here so generation produces stack-specific code without manual tweaking.
-4. **Chain behaviors explicitly**: gateways, meshes, and background workers can set `handler.type: "endpoint"` to call downstream endpoints, layering middleware at each hop (rewrite headers, mask PII, enforce auth).
-
-Try `arbiter generate service InvoiceService` to emit a Fastify skeleton plus docs/tests that mirror the spec.
+> See [Layer 3 in the Code Generation Overview](./code-generation-overview.md#layer-3--capabilities-compose-services) for a complete example.
 
 ---
 
 ## Layer 4: Execution
 
-The **Execution** layer specifies where and how your services run in production.
+The **Execution** layer is where platform and DevOps teams define *where and how services run*—taking the services defined in Capabilities and configuring their deployment.
 
-### Environment-Scoped Environments
+### What You Define → What Gets Generated
 
-- **Describe environments declaratively**: `environments.development`,
-  `environments.production`, etc., capture targets (Compose, Kubernetes,
-  serverless) and per-service overrides (replicas, env vars, resources).
-- **Model shared infrastructure as services** by setting `type: "external"` and
-  attaching `resource` metadata (database/cache/queue). Dependencies then point
-  to the service name instead of hard-coded URLs.
-- **Keep overrides co-located**: scaling hints, feature flags, and ingress traits
-  belong beside the service entry so generated Terraform/Helm/Docker assets stay
-  in sync.
-- **Use the CLI**: `arbiter add database`, `arbiter add cache`, and
-  `arbiter sync` manage the structure without manual YAML edits.
+| You Define | Arbiter Generates |
+| --- | --- |
+| **Environments** (dev, staging, prod) | Docker Compose files, Kubernetes manifests, Terraform configs |
+| **Deployment targets** (local, cloud, managed) | Container definitions, connection strings, resource provisioning |
+| **Scaling rules** (replicas, resources) | HPA configs, resource limits, autoscaling policies |
+| **CI/CD pipelines** | GitHub Actions, GitLab CI, deployment workflows |
+
+### What This Makes Easier
+
+Platform teams don't configure each service independently. Update the spec to add an environment or change scaling rules, and IaC files generate automatically using shared configuration.
+
+A platform engineer defines `environments.production` with Kubernetes as the target and 3 replicas for the orders service. From that:
+
+- Engineers get a local dev environment that mirrors production
+- CI/CD pipelines deploy to the right place with the right config
+- Everyone can see exactly what runs where
+
+No more "production has different env vars" surprises. The spec defines all environments.
+
+### Environment Configuration
+
+- **Describe environments declaratively**: `environments.development`, `environments.production`, etc.
+- **Model shared infrastructure as services** with `type: "external"` and resource metadata
+- **Keep overrides co-located**: scaling, feature flags, and ingress belong in the spec, not scattered YAML
+
+Use the CLI: `arbiter add database`, `arbiter add cache`, and `arbiter sync` manage the structure.
 
 > For a full manifest example, see
-> [Layer 4 in the Code Generation Overview](./code-generation-overview.md#layer-4-%E2%80%94-execution-generate-and-run).
-
-### Workshop: Apply the Execution Layer
-
-1. **Pick deployment targets per environment** (`development` → Compose,
-   `production` → Kubernetes) and describe cluster/compose options inline.
-2. **Describe shared resources as services** with `type: "external" + resource`
-   metadata so dependencies remain explicit.
-3. **Attach overrides per environment** (replicas, env vars, annotations) in
-   `environments.<env>.services` instead of scattering them through manifests.
-4. **Promote the plan** using `arbiter generate` to emit
-   Terraform/Helm/Compose manifests that inherit those exact constraints.
+> [Layer 4 in the Code Generation Overview](./code-generation-overview.md#layer-4--execution-generate-and-run).
 
 ## Guided Walkthrough: From Idea to Running Service
 
@@ -254,31 +195,33 @@ Following this loop turns the layered model into a tutorial every new InvoicePro
 
 ---
 
-## Key Benefits of This Architecture
+## Key Benefits: Why This Works for Teams
 
-### 1. **Deterministic Generation**
+### 1. **Everyone Contributes Directly**
 
-The same specification always produces identical code, deployment manifests, and
-configuration files.
+Product owners define schemas that become real database tables. Architects design contracts that become real APIs. No one waits for developers to "translate" their work—it flows directly into the system.
 
-### 2. **Change Impact Analysis**
+### 2. **No More Translation Overhead**
 
-Modifications to any layer automatically propagate to dependent layers, making
-impact analysis automatic.
+Traditional process: roadmap → PRD → tickets → code → deployment config → docs. Each step loses context.
 
-### 3. **Evolution Safety**
+Arbiter process: one spec that *is* all of those things. Change the spec, regenerate, and everything updates together.
 
-Breaking changes are detected and require explicit migrations or version bumps.
+### 3. **Work Composes Seamlessly**
 
-### 4. **Technology Agnostic**
+A PM adds a field to a schema. An architect adds an endpoint that uses it. An engineer implements the handler. A platform engineer scales the service. Each person works independently, but their changes compose into a coherent system.
 
-The specification is independent of specific frameworks, databases, or cloud
-providers.
+### 4. **Mistakes Surface Early**
 
-### 5. **AI-Friendly**
+Breaking changes are caught when the spec is modified, not when code is deployed. Schema constraints are validated before code is generated. Contract mismatches are detected before integration testing.
 
-The structured, declarative format is ideal for AI agents to understand and
-modify.
+### 5. **New Team Members Onboard Fast**
+
+The spec documents *what* the system does, *why* decisions were made, and *how* everything fits together. New engineers read one artifact instead of piecing together tribal knowledge from Slack threads and outdated wikis.
+
+### 6. **Technology Choices Stay Flexible**
+
+The spec is independent of specific frameworks, databases, or cloud providers. Swap PostgreSQL for MySQL, FastAPI for Django, or AWS for GCP—the domain and contracts stay the same.
 
 ---
 
@@ -381,7 +324,4 @@ codegen: {
 
 ---
 
-_The four-layer architecture provides a systematic way to think about and build
-complex systems. By separating concerns clearly, Arbiter ensures that your
-specifications remain maintainable and your generated systems stay consistent as
-they evolve._
+_The four-layer architecture isn't just about organizing code—it's about organizing teams. Each layer has a natural owner, and Arbiter handles the translation between them. Product owners, architects, engineers, and platform teams all contribute to a single specification that becomes the running system. No handoffs, no drift, no lost context._

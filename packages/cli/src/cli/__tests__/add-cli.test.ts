@@ -1,7 +1,8 @@
+/** @packageDocumentation Tests for add CLI commands */
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import { createAddCommands } from "@/cli/add.js";
+import { createAddCommands } from "@/cli/commands/add.js";
 import * as addSvc from "@/services/add/index.js";
 
 const baseConfig: any = {

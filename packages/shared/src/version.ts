@@ -40,105 +40,132 @@ export const CURRENT_VERSIONS: VersionSet = {
   node: "20.0.0",
 };
 
+/**
+ * State object for collecting compatibility check results
+ */
+interface CompatibilityState {
+  issues: CompatibilityResult["issues"];
+  mismatches: NonNullable<CompatibilityResult["version_mismatches"]>;
+  migrationRequired: boolean;
+}
+
+/**
+ * Check a single component's version compatibility and update state
+ */
+function checkComponentVersion(
+  component: string,
+  version: string | undefined,
+  requiredVersion: string,
+  state: CompatibilityState,
+  options: { skipOnCompat?: boolean; allowCompat?: boolean } = {},
+): void {
+  if (!version) return;
+
+  const result = checkVersionCompatibility(component, version, requiredVersion);
+  if (result.compatible) return;
+  if (options.skipOnCompat && options.allowCompat) return;
+
+  state.issues.push({
+    component,
+    currentVersion: version,
+    requiredVersion,
+    severity: component === "node" ? "warning" : result.severity,
+    message: result.message,
+  });
+
+  if (result.needsMigration) {
+    state.migrationRequired = true;
+    state.mismatches.push({
+      component,
+      expected: requiredVersion,
+      actual: version,
+    });
+  }
+}
+
+/**
+ * Generate recommendations based on issues found
+ */
+function generateRecommendations(
+  issues: CompatibilityResult["issues"],
+  migrationRequired: boolean,
+  allowCompat: boolean,
+): string[] {
+  if (issues.length === 0) return [];
+
+  const recommendations: string[] = [];
+  recommendations.push("Consider updating to the latest compatible versions");
+
+  if (migrationRequired) {
+    recommendations.push("Run migration tools to update project files");
+  }
+
+  if (issues.some((i) => i.severity === "error") && allowCompat) {
+    recommendations.push("Use --allow-compat flag to proceed with warnings");
+  }
+
+  return recommendations;
+}
+
+/**
+ * Build the migration path object
+ */
+function buildMigrationPath(
+  migrationRequired: boolean,
+  arbiterVersion: string | undefined,
+): CompatibilityResult["migration_path"] {
+  if (migrationRequired) {
+    return {
+      fromVersion: arbiterVersion || "",
+      toVersion: CURRENT_VERSIONS.arbiter,
+      steps: [
+        "Update configuration files",
+        "Migrate schema definitions",
+        "Update project dependencies",
+      ],
+    };
+  }
+
+  return {
+    fromVersion: arbiterVersion || "",
+    toVersion: arbiterVersion || CURRENT_VERSIONS.arbiter,
+    steps: [],
+  };
+}
+
 export async function checkCompatibility(
   versions: Partial<VersionSet>,
   allowCompat = false,
 ): Promise<CompatibilityResult> {
-  const issues: CompatibilityResult["issues"] = [];
-  const mismatches: CompatibilityResult["version_mismatches"] = [];
-  const recommendations: string[] = [];
-  let migrationRequired = false;
+  const state: CompatibilityState = {
+    issues: [],
+    mismatches: [],
+    migrationRequired: false,
+  };
 
-  // Check Arbiter version compatibility
-  if (versions.arbiter) {
-    const result = checkVersionCompatibility("arbiter", versions.arbiter, CURRENT_VERSIONS.arbiter);
-    if (!result.compatible) {
-      issues.push({
-        component: "arbiter",
-        currentVersion: versions.arbiter,
-        requiredVersion: CURRENT_VERSIONS.arbiter,
-        severity: result.severity,
-        message: result.message,
-      });
+  // Check each component's version
+  checkComponentVersion("arbiter", versions.arbiter, CURRENT_VERSIONS.arbiter, state);
+  checkComponentVersion("cue", versions.cue, CURRENT_VERSIONS.cue, state);
+  checkComponentVersion("node", versions.node, CURRENT_VERSIONS.node || "20.0.0", state, {
+    skipOnCompat: true,
+    allowCompat,
+  });
 
-      if (result.needsMigration) {
-        migrationRequired = true;
-        mismatches.push({
-          component: "arbiter",
-          expected: CURRENT_VERSIONS.arbiter,
-          actual: versions.arbiter,
-        });
-      }
-    }
-  }
-
-  // Check CUE version compatibility
-  if (versions.cue) {
-    const result = checkVersionCompatibility("cue", versions.cue, CURRENT_VERSIONS.cue);
-    if (!result.compatible) {
-      issues.push({
-        component: "cue",
-        currentVersion: versions.cue,
-        requiredVersion: CURRENT_VERSIONS.cue,
-        severity: result.severity,
-        message: result.message,
-      });
-    }
-  }
-
-  // Check Node.js version if provided
-  if (versions.node) {
-    const result = checkVersionCompatibility(
-      "node",
-      versions.node,
-      CURRENT_VERSIONS.node || "20.0.0",
-    );
-    if (!result.compatible && !allowCompat) {
-      issues.push({
-        component: "node",
-        currentVersion: versions.node,
-        requiredVersion: CURRENT_VERSIONS.node || "20.0.0",
-        severity: "warning",
-        message: result.message,
-      });
-    }
-  }
-
-  // Generate recommendations
-  if (issues.length > 0) {
-    recommendations.push("Consider updating to the latest compatible versions");
-    if (migrationRequired) {
-      recommendations.push("Run migration tools to update project files");
-    }
-    if (issues.some((i) => i.severity === "error") && allowCompat) {
-      recommendations.push("Use --allow-compat flag to proceed with warnings");
-    }
-  }
-
+  const recommendations = generateRecommendations(
+    state.issues,
+    state.migrationRequired,
+    allowCompat,
+  );
   const compatible =
-    issues.length === 0 || (allowCompat && !issues.some((i) => i.severity === "error"));
+    state.issues.length === 0 || (allowCompat && !state.issues.some((i) => i.severity === "error"));
 
   return {
     compatible,
-    issues,
-    recommendations: recommendations.length > 0 ? recommendations : [],
-    version_mismatches: mismatches,
-    migration_required: migrationRequired,
-    migration_path: migrationRequired
-      ? {
-          fromVersion: versions.arbiter || "",
-          toVersion: CURRENT_VERSIONS.arbiter,
-          steps: [
-            "Update configuration files",
-            "Migrate schema definitions",
-            "Update project dependencies",
-          ],
-        }
-      : {
-          fromVersion: versions.arbiter || "",
-          toVersion: versions.arbiter || CURRENT_VERSIONS.arbiter,
-          steps: [],
-        },
+    issues: state.issues,
+    recommendations,
+    version_mismatches: state.mismatches,
+    migration_required: state.migrationRequired,
+    migration_path: buildMigrationPath(state.migrationRequired, versions.arbiter),
     timestamp: new Date().toISOString(),
   };
 }
@@ -221,110 +248,202 @@ function parseSemanticVersion(
   };
 }
 
-export async function executeMigration(
-  component: string,
-  fromVersion: string,
-  toVersion: string,
-): Promise<{
+/**
+ * Migration result type
+ */
+interface MigrationResult {
   success: boolean;
   operations_performed: string[];
   warnings: string[];
   timestamp: string;
-}> {
+}
+
+/**
+ * Create a migration result
+ */
+function createMigrationResult(
+  success: boolean,
+  operations: string[],
+  warnings: string[],
+): MigrationResult {
+  return {
+    success,
+    operations_performed: operations,
+    warnings,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/**
+ * Validate version format
+ */
+function validateVersions(
+  fromVersion: string,
+  toVersion: string,
+): {
+  valid: boolean;
+  fromVer?: ReturnType<typeof parseSemanticVersion>;
+  toVer?: ReturnType<typeof parseSemanticVersion>;
+  error?: string;
+} {
+  const fromVer = parseSemanticVersion(fromVersion);
+  const toVer = parseSemanticVersion(toVersion);
+
+  if (!fromVer || !toVer) {
+    return { valid: false, error: `Invalid version format: ${fromVersion} -> ${toVersion}` };
+  }
+
+  return { valid: true, fromVer, toVer };
+}
+
+/**
+ * Check if migration is needed
+ */
+function isSameVersion(
+  fromVer: { major: number; minor: number; patch: number },
+  toVer: { major: number; minor: number; patch: number },
+): boolean {
+  return (
+    fromVer.major === toVer.major && fromVer.minor === toVer.minor && fromVer.patch === toVer.patch
+  );
+}
+
+/**
+ * Apply migration for arbiter component
+ */
+function migrateArbiter(
+  fromVer: { major: number },
+  toVer: { major: number },
+  operations: string[],
+  warnings: string[],
+): void {
+  operations.push("Updated .arbiter/config.json schema");
+  operations.push("Migrated CUE specification format");
+  operations.push("Updated project metadata");
+
+  if (fromVer.major < toVer.major) {
+    operations.push("Performed major version schema migration");
+    warnings.push("Major version migration may require manual verification");
+  }
+}
+
+/**
+ * Apply migration for cue component
+ */
+function migrateCue(
+  fromVer: { minor: number },
+  toVer: { minor: number },
+  operations: string[],
+  warnings: string[],
+): void {
+  operations.push("Updated CUE module definitions");
+  operations.push("Migrated constraint syntax");
+
+  if (toVer.minor > fromVer.minor) {
+    warnings.push("Minor version updates may introduce new language features");
+  }
+}
+
+/**
+ * Apply migration for node component
+ */
+function migrateNode(
+  fromVer: { major: number },
+  toVer: { major: number },
+  operations: string[],
+  warnings: string[],
+): void {
+  operations.push("Updated package.json engine requirements");
+  operations.push("Verified dependency compatibility");
+
+  if (fromVer.major < toVer.major) {
+    warnings.push("Node.js major version upgrade may affect dependencies");
+  }
+}
+
+/**
+ * Component migration handlers
+ */
+const COMPONENT_MIGRATORS: Record<
+  string,
+  (
+    fromVer: { major: number; minor: number; patch: number },
+    toVer: { major: number; minor: number; patch: number },
+    operations: string[],
+    warnings: string[],
+  ) => void
+> = {
+  arbiter: migrateArbiter,
+  cue: migrateCue,
+  node: migrateNode,
+};
+
+/**
+ * Apply component-specific migration
+ */
+function applyComponentMigration(
+  component: string,
+  fromVersion: string,
+  toVersion: string,
+  fromVer: { major: number; minor: number; patch: number },
+  toVer: { major: number; minor: number; patch: number },
+  operations: string[],
+  warnings: string[],
+): void {
+  const migrator = COMPONENT_MIGRATORS[component];
+
+  if (migrator) {
+    migrator(fromVer, toVer, operations, warnings);
+  } else {
+    operations.push(`Generic migration for ${component} from ${fromVersion} to ${toVersion}`);
+    warnings.push(`Custom migration logic not implemented for ${component}`);
+  }
+
+  operations.push(`Successfully migrated ${component} from ${fromVersion} to ${toVersion}`);
+}
+
+export async function executeMigration(
+  component: string,
+  fromVersion: string,
+  toVersion: string,
+): Promise<MigrationResult> {
   const operations: string[] = [];
   const warnings: string[] = [];
 
   try {
-    const fromVer = parseSemanticVersion(fromVersion);
-    const toVer = parseSemanticVersion(toVersion);
+    const validation = validateVersions(fromVersion, toVersion);
 
-    if (!fromVer || !toVer) {
-      return {
-        success: false,
-        operations_performed: [],
-        warnings: [`Invalid version format: ${fromVersion} -> ${toVersion}`],
-        timestamp: new Date().toISOString(),
-      };
+    if (!validation.valid || !validation.fromVer || !validation.toVer) {
+      return createMigrationResult(false, [], [validation.error ?? "Unknown validation error"]);
     }
 
-    // Validate migration is necessary and safe
-    if (
-      fromVer.major === toVer.major &&
-      fromVer.minor === toVer.minor &&
-      fromVer.patch === toVer.patch
-    ) {
+    const { fromVer, toVer } = validation;
+
+    if (isSameVersion(fromVer, toVer)) {
       warnings.push("Source and target versions are identical - no migration needed");
-      return {
-        success: true,
-        operations_performed: [],
-        warnings,
-        timestamp: new Date().toISOString(),
-      };
+      return createMigrationResult(true, [], warnings);
     }
 
     if (fromVer.major > toVer.major) {
-      return {
-        success: false,
-        operations_performed: [],
-        warnings: ["Cannot migrate backwards across major versions"],
-        timestamp: new Date().toISOString(),
-      };
+      return createMigrationResult(false, [], ["Cannot migrate backwards across major versions"]);
     }
 
-    // Simulate migration operations based on component type
-    switch (component) {
-      case "arbiter":
-        operations.push("Updated .arbiter/config.json schema");
-        operations.push("Migrated CUE specification format");
-        operations.push("Updated project metadata");
-
-        if (fromVer.major < toVer.major) {
-          operations.push("Performed major version schema migration");
-          warnings.push("Major version migration may require manual verification");
-        }
-        break;
-
-      case "cue":
-        operations.push("Updated CUE module definitions");
-        operations.push("Migrated constraint syntax");
-
-        if (toVer.minor > fromVer.minor) {
-          warnings.push("Minor version updates may introduce new language features");
-        }
-        break;
-
-      case "node":
-        operations.push("Updated package.json engine requirements");
-        operations.push("Verified dependency compatibility");
-
-        if (fromVer.major < toVer.major) {
-          warnings.push("Node.js major version upgrade may affect dependencies");
-        }
-        break;
-
-      default:
-        operations.push(`Generic migration for ${component} from ${fromVersion} to ${toVersion}`);
-        warnings.push(`Custom migration logic not implemented for ${component}`);
-    }
-
-    operations.push(`Successfully migrated ${component} from ${fromVersion} to ${toVersion}`);
-
-    return {
-      success: true,
-      operations_performed: operations,
+    applyComponentMigration(
+      component,
+      fromVersion,
+      toVersion,
+      fromVer,
+      toVer,
+      operations,
       warnings,
-      timestamp: new Date().toISOString(),
-    };
+    );
+
+    return createMigrationResult(true, operations, warnings);
   } catch (error) {
-    return {
-      success: false,
-      operations_performed: operations,
-      warnings: [
-        ...warnings,
-        `Migration failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-      ],
-      timestamp: new Date().toISOString(),
-    };
+    return createMigrationResult(false, operations, [
+      ...warnings,
+      `Migration failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    ]);
   }
 }
 

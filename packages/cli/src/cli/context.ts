@@ -1,30 +1,63 @@
-import { ApiClient } from "@/api-client.js";
-import { loadAuthSession } from "@/auth-store.js";
-import { applyCliOverrides, applyEnvironmentOverrides, loadConfig } from "@/config.js";
+/**
+ * @packageDocumentation
+ * CLI Context module - Manages CLI configuration resolution and context.
+ *
+ * This module handles:
+ * - Loading and merging configuration from files, environment, and CLI options
+ * - Authentication session management
+ * - Remote project structure hydration
+ * - Configuration access for command handlers
+ */
+
+import { ApiClient } from "@/io/api/api-client.js";
+import { loadAuthSession } from "@/io/api/auth-store.js";
+import {
+  applyCliOverrides,
+  applyEnvironmentOverrides,
+  deriveLocalMode,
+  loadConfig,
+} from "@/io/config/config.js";
+import { ProjectRepository } from "@/repositories/project-repository.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
 import chalk from "chalk";
 import type { Command } from "commander";
 
+/**
+ * Container for resolved CLI context including configuration.
+ */
 export interface CliContext {
+  /** The resolved CLI configuration */
   config: CLIConfig;
 }
+
+/** Currently active configuration, set during context resolution */
+let activeConfig: CLIConfig | null = null;
 
 /**
  * Resolves the CLI context (configuration, auth session, environment overrides)
  * based on the root command's global options.
  */
-export async function resolveCliContext(options: Record<string, any>): Promise<CliContext> {
+export async function resolveCliContext(
+  options: Record<string, any>,
+  { skipRemoteConfig = false }: { skipRemoteConfig?: boolean } = {},
+): Promise<CliContext> {
   const baseConfig = await loadConfig(options.config);
   const overridden = applyCliOverrides(baseConfig, {
     apiUrl: options.apiUrl,
-    arbiterUrl: options.arbiterUrl,
     timeout: options.timeout,
     color: options.color,
     local: options.local,
     verbose: options.verbose,
   });
 
-  const finalConfig = applyEnvironmentOverrides(overridden);
+  const withEnvOverrides = applyEnvironmentOverrides(overridden);
+
+  // Derive localMode based on explicit configuration:
+  // - If API URL was explicitly configured (file, env, or --api-url), use API mode
+  // - If --local was explicitly passed, respect that
+  // - Otherwise, default to local/file-based mode
+  const finalConfig = deriveLocalMode(withEnvOverrides);
+
   const authSession = await loadAuthSession();
   if (authSession) {
     finalConfig.authSession = authSession;
@@ -32,7 +65,11 @@ export async function resolveCliContext(options: Record<string, any>): Promise<C
     delete finalConfig.authSession;
   }
 
-  await hydrateRemoteProjectStructure(finalConfig);
+  if (!skipRemoteConfig) {
+    await hydrateRemoteProjectStructure(finalConfig);
+  }
+
+  activeConfig = finalConfig;
 
   return { config: finalConfig };
 }
@@ -45,22 +82,37 @@ export async function hydrateCliContext(
   thisCommand: Command,
   actionCommand: Command,
 ): Promise<void> {
-  const context = await resolveCliContext(thisCommand.opts());
-  (thisCommand as any).config = context.config;
-  (actionCommand as any).config = context.config;
+  const actionOpts = actionCommand?.opts?.() ?? {};
+  const skipRemoteConfig = actionCommand?.name?.() === "init" && Boolean(actionOpts.listPresets);
+
+  const context = await resolveCliContext(thisCommand.opts(), { skipRemoteConfig });
+  activeConfig = context.config;
 }
 
+/**
+ * Check if remote config debugging is enabled via ARBITER_DEBUG_CONFIG env var.
+ * @returns True if debug logging should be enabled
+ */
 function shouldLogRemoteConfig(): boolean {
   const flag = process.env.ARBITER_DEBUG_CONFIG;
   return typeof flag === "string" && /^(1|true|verbose)$/i.test(flag.trim());
 }
 
+/**
+ * Log a remote config debug message if debugging is enabled.
+ * @param message - The message to log
+ */
 function logRemoteConfig(message: string): void {
   if (shouldLogRemoteConfig()) {
     console.warn(chalk.dim(`[remote-config] ${message}`));
   }
 }
 
+/**
+ * Coerce an unknown value to a trimmed string or undefined.
+ * @param value - The value to coerce
+ * @returns Trimmed string or undefined if not a valid non-empty string
+ */
 function coerceDirectoryValue(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -70,6 +122,11 @@ function coerceDirectoryValue(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+/**
+ * Coerce package-relative configuration from an unknown value.
+ * @param value - The value to coerce
+ * @returns Package relative config or undefined if invalid
+ */
 function coercePackageRelative(
   value: unknown,
 ): ProjectStructureConfig["packageRelative"] | undefined {
@@ -91,46 +148,48 @@ function coercePackageRelative(
     : undefined;
 }
 
+/**
+ * Mapping of local directory keys to remote source keys (primary, fallback).
+ */
+const DIRECTORY_KEY_MAPPINGS: Array<{
+  localKey: keyof ProjectStructureConfig;
+  remoteKeys: string[];
+}> = [
+  { localKey: "clientsDirectory", remoteKeys: ["clientsDirectory", "appsDirectory"] },
+  { localKey: "servicesDirectory", remoteKeys: ["servicesDirectory"] },
+  { localKey: "packagesDirectory", remoteKeys: ["packagesDirectory", "modulesDirectory"] },
+  { localKey: "toolsDirectory", remoteKeys: ["toolsDirectory"] },
+  { localKey: "docsDirectory", remoteKeys: ["docsDirectory"] },
+  { localKey: "testsDirectory", remoteKeys: ["testsDirectory"] },
+  { localKey: "infraDirectory", remoteKeys: ["infraDirectory"] },
+];
+
+/**
+ * Extract a directory value from remote config, trying multiple keys.
+ */
+function extractDirectory(remote: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = coerceDirectoryValue(remote[key]);
+    if (value) return value;
+  }
+  return undefined;
+}
+
+/**
+ * Normalize remote project structure configuration to local format.
+ * @param remote - Remote configuration object
+ * @returns Normalized project structure configuration
+ */
 function normalizeRemoteStructure(
   remote: Record<string, unknown>,
 ): Partial<ProjectStructureConfig> {
   const normalized: Partial<ProjectStructureConfig> = {};
 
-  const clients =
-    coerceDirectoryValue(remote.clientsDirectory) ?? coerceDirectoryValue(remote.appsDirectory);
-  if (clients) {
-    normalized.clientsDirectory = clients;
-  }
-
-  const services = coerceDirectoryValue(remote.servicesDirectory);
-  if (services) {
-    normalized.servicesDirectory = services;
-  }
-
-  const packagesDir =
-    coerceDirectoryValue(remote.packagesDirectory) ?? coerceDirectoryValue(remote.modulesDirectory);
-  if (packagesDir) {
-    normalized.packagesDirectory = packagesDir;
-  }
-
-  const tools = coerceDirectoryValue(remote.toolsDirectory);
-  if (tools) {
-    normalized.toolsDirectory = tools;
-  }
-
-  const docs = coerceDirectoryValue(remote.docsDirectory);
-  if (docs) {
-    normalized.docsDirectory = docs;
-  }
-
-  const tests = coerceDirectoryValue(remote.testsDirectory);
-  if (tests) {
-    normalized.testsDirectory = tests;
-  }
-
-  const infra = coerceDirectoryValue(remote.infraDirectory);
-  if (infra) {
-    normalized.infraDirectory = infra;
+  for (const { localKey, remoteKeys } of DIRECTORY_KEY_MAPPINGS) {
+    const value = extractDirectory(remote, remoteKeys);
+    if (value) {
+      (normalized as Record<string, string>)[localKey] = value;
+    }
   }
 
   const packageRelative = coercePackageRelative(remote.packageRelative);
@@ -144,6 +203,39 @@ function normalizeRemoteStructure(
   return normalized;
 }
 
+function applyRemoteProjectStructure(
+  config: CLIConfig,
+  projectStructure: Record<string, unknown>,
+): void {
+  const normalized = normalizeRemoteStructure(projectStructure);
+  if (Object.keys(normalized).length === 0) {
+    return;
+  }
+  config.projectStructure = {
+    ...config.projectStructure,
+    ...normalized,
+  };
+  logRemoteConfig(`Updated project structure from server (${Object.keys(normalized).join(", ")})`);
+}
+
+/**
+ * Handle project structure response
+ */
+function handleProjectStructureResponse(
+  config: CLIConfig,
+  response: { success: boolean; projectStructure?: any; error?: string },
+): void {
+  if (response.success && response.projectStructure) {
+    applyRemoteProjectStructure(config, response.projectStructure);
+  } else if (response.error) {
+    logRemoteConfig(`Server config unavailable: ${response.error}`);
+  }
+}
+
+/**
+ * Fetch and merge remote project structure into the local configuration.
+ * @param config - The CLI configuration to hydrate
+ */
 async function hydrateRemoteProjectStructure(config: CLIConfig): Promise<void> {
   if (config.localMode) {
     return;
@@ -151,22 +243,9 @@ async function hydrateRemoteProjectStructure(config: CLIConfig): Promise<void> {
 
   try {
     const client = new ApiClient(config);
-    const response = await client.getProjectStructureConfig();
-
-    if (response.success && response.projectStructure) {
-      const normalized = normalizeRemoteStructure(response.projectStructure);
-      if (Object.keys(normalized).length > 0) {
-        config.projectStructure = {
-          ...config.projectStructure,
-          ...normalized,
-        };
-        logRemoteConfig(
-          `Updated project structure from server (${Object.keys(normalized).join(", ")})`,
-        );
-      }
-    } else if (response.error) {
-      logRemoteConfig(`Server config unavailable: ${response.error}`);
-    }
+    const projectRepo = new ProjectRepository(client);
+    const response = await projectRepo.fetchProjectStructure();
+    handleProjectStructureResponse(config, response);
   } catch (error) {
     logRemoteConfig(
       `Failed to fetch remote project structure: ${
@@ -181,10 +260,16 @@ async function hydrateRemoteProjectStructure(config: CLIConfig): Promise<void> {
  * the configuration has not been attached (which indicates CLI bootstrap failed).
  */
 export function requireCommandConfig(command: Command): CLIConfig {
+  if (activeConfig) {
+    return activeConfig;
+  }
+
+  // Backward compatibility: fall back to command-attached config if tests set it manually
   let cursor: Command | null = command;
   while (cursor) {
     const cfg = (cursor as any).config as CLIConfig | undefined;
     if (cfg) {
+      activeConfig = cfg;
       return cfg;
     }
     cursor = cursor.parent ?? null;
@@ -196,3 +281,11 @@ export function requireCommandConfig(command: Command): CLIConfig {
     ),
   );
 }
+
+// Testing/diagnostics surface
+export const __contextTesting = {
+  getActiveConfig: () => activeConfig,
+  setActiveConfig: (config: CLIConfig | null) => {
+    activeConfig = config;
+  },
+};

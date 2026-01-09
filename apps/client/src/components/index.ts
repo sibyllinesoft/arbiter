@@ -2,25 +2,24 @@
  * Component exports - Barrel file for all reusable components
  */
 
-// Editor Components
-export { SourceEditor } from "./SourceEditor";
+// Core Components
+export { SourceEditor } from "./io/SourceEditor";
+export { FlowReport } from "./core/FlowReport";
+export { ArchitectureReport } from "./core/ArchitectureReport";
+export { default as ArchitectureFlowReport } from "./core/ArchitectureFlowReport";
+export { ArtifactCard } from "./core/ArtifactCard";
+export { useUnifiedTabs } from "./core/UnifiedTabs";
+export { AuthGate } from "./core/AuthGate";
 
-// Report Components
-export { FlowReport } from "./FlowReport";
-export { ArchitectureReport } from "./ArchitectureReport";
-export { default as ArchitectureFlowReport } from "./ArchitectureFlowReport";
-export { ArtifactCard } from "./ArtifactCard";
+// IO Components
+export { MetadataBanner } from "./io/MetadataBanner";
+export { EventsReport } from "./io/EventsReport";
+
+// API Components
 export { ServicesReport } from "./ServicesReport";
 export { ClientsReport } from "./ClientsReport";
-export { EventsReport } from "./EventsReport";
-export { TasksReport } from "./TasksReport";
-
-// Other Components
-export { ProjectList } from "./ProjectList";
-export { MetadataBanner } from "./MetadataBanner";
-
-// Unified Components
-export { useUnifiedTabs } from "./UnifiedTabs";
+export { TasksReport } from "./api/TasksReport";
+export { ProjectList } from "./api/ProjectList";
 
 // Project Creation Components
 export * from "./ProjectCreation";

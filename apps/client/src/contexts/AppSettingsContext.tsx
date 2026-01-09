@@ -48,6 +48,38 @@ const STORAGE_KEYS = {
   settings: "arbiter:settings",
 } as const;
 
+/** Extract structure field updates from partial settings */
+function extractStructureUpdates(partial: Partial<AppSettings>): Partial<ProjectStructureSettings> {
+  const updates: Partial<ProjectStructureSettings> = {};
+  for (const field of PROJECT_STRUCTURE_FIELDS) {
+    const value = partial[field];
+    if (typeof value === "string" && value.trim().length > 0) {
+      updates[field] = value;
+    }
+  }
+  return updates;
+}
+
+/** Extract package relative updates from partial settings */
+function extractPackageRelativeUpdates(
+  prev: AppSettings,
+  partial: Partial<AppSettings>,
+): Record<string, boolean> | null {
+  if (!partial.packageRelative) return null;
+
+  const updates: Record<string, boolean> = {};
+  for (const key of PACKAGE_RELATIVE_FIELDS) {
+    const value = partial.packageRelative[key];
+    if (typeof value === "boolean") {
+      updates[key] = value;
+    }
+  }
+
+  if (Object.keys(updates).length === 0) return null;
+
+  return { ...prev.packageRelative, ...updates };
+}
+
 type StatusState = { loading: boolean; error: string | null };
 
 interface AppSettingsContextValue {
@@ -113,28 +145,11 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
 
         persistSettings(nextSettings);
 
-        const structureUpdates: Partial<ProjectStructureSettings> = {};
-        PROJECT_STRUCTURE_FIELDS.forEach((field) => {
-          const value = partial[field];
-          if (typeof value === "string" && value.trim().length > 0) {
-            structureUpdates[field] = value;
-          }
-        });
+        const structureUpdates = extractStructureUpdates(partial);
+        const packageRelativeUpdates = extractPackageRelativeUpdates(prev, partial);
 
-        if (partial.packageRelative) {
-          const packageRelativeUpdates: Record<string, boolean> = {};
-          PACKAGE_RELATIVE_FIELDS.forEach((key) => {
-            const value = partial.packageRelative?.[key];
-            if (typeof value === "boolean") {
-              packageRelativeUpdates[key] = value;
-            }
-          });
-          if (Object.keys(packageRelativeUpdates).length > 0) {
-            structureUpdates.packageRelative = {
-              ...prev.packageRelative,
-              ...packageRelativeUpdates,
-            };
-          }
+        if (packageRelativeUpdates) {
+          structureUpdates.packageRelative = packageRelativeUpdates;
         }
 
         if (Object.keys(structureUpdates).length > 0) {

@@ -1,14 +1,15 @@
+/** @packageDocumentation Constraint system tests */
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import * as core from "@/constraints/core.js";
-import * as filesystem from "@/constraints/filesystem.js";
-import * as idempotency from "@/constraints/idempotency.js";
+import * as core from "@/constraints/core/core.js";
+import * as sandbox from "@/constraints/core/sandbox.js";
+import * as schema from "@/constraints/core/schema.js";
 import { ConstraintSystem, createConstraintSystem } from "@/constraints/index.js";
-import * as sandbox from "@/constraints/sandbox.js";
-import * as schema from "@/constraints/schema.js";
+import * as filesystem from "@/constraints/utils/filesystem.js";
+import * as idempotency from "@/constraints/utils/idempotency.js";
 
 const baseConfig: any = {
   apiUrl: "http://localhost",

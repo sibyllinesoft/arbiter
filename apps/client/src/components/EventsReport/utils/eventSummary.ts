@@ -22,6 +22,35 @@ type EventFormatterContext = {
 
 type EventFormatter = (context: EventFormatterContext) => string | undefined;
 
+/** Describe a list of event IDs with their descriptions */
+function describeEventList(
+  ids: string[],
+  described: string[],
+  action: string,
+  fallback: string,
+  join: (...parts: (string | undefined)[]) => string,
+): string {
+  if (described.length === 1) {
+    return `${action} "${described[0]}"`;
+  }
+  if (described.length > 1) {
+    const preview = described
+      .slice(0, 2)
+      .map((item) => `"${item}"`)
+      .join(", ");
+    const suffix = described.length > 2 ? ` +${described.length - 2} more` : "";
+    return `${action} ${ids.length} events (${preview}${suffix})`;
+  }
+  const count = ids.length;
+  const idPreview = count
+    ? `(${ids
+        .slice(0, 2)
+        .map((id) => toShortId(String(id)))
+        .join(", ")}${count > 2 ? "…" : ""})`
+    : undefined;
+  return join(`${action} ${count} event${count === 1 ? "" : "s"}`, idPreview) || fallback;
+}
+
 const EVENT_FORMATTERS: Partial<Record<Event["event_type"], EventFormatter>> = {
   fragment_created: ({ fragmentLabel, user, getNumber, join }) => {
     const contentLength = getNumber("content_length");
@@ -199,28 +228,13 @@ const EVENT_FORMATTERS: Partial<Record<Event["event_type"], EventFormatter>> = {
     const described = revertedIds
       .map((id) => describeById(id))
       .filter((value): value is string => Boolean(value));
-    let description: string;
-    if (described.length === 1) {
-      description = `Reverted "${described[0]}"`;
-    } else if (described.length > 1) {
-      const preview = described
-        .slice(0, 2)
-        .map((item) => `"${item}"`)
-        .join(", ");
-      const suffix = described.length > 2 ? ` +${described.length - 2} more` : "";
-      description = `Reverted ${revertedIds.length} events (${preview}${suffix})`;
-    } else {
-      description =
-        join(
-          `Reverted ${revertedIds.length} event${revertedIds.length === 1 ? "" : "s"}`,
-          revertedIds.length
-            ? `(${revertedIds
-                .slice(0, 2)
-                .map((id) => toShortId(String(id)))
-                .join(", ")}${revertedIds.length > 2 ? "…" : ""})`
-            : undefined,
-        ) || "Events reverted";
-    }
+    const description = describeEventList(
+      revertedIds,
+      described,
+      "Reverted",
+      "Events reverted",
+      join,
+    );
     return headId ? `${description} · head now ${toShortId(headId)}` : description;
   },
   events_reapplied: ({ getArray, describeById, join }) => {
@@ -231,28 +245,7 @@ const EVENT_FORMATTERS: Partial<Record<Event["event_type"], EventFormatter>> = {
     const described = reappliedIds
       .map((id) => describeById(id))
       .filter((value): value is string => Boolean(value));
-    if (described.length === 1) {
-      return `Reapplied "${described[0]}"`;
-    }
-    if (described.length > 1) {
-      const preview = described
-        .slice(0, 2)
-        .map((item) => `"${item}"`)
-        .join(", ");
-      const suffix = described.length > 2 ? ` +${described.length - 2} more` : "";
-      return `Reapplied ${reappliedIds.length} events (${preview}${suffix})`;
-    }
-    return (
-      join(
-        `Reapplied ${reappliedIds.length} event${reappliedIds.length === 1 ? "" : "s"}`,
-        reappliedIds.length
-          ? `(${reappliedIds
-              .slice(0, 2)
-              .map((id) => toShortId(String(id)))
-              .join(", ")}${reappliedIds.length > 2 ? "…" : ""})`
-          : undefined,
-      ) || "Events reapplied"
-    );
+    return describeEventList(reappliedIds, described, "Reapplied", "Events reapplied", join);
   },
   entity_created: ({ getString, data, join }) => {
     const entityType = getString("entity_type") ?? getString("artifact_type");
@@ -293,6 +286,105 @@ const EVENT_FORMATTERS: Partial<Record<Event["event_type"], EventFormatter>> = {
   },
 };
 
+/** Extract a string value from event data */
+function getStringFromData(data: Record<string, unknown>, key: string): string | undefined {
+  const value = data[key];
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+  return undefined;
+}
+
+/** Extract a number value from event data */
+function getNumberFromData(data: Record<string, unknown>, key: string): number | undefined {
+  const value = data[key];
+  if (typeof value === "number" && !Number.isNaN(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+/** Extract an array value from event data */
+function getArrayFromData(data: Record<string, unknown>, key: string): unknown[] {
+  return Array.isArray(data[key]) ? (data[key] as unknown[]) : [];
+}
+
+/** Join non-empty parts with a separator */
+function joinParts(...parts: (string | undefined)[]): string {
+  const filtered = parts.filter(Boolean) as string[];
+  return filtered.length > 0 ? filtered.join(" · ") : "";
+}
+
+/** Normalize an event-like object to a full Event */
+function normalizeEventLike(
+  value: unknown,
+  fallbackId: string | undefined,
+  parentEvent: Event,
+): Event | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Partial<Event> & Record<string, unknown>;
+  const type = raw.event_type;
+  if (!type || typeof type !== "string") return null;
+  return {
+    id: String(raw.id ?? fallbackId ?? `${parentEvent.id}-ref`),
+    project_id: String(raw.project_id ?? parentEvent.project_id),
+    event_type: type as Event["event_type"],
+    data: raw.data && typeof raw.data === "object" ? (raw.data as Record<string, unknown>) : {},
+    is_active: raw.is_active !== undefined ? Boolean(raw.is_active) : true,
+    reverted_at: raw.reverted_at ?? null,
+    created_at: typeof raw.created_at === "string" ? raw.created_at : parentEvent.created_at,
+  };
+}
+
+/** Build formatter context from event */
+function buildFormatterContext(
+  event: Event,
+  data: Record<string, unknown>,
+  lookupEvent: ((eventId: string) => Event | undefined) | undefined,
+  seen: Set<string>,
+): EventFormatterContext {
+  const getString = (key: string) => getStringFromData(data, key);
+  const getNumber = (key: string) => getNumberFromData(data, key);
+  const getArray = (key: string) => getArrayFromData(data, key);
+
+  const describeById = (id?: string): string | undefined => {
+    if (!id || !lookupEvent) return undefined;
+    const referenced = lookupEvent(id);
+    if (!referenced) return undefined;
+    return formatEventSummary(referenced, lookupEvent, new Set(seen));
+  };
+
+  const describeEventLike = (value: unknown, fallbackId?: string): string | undefined => {
+    const normalized = normalizeEventLike(value, fallbackId, event);
+    if (!normalized) return undefined;
+    return formatEventSummary(normalized, lookupEvent, new Set(seen));
+  };
+
+  const fragmentPath = getString("fragment_path") ?? getString("path");
+  const fragmentId = getString("fragment_id");
+  const fragmentLabel = fragmentPath ?? toShortId(fragmentId) ?? "fragment";
+  const user = getString("user_id") ?? getString("author") ?? getString("user");
+
+  return {
+    event,
+    data,
+    getString,
+    getNumber,
+    getArray,
+    join: joinParts,
+    describeById,
+    describeEventLike,
+    fragmentLabel,
+    ...(user ? { user } : {}),
+  };
+}
+
 export const formatEventSummary = (
   event: Event,
   lookupEvent?: (eventId: string) => Event | undefined,
@@ -304,80 +396,14 @@ export const formatEventSummary = (
   seen.add(event.id);
 
   const data = (event.data ?? {}) as Record<string, unknown>;
-
-  const getString = (key: string): string | undefined => {
-    const value = data[key];
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
-    return undefined;
-  };
-  const getNumber = (key: string): number | undefined => {
-    const value = data[key];
-    if (typeof value === "number" && !Number.isNaN(value)) {
-      return value;
-    }
-    if (typeof value === "string") {
-      const parsed = Number(value);
-      if (!Number.isNaN(parsed)) {
-        return parsed;
-      }
-    }
-    return undefined;
-  };
-  const getArray = (key: string): unknown[] =>
-    Array.isArray(data[key]) ? (data[key] as unknown[]) : [];
-  const join = (...parts: (string | undefined)[]) => {
-    const filtered = parts.filter(Boolean) as string[];
-    return filtered.length > 0 ? filtered.join(" · ") : "";
-  };
-
-  const describeById = (id?: string): string | undefined => {
-    if (!id || !lookupEvent) return undefined;
-    const referenced = lookupEvent(id);
-    if (!referenced) return undefined;
-    return formatEventSummary(referenced, lookupEvent, new Set(seen));
-  };
-
-  const describeEventLike = (value: unknown, fallbackId?: string): string | undefined => {
-    if (!value || typeof value !== "object") return undefined;
-    const raw = value as Partial<Event> & Record<string, unknown>;
-    const type = raw.event_type;
-    if (!type || typeof type !== "string") return undefined;
-    const normalized: Event = {
-      id: String(raw.id ?? fallbackId ?? `${event.id}-ref`),
-      project_id: String(raw.project_id ?? event.project_id),
-      event_type: type as Event["event_type"],
-      data: raw.data && typeof raw.data === "object" ? (raw.data as Record<string, unknown>) : {},
-      is_active: raw.is_active !== undefined ? Boolean(raw.is_active) : true,
-      reverted_at: raw.reverted_at ?? null,
-      created_at: typeof raw.created_at === "string" ? raw.created_at : event.created_at,
-    };
-    return formatEventSummary(normalized, lookupEvent, new Set(seen));
-  };
-
-  const fragmentPath = getString("fragment_path") ?? getString("path");
-  const fragmentId = getString("fragment_id");
-  const fragmentLabel = fragmentPath ?? toShortId(fragmentId) ?? "fragment";
-  const user = getString("user_id") ?? getString("author") ?? getString("user");
-
   const formatter = EVENT_FORMATTERS[event.event_type];
+
   if (!formatter) {
     return summarizeGeneric(data);
   }
 
-  const summary = formatter({
-    event,
-    data,
-    getString,
-    getNumber,
-    getArray,
-    join,
-    describeById,
-    describeEventLike,
-    fragmentLabel,
-    user,
-  });
+  const context = buildFormatterContext(event, data, lookupEvent, seen);
+  const summary = formatter(context);
 
   return summary || summarizeGeneric(data);
 };

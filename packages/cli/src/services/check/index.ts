@@ -1,7 +1,20 @@
+/**
+ * @packageDocumentation
+ * Check command - Validate CUE specification files.
+ *
+ * Provides functionality to:
+ * - Validate CUE files against schema
+ * - Display validation results in table or JSON format
+ * - Report errors and warnings with context
+ * - Support glob patterns for file matching
+ */
+
 import path from "node:path";
-import { ApiClient } from "@/api-client.js";
 import { validateCUE } from "@/cue/index.js";
+import { ApiClient } from "@/io/api/api-client.js";
+import { SystemRepository } from "@/repositories/system-repository.js";
 import type { CLIConfig, CheckOptions, ValidationResult } from "@/types.js";
+import { withProgress } from "@/utils/api/progress.js";
 import {
   formatErrorDetails,
   formatFileSize,
@@ -9,12 +22,46 @@ import {
   formatSummary,
   formatValidationTable,
   formatWarningDetails,
-} from "@/utils/formatting.js";
-import { withProgress } from "@/utils/progress.js";
+} from "@/utils/util/output/formatting.js";
 import { translateCueErrors } from "@arbiter/shared";
 import chalk from "chalk";
 import fs from "fs-extra";
 import { glob } from "glob";
+
+/**
+ * Get file patterns, using default if none provided.
+ */
+function getFilePatterns(patterns: string[]): string[] {
+  return patterns.length > 0 ? patterns : ["**/*.cue"];
+}
+
+/**
+ * Handle case when no files are found.
+ */
+function handleNoFilesFound(structuredOutput: boolean, color: boolean): number {
+  if (structuredOutput) {
+    console.log(formatJson([], color));
+  } else {
+    console.log(chalk.yellow("No CUE files found"));
+  }
+  return 0;
+}
+
+/**
+ * Output validation results based on format.
+ */
+function outputResults(
+  results: ValidationResult[],
+  structuredOutput: boolean,
+  options: CheckOptions,
+  config: CLIConfig,
+): void {
+  if (structuredOutput) {
+    console.log(formatJson(results, config.color));
+  } else {
+    displayResults(results, options, config);
+  }
+}
 
 /**
  * Check command implementation
@@ -28,41 +75,23 @@ export async function runCheckCommand(
   const structuredOutput = isJsonFormat(options);
 
   try {
-    // Use default pattern if none provided
-    if (patterns.length === 0) {
-      patterns = ["**/*.cue"];
-    }
-
-    // Find all matching files
-    const files = await findCueFiles(patterns, {
+    const effectivePatterns = getFilePatterns(patterns);
+    const files = await findCueFiles(effectivePatterns, {
       recursive: options.recursive ?? true,
       cwd: config.projectDir,
     });
 
     if (files.length === 0) {
-      if (structuredOutput) {
-        console.log(formatJson([], config.color));
-      } else {
-        console.log(chalk.yellow("No CUE files found"));
-      }
-      return 0;
+      return handleNoFilesFound(structuredOutput, config.color);
     }
 
     if (!structuredOutput) {
       console.log(chalk.dim(`Found ${files.length} CUE files`));
     }
 
-    // Validate files
     const results = await validateFiles(files, config, options, structuredOutput);
+    outputResults(results, structuredOutput, options, config);
 
-    // Format and display results
-    if (structuredOutput) {
-      console.log(formatJson(results, config.color));
-    } else {
-      displayResults(results, options, config);
-    }
-
-    // Determine exit code
     const hasErrors = results.some((r) => r.status === "invalid" || r.status === "error");
     return hasErrors ? 1 : 0;
   } catch (error) {
@@ -133,8 +162,9 @@ async function validateFiles(
  */
 async function initializeApiClient(config: CLIConfig): Promise<ApiClient> {
   const apiClient = new ApiClient(config);
+  const systemRepo = new SystemRepository(apiClient);
 
-  const healthCheck = await apiClient.health();
+  const healthCheck = await systemRepo.health();
   if (!healthCheck.success) {
     throw new Error(`Cannot connect to Arbiter server: ${healthCheck.error}`);
   }
@@ -247,6 +277,90 @@ function shouldStopProcessing(options: CheckOptions, chunkResults: ValidationRes
   return options.failFast && chunkResults.some((r) => r.status !== "valid");
 }
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+/**
+ * Check if file meets basic requirements for validation
+ */
+async function checkFileRequirements(
+  filePath: string,
+  startTime: number,
+): Promise<ValidationResult | null> {
+  const stats = await fs.stat(filePath);
+
+  if (!stats.isFile()) {
+    return buildErrorResult(filePath, "Not a file", "system", startTime);
+  }
+
+  if (stats.size > MAX_FILE_SIZE) {
+    return buildErrorResult(
+      filePath,
+      `File too large (${formatFileSize(stats.size)}), maximum allowed: ${formatFileSize(MAX_FILE_SIZE)}`,
+      "system",
+      startTime,
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Build a validation error result
+ */
+function buildErrorResult(
+  filePath: string,
+  message: string,
+  category: string,
+  startTime: number,
+): ValidationResult {
+  return {
+    file: path.basename(filePath),
+    status: "error",
+    errors: [{ line: 0, column: 0, message, severity: "error" as const, category }],
+    warnings: [],
+    processingTime: Date.now() - startTime,
+  };
+}
+
+/**
+ * Process API validation response into ValidationResult
+ */
+function processValidationResponse(
+  filePath: string,
+  data: {
+    success: boolean;
+    errors?: Array<{ message: string; line?: number; column?: number }>;
+    warnings?: Array<{ message: string; line?: number; column?: number }>;
+  },
+  startTime: number,
+): ValidationResult {
+  const errors = (data.errors ?? []).map((error) => {
+    const translated = translateCueErrors(error.message);
+    return {
+      line: error.line || 0,
+      column: error.column || 0,
+      message: translated[0]?.friendlyMessage || error.message,
+      severity: "error" as const,
+      category: translated[0]?.category || "validation",
+    };
+  });
+
+  const warnings = (data.warnings ?? []).map((warning) => ({
+    line: warning.line || 0,
+    column: warning.column || 0,
+    message: warning.message,
+    category: "validation",
+  }));
+
+  return {
+    file: path.basename(filePath),
+    status: data.success ? "valid" : "invalid",
+    errors,
+    warnings,
+    processingTime: Date.now() - startTime,
+  };
+}
+
 /**
  * Validate a single file
  */
@@ -258,119 +372,29 @@ async function validateFile(
   const startTime = Date.now();
 
   try {
-    // Check if file exists and is readable
-    const stats = await fs.stat(filePath);
-    if (!stats.isFile()) {
-      return {
-        file: path.basename(filePath),
-        status: "error",
-        errors: [
-          {
-            line: 0,
-            column: 0,
-            message: "Not a file",
-            severity: "error" as const,
-            category: "system",
-          },
-        ],
-        warnings: [],
-        processingTime: Date.now() - startTime,
-      };
-    }
+    const fileError = await checkFileRequirements(filePath, startTime);
+    if (fileError) return fileError;
 
-    // Check file size (limit to reasonable size for performance)
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (stats.size > maxSize) {
-      return {
-        file: path.basename(filePath),
-        status: "error",
-        errors: [
-          {
-            line: 0,
-            column: 0,
-            message: `File too large (${formatFileSize(stats.size)}), maximum allowed: ${formatFileSize(maxSize)}`,
-            severity: "error" as const,
-            category: "system",
-          },
-        ],
-        warnings: [],
-        processingTime: Date.now() - startTime,
-      };
-    }
-
-    // Read file content
     const content = await fs.readFile(filePath, "utf-8");
-
-    // Validate using API
     const validationResult = await apiClient.validate(content);
 
     if (!validationResult.success || !validationResult.data) {
-      return {
-        file: path.basename(filePath),
-        status: "error",
-        errors: [
-          {
-            line: 0,
-            column: 0,
-            message: validationResult.error || "Unknown validation error",
-            severity: "error" as const,
-            category: "api",
-          },
-        ],
-        warnings: [],
-        processingTime: Date.now() - startTime,
-      };
+      return buildErrorResult(
+        filePath,
+        validationResult.error || "Unknown validation error",
+        "api",
+        startTime,
+      );
     }
 
-    const data = validationResult.data;
-
-    // Process errors with enhanced translation
-    const errors =
-      data.errors?.map((error) => {
-        const translated = translateCueErrors(error.message);
-        return {
-          line: error.line || 0,
-          column: error.column || 0,
-          message: translated[0]?.friendlyMessage || error.message,
-          severity: "error" as const,
-          category: translated[0]?.category || "validation",
-        };
-      }) || [];
-
-    // Process warnings
-    const warnings =
-      data.warnings?.map((warning) => ({
-        line: warning.line || 0,
-        column: warning.column || 0,
-        message: warning.message,
-        category: "validation",
-      })) || [];
-
-    const status = data.success ? "valid" : "invalid";
-
-    return {
-      file: path.basename(filePath),
-      status,
-      errors,
-      warnings,
-      processingTime: Date.now() - startTime,
-    };
+    return processValidationResponse(filePath, validationResult.data, startTime);
   } catch (error) {
-    return {
-      file: path.basename(filePath),
-      status: "error",
-      errors: [
-        {
-          line: 0,
-          column: 0,
-          message: error instanceof Error ? error.message : String(error),
-          severity: "error" as const,
-          category: "system",
-        },
-      ],
-      warnings: [],
-      processingTime: Date.now() - startTime,
-    };
+    return buildErrorResult(
+      filePath,
+      error instanceof Error ? error.message : String(error),
+      "system",
+      startTime,
+    );
   }
 }
 
@@ -454,58 +478,89 @@ async function validateFilesLocally(
 }
 
 /**
+ * Check local file requirements (size, type)
+ */
+async function checkLocalFileRequirements(
+  filePath: string,
+  startTime: number,
+): Promise<ValidationResult | null> {
+  const stats = await fs.stat(filePath);
+
+  if (!stats.isFile()) {
+    return buildSystemErrorResult(filePath, "Not a file", startTime);
+  }
+
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if (stats.size > maxSize) {
+    return buildSystemErrorResult(
+      filePath,
+      `File too large (${formatFileSize(stats.size)}), maximum allowed: ${formatFileSize(maxSize)}`,
+      startTime,
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Build valid result for a file
+ */
+function buildValidResult(filePath: string, startTime: number): ValidationResult {
+  return {
+    file: path.basename(filePath),
+    status: "valid",
+    errors: [],
+    warnings: [],
+    processingTime: Date.now() - startTime,
+  };
+}
+
+/**
+ * Build invalid result with translated errors
+ */
+function buildInvalidResult(
+  filePath: string,
+  validationErrors: string[],
+  startTime: number,
+): ValidationResult {
+  const errors = validationErrors.map((message) => {
+    const translated = translateCueErrors(message);
+    return {
+      line: 0,
+      column: 0,
+      message: translated[0]?.friendlyMessage || message,
+      severity: "error" as const,
+      category: translated[0]?.category || "validation",
+    };
+  });
+
+  return {
+    file: path.basename(filePath),
+    status: "invalid",
+    errors,
+    warnings: [],
+    processingTime: Date.now() - startTime,
+  };
+}
+
+/**
  * Local validation implementation for a single file
  */
 async function validateFileLocally(filePath: string): Promise<ValidationResult> {
   const startTime = Date.now();
 
   try {
-    const stats = await fs.stat(filePath);
-    if (!stats.isFile()) {
-      return buildSystemErrorResult(filePath, "Not a file", startTime);
-    }
-
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (stats.size > maxSize) {
-      return buildSystemErrorResult(
-        filePath,
-        `File too large (${formatFileSize(stats.size)}), maximum allowed: ${formatFileSize(maxSize)}`,
-        startTime,
-      );
-    }
+    const fileError = await checkLocalFileRequirements(filePath, startTime);
+    if (fileError) return fileError;
 
     const content = await fs.readFile(filePath, "utf-8");
     const validation = await validateCUE(content);
 
     if (validation.valid) {
-      return {
-        file: path.basename(filePath),
-        status: "valid",
-        errors: [],
-        warnings: [],
-        processingTime: Date.now() - startTime,
-      };
+      return buildValidResult(filePath, startTime);
     }
 
-    const errors =
-      validation.errors.map((message) => {
-        const translated = translateCueErrors(message);
-        return {
-          line: 0,
-          column: 0,
-          message: translated[0]?.friendlyMessage || message,
-          severity: "error" as const,
-          category: translated[0]?.category || "validation",
-        };
-      }) || [];
-
-    return {
-      file: path.basename(filePath),
-      status: "invalid",
-      errors,
-      warnings: [],
-      processingTime: Date.now() - startTime,
-    };
+    return buildInvalidResult(filePath, validation.errors, startTime);
   } catch (error) {
     return buildSystemErrorResult(
       filePath,
@@ -520,19 +575,5 @@ function buildSystemErrorResult(
   message: string,
   startTime: number,
 ): ValidationResult {
-  return {
-    file: path.basename(filePath),
-    status: "error",
-    errors: [
-      {
-        line: 0,
-        column: 0,
-        message,
-        severity: "error",
-        category: "system",
-      },
-    ],
-    warnings: [],
-    processingTime: Date.now() - startTime,
-  };
+  return buildErrorResult(filePath, message, "system", startTime);
 }

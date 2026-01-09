@@ -1,7 +1,8 @@
+/** @packageDocumentation CLI command tests */
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import { createRemoveCommands } from "@/cli/remove.js";
+import { createRemoveCommands } from "@/cli/commands/remove.js";
 import * as remover from "@/services/remove/index.js";
 
 const baseConfig = {

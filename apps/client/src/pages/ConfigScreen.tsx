@@ -6,7 +6,7 @@ import { ArrowLeft, Code, Settings } from "lucide-react";
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TunnelManager } from "../components/TunnelManager";
+import { TunnelManager } from "../components/io/TunnelManager";
 import { type AppSettings, useAppSettings, useThemeControls } from "../contexts/AppContext";
 import { Button, Card, Checkbox, Input } from "../design-system";
 import { apiService } from "../services/api";

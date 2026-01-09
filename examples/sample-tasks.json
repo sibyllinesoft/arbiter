@@ -1,12 +1,12 @@
 [
   {
-    "name": "Design Epic and Task Schema",
-    "description": "Create comprehensive CUE schemas for epic and task management with dependency support",
+    "name": "Design Group and Task Schema",
+    "description": "Create comprehensive CUE schemas for group and task management with dependency support",
     "type": "feature",
     "priority": "high",
     "assignee": "architect",
     "acceptanceCriteria": [
-      "CUE schema validates epic structure",
+      "CUE schema validates group structure",
       "Dependency modeling is enforced",
       "Dependencies are properly modeled"
     ]
@@ -16,7 +16,7 @@
     "description": "Create sharded CUE file storage architecture for better organization",
     "type": "feature",
     "priority": "high",
-    "dependsOn": ["design-epic-and-task-schema"],
+    "dependsOn": ["design-group-and-task-schema"],
     "assignee": "backend-dev",
     "acceptanceCriteria": [
       "Files are sharded based on configurable limits",
@@ -26,13 +26,13 @@
   },
   {
     "name": "Add CLI Commands",
-    "description": "Implement CLI commands for epic and task management",
+    "description": "Implement CLI commands for group and task management",
     "type": "feature",
     "priority": "medium",
     "dependsOn": ["implement-sharded-storage"],
     "assignee": "frontend-dev",
     "acceptanceCriteria": [
-      "Epic CRUD operations work",
+      "Group CRUD operations work",
       "Task CRUD operations work",
       "Batch task creation via JSON works",
       "Proper error handling and validation"
@@ -40,7 +40,7 @@
   },
   {
     "name": "Write Comprehensive Tests",
-    "description": "Add unit and integration tests for all epic/task functionality",
+    "description": "Add unit and integration tests for all group/task functionality",
     "type": "test",
     "priority": "medium",
     "dependsOn": ["add-cli-commands"],
@@ -54,13 +54,13 @@
   },
   {
     "name": "Add Documentation",
-    "description": "Create user documentation and examples for epic/task management",
+    "description": "Create user documentation and examples for group/task management",
     "type": "docs",
     "priority": "low",
     "dependsOn": ["write-comprehensive-tests"],
     "assignee": "technical-writer",
     "acceptanceCriteria": [
-      "User guide for epic/task workflow",
+      "User guide for group/task workflow",
       "CLI command reference",
       "JSON schema documentation for batch operations",
       "Example workflows and use cases"
@@ -76,7 +76,7 @@
     "acceptanceCriteria": [
       "Sub-100ms query times for typical operations",
       "Memory usage scales linearly with shard count",
-      "Large epic/task lists handle smoothly"
+      "Large group/task lists handle smoothly"
     ]
   }
 ]

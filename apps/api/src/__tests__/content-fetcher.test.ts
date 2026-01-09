@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { createGithubContentFetcher, createLocalContentFetcher } from "../content-fetcher";
+import { createGithubContentFetcher, createLocalContentFetcher } from "../git/content-fetcher";
 
 const tmp = () => mkdtemp(path.join(os.tmpdir(), "content-fetcher-"));
 

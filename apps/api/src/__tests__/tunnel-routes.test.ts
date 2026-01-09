@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 import { Hono } from "hono";
-import { tunnelRoutes } from "../routes/tunnel";
-import type { TunnelConfig, TunnelManager } from "../tunnel-manager";
+import type { TunnelConfig, TunnelManager } from "../io/tunnel-manager";
+import { tunnelRoutes } from "../routes/util/tunnel";
 
 // Lightweight mock tunnel manager
 const mockManager = {

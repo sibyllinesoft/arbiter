@@ -84,10 +84,64 @@ async function generateTestTemplates(
   }));
 }
 
+/**
+ * Check if file exists at path
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  return fs
+    .access(filePath)
+    .then(() => true)
+    .catch(() => false);
+}
+
+/**
+ * Get default framework for language
+ */
+function getDefaultFramework(language: string): string {
+  return language === "python" ? "pytest" : "jest";
+}
+
+/**
+ * Write a single test template file
+ */
+async function writeTemplateFile(
+  template: TestTemplate,
+  outputDir: string,
+  force: boolean,
+): Promise<boolean> {
+  const target = path.join(outputDir, template.filename);
+
+  if ((await fileExists(target)) && !force) {
+    console.log(chalk.yellow(`⚠️  Skipping existing file ${template.filename}`));
+    return false;
+  }
+
+  await safeFileOperation("write", target, async (validatedPath) => {
+    await fs.writeFile(validatedPath, template.content, "utf-8");
+  });
+  console.log(chalk.green(`✅ Wrote ${template.filename}`));
+  return true;
+}
+
+/**
+ * Write all test template files to output directory
+ */
+async function writeAllTemplates(
+  templates: TestTemplate[],
+  outputDir: string,
+  force: boolean,
+): Promise<void> {
+  await fs.mkdir(outputDir, { recursive: true });
+
+  for (const template of templates) {
+    await writeTemplateFile(template, outputDir, force);
+  }
+}
+
 export async function scaffoldCommand(options: TestsOptions, _config: CLIConfig): Promise<number> {
   try {
     const language = options.language || "typescript";
-    const framework = options.framework || (language === "python" ? "pytest" : "jest");
+    const framework = options.framework || getDefaultFramework(language);
     const outputDir = options.output || "@/services/tests/tests";
 
     console.log(
@@ -99,25 +153,7 @@ export async function scaffoldCommand(options: TestsOptions, _config: CLIConfig)
     const invariants = await discoverInvariants();
     const templates = await generateTestTemplates(invariants, language, framework);
 
-    await fs.mkdir(outputDir, { recursive: true });
-
-    for (const tmpl of templates) {
-      const target = path.join(outputDir, tmpl.filename);
-      const exists = await fs
-        .access(target)
-        .then(() => true)
-        .catch(() => false);
-
-      if (exists && !options.force) {
-        console.log(chalk.yellow(`⚠️  Skipping existing file ${tmpl.filename}`));
-        continue;
-      }
-
-      await safeFileOperation("write", target, async (validatedPath) => {
-        await fs.writeFile(validatedPath, tmpl.content, "utf-8");
-      });
-      console.log(chalk.green(`✅ Wrote ${tmpl.filename}`));
-    }
+    await writeAllTemplates(templates, outputDir, !!options.force);
 
     console.log(chalk.green(`\n✨ Test scaffolding complete (${templates.length} files).`));
     return 0;

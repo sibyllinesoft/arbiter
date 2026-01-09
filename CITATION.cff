@@ -1,33 +1,34 @@
 cff-version: 1.2.0
 message: 'If you use this software, please cite it as below.'
 type: software
-title: 'arbiter'
-abstract: 'Arbiter'
+title: 'Arbiter'
+abstract: 'CUE-based specification validation and management CLI with agent-first automation and comprehensive application modeling capabilities'
 authors:
   - family-names: Rice
     given-names: Nathan
     email: nathan.alexander.rice@gmail.com
-    orcid: '<ORCID_ID>' # Optional: Add ORCID ID if available
-repository-code: 'https://github.com/nathanlrice/arbiter'
-url: 'https://github.com/nathanlrice/arbiter'
-license: 'SPL-1.0'
-license-url: 'https://github.com/<GITHUB_USERNAME>/<PROJECT_REPO>/blob/main/LICENSE'
-version: '<PROJECT_VERSION>'
-date-released: '<RELEASE_DATE>' # Format: YYYY-MM-DD
+repository-code: 'https://github.com/sibyllinesoft/arbiter'
+url: 'https://github.com/sibyllinesoft/arbiter'
+license: 'LicenseRef-SPL-1.0'
+license-url: 'https://github.com/sibyllinesoft/arbiter/blob/main/LICENSE'
+version: '1.0.0'
 keywords:
-  - '<KEYWORD_1>'
-  - '<KEYWORD_2>'
-  - '<KEYWORD_3>'
+  - cue
+  - specification
+  - validation
+  - cli
+  - automation
+  - code-generation
+  - agent-friendly
 preferred-citation:
   type: software
-  title: 'arbiter'
-  abstract: 'Arbiter'
+  title: 'Arbiter'
+  abstract: 'CUE-based specification validation and management CLI'
   authors:
     - family-names: Rice
       given-names: Nathan
       email: nathan.alexander.rice@gmail.com
-  repository-code: 'https://github.com/nathanlrice/arbiter'
-  url: 'https://github.com/nathanlrice/arbiter'
-  license: 'SPL-1.0'
-  version: '<PROJECT_VERSION>'
-  date-released: '<RELEASE_DATE>'
+  repository-code: 'https://github.com/sibyllinesoft/arbiter'
+  url: 'https://github.com/sibyllinesoft/arbiter'
+  license: 'LicenseRef-SPL-1.0'
+  version: '1.0.0'

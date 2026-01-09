@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { isCloudflareRuntime } from "../runtime-env";
+import { isCloudflareRuntime } from "../util/runtime-env";
 
 describe("isCloudflareRuntime", () => {
   it("returns false in default node environment", () => {

@@ -1,85 +1,58 @@
 /**
- * GitUrlImport - Component for importing projects from Git URLs
+ * GitUrlImport - Component for importing projects from Git URLs.
+ * Allows users to enter a Git URL, scan the repository, and create a project.
  */
 
 import { useUIState } from "@contexts/AppContext";
 import { useSetCurrentProject } from "@contexts/ProjectContext";
 import { Button } from "@design-system";
 import { useProjects } from "@hooks/api-hooks";
-import { apiService } from "@services/api";
 import { CheckCircle, GitBranch as GitIcon, Link, RefreshCw } from "lucide-react";
 import React, { useState } from "react";
-import { toast } from "react-toastify";
+import {
+  type ScanResult,
+  getDetectedProjectTypes,
+  getScanMethodDescription,
+  importFromScan,
+  scanGitUrl,
+} from "./git-import-utils";
 
+/** Props for the GitUrlImport component */
 interface GitUrlImportProps {
   onClose: () => void;
 }
 
+/**
+ * Component for importing projects from Git repository URLs.
+ * Scans the repository and extracts project structure before creation.
+ */
 export function GitUrlImport({ onClose }: GitUrlImportProps) {
   const { gitUrl, setGitUrl } = useUIState();
   const { refetch: refetchProjects } = useProjects();
   const setCurrentProject = useSetCurrentProject();
 
   const [isScanning, setIsScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<any>(null);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   const handleScanGitUrl = async () => {
-    if (!gitUrl.trim()) {
-      toast.error("Please enter a valid Git URL", { autoClose: 2000 });
-      return;
-    }
-
     setIsScanning(true);
-    try {
-      const result = await apiService.scanGitUrl(gitUrl);
-      if (result.success) {
-        setScanResult(result);
-        toast.success("Repository scanned successfully", { autoClose: 2000 });
-      } else {
-        toast.error(result.error || "Failed to scan repository", { autoClose: 3000 });
-      }
-    } catch (error) {
-      toast.error("Failed to scan git repository", { autoClose: 3000 });
-      console.error("Git scan error:", error);
-    } finally {
-      setIsScanning(false);
-    }
+    const result = await scanGitUrl(gitUrl);
+    if (result) setScanResult(result);
+    setIsScanning(false);
   };
 
   const handleImportFromScan = async () => {
     if (!scanResult) return;
 
     setIsCreatingProject(true);
-    try {
-      let projectName: string =
-        scanResult.projectName ||
-        scanResult.gitUrl?.split("/").pop()?.replace(".git", "") ||
-        "git-import";
-      let projectPath: string | undefined = !scanResult.isLocalFileSelection
-        ? scanResult.tempPath
-        : undefined;
-
-      const newProject = await apiService.createProject(projectName, projectPath);
-      setCurrentProject(newProject);
+    const result = await importFromScan(scanResult);
+    if (result.success && result.project) {
+      setCurrentProject(result.project);
       refetchProjects();
       onClose();
-
-      if (scanResult.tempPath && !scanResult.isLocalFileSelection) {
-        try {
-          const tempId = btoa(scanResult.tempPath);
-          await apiService.cleanupImport(tempId);
-        } catch (cleanupError) {
-          console.warn("Failed to cleanup temp directory:", cleanupError);
-        }
-      }
-      toast.success(`Project "${newProject.name}" created from repository`, { autoClose: 2000 });
-    } catch (error) {
-      toast.error("Failed to create project from scan", { autoClose: 3000 });
-      console.error("Import from scan error:", error);
-    } finally {
-      setIsCreatingProject(false);
     }
+    setIsCreatingProject(false);
   };
 
   return (
@@ -135,16 +108,8 @@ export function GitUrlImport({ onClose }: GitUrlImportProps) {
 
           <div className="space-y-2 text-sm">
             <p className="text-green-800 dark:text-green-200">
-              <strong>Detected Files:</strong> {(() => {
-                const types = [];
-                if (scanResult.projectStructure?.hasPackageJson) types.push("Node.js");
-                if (scanResult.projectStructure?.hasCargoToml) types.push("Rust");
-                if (scanResult.projectStructure?.hasDockerfile) types.push("Docker");
-                if (scanResult.projectStructure?.hasCueFiles) types.push("CUE");
-                if (scanResult.projectStructure?.hasYamlFiles) types.push("YAML");
-                if (scanResult.projectStructure?.hasJsonFiles) types.push("JSON");
-                return types.length > 0 ? types.join(", ") : "Various configuration files";
-              })()}
+              <strong>Detected Files:</strong>{" "}
+              {getDetectedProjectTypes(scanResult.projectStructure)}
             </p>
             <p className="text-green-800 dark:text-green-200">
               <strong>Files Found:</strong> {scanResult.files?.length || 0}
@@ -156,10 +121,7 @@ export function GitUrlImport({ onClose }: GitUrlImportProps) {
             {scanResult.projectStructure?.performanceMetrics && (
               <p className="text-green-800 dark:text-green-200">
                 <strong>Scan Method:</strong>{" "}
-                {scanResult.projectStructure.performanceMetrics.usedGitLsFiles
-                  ? "Git ls-files (fast)"
-                  : "Directory scan"}
-                {scanResult.projectStructure.performanceMetrics.usedGitLsFiles && " ⚡"}
+                {getScanMethodDescription(scanResult.projectStructure)}
               </p>
             )}
           </div>

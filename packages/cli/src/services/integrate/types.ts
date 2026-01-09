@@ -1,3 +1,14 @@
+/**
+ * @packageDocumentation
+ * Type definitions for the integrate command module.
+ *
+ * Defines interfaces for:
+ * - Build matrix configuration
+ * - Project language detection results
+ * - Assembly configuration options
+ */
+
+/** CI/CD build matrix configuration */
 export interface BuildMatrix {
   versions: string[];
   os: string[];

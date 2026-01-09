@@ -1,23 +1,23 @@
 #!/usr/bin/env node
 
 /**
- * Arbiter CLI - Modular entry point
+ * @packageDocumentation
+ * Arbiter CLI - Modular entry point.
  *
  * This module imports all command modules and creates a unified CLI interface.
+ * It serves as the main entry point for the Arbiter command-line tool.
  */
 
-import { createAddCommands } from "@/cli/add.js";
-import { createAuthCommand } from "@/cli/auth.js";
+import { createAddCommands } from "@/cli/commands/add.js";
+import { createAuthCommand } from "@/cli/commands/auth.js";
+import { createDesignCommand } from "@/cli/commands/design.js";
+import { createGenerationCommands } from "@/cli/commands/generation.js";
+import { createIntegrationCommands } from "@/cli/commands/integration.js";
+import { createPlanCommand } from "@/cli/commands/plan.js";
+import { createProjectCommands } from "@/cli/commands/project.js";
+import { createRemoveCommands } from "@/cli/commands/remove.js";
+import { createUtilitiesCommands } from "@/cli/commands/utilities.js";
 import { hydrateCliContext } from "@/cli/context.js";
-import { createDesignCommand } from "@/cli/design.js";
-import { createEpicTaskCommands } from "@/cli/epic-task.js";
-import { createGenerationCommands } from "@/cli/generation.js";
-import { createIntegrationCommands } from "@/cli/integration.js";
-import { createPlanCommand } from "@/cli/plan.js";
-import { createProjectCommands } from "@/cli/project.js";
-import { createRemoveCommands } from "@/cli/remove.js";
-import { createUtilitiesCommands } from "@/cli/utilities.js";
-import { createVersionCommands } from "@/cli/version.js";
 import chalk from "chalk";
 import { Command } from "commander";
 
@@ -29,10 +29,10 @@ program
   .name("arbiter")
   .description("Arbiter CLI for CUE validation and management")
   .version("1.0.0")
+  .addHelpCommand(false)
   .option("-c, --config <path>", "path to configuration file")
   .option("--no-color", "disable colored output")
-  .option("--api-url <url>", "API server URL")
-  .option("--arbiter-url <url>", "Arbiter server URL (alias for --api-url)")
+  .option("--api-url <url>", "Arbiter API server URL (overrides config)")
   .option("--timeout <ms>", "request timeout in milliseconds")
   .option("--local", "operate in offline mode using local CUE files only")
   .option("-v, --verbose", "enable verbose logging globally")
@@ -50,10 +50,8 @@ program
 
 // Create and configure all command modules
 createProjectCommands(program);
-const addCmd = createAddCommands(program);
+createAddCommands(program);
 createRemoveCommands(program);
-createVersionCommands(program);
-createEpicTaskCommands(addCmd); // Epic and task are subcommands of add
 createGenerationCommands(program);
 createIntegrationCommands(program);
 createUtilitiesCommands(program);
@@ -81,7 +79,7 @@ ${chalk.yellow("Core Workflows:")}
     arbiter design                       # Detailed technical design (after plan)
 
   ${chalk.green("2. SPEC FRAGMENT MANAGEMENT (Git-Style):")}
-    arbiter init my-app --schema=app     # Initialize with app-centric schema
+    arbiter init my-app --preset web-app # Initialize from a hosted preset
     arbiter add service billing          # Add service specification
     arbiter add api/order                # Add API endpoint specification
     arbiter add flow checkout            # Add user flow specification
@@ -89,20 +87,6 @@ ${chalk.yellow("Core Workflows:")}
 
   ${chalk.green("3. VALIDATION & FEEDBACK:")}
     arbiter check                        # Validate all specifications
-    arbiter watch                        # Watch mode with live validation
-
-  ${chalk.green("4. RELEASE MANAGEMENT:")}
-    arbiter version plan                 # Plan version changes
-    arbiter integrate                    # Generate CI/CD workflows
-
-${chalk.yellow("Schema Formats:")}
-  app: Complete application modeling
-
-${chalk.yellow("Agent-Friendly Features:")}
-  • Non-interactive commands (no prompts)
-  • Structured JSON output (--format=json)
-  • Exit codes: 0=success, 1=error, 2=config
-  • NDJSON streaming (--ndjson-output)
 
 ${chalk.yellow("Examples:")}
   arbiter check **/*.cue --format=json  # Validate with JSON output

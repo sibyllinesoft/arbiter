@@ -84,4 +84,3 @@ export function EntityCatalog<T>({
 }
 
 export default EntityCatalog;
-// @ts-nocheck

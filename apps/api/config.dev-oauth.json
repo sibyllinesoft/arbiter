@@ -5,7 +5,6 @@
   "spec_workdir": ".spec-workdir",
   "jq_binary_path": "jq",
   "auth_required": true,
-  "rate_limit": { "max_tokens": 10, "refill_rate": 1, "window_ms": 10000 },
   "external_tool_timeout_ms": 5000,
   "websocket": { "max_connections": 100, "ping_interval_ms": 30000 },
   "oauth": {

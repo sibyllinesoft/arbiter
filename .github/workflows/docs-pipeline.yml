@@ -10,7 +10,7 @@ on:
       - 'README.md'
       - 'CLAUDE.md'
       - '.github/workflows/docs-pipeline.yml'
-      - 'docs-config.yaml'
+      - 'docs/config/docs-config.yaml'
   pull_request:
     branches: [main, develop]
     paths:
@@ -20,7 +20,7 @@ on:
       - 'README.md'
       - 'CLAUDE.md'
       - '.github/workflows/docs-pipeline.yml'
-      - 'docs-config.yaml'
+      - 'docs/config/docs-config.yaml'
   schedule:
     # Run daily at 2 AM UTC to check documentation freshness
     - cron: '0 2 * * *'
@@ -75,7 +75,7 @@ jobs:
               - 'packages/**'
               - 'apps/**'
             config:
-              - 'docs-config.yaml'
+              - 'docs/config/docs-config.yaml'
               - '.github/workflows/docs-pipeline.yml'
 
       - name: Should generate documentation

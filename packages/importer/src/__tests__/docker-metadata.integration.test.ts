@@ -20,6 +20,7 @@ describe("scanner docker metadata integration", () => {
           name: "test-service",
           version: "0.1.0",
           description: "Example service",
+          main: "src/index.js",
           scripts: {
             start: "node src/index.js",
           },

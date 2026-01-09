@@ -11,20 +11,21 @@
  */
 import type { ServerWebSocket } from "bun";
 import { Hono } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { AuthService } from "./auth";
-import { loadConfig } from "./config";
-import { SpecWorkbenchDB } from "./db";
-import { AppError } from "./errors";
-import { EventService } from "./events";
-import { SpecEngine } from "./specEngine";
-import { tunnelManager } from "./tunnel-manager";
-import type { ServerConfig } from "./types.ts";
-import { createProblemDetails, getCurrentTimestamp, logger } from "./utils";
+import { EventService } from "./io/events";
+import { tunnelManager } from "./io/tunnel-manager";
+import { createProblemDetails, getCurrentTimestamp, logger } from "./io/utils";
+import { AppError } from "./scanner/errors";
+import { loadConfig } from "./util/config";
+import { SpecWorkbenchDB } from "./util/db";
+import { SpecEngine } from "./util/specEngine";
+import type { ServerConfig } from "./util/types";
 
-import { createMcpApp } from "./mcp";
 // Import modular components
 import { type Dependencies, createApiRouter } from "./routes/index";
 import { StaticFileHandler } from "./static/index";
+import { createMcpApp } from "./util/mcp";
 import { WebSocketHandler } from "./websocket/index";
 
 export class SpecWorkbenchServer {
@@ -127,7 +128,11 @@ export class SpecWorkbenchServer {
 
     this.httpApp.onError((err, c) => {
       if (err instanceof AppError) {
-        return c.json({ error: err.message, details: err.details }, err.status);
+        const status =
+          typeof err.status === "number"
+            ? (err.status as ContentfulStatusCode)
+            : (500 as ContentfulStatusCode);
+        return c.json({ error: err.message, details: err.details }, { status });
       }
       return this.handleRequestError(err, c.req.method, new URL(c.req.url).pathname);
     });
@@ -222,6 +227,38 @@ export class SpecWorkbenchServer {
     });
   }
 
+  /** Log incoming request details */
+  private logRequest(method: string, pathname: string, url: string, request: Request): void {
+    logger.info("[SERVER] Request received", {
+      method,
+      pathname,
+      url,
+      requestHeaders: {
+        upgrade: request.headers.get("upgrade"),
+        connection: request.headers.get("connection"),
+        origin: request.headers.get("origin"),
+        userAgent: request.headers.get("user-agent"),
+      },
+    });
+  }
+
+  /** Handle WebSocket upgrade request if applicable */
+  private async tryWebSocketUpgrade(
+    pathname: string,
+    request: Request,
+    server: any,
+  ): Promise<Response | null> {
+    logger.info("[SERVER] Checking if WebSocket upgrade...");
+    if (!this.wsHandler.isWebSocketUpgrade(pathname, request)) {
+      logger.info("[SERVER] Not a WebSocket upgrade - proceeding to app routing");
+      return null;
+    }
+
+    logger.info("[SERVER] WebSocket upgrade detected - calling handleUpgrade");
+    const upgradeResult = await this.wsHandler.handleUpgrade(request, server);
+    return upgradeResult.response || new Response("WebSocket upgrade successful");
+  }
+
   /**
    * Main request handler - routes to appropriate modules
    */
@@ -231,39 +268,16 @@ export class SpecWorkbenchServer {
     const pathname = url.pathname;
 
     try {
-      logger.info("[SERVER] Request received", {
-        method,
-        pathname,
-        url: url.toString(),
-        requestHeaders: {
-          upgrade: request.headers.get("upgrade"),
-          connection: request.headers.get("connection"),
-          origin: request.headers.get("origin"),
-          userAgent: request.headers.get("user-agent"),
-        },
-      });
-
-      const corsHeaders = this.getCorsHeaders();
+      this.logRequest(method, pathname, url.toString(), request);
 
       if (method === "OPTIONS") {
         logger.info("[SERVER] Handling OPTIONS preflight");
-        return this.handlePreflightRequest(corsHeaders);
+        return this.handlePreflightRequest(this.getCorsHeaders());
       }
 
-      logger.info("[SERVER] Checking if WebSocket upgrade...");
-      if (this.wsHandler.isWebSocketUpgrade(pathname, request)) {
-        logger.info("[SERVER] WebSocket upgrade detected - calling handleUpgrade");
-        const upgradeResult = await this.wsHandler.handleUpgrade(request, server);
-        logger.info("[SERVER] Upgrade result", {
-          hasResponse: !!upgradeResult.response,
-          result: upgradeResult.response ? "Response returned" : "Success",
-        });
-        return upgradeResult.response || new Response("WebSocket upgrade successful");
-      }
+      const wsResponse = await this.tryWebSocketUpgrade(pathname, request, server);
+      if (wsResponse) return wsResponse;
 
-      logger.info("[SERVER] Not a WebSocket upgrade - proceeding to app routing");
-
-      logger.info("[SERVER] Passing to httpApp.fetch");
       return await this.httpApp.fetch(request);
     } catch (error) {
       console.log("[SERVER] Error in handleRequest:", error);
@@ -319,30 +333,6 @@ export class SpecWorkbenchServer {
         },
       },
     );
-  }
-
-  /**
-   * Get client ID for rate limiting
-   */
-  private getClientId(request: Request): string {
-    const forwarded = request.headers.get("x-forwarded-for");
-    const realIp = request.headers.get("x-real-ip");
-    const cfConnectingIp = request.headers.get("cf-connecting-ip");
-
-    // Use the first available IP, preferring Cloudflare's
-    const ip = cfConnectingIp || realIp || forwarded?.split(",")[0] || "unknown";
-
-    // Include user agent for better rate limiting granularity
-    const userAgent = request.headers.get("user-agent") || "unknown";
-    const authHeader = request.headers.get("authorization");
-
-    // If there's an auth header, use that for rate limiting (per user)
-    if (authHeader) {
-      return `auth:${authHeader.substring(0, 32)}`;
-    }
-
-    // Otherwise use IP + User Agent
-    return `ip:${ip}:${userAgent.substring(0, 32)}`;
   }
 
   /**

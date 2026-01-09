@@ -204,7 +204,7 @@ services: {
 
 ```bash
 # Initialize
-./arbiter-cli init my-api --template rest-api
+./arbiter-cli init my-api --preset api-service
 
 # Navigate to project
 cd my-api

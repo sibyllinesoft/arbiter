@@ -1,11 +1,21 @@
-import type { ClientGenerationTarget } from "@/services/generate/contexts.js";
+/**
+ * @packageDocumentation
+ * Test generator strategy for artifact generation.
+ *
+ * Provides functionality to:
+ * - Generate endpoint test files from specifications
+ * - Generate master test runners
+ * - Generate client API tests
+ */
+
+import type { ClientGenerationTarget } from "@/services/generate/io/contexts.js";
 import {
   ArtifactGenerator,
   type ArtifactGeneratorContext,
 } from "@/services/generate/strategies/base.js";
-import type { GenerateOptions } from "@/services/generate/types.js";
+import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
-import type { PackageManagerCommandSet } from "@/utils/package-manager.js";
+import type { PackageManagerCommandSet } from "@/utils/io/package-manager.js";
 import type { AppSpec } from "@arbiter/shared";
 
 type EndpointTestFn = (

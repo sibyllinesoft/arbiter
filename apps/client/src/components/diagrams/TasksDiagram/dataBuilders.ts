@@ -1,6 +1,7 @@
-import type { ArtifactCardMetaRow } from "@/components/ArtifactCard";
+import type { ArtifactCardMetaRow } from "@/components/core/ArtifactCard";
 import { layoutReactFlow } from "@/utils/reactFlowLayout";
 import { Flag, GitBranch, Layers, User, Workflow } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import React from "react";
 import { type Edge, MarkerType, type Node } from "reactflow";
 import type { NormalizedTask, NormalizedTaskGroup, TaskFlowData, TaskNodeData } from "./types";
@@ -16,65 +17,39 @@ export const buildTaskCardData = (task: NormalizedTask) => {
       description: task.description ?? undefined,
       summary: task.description ?? undefined,
       category: layerKey,
-      epic: task.epicName ?? undefined,
+      group: task.groupName ?? undefined,
       owner: task.assignee ?? undefined,
     },
   };
 };
 
+/** Create a meta row with icon and labeled content */
+const createMetaRow = (
+  key: string,
+  Icon: LucideIcon,
+  label: string,
+  value: string | number,
+  extraClass = "",
+): ArtifactCardMetaRow => ({
+  key,
+  icon: React.createElement(Icon),
+  content: React.createElement(
+    "span",
+    { className: `opacity-100 ${extraClass}`.trim() },
+    `${label}: ${value}`,
+  ),
+});
+
 export const buildTaskMetaRows = (task: NormalizedTask): ArtifactCardMetaRow[] => {
   const rows: ArtifactCardMetaRow[] = [];
+  const statusLabel = task.status ?? (task.completed ? "Completed" : "Unclassified");
 
-  const statusLabel = task.status ? task.status : task.completed ? "Completed" : "Unclassified";
-
-  rows.push({
-    key: "status",
-    icon: React.createElement(Workflow),
-    content: React.createElement(
-      "span",
-      { className: "opacity-100 capitalize" },
-      `Status: ${statusLabel}`,
-    ),
-  });
-
-  if (task.priority) {
-    rows.push({
-      key: "priority",
-      icon: React.createElement(Flag),
-      content: React.createElement(
-        "span",
-        { className: "opacity-100" },
-        `Priority: ${task.priority}`,
-      ),
-    });
-  }
-
-  if (task.assignee) {
-    rows.push({
-      key: "assignee",
-      icon: React.createElement(User),
-      content: React.createElement("span", { className: "opacity-100" }, `Owner: ${task.assignee}`),
-    });
-  }
-
-  if (task.epicName) {
-    rows.push({
-      key: "epic",
-      icon: React.createElement(Layers),
-      content: React.createElement("span", { className: "opacity-100" }, `Epic: ${task.epicName}`),
-    });
-  }
-
+  rows.push(createMetaRow("status", Workflow, "Status", statusLabel, "capitalize"));
+  if (task.priority) rows.push(createMetaRow("priority", Flag, "Priority", task.priority));
+  if (task.assignee) rows.push(createMetaRow("assignee", User, "Owner", task.assignee));
+  if (task.groupName) rows.push(createMetaRow("group", Layers, "Group", task.groupName));
   if (task.dependsOn.length > 0) {
-    rows.push({
-      key: "dependencies",
-      icon: React.createElement(GitBranch),
-      content: React.createElement(
-        "span",
-        { className: "opacity-100" },
-        `Dependencies: ${task.dependsOn.length}`,
-      ),
-    });
+    rows.push(createMetaRow("dependencies", GitBranch, "Dependencies", task.dependsOn.length));
   }
 
   return rows;

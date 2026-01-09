@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 
-import { DEFAULT_PROJECT_STRUCTURE } from "@/config.js";
+import { DEFAULT_PROJECT_STRUCTURE } from "@/io/config/config.js";
 import {
   generateProjectTemplates,
   listTemplates,

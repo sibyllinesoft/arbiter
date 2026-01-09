@@ -2,8 +2,8 @@
  * NATS integration tests
  */
 import { type NatsConnection, connect } from "nats";
-import { NatsService } from "../../nats.ts";
-import type { Event, NatsConfig } from "../../types.ts";
+import { NatsService } from "../../git/nats";
+import type { Event, NatsConfig } from "../../util/types";
 
 describe("NATS Integration", () => {
   let natsService: NatsService;

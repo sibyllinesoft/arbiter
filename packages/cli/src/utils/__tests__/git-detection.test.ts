@@ -1,3 +1,4 @@
+/** @packageDocumentation Utility tests */
 import { afterAll, afterEach, describe, expect, it, mock } from "bun:test";
 
 const execMock = mock(() => {
@@ -9,7 +10,7 @@ mock.module("node:child_process", () => ({
   execSync: execMock,
 }));
 
-const gitModulePromise = import("@/utils/git-detection.js");
+const gitModulePromise = import("@/utils/io/git-detection.js");
 
 afterEach(() => {
   execMock.mockReset();
@@ -139,5 +140,33 @@ describe("git detection helpers", () => {
     displayConflictResolution(conflict);
     expect(logs.join(" ")).toContain("Repository Configuration Conflict");
     console.log = originalLog;
+  });
+
+  it("findGitRoot returns git root path when in repo", async () => {
+    execMock.mockImplementation(() => "/path/to/repo\n");
+    const { findGitRoot } = await gitModulePromise;
+    const result = findGitRoot("/path/to/repo/subdir");
+    expect(result).toBe("/path/to/repo");
+  });
+
+  it("findGitRoot returns null when not in git repo", async () => {
+    execMock.mockImplementation(() => {
+      throw new Error("fatal: not a git repository");
+    });
+    const { findGitRoot } = await gitModulePromise;
+    const result = findGitRoot("/not/a/repo");
+    expect(result).toBeNull();
+  });
+
+  it("isInGitRepo returns true/false based on findGitRoot", async () => {
+    const { isInGitRepo } = await gitModulePromise;
+
+    execMock.mockImplementation(() => "/repo\n");
+    expect(isInGitRepo("/repo/sub")).toBe(true);
+
+    execMock.mockImplementation(() => {
+      throw new Error("not a repo");
+    });
+    expect(isInGitRepo("/other")).toBe(false);
   });
 });

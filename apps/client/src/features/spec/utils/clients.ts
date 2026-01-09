@@ -1,82 +1,99 @@
+/**
+ * Client utility functions for path resolution and type extraction.
+ * These helpers are used when processing client specifications from CUE assemblies.
+ */
 import { PATH_PRIORITY_CANDIDATES } from "./clientConstants";
 
+/** Code file extensions regex */
+const CODE_EXTENSION_REGEX = /\.(ts|tsx|js|jsx|mjs|cjs|vue|svelte|py|go|rs|java)$/i;
+
+/** Source directory patterns */
+const SOURCE_DIR_PATTERNS = ["src/", "apps/", "packages/", "frontend"];
+
+/** Infrastructure file patterns */
+const INFRA_PATTERNS = [
+  "dockerfile",
+  "docker-compose",
+  ".yaml",
+  ".yml",
+  "compose.yml",
+  "compose.yaml",
+];
+
+/** Coerce a raw value to a display string, returning null for empty or "unknown" values */
 export const coerceDisplayValue = (raw: unknown): string | null => {
   if (typeof raw !== "string") return null;
   const trimmed = raw.trim();
-  if (!trimmed) return null;
-  return trimmed.toLowerCase() === "unknown" ? null : trimmed;
+  if (!trimmed || trimmed.toLowerCase() === "unknown") return null;
+  return trimmed;
 };
 
+/** Check if a path likely points to source code based on extension or directory patterns */
 export const isLikelyCodePath = (value: string): boolean => {
   const lower = value.toLowerCase();
   if (!lower) return false;
-  if (/(\.(ts|tsx|js|jsx|mjs|cjs|vue|svelte))$/.test(lower)) return true;
-  if (
-    lower.endsWith(".py") ||
-    lower.endsWith(".go") ||
-    lower.endsWith(".rs") ||
-    lower.endsWith(".java")
-  )
-    return true;
-  if (
-    lower.includes("src/") ||
-    lower.includes("apps/") ||
-    lower.includes("packages/") ||
-    lower.includes("frontend")
-  )
-    return true;
-  return false;
+  if (CODE_EXTENSION_REGEX.test(lower)) return true;
+  return SOURCE_DIR_PATTERNS.some((p) => lower.includes(p));
 };
 
+/** Check if a path points to infrastructure configuration (Docker, Compose, etc.) */
 export const isInfrastructurePath = (value: string): boolean => {
   const lower = value.toLowerCase();
+  return INFRA_PATTERNS.some((p) => lower.includes(p));
+};
+
+/** Check if a key looks like a path-related field */
+const isPathLikeKey = (key: string): boolean => {
+  const normalizedKey = key.toLowerCase();
   return (
-    lower.includes("dockerfile") ||
-    lower.includes("docker-compose") ||
-    lower.endsWith(".yaml") ||
-    lower.endsWith(".yml") ||
-    lower.includes("compose.yml") ||
-    lower.includes("compose.yaml")
+    normalizedKey.includes("path") ||
+    normalizedKey.includes("root") ||
+    normalizedKey.includes("file") ||
+    normalizedKey.includes("directory")
   );
 };
 
+/** Add trimmed string value to set if valid */
+const addIfValidString = (paths: Set<string>, value: unknown): void => {
+  if (typeof value === "string" && value.trim()) {
+    paths.add(value.trim());
+  }
+};
+
+/** Extract paths from an object using priority candidate keys */
+const extractPriorityPaths = (
+  obj: Record<string, unknown> | undefined,
+  paths: Set<string>,
+): void => {
+  if (!obj) return;
+  PATH_PRIORITY_CANDIDATES.forEach((key) => addIfValidString(paths, obj[key]));
+};
+
+/** Extract paths from metadata object based on path-like key names */
+const extractMetadataPaths = (metadata: Record<string, unknown>, paths: Set<string>): void => {
+  Object.entries(metadata).forEach(([key, value]) => {
+    if (isPathLikeKey(key)) {
+      addIfValidString(paths, value);
+    }
+  });
+};
+
+/** Collect all potential path candidates from raw client data */
 export const collectPathCandidates = (raw: any): string[] => {
   const paths = new Set<string>();
 
-  PATH_PRIORITY_CANDIDATES.forEach((key) => {
-    const directValue = raw?.[key];
-    if (typeof directValue === "string" && directValue.trim()) {
-      paths.add(directValue.trim());
-    }
-  });
+  extractPriorityPaths(raw, paths);
 
   const metadata = raw?.metadata;
   if (metadata && typeof metadata === "object") {
-    PATH_PRIORITY_CANDIDATES.forEach((key) => {
-      const metaValue = metadata[key];
-      if (typeof metaValue === "string" && metaValue.trim()) {
-        paths.add(metaValue.trim());
-      }
-    });
-
-    Object.entries(metadata as Record<string, unknown>).forEach(([key, value]) => {
-      if (typeof value === "string" && value.trim()) {
-        const normalizedKey = key.toLowerCase();
-        if (
-          normalizedKey.includes("path") ||
-          normalizedKey.includes("root") ||
-          normalizedKey.includes("file") ||
-          normalizedKey.includes(" directory")
-        ) {
-          paths.add(value.trim());
-        }
-      }
-    });
+    extractPriorityPaths(metadata, paths);
+    extractMetadataPaths(metadata as Record<string, unknown>, paths);
   }
 
   return Array.from(paths);
 };
 
+/** Resolve the most likely source path from raw client data */
 export const resolveSourcePath = (raw: any): { path: string | undefined; hasSource: boolean } => {
   const candidates = collectPathCandidates(raw);
   if (candidates.length === 0) {
@@ -98,74 +115,62 @@ export const resolveSourcePath = (raw: any): { path: string | undefined; hasSour
   return { path: candidates[0], hasSource: false };
 };
 
-export const extractTypeLabel = (raw: any): string | undefined => {
-  const normalize = (value: unknown): string | null => {
-    if (typeof value !== "string") return null;
-    const trimmed = value.trim();
-    return trimmed.length ? trimmed : null;
-  };
+const normalizeString = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+};
 
-  // Prefer detailed framework information from frontend analysis if present
-  const analysisFrameworks = raw?.metadata?.frontendAnalysis?.frameworks;
-  if (Array.isArray(analysisFrameworks)) {
-    const framework = analysisFrameworks.map(normalize).find(Boolean);
-    if (framework) return framework;
-  }
-
-  const classification = raw?.metadata?.classification;
-  if (classification && typeof classification === "object") {
-    const classificationFields = [
-      "detail",
-      "label",
-      "platform",
-      "detectedType",
-      "type",
-      "category",
-    ];
-    for (const field of classificationFields) {
-      const value = normalize((classification as Record<string, unknown>)[field]);
-      if (value && value.toLowerCase() !== "frontend") {
-        return value;
-      }
-    }
-  }
-
-  const clientMeta = raw?.metadata?.client;
-  if (clientMeta && typeof clientMeta === "object") {
-    const clientFields = ["platform", "type", "variant", "category"];
-    for (const field of clientFields) {
-      const value = normalize((clientMeta as Record<string, unknown>)[field]);
-      if (value) return value;
-    }
-  }
-
-  const explicitCandidates = [
-    raw?.metadata?.clientType,
-    raw?.metadata?.client_type,
-    raw?.metadata?.frontendType,
-    raw?.metadata?.frontend_type,
-    raw?.metadata?.platform,
-  ];
-  for (const candidate of explicitCandidates) {
-    const value = normalize(candidate);
-    if (value && value.toLowerCase() !== "frontend") {
+const findFieldValue = (
+  obj: Record<string, unknown> | undefined,
+  fields: string[],
+  excludeFrontend = false,
+): string | undefined => {
+  if (!obj) return undefined;
+  for (const field of fields) {
+    const value = normalizeString(obj[field]);
+    if (value && (!excludeFrontend || value.toLowerCase() !== "frontend")) {
       return value;
     }
   }
-
-  const metadataType = normalize(raw?.metadata?.type);
-  if (metadataType) {
-    return metadataType.replace(/_/g, " ");
-  }
-
-  const type = normalize(raw?.type);
-  if (type) {
-    return type.replace(/_/g, " ");
-  }
-
   return undefined;
 };
 
+/** Extract a type label from raw client data, checking multiple classification sources */
+export const extractTypeLabel = (raw: any): string | undefined => {
+  const metadata = raw?.metadata;
+
+  // Check frontend analysis frameworks
+  const frameworks = metadata?.frontendAnalysis?.frameworks;
+  if (Array.isArray(frameworks)) {
+    const framework = frameworks.map(normalizeString).find(Boolean);
+    if (framework) return framework;
+  }
+
+  // Check classification fields
+  const classificationFields = ["detail", "label", "platform", "detectedType", "type", "category"];
+  const classValue = findFieldValue(metadata?.classification, classificationFields, true);
+  if (classValue) return classValue;
+
+  // Check client metadata
+  const clientFields = ["platform", "type", "variant", "category"];
+  const clientValue = findFieldValue(metadata?.client, clientFields);
+  if (clientValue) return clientValue;
+
+  // Check explicit type fields
+  const explicitFields = ["clientType", "client_type", "frontendType", "frontend_type", "platform"];
+  const explicitValue = findFieldValue(metadata, explicitFields, true);
+  if (explicitValue) return explicitValue;
+
+  // Fall back to type fields
+  const metaType = normalizeString(metadata?.type);
+  if (metaType) return metaType.replace(/_/g, " ");
+
+  const rawType = normalizeString(raw?.type);
+  return rawType ? rawType.replace(/_/g, " ") : undefined;
+};
+
+/** Convert a string to a URL-safe slug */
 export const slugify = (value: string): string =>
   value
     .trim()

@@ -52,7 +52,7 @@ Hooks live in regular TypeScript modules and implement the
 `GenerationHookManager` contract:
 
 ```ts
-import type { GenerationHook } from "@arbiter/cli";
+import type { GenerationHook } from "@sibyllinesoft/arbiter-cli";
 
 export const hooks: GenerationHook = {
   async beforeWrite(file, context) {

@@ -1,4 +1,4 @@
-import { ArtifactCard } from "@/components/ArtifactCard";
+import { ArtifactCard } from "@/components/core/ArtifactCard";
 import { clsx } from "clsx";
 import React from "react";
 import { Handle, type NodeProps, Position } from "reactflow";

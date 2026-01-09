@@ -1,5 +1,11 @@
+/**
+ * @module TunnelService
+ * API service for Cloudflare tunnel management.
+ * Handles tunnel creation, status, and teardown operations.
+ */
 import { ApiClient } from "./client";
 
+/** Response from tunnel setup operation */
 export type TunnelSetupResponse = {
   success: boolean;
   tunnel?: {
@@ -16,7 +22,11 @@ export type TunnelSetupResponse = {
 };
 
 export class TunnelService {
-  constructor(private readonly client: ApiClient) {}
+  private readonly client: ApiClient;
+
+  constructor(client: ApiClient) {
+    this.client = client;
+  }
 
   async getTunnelStatus(): Promise<{
     success: boolean;

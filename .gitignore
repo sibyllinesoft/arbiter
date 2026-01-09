@@ -40,3 +40,18 @@ deploy/cloudflare/wrangler.toml
 *.tgz
 *.t.err
 .arbiter/
+
+# Coverage reports
+coverage/
+
+# Analysis outputs (Valknut, etc.)
+.valknut/
+json/
+jsonl/
+yaml/
+text/
+arbiter-surface.json
+
+# Python cache
+.pytest_cache/
+__pycache__/

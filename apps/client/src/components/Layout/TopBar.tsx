@@ -3,6 +3,8 @@
  */
 
 import { useProjects } from "@/hooks/api-hooks";
+import { Button, StatusBadge, cn } from "@design-system";
+import { apiService } from "@services/api";
 import {
   AlertCircle,
   CheckCircle,
@@ -29,8 +31,6 @@ import {
   useValidationState,
 } from "../../contexts/AppContext";
 import { useCurrentProject } from "../../contexts/ProjectContext";
-import { Button, StatusBadge, cn } from "../../design-system";
-import { apiService } from "../../services/api";
 import { createLogger } from "../../utils/logger";
 
 const log = createLogger("TopBar");
@@ -242,39 +242,31 @@ export function TopBar({ className }: TopBarProps) {
     [setSelectedCueFile, currentProject, setError],
   );
 
-  // Get validation status
-  const getValidationStatus = () => {
+  /** Compute validation status based on current state */
+  const validationStatus = (() => {
     if (isValidating) {
       return { icon: Loader2, text: "Validating...", color: "text-blue-600", spinning: true };
     }
-
     if (errors.length > 0) {
+      const plural = errors.length > 1 ? "s" : "";
       return {
         icon: AlertCircle,
-        text: `${errors.length} error${errors.length > 1 ? "s" : ""}`,
+        text: `${errors.length} error${plural}`,
         color: "text-red-600",
         spinning: false,
       };
     }
-
     if (warnings.length > 0) {
+      const plural = warnings.length > 1 ? "s" : "";
       return {
         icon: AlertCircle,
-        text: `${warnings.length} warning${warnings.length > 1 ? "s" : ""}`,
+        text: `${warnings.length} warning${plural}`,
         color: "text-yellow-600",
         spinning: false,
       };
     }
-
-    return {
-      icon: CheckCircle,
-      text: "Valid",
-      color: "text-green-600",
-      spinning: false,
-    };
-  };
-
-  const validationStatus = getValidationStatus();
+    return { icon: CheckCircle, text: "Valid", color: "text-green-600", spinning: false };
+  })();
   const hasUnsavedChanges = editorState.unsavedChanges.size > 0;
 
   return (

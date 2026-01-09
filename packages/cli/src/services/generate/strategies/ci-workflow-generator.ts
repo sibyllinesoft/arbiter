@@ -1,8 +1,17 @@
+/**
+ * @packageDocumentation
+ * CI workflow generator strategy for artifact generation.
+ *
+ * Provides functionality to:
+ * - Generate GitHub Actions workflows from specifications
+ * - Support custom workflow implementations via factory pattern
+ */
+
 import {
   ArtifactGenerator,
   type ArtifactGeneratorContext,
 } from "@/services/generate/strategies/base.js";
-import type { GenerateOptions } from "@/services/generate/types.js";
+import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { ConfigWithVersion } from "@arbiter/shared";
 
 type CIWorkflowFn = (

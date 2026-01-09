@@ -1,16 +1,16 @@
 import type { SelectOption } from "@/design-system/components/Select";
 import type { KeyValueEntry } from "@amalto/key-value-editor";
 
-export interface EpicTaskOption {
+export interface GroupIssueOption {
   id: string;
   name: string;
-  epicId?: string;
-  epicName?: string;
+  groupId?: string;
+  groupName?: string;
   status?: string;
   completed?: boolean;
 }
 
-export interface TaskEpicOption {
+export interface IssueGroupOption {
   id: string;
   name: string;
 }
@@ -21,13 +21,13 @@ export interface UiOptionCatalog {
   serviceFrameworks?: Record<string, string[]>;
   databaseEngines?: string[];
   infrastructureScopes?: string[];
-  epicTaskOptions?: EpicTaskOption[];
-  taskEpicOptions?: TaskEpicOption[];
+  groupIssueOptions?: GroupIssueOption[];
+  issueGroupOptions?: IssueGroupOption[];
 }
 
 export const DEFAULT_UI_OPTION_CATALOG: UiOptionCatalog = {
-  epicTaskOptions: [],
-  taskEpicOptions: [],
+  groupIssueOptions: [],
+  issueGroupOptions: [],
 };
 
 export type FieldValue =

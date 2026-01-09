@@ -4,8 +4,8 @@ import {
   createServiceTarget,
   normalizeCapabilities,
   toRelativePath,
-} from "@/services/generate/index.js";
-import { __generateTesting } from "@/services/generate/index.js";
+} from "@/services/generate/io/index.js";
+import { __generateTesting } from "@/services/generate/io/index.js";
 import { describe, expect, it } from "vitest";
 
 const baseStructure = {

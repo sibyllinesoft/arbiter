@@ -87,7 +87,7 @@ export async function main(): Promise<void> {
   program
     .command("validate-config")
     .description("validate documentation configuration")
-    .option("-c, --config <path>", "configuration file path", "./docs-config.yaml")
+    .option("-c, --config <path>", "configuration file path", "./docs/config/docs-config.yaml")
     .action(async (options) => {
       try {
         const isValid = await validateConfiguration(options.config);

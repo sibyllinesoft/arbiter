@@ -10,6 +10,7 @@ import {
   type LayoutAlgorithm,
 } from "../types/architecture";
 
+/** Layout algorithm that arranges components in horizontal layers by type */
 export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
   name = "layered";
 
@@ -38,6 +39,12 @@ export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
     return { components: positioned, viewport };
   }
 
+  /**
+   * Group components by their layer assignment.
+   * @param components - Components to group
+   * @param layerOrder - Order of layers
+   * @returns Map of layer to components
+   */
   private groupByLayer(
     components: DiagramComponent[],
     layerOrder: DiagramLayer[],
@@ -59,6 +66,12 @@ export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
     return groups;
   }
 
+  /**
+   * Position components within their respective layers.
+   * @param layerGroups - Components grouped by layer
+   * @param layerOrder - Order of layers from top to bottom
+   * @returns Components with updated positions
+   */
   private positionComponentsByLayer(
     layerGroups: Map<DiagramLayer, DiagramComponent[]>,
     layerOrder: DiagramLayer[],
@@ -94,6 +107,11 @@ export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
     return positioned;
   }
 
+  /**
+   * Calculate viewport dimensions to fit all components.
+   * @param components - Positioned components
+   * @returns Viewport width and height
+   */
   private calculateViewport(components: DiagramComponent[]): { width: number; height: number } {
     if (components.length === 0) {
       return { width: 800, height: 600 };
@@ -110,103 +128,179 @@ export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
   }
 }
 
+/** Physics configuration for force-directed layout */
+interface ForceConfig {
+  repulsion: number;
+  attraction: number;
+  damping: number;
+  iterations: number;
+}
+
+/** Velocity tracking for physics simulation */
+type VelocityMap = Map<string, { x: number; y: number }>;
+
+/** Initialize random positions for components at origin */
+function initializePositions(components: DiagramComponent[]): void {
+  components.forEach((component) => {
+    if (component.position.x === 0 && component.position.y === 0) {
+      component.position = {
+        x: Math.random() * 600 + 100,
+        y: Math.random() * 400 + 100,
+      };
+    }
+  });
+}
+
+/** Create velocity map for physics simulation */
+function createVelocityMap(components: DiagramComponent[]): VelocityMap {
+  const velocities = new Map<string, { x: number; y: number }>();
+  components.forEach((comp) => {
+    velocities.set(comp.id, { x: 0, y: 0 });
+  });
+  return velocities;
+}
+
+/** Apply damping to all velocities */
+function applyDamping(
+  components: DiagramComponent[],
+  velocities: VelocityMap,
+  damping: number,
+): void {
+  components.forEach((comp) => {
+    const vel = velocities.get(comp.id);
+    if (vel) {
+      vel.x *= damping;
+      vel.y *= damping;
+    }
+  });
+}
+
+/** Calculate distance and normalized direction between two positions */
+function calculateVector(
+  pos1: { x: number; y: number },
+  pos2: { x: number; y: number },
+): { dx: number; dy: number; distance: number; nx: number; ny: number } {
+  const dx = pos2.x - pos1.x;
+  const dy = pos2.y - pos1.y;
+  const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+  return { dx, dy, distance, nx: dx / distance, ny: dy / distance };
+}
+
+/** Apply force to velocity pair in opposite directions */
+function applyForcePair(
+  vel1: { x: number; y: number },
+  vel2: { x: number; y: number },
+  fx: number,
+  fy: number,
+  invert: boolean,
+): void {
+  if (invert) {
+    vel1.x -= fx;
+    vel1.y -= fy;
+    vel2.x += fx;
+    vel2.y += fy;
+  } else {
+    vel1.x += fx;
+    vel1.y += fy;
+    vel2.x -= fx;
+    vel2.y -= fy;
+  }
+}
+
+/** Calculate and apply repulsion forces between all component pairs */
+function applyRepulsionForces(
+  components: DiagramComponent[],
+  velocities: VelocityMap,
+  repulsionForce: number,
+): void {
+  for (let i = 0; i < components.length; i++) {
+    for (let j = i + 1; j < components.length; j++) {
+      const comp1 = components[i];
+      const comp2 = components[j];
+      if (!comp1 || !comp2) continue;
+
+      const vel1 = velocities.get(comp1.id);
+      const vel2 = velocities.get(comp2.id);
+      if (!vel1 || !vel2) continue;
+
+      const { distance, nx, ny } = calculateVector(comp1.position, comp2.position);
+      const force = repulsionForce / (distance * distance);
+      applyForcePair(vel1, vel2, nx * force, ny * force, true);
+    }
+  }
+}
+
+/** Calculate and apply attraction forces between connected components */
+function applyAttractionForces(
+  components: DiagramComponent[],
+  connections: DiagramConnection[],
+  velocities: VelocityMap,
+  attractionForce: number,
+): void {
+  connections.forEach((connection) => {
+    const comp1 = components.find((c) => c.id === connection.from.componentId);
+    const comp2 = components.find((c) => c.id === connection.to.componentId);
+    if (!comp1 || !comp2) return;
+
+    const vel1 = velocities.get(comp1.id);
+    const vel2 = velocities.get(comp2.id);
+    if (!vel1 || !vel2) return;
+
+    const { distance, nx, ny } = calculateVector(comp1.position, comp2.position);
+    const force = distance * attractionForce;
+    applyForcePair(vel1, vel2, nx * force, ny * force, false);
+  });
+}
+
+/** Apply velocities to component positions and constrain to bounds */
+function applyVelocities(components: DiagramComponent[], velocities: VelocityMap): void {
+  components.forEach((comp) => {
+    const vel = velocities.get(comp.id);
+    if (!vel) return;
+
+    comp.position.x += vel.x;
+    comp.position.y += vel.y;
+
+    // Keep components within bounds
+    comp.position.x = Math.max(50, Math.min(750, comp.position.x));
+    comp.position.y = Math.max(50, Math.min(550, comp.position.y));
+  });
+}
+
+/** Layout algorithm using physics simulation to position connected components */
 export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
+  /** Algorithm identifier */
   name = "force_directed";
 
+  /** Default physics configuration */
+  private config: ForceConfig = {
+    repulsion: 5000,
+    attraction: 0.1,
+    damping: 0.9,
+    iterations: 50,
+  };
+
+  /**
+   * Calculate force-directed layout positions using physics simulation.
+   * @param components - Components to position
+   * @param connections - Connections that create attraction forces
+   * @returns Positioned components and viewport dimensions
+   */
   calculate(
     components: DiagramComponent[],
     connections: DiagramConnection[],
   ): { components: DiagramComponent[]; viewport: { width: number; height: number } } {
-    // Simple force-directed layout using basic physics simulation
     const positioned = [...components];
-    const iterations = 50;
-    const repulsionForce = 5000;
-    const attractionForce = 0.1;
-    const damping = 0.9;
+    const { repulsion, attraction, damping, iterations } = this.config;
 
-    // Initialize random positions if not set
-    positioned.forEach((component) => {
-      if (component.position.x === 0 && component.position.y === 0) {
-        component.position = {
-          x: Math.random() * 600 + 100,
-          y: Math.random() * 400 + 100,
-        };
-      }
-    });
+    initializePositions(positioned);
+    const velocities = createVelocityMap(positioned);
 
-    // Track velocities
-    const velocities = new Map<string, { x: number; y: number }>();
-    positioned.forEach((comp) => {
-      velocities.set(comp.id, { x: 0, y: 0 });
-    });
-
-    // Simulation iterations
     for (let iter = 0; iter < iterations; iter++) {
-      // Reset forces
-      positioned.forEach((comp) => {
-        const vel = velocities.get(comp.id)!;
-        vel.x *= damping;
-        vel.y *= damping;
-      });
-
-      // Repulsion forces (all components push each other away)
-      for (let i = 0; i < positioned.length; i++) {
-        for (let j = i + 1; j < positioned.length; j++) {
-          const comp1 = positioned[i];
-          const comp2 = positioned[j];
-          if (!comp1 || !comp2) continue;
-          const vel1 = velocities.get(comp1.id)!;
-          const vel2 = velocities.get(comp2.id)!;
-
-          const dx = comp2.position.x - comp1.position.x;
-          const dy = comp2.position.y - comp1.position.y;
-          const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-
-          const force = repulsionForce / (distance * distance);
-          const fx = (dx / distance) * force;
-          const fy = (dy / distance) * force;
-
-          vel1.x -= fx;
-          vel1.y -= fy;
-          vel2.x += fx;
-          vel2.y += fy;
-        }
-      }
-
-      // Attraction forces (connected components pull each other)
-      connections.forEach((connection) => {
-        const comp1 = positioned.find((c) => c.id === connection.from.componentId);
-        const comp2 = positioned.find((c) => c.id === connection.to.componentId);
-
-        if (comp1 && comp2) {
-          const vel1 = velocities.get(comp1.id)!;
-          const vel2 = velocities.get(comp2.id)!;
-
-          const dx = comp2.position.x - comp1.position.x;
-          const dy = comp2.position.y - comp1.position.y;
-          const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-
-          const force = distance * attractionForce;
-          const fx = (dx / distance) * force;
-          const fy = (dy / distance) * force;
-
-          vel1.x += fx;
-          vel1.y += fy;
-          vel2.x -= fx;
-          vel2.y -= fy;
-        }
-      });
-
-      // Apply velocities
-      positioned.forEach((comp) => {
-        const vel = velocities.get(comp.id)!;
-        comp.position.x += vel.x;
-        comp.position.y += vel.y;
-
-        // Keep components within bounds
-        comp.position.x = Math.max(50, Math.min(750, comp.position.x));
-        comp.position.y = Math.max(50, Math.min(550, comp.position.y));
-      });
+      applyDamping(positioned, velocities, damping);
+      applyRepulsionForces(positioned, velocities, repulsion);
+      applyAttractionForces(positioned, connections, velocities, attraction);
+      applyVelocities(positioned, velocities);
     }
 
     const viewport = this.calculateViewport(positioned);
@@ -229,9 +323,17 @@ export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
   }
 }
 
+/** Layout algorithm that arranges components based on user flow connections */
 export class FlowLayoutAlgorithm implements LayoutAlgorithm {
+  /** Algorithm identifier */
   name = "flow";
 
+  /**
+   * Calculate flow-based layout following user navigation paths.
+   * @param components - Components to position
+   * @param connections - Navigation and interaction connections
+   * @returns Positioned components and viewport dimensions
+   */
   calculate(
     components: DiagramComponent[],
     connections: DiagramConnection[],
@@ -302,6 +404,11 @@ export class FlowLayoutAlgorithm implements LayoutAlgorithm {
     return { components: positioned, viewport };
   }
 
+  /**
+   * Calculate viewport dimensions to fit all components.
+   * @param components - Positioned components
+   * @returns Viewport width and height
+   */
   private calculateViewport(components: DiagramComponent[]): { width: number; height: number } {
     if (components.length === 0) {
       return { width: 800, height: 600 };
@@ -318,6 +425,7 @@ export class FlowLayoutAlgorithm implements LayoutAlgorithm {
   }
 }
 
+/** Engine that manages and applies diagram layout algorithms */
 export class DiagramLayoutEngine {
   private algorithms: Map<string, LayoutAlgorithm> = new Map();
 

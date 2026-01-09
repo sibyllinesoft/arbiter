@@ -17,10 +17,6 @@ export interface SurfaceOptions {
   includePrivate?: boolean;
   /** Verbose output */
   verbose?: boolean;
-  /** Agent mode for NDJSON output */
-  agentMode?: boolean;
-  /** NDJSON output file */
-  ndjsonOutput?: string;
 }
 
 export interface APISymbol {

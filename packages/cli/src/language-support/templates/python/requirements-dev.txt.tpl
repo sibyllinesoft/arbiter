@@ -1,0 +1,8 @@
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+httpx>=0.24.0
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
+mypy>=1.0.0
+{{testing_deps}}

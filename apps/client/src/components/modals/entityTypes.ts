@@ -1,8 +1,8 @@
 export {
   DEFAULT_UI_OPTION_CATALOG,
-  type EpicTaskOption,
+  type GroupIssueOption,
   type FieldConfig,
   type FieldValue,
-  type TaskEpicOption,
+  type IssueGroupOption,
   type UiOptionCatalog,
 } from "@/types/forms";

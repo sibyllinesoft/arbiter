@@ -1,12 +1,24 @@
+/**
+ * WebSocket hooks for real-time event handling.
+ * Provides hooks for connection state and event subscriptions.
+ */
 import { useEffect, useMemo, useRef } from "react";
 import { useWebSocketClient } from "../contexts/WebSocketContext";
 import type { NormalizedWebSocketEvent } from "../services/websocket";
 
+/**
+ * Get the current WebSocket connection state.
+ * @returns Connection state object
+ */
 export function useWebSocketState() {
   const { state } = useWebSocketClient();
   return state;
 }
 
+/**
+ * Get the WebSocket client instance.
+ * @returns WebSocket client
+ */
 export function useWebSocketInstance() {
   const { client } = useWebSocketClient();
   return client;

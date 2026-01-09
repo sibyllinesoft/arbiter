@@ -1,116 +1,136 @@
+/**
+ * Builder functions for constructing form initial values from service data.
+ * These helpers transform normalized service and endpoint data into form-ready structures.
+ */
 import type { FieldValue } from "@/components/modals/entityTypes";
 import { buildEnvironmentMap } from "@/features/spec/transformers/services";
 import type { KeyValueEntry } from "@amalto/key-value-editor";
 import type { ExternalArtifactCard, NormalizedEndpointCard, NormalizedService } from "./types";
 
-export const buildEndpointInitialValues = (
-  endpoint: NormalizedEndpointCard,
-): Record<string, FieldValue> => {
-  const data = (endpoint.data ?? {}) as Record<string, unknown>;
-  const metadata = (data.metadata ?? {}) as Record<string, unknown>;
+/** Get a string value from a candidate if valid */
+function getStringValue(candidate: unknown): string | undefined {
+  return typeof candidate === "string" && candidate.trim().length > 0
+    ? candidate.trim()
+    : undefined;
+}
 
-  const httpMethods = Array.isArray(data.httpMethods)
-    ? (data.httpMethods as unknown[])
-    : Array.isArray(metadata?.httpMethods)
-      ? (metadata.httpMethods as unknown[])
-      : [];
-  const methodCandidate = httpMethods.find((value) => typeof value === "string") as
-    | string
-    | undefined;
-  const method = methodCandidate ? methodCandidate.toUpperCase() : "GET";
-
-  const rawPathCandidate =
-    (typeof data.path === "string" && data.path) ||
-    (typeof metadata.routePath === "string" && metadata.routePath) ||
-    (typeof metadata.path === "string" && metadata.path) ||
-    "/";
-  const pathCandidate = rawPathCandidate?.toString().trim() || "/";
-
-  const summaryCandidate =
-    (typeof metadata.summary === "string" && metadata.summary) ||
-    (typeof data.name === "string" && data.name) ||
-    "";
-
-  const descriptionCandidate =
-    (typeof data.description === "string" && data.description) ||
-    (typeof metadata.description === "string" && metadata.description) ||
-    "";
-
-  const operationIdCandidate =
-    (typeof metadata.operationId === "string" && metadata.operationId) || "";
-
-  const rawTags = (metadata as Record<string, unknown>).tags;
-  const tagsCandidate = Array.isArray(rawTags)
-    ? rawTags.filter((tag): tag is string => typeof tag === "string").map((tag) => tag)
-    : typeof rawTags === "string"
-      ? rawTags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter((tag) => tag.length > 0)
-      : [];
-
-  const artifactIdCandidate =
-    (typeof metadata.artifactId === "string" && metadata.artifactId) ||
-    (typeof metadata.artifact_id === "string" && metadata.artifact_id) ||
-    (typeof data.artifactId === "string" && data.artifactId) ||
-    undefined;
-
-  const initialValues: Record<string, FieldValue> = {
-    method,
-    path: pathCandidate,
-    summary: summaryCandidate,
-    description: descriptionCandidate,
-    operationId: operationIdCandidate,
-    tags: tagsCandidate,
-  };
-
-  if (artifactIdCandidate) {
-    initialValues.artifactId = artifactIdCandidate;
+/** Get the first truthy string value from multiple candidates */
+function getFirstString(...candidates: unknown[]): string | undefined {
+  for (const candidate of candidates) {
+    const value = getStringValue(candidate);
+    if (value) return value;
   }
+  return undefined;
+}
 
-  return initialValues;
-};
+/** Get the first truthy string with a fallback */
+function getStringWithFallback(fallback: string, ...candidates: unknown[]): string {
+  return getFirstString(...candidates) ?? fallback;
+}
 
-export const buildServiceInitialValues = (
-  service: NormalizedService,
-): Record<string, FieldValue> => {
-  const metadata =
+/** Extract HTTP method from data */
+function extractHttpMethod(
+  data: Record<string, unknown>,
+  metadata: Record<string, unknown>,
+): string {
+  const httpMethods = Array.isArray(data.httpMethods)
+    ? data.httpMethods
+    : Array.isArray(metadata?.httpMethods)
+      ? metadata.httpMethods
+      : [];
+  const methodCandidate = httpMethods.find((v) => typeof v === "string") as string | undefined;
+  return methodCandidate ? methodCandidate.toUpperCase() : "GET";
+}
+
+/** Extract tags from metadata */
+function extractTags(metadata: Record<string, unknown>): string[] {
+  const rawTags = metadata.tags;
+  if (Array.isArray(rawTags)) {
+    return rawTags.filter((tag): tag is string => typeof tag === "string");
+  }
+  if (typeof rawTags === "string") {
+    return rawTags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+  }
+  return [];
+}
+
+/** Extract metadata object from service raw data */
+function extractServiceMetadata(service: NormalizedService): Record<string, unknown> {
+  if (
     service.raw &&
     typeof service.raw === "object" &&
     service.raw.metadata &&
     typeof service.raw.metadata === "object"
-      ? (service.raw.metadata as Record<string, unknown>)
-      : {};
+  ) {
+    return service.raw.metadata as Record<string, unknown>;
+  }
+  return {};
+}
+
+/** Build initial form values from an endpoint card */
+export function buildEndpointInitialValues(
+  endpoint: NormalizedEndpointCard,
+): Record<string, FieldValue> {
+  const data = (endpoint.data ?? {}) as Record<string, unknown>;
+  const metadata = (data.metadata ?? {}) as Record<string, unknown>;
+
+  const method = extractHttpMethod(data, metadata);
+  const path = getStringWithFallback("/", data.path, metadata.routePath, metadata.path);
+  const summary = getFirstString(metadata.summary, data.name) ?? "";
+  const description = getFirstString(data.description, metadata.description) ?? "";
+  const operationId = getFirstString(metadata.operationId) ?? "";
+  const tags = extractTags(metadata);
+  const artifactId = getFirstString(metadata.artifactId, metadata.artifact_id, data.artifactId);
+
+  const initialValues: Record<string, FieldValue> = {
+    method,
+    path,
+    summary,
+    description,
+    operationId,
+    tags,
+  };
+
+  if (artifactId) {
+    initialValues.artifactId = artifactId;
+  }
+
+  return initialValues;
+}
+
+/** Build initial form values from a normalized service */
+export function buildServiceInitialValues(service: NormalizedService): Record<string, FieldValue> {
+  const metadata = extractServiceMetadata(service);
+  const languageFromItems = service.metadataItems.find((item) => item.label === "Language")?.value;
+  const frameworkFromItems = service.metadataItems.find(
+    (item) => item.label === "Technology",
+  )?.value;
 
   const values: Record<string, FieldValue> = {
     name: service.displayName || service.identifier,
   };
 
-  const descriptionCandidate =
-    service.description ||
-    (typeof metadata.description === "string" && (metadata.description as string).trim()) ||
-    undefined;
-  if (descriptionCandidate) {
-    values.description = descriptionCandidate;
+  const description = getFirstString(service.description, metadata.description);
+  if (description) {
+    values.description = description;
   }
 
-  const languageCandidate =
-    (typeof service.raw?.language === "string" && service.raw.language.trim()) ||
-    (typeof metadata.language === "string" && (metadata.language as string).trim()) ||
-    service.metadataItems.find((item) => item.label === "Language")?.value ||
-    undefined;
-  if (languageCandidate) {
-    values.language = languageCandidate;
+  const language = getFirstString(service.raw?.language, metadata.language, languageFromItems);
+  if (language) {
+    values.language = language;
   }
 
-  const frameworkCandidate =
-    (typeof service.raw?.framework === "string" && service.raw.framework.trim()) ||
-    (typeof service.raw?.technology === "string" && service.raw.technology.trim()) ||
-    (typeof metadata.framework === "string" && (metadata.framework as string).trim()) ||
-    service.metadataItems.find((item) => item.label === "Technology")?.value ||
-    undefined;
-  if (frameworkCandidate) {
-    values.framework = frameworkCandidate;
+  const framework = getFirstString(
+    service.raw?.framework,
+    service.raw?.technology,
+    metadata.framework,
+    frameworkFromItems,
+  );
+  if (framework) {
+    values.framework = framework;
   }
 
   const environmentMap =
@@ -126,37 +146,35 @@ export const buildServiceInitialValues = (
   }
 
   return values;
-};
+}
 
-export const buildExternalServiceInitialValues = (
+/** Build initial form values from an external artifact card */
+export function buildExternalServiceInitialValues(
   card: ExternalArtifactCard,
-): Record<string, FieldValue> => {
+): Record<string, FieldValue> {
   const metadata =
     card.data?.metadata && typeof card.data.metadata === "object"
       ? (card.data.metadata as Record<string, unknown>)
       : {};
+
   const values: Record<string, FieldValue> = {
     name: card.name,
   };
-  const descriptionCandidate =
-    (typeof card.data?.description === "string" && card.data.description.trim()) || undefined;
-  if (descriptionCandidate) {
-    values.description = descriptionCandidate;
+
+  const description = getFirstString(card.data?.description);
+  if (description) {
+    values.description = description;
   }
-  const languageCandidate =
-    (typeof card.data?.language === "string" && card.data.language.trim()) ||
-    (typeof metadata.language === "string" && (metadata.language as string).trim()) ||
-    undefined;
-  if (languageCandidate) {
-    values.language = languageCandidate;
+
+  const language = getFirstString(card.data?.language, metadata.language);
+  if (language) {
+    values.language = language;
   }
-  const frameworkCandidate =
-    (typeof card.data?.framework === "string" && card.data.framework.trim()) ||
-    (typeof metadata.framework === "string" && (metadata.framework as string).trim()) ||
-    undefined;
-  if (frameworkCandidate) {
-    values.framework = frameworkCandidate;
+
+  const framework = getFirstString(card.data?.framework, metadata.framework);
+  if (framework) {
+    values.framework = framework;
   }
 
   return values;
-};
+}

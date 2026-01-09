@@ -1,3 +1,4 @@
+/** @packageDocumentation Utility tests */
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -9,7 +10,7 @@ import {
   generateSmartFilename,
   resolveSmartNaming,
   validateNaming,
-} from "@/utils/smart-naming.js";
+} from "@/utils/util/core/smart-naming.js";
 
 const mkTmp = () => fs.mkdtemp(path.join(os.tmpdir(), "smart-name-"));
 

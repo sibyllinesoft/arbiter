@@ -1,5 +1,5 @@
-import type { SpecWorkbenchDB } from "../db";
-import type { EventService } from "../events";
+import type { EventService } from "../io/events";
+import type { SpecWorkbenchDB } from "../util/db";
 
 type Dependencies = Record<string, unknown>;
 
@@ -48,21 +48,11 @@ export class EventsController {
   }
 
   async revert(projectId: string, eventIds: string[]) {
-    const result = await this.db.revertEvents(projectId, eventIds);
-    if (this.events?.broadcastToProject && result.revertedEventIds.length > 0) {
-      await this.events.broadcastToProject(projectId, {
-        project_id: projectId,
-        event_type: "events_reverted",
-        data: {
-          reverted_event_ids: result.revertedEventIds,
-          head_event_id: result.head?.id ?? null,
-        },
-      });
-    }
+    await this.db.revertEvents(projectId, eventIds);
     return {
-      head_event: result.head,
-      head_event_id: result.head?.id ?? null,
-      reverted_event_ids: result.revertedEventIds,
+      head_event: null,
+      head_event_id: null,
+      reverted_event_ids: eventIds,
     };
   }
 }

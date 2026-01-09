@@ -33,7 +33,7 @@ const DEFAULT_DESCRIPTION_PLACEHOLDERS: Record<string, string> = {
   component: "Outline the responsibilities, dependencies, and integrations for this component.",
   flow: "Summarize the key steps, triggers, and outcomes for this flow.",
   capability: "Explain the capability, supporting systems, and users it serves.",
-  epic: "Capture the objective, scope, and success metrics for this epic.",
+  group: "Capture the objective, scope, and success metrics for this group.",
   task: "Detail the work, dependencies, and definition of done for this task.",
   other: "Provide helpful context, purpose, or constraints for this item.",
   default: "Share context, goals, or constraints that clarify this addition.",
@@ -79,44 +79,151 @@ const normalizeSelectOptions = (options: unknown[]): Array<string | SelectOption
   ) as Array<string | SelectOption>;
 };
 
+/** Extract string options from catalog with fallback */
+const getCatalogOptions = (
+  catalog: UiOptionCatalog,
+  key: keyof UiOptionCatalog,
+  fallback: string[],
+): string[] => {
+  const options = normalizeSelectOptions((catalog[key] as unknown[]) ?? []).filter(
+    (entry): entry is string => typeof entry === "string",
+  );
+  return options.length > 0 ? options : fallback;
+};
+
+/** Build select field with fallback to text input */
+const buildSelectOrTextField = (
+  name: string,
+  label: string,
+  options: string[],
+  selectPlaceholder: string,
+  textPlaceholder: string,
+): FieldConfig =>
+  options.length > 0
+    ? { name, label, type: "select", options, placeholder: selectPlaceholder }
+    : { name, label, placeholder: textPlaceholder };
+
+/** Frontend entity fields */
+const buildFrontendFields = (frontendFrameworks: string[]): FieldConfig[] => [
+  { name: "name", label: "Frontend Name", required: true, placeholder: "mobile-app" },
+  buildSelectOrTextField(
+    "framework",
+    "Framework",
+    frontendFrameworks,
+    "Select framework",
+    "React Native, Expo, Flutter",
+  ),
+  { name: "entryPoint", label: "Entry Point", placeholder: "src/App.tsx" },
+  {
+    name: "description",
+    label: "Description",
+    type: "textarea",
+    placeholder: "Purpose of this frontend and target platform",
+  },
+];
+
+/** Tool entity fields */
+const TOOL_FIELDS: FieldConfig[] = [
+  { name: "name", label: "Tool Name", required: true, placeholder: "lint-runner" },
+  { name: "command", label: "Command", placeholder: "npm run lint" },
+  {
+    name: "description",
+    label: "Description",
+    type: "textarea",
+    placeholder: "How should this tooling be used?",
+  },
+];
+
+/** Group entity fields */
+const GROUP_FIELDS: FieldConfig[] = [
+  { name: "name", label: "Group Name", required: true, placeholder: "Checkout flow revamp" },
+  {
+    name: "description",
+    label: "Description",
+    type: "textarea",
+    markdown: true,
+    placeholder: "Summarize the objective, scope, and success metrics for this group",
+  },
+];
+
+/** Route entity fields */
+const ROUTE_FIELDS: FieldConfig[] = [
+  { name: "name", label: "Route Name", required: true, placeholder: "Checkout" },
+  { name: "path", label: "Route Path", required: true, placeholder: "/checkout" },
+  { name: "methods", label: "HTTP Methods", placeholder: "GET, POST" },
+  {
+    name: "implementsContract",
+    label: "Implements Contract",
+    placeholder: "Payment API",
+    description: "Which contract does this route implement?",
+  },
+  {
+    name: "operationId",
+    label: "Operation ID",
+    placeholder: "createPayment",
+    description: "Specific operation from the contract",
+  },
+  {
+    name: "description",
+    label: "Description",
+    type: "textarea",
+    placeholder: "Implementation details for this route",
+  },
+];
+
+/** View entity fields */
+const VIEW_FIELDS: FieldConfig[] = [
+  { name: "name", label: "View Name", required: true, placeholder: "Dashboard" },
+  { name: "path", label: "View Path", placeholder: "/dashboard" },
+  { name: "component", label: "Component (optional)", placeholder: "components/DashboardView" },
+  {
+    name: "filePath",
+    label: "Source File (optional)",
+    placeholder: "apps/client/src/views/DashboardView.tsx",
+  },
+  { name: "routerType", label: "Router Type (optional)", placeholder: "react-router" },
+  {
+    name: "description",
+    label: "Description",
+    type: "textarea",
+    placeholder: "Key widgets or data surfaced in this view",
+  },
+];
+
 export const ENTITY_DEFINITIONS = (catalog: UiOptionCatalog): Record<string, FieldConfig[]> => {
-  const frontendFrameworks =
-    normalizeSelectOptions(catalog.frontendFrameworks ?? []).filter(
-      (entry): entry is string => typeof entry === "string",
-    ) || FALLBACK_FRONTEND_FRAMEWORKS;
-
-  const databaseEngines =
-    normalizeSelectOptions(catalog.databaseEngines ?? []).filter(
-      (entry): entry is string => typeof entry === "string",
-    ) || FALLBACK_DATABASE_ENGINES;
-
-  const infrastructureScopes =
-    normalizeSelectOptions(catalog.infrastructureScopes ?? []).filter(
-      (entry): entry is string => typeof entry === "string",
-    ) || FALLBACK_INFRASTRUCTURE_SCOPES;
+  const frontendFrameworks = getCatalogOptions(
+    catalog,
+    "frontendFrameworks",
+    FALLBACK_FRONTEND_FRAMEWORKS,
+  );
+  const databaseEngines = getCatalogOptions(catalog, "databaseEngines", FALLBACK_DATABASE_ENGINES);
+  const infrastructureScopes = getCatalogOptions(
+    catalog,
+    "infrastructureScopes",
+    FALLBACK_INFRASTRUCTURE_SCOPES,
+  );
 
   return {
-    frontend: [
-      { name: "name", label: "Frontend Name", required: true, placeholder: "mobile-app" },
-      frontendFrameworks.length > 0
-        ? {
-            name: "framework",
-            label: "Framework",
-            type: "select",
-            options: frontendFrameworks,
-            placeholder: "Select framework",
-          }
-        : {
-            name: "framework",
-            label: "Framework",
-            placeholder: "React Native, Expo, Flutter",
-          },
-      { name: "entryPoint", label: "Entry Point", placeholder: "src/App.tsx" },
+    frontend: buildFrontendFields(frontendFrameworks),
+    tool: TOOL_FIELDS,
+    group: GROUP_FIELDS,
+    route: ROUTE_FIELDS,
+    view: VIEW_FIELDS,
+    database: [
+      { name: "name", label: "Database Name", required: true, placeholder: "user-store" },
+      buildSelectOrTextField(
+        "engine",
+        "Engine",
+        databaseEngines,
+        "Select engine",
+        "PostgreSQL, MySQL",
+      ),
+      { name: "version", label: "Version", placeholder: "15" },
       {
         name: "description",
-        label: "Description",
+        label: "Notes",
         type: "textarea",
-        placeholder: "Purpose of this frontend and target platform",
+        placeholder: "Important schemas, scaling, or retention notes",
       },
     ],
     service: buildServiceFieldConfig(catalog),
@@ -225,87 +332,6 @@ export const ENTITY_DEFINITIONS = (catalog: UiOptionCatalog): Record<string, Fie
         placeholder: "What problems does this module solve?",
       },
     ],
-    tool: [
-      { name: "name", label: "Tool Name", required: true, placeholder: "lint-runner" },
-      { name: "command", label: "Command", placeholder: "npm run lint" },
-      {
-        name: "description",
-        label: "Description",
-        type: "textarea",
-        placeholder: "How should this tooling be used?",
-      },
-    ],
-    route: [
-      { name: "name", label: "Route Name", required: true, placeholder: "Checkout" },
-      { name: "path", label: "Route Path", required: true, placeholder: "/checkout" },
-      { name: "methods", label: "HTTP Methods", placeholder: "GET, POST" },
-      {
-        name: "implementsContract",
-        label: "Implements Contract",
-        placeholder: "Payment API",
-        description: "Which contract does this route implement?",
-      },
-      {
-        name: "operationId",
-        label: "Operation ID",
-        placeholder: "createPayment",
-        description: "Specific operation from the contract",
-      },
-      {
-        name: "description",
-        label: "Description",
-        type: "textarea",
-        placeholder: "Implementation details for this route",
-      },
-    ],
-    view: [
-      { name: "name", label: "View Name", required: true, placeholder: "Dashboard" },
-      { name: "path", label: "View Path", placeholder: "/dashboard" },
-      {
-        name: "component",
-        label: "Component (optional)",
-        placeholder: "components/DashboardView",
-      },
-      {
-        name: "filePath",
-        label: "Source File (optional)",
-        placeholder: "apps/client/src/views/DashboardView.tsx",
-      },
-      {
-        name: "routerType",
-        label: "Router Type (optional)",
-        placeholder: "react-router",
-      },
-      {
-        name: "description",
-        label: "Description",
-        type: "textarea",
-        placeholder: "Key widgets or data surfaced in this view",
-      },
-    ],
-    database: [
-      { name: "name", label: "Database Name", required: true, placeholder: "user-store" },
-      databaseEngines.length > 0
-        ? {
-            name: "engine",
-            label: "Engine",
-            type: "select",
-            options: databaseEngines,
-            placeholder: "Select engine",
-          }
-        : {
-            name: "engine",
-            label: "Engine",
-            placeholder: "PostgreSQL, MySQL",
-          },
-      { name: "version", label: "Version", placeholder: "15" },
-      {
-        name: "description",
-        label: "Notes",
-        type: "textarea",
-        placeholder: "Important schemas, scaling, or retention notes",
-      },
-    ],
     infrastructure: [
       {
         name: "name",
@@ -402,26 +428,16 @@ export const ENTITY_DEFINITIONS = (catalog: UiOptionCatalog): Record<string, Fie
         placeholder: "What infrastructure does this provide?",
       },
     ],
-    epic: [
-      { name: "name", label: "Epic Name", required: true, placeholder: "Checkout flow revamp" },
-      {
-        name: "description",
-        label: "Description",
-        type: "textarea",
-        markdown: true,
-        placeholder: "Summarize the objective, scope, and success metrics for this epic",
-      },
-    ],
     task: [
       { name: "name", label: "Task Name", required: true, placeholder: "Design API contract" },
       {
-        name: "epicId",
-        label: "Epic",
+        name: "groupId",
+        label: "Group",
         type: "select",
         required: false,
-        placeholder: "Select epic",
+        placeholder: "Select group",
         resolveOptions: () =>
-          (catalog.taskEpicOptions ?? [])
+          (catalog.issueGroupOptions ?? [])
             .map((option) => {
               const value = String(option.id ?? "").trim();
               if (!value) return null;
@@ -430,7 +446,7 @@ export const ENTITY_DEFINITIONS = (catalog: UiOptionCatalog): Record<string, Fie
             })
             .filter((option): option is SelectOption => Boolean(option)),
         description:
-          "Optional: choose the epic this task belongs to. Leave blank to keep it unassigned.",
+          "Optional: choose the group this task belongs to. Leave blank to keep it unassigned.",
       },
       {
         name: "description",

@@ -2,6 +2,34 @@
  * Shared types for Arbiter CLI and API
  */
 
+/**
+ * Project structure configuration for directory layout
+ *
+ * @public
+ */
+export interface ProjectStructureConfig {
+  /** Primary location for client-facing applications */
+  clientsDirectory: string;
+  /** Primary location for backend and API services */
+  servicesDirectory: string;
+  /** Shared packages and domain libraries */
+  packagesDirectory: string;
+  /** Developer tooling, CLIs, and automation scripts */
+  toolsDirectory: string;
+  /** Project documentation output */
+  docsDirectory: string;
+  /** Shared test suites and golden fixtures */
+  testsDirectory: string;
+  /** Infrastructure as code and deployment assets */
+  infraDirectory: string;
+  /** Flags that force certain artifact directories to live inside their owning package */
+  packageRelative?: {
+    docsDirectory?: boolean;
+    testsDirectory?: boolean;
+    infraDirectory?: boolean;
+  };
+}
+
 export interface ValidationResult {
   valid: boolean;
   errors: ValidationError[];
@@ -221,6 +249,8 @@ export interface ServiceConfig {
    * Grouped dependencies by type/bucket (preferred). Legacy shapes are still accepted for backwards compatibility.
    */
   dependencies?: DependencyGroups | Record<string, ServiceDependencySpec> | string[];
+  /** Group this service belongs to */
+  memberOf?: string;
 }
 
 export interface ServiceDeploymentOverride {
@@ -449,36 +479,65 @@ export interface IssueValidationResult {
   errors: string[];
 }
 
+/**
+ * Validate required fields on an issue
+ */
+function validateRequiredFields(
+  issue: Partial<IssueSpec>,
+  requiredFields: (keyof IssueSpec)[],
+): string[] {
+  const errors: string[] = [];
+  for (const field of requiredFields) {
+    const value = issue[field];
+    if (!value || (typeof value === "string" && value.trim() === "")) {
+      errors.push(`Field '${field}' is required`);
+    }
+  }
+  return errors;
+}
+
+/**
+ * Validate title length
+ */
+function validateTitleLength(title: string | undefined, maxLength: number): string[] {
+  if (title && title.length > maxLength) {
+    return [`Title exceeds maximum length of ${maxLength} characters`];
+  }
+  return [];
+}
+
+/**
+ * Validate a single checklist item
+ */
+function validateChecklistItem(item: ChecklistItem, index: number): string[] {
+  const errors: string[] = [];
+  if (!item.id || typeof item.id !== "string" || item.id.trim() === "") {
+    errors.push(`Checklist item ${index} missing required 'id' field`);
+  }
+  if (!item.text || typeof item.text !== "string" || item.text.trim() === "") {
+    errors.push(`Checklist item ${index} missing required 'text' field`);
+  }
+  return errors;
+}
+
+/**
+ * Validate checklist structure
+ */
+function validateChecklist(checklist: ChecklistItem[] | undefined): string[] {
+  if (!checklist) return [];
+  return checklist.flatMap((item, index) => validateChecklistItem(item, index));
+}
+
 /** Validate an issue against the schema */
 export function validateIssue(
   issue: Partial<IssueSpec>,
   config: IssueValidationConfig = DEFAULT_ISSUE_VALIDATION,
 ): IssueValidationResult {
-  const errors: string[] = [];
-
-  // Check required fields
-  for (const field of config.requiredFields) {
-    if (!issue[field] || (typeof issue[field] === "string" && issue[field]?.trim() === "")) {
-      errors.push(`Field '${field}' is required`);
-    }
-  }
-
-  // Validate title length
-  if (issue.title && issue.title.length > config.maxTitleLength) {
-    errors.push(`Title exceeds maximum length of ${config.maxTitleLength} characters`);
-  }
-
-  // Validate checklist structure if present
-  if (issue.checklist) {
-    issue.checklist.forEach((item, index) => {
-      if (!item.id || typeof item.id !== "string" || item.id.trim() === "") {
-        errors.push(`Checklist item ${index} missing required 'id' field`);
-      }
-      if (!item.text || typeof item.text !== "string" || item.text.trim() === "") {
-        errors.push(`Checklist item ${index} missing required 'text' field`);
-      }
-    });
-  }
+  const errors: string[] = [
+    ...validateRequiredFields(issue, config.requiredFields),
+    ...validateTitleLength(issue.title, config.maxTitleLength),
+    ...validateChecklist(issue.checklist),
+  ];
 
   return {
     valid: errors.length === 0,
@@ -761,6 +820,12 @@ export interface AppSpec {
   behaviors: FlowSpec[];
   services?: Record<string, ServiceConfig>;
   clients?: Record<string, ClientConfig>;
+  /** Reusable packages/libraries */
+  packages?: Record<string, PackageConfig>;
+  /** Developer tooling and automation */
+  tools?: Record<string, ToolConfig>;
+  /** Artifact groups for organizing related artifacts */
+  groups?: Record<string, GroupSpec>;
   environments?: Record<string, DeploymentConfig>;
   testability?: TestabilitySpec;
   ops?: OpsSpec;
@@ -844,4 +909,58 @@ export interface ClientConfig {
   port?: number;
   env?: Record<string, string>;
   hooks?: string[];
+  /** Group this client belongs to */
+  memberOf?: string;
+}
+
+/**
+ * Configuration for a reusable package/library.
+ *
+ * @public
+ */
+export interface PackageConfig {
+  name?: string;
+  description?: string;
+  language?: string;
+  template?: string;
+  sourceDirectory?: string;
+  tags?: string[];
+  /** Group this package belongs to */
+  memberOf?: string;
+}
+
+/**
+ * Configuration for developer tooling and automation.
+ *
+ * @public
+ */
+export interface ToolConfig {
+  name?: string;
+  description?: string;
+  language?: string;
+  template?: string;
+  sourceDirectory?: string;
+  tags?: string[];
+  /** Group this tool belongs to */
+  memberOf?: string;
+}
+
+/**
+ * Configuration for an artifact group used to organize related artifacts.
+ *
+ * @public
+ */
+export interface GroupSpec {
+  /** Display name of the group */
+  name: string;
+  /** Description of what this group contains */
+  description?: string;
+  /** Override directory name (defaults to slugified name) */
+  directory?: string;
+  /** Tags for filtering/categorization */
+  tags?: string[];
+  /** Override project structure within this group */
+  structure?: Partial<ProjectStructureConfig>;
+  /** Parent group (for nested groups) */
+  memberOf?: string;
 }

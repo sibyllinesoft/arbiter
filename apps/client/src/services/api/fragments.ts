@@ -1,8 +1,21 @@
+/**
+ * @module FragmentService
+ * API service for CUE fragment operations.
+ * Handles fragment CRUD and validation operations.
+ */
 import type { CreateFragmentRequest, CreateFragmentResponse, Fragment } from "@/types/api";
 import { ApiClient } from "./client";
 
+/**
+ * Service class for managing CUE fragments.
+ * Fragments are stored pieces of CUE configuration that make up the project spec.
+ */
 export class FragmentService {
-  constructor(private readonly client: ApiClient) {}
+  private readonly client: ApiClient;
+
+  constructor(client: ApiClient) {
+    this.client = client;
+  }
 
   async getFragments(projectId: string): Promise<Fragment[]> {
     return this.client.request<Fragment[]>(`/api/fragments?projectId=${projectId}`);

@@ -31,41 +31,43 @@ Before using Arbiter's code generation system, ensure you have:
 
 1. **Install Arbiter CLI**
    ```bash
-   bun install -g @arbiter/cli
+   bun install -g @sibyllinesoft/arbiter-cli
    # or
-   npm install -g @arbiter/cli
+   npm install -g @sibyllinesoft/arbiter-cli
    ```
 
-2. **Initialize a new project**
+2. **Initialize a new project from a preset**
    ```bash
-   arbiter init my-app
+   # Create a full-stack web app with client, API service, and database
+   arbiter init my-app --preset web-app
    cd my-app
    ```
 
-3. **Create a specification**
-   ```cue
-   // .arbiter/my-app/assembly.cue
-   package myapp
-   
-   {
-     product: {
-       name: "My Application"
-     }
-     services: {
-       api: {
-         language: "typescript"
-         ports: [3000]
-       }
-     }
-   }
+   This creates a complete specification with:
+   - A React frontend client
+   - A TypeScript API service
+   - A PostgreSQL database
+   - Pre-configured routing and endpoints
+
+3. **Add acceptance criteria (BDD)**
+   ```bash
+   # Define behavior using Given/When/Then syntax
+   arbiter add flow "place order" \
+     --given "a customer with items in cart" \
+     --when "they submit the order" \
+     --then "an order is created" \
+     --and-then "inventory is reserved" \
+     --and-then "confirmation email is sent"
    ```
+
+   This creates executable acceptance tests and living documentation from your business requirements.
 
 4. **Generate code**
    ```bash
    arbiter generate
    ```
 
-That's it! You now have a generated TypeScript service ready for development.
+That's it! You now have a generated full-stack application ready for development. Use `arbiter list service` and `arbiter list client` to see what was created.
 
 ## Layered Walkthrough: FastAPI + Postgres + Vue
 
@@ -73,10 +75,22 @@ To connect the [four-layer model](./core-concepts.md) with day-to-day work, the 
 
 ### Layer 1 — Domain: Describe the schema
 
-We always begin with the domain vocabulary. Instead of editing CUE by hand, set everything via the CLI and _then_ inspect the generated file. Use the `--rules` flag to define the authoritative type shape (examples stay optional).
+We always begin with the domain vocabulary. Instead of editing CUE by hand, define your schema via the CLI using either JSON Schema or CUE format.
 
-```bash
-cat <<'JSON' > .arbiter/schemas/order.rules.json
+#### Why CUE for Schemas?
+
+CUE combines the readability of JSON with powerful type constraints:
+
+- **Expressive constraints** — Define patterns, ranges, enums, and complex validation rules in one place
+- **Catches errors early** — Invalid configurations fail at definition time, not runtime
+- **Composable** — Schemas can extend and reference each other without duplication
+- **Tool-agnostic** — The same schema generates Zod validators, Pydantic models, SQL migrations, and more
+
+You're not locked into any particular database, ORM, or validation library. Define the shape once; Arbiter generates the right code for each target.
+
+**Option A: JSON Schema format** (use `--format json-schema`)
+
+```json
 {
   "required": ["id", "customerId", "status", "total"],
   "fields": {
@@ -96,34 +110,82 @@ cat <<'JSON' > .arbiter/schemas/order.rules.json
     }
   }
 }
-JSON
-
-arbiter add schema Order \
-  --type model \
-  --format json-schema \
-  --rules "$(cat .arbiter/schemas/order.rules.json)"
 ```
 
-Result inside `.arbiter/assembly.cue` shows the structured rules block:
+**Option B: CUE format** (use `--format cue`)
+
+```cue
+required: ["id", "customerId", "status", "total"]
+fields: {
+  id:         { type: "string", pattern: "^ord_[a-z0-9]+$" }
+  customerId: { type: "string", pattern: "^cust_[a-z0-9]+$" }
+  status:     { enum: ["draft", "submitted", "fulfilled"] }
+  total:      { type: "number", minimum: 0 }
+  lines: {
+    type: "list"
+    items: {
+      type: "struct"
+      fields: {
+        sku:      { type: "string" }
+        quantity: { type: "int", minimum: 1 }
+      }
+    }
+  }
+}
+```
+
+Add the schema via CLI:
+
+```bash
+# Using JSON Schema (save to file first, then reference)
+arbiter add schema Order --type model --format json-schema < order.schema.json
+
+# Or inline for simple schemas
+arbiter add schema Order --type model --format json-schema \
+  --fields 'id:string,customerId:string,status:enum(draft|submitted|fulfilled),total:number'
+```
+
+#### Define Acceptance Criteria
+
+Product owners can also define expected behaviors using Given/When/Then syntax. These become both living documentation and executable tests:
+
+```bash
+# Define the happy path for order submission
+arbiter add flow "submit order" \
+  --given "a draft order with valid line items" \
+  --when "the customer submits the order" \
+  --then "the order status changes to submitted" \
+  --and-then "the order total is calculated" \
+  --and-then "an OrderSubmitted event is emitted"
+
+# Define validation behavior
+arbiter add flow "reject empty order" \
+  --given "a draft order with no line items" \
+  --when "the customer attempts to submit" \
+  --then "the submission is rejected" \
+  --and-then "an error message explains the issue"
+```
+
+These flows capture business rules in terms stakeholders understand, and Arbiter generates test scaffolding that verifies the system behaves as specified.
+
+This produces a clean entry in `.arbiter/assembly.cue`:
 
 ```cue
 components: schemas: {
   Order: {
-    rules: {
-      required: ["id", "customerId", "status", "total"]
-      fields: {
-        id: { type: "string", pattern: "^ord_[a-z0-9]+$" }
-        customerId: { type: "string", pattern: "^cust_[a-z0-9]+$" }
-        status: { enum: ["draft", "submitted", "fulfilled"] }
-        total: { type: "number", minimum: 0 }
-        lines: {
-          type: "list"
-          items: {
-            type: "struct"
-            fields: {
-              sku: { type: "string" }
-              quantity: { type: "int", minimum: 1 }
-            }
+    required: ["id", "customerId", "status", "total"]
+    fields: {
+      id:         { type: "string", pattern: "^ord_[a-z0-9]+$" }
+      customerId: { type: "string", pattern: "^cust_[a-z0-9]+$" }
+      status:     { enum: ["draft", "submitted", "fulfilled"] }
+      total:      { type: "number", minimum: 0 }
+      lines: {
+        type: "list"
+        items: {
+          type: "struct"
+          fields: {
+            sku:      { type: "string" }
+            quantity: { type: "int", minimum: 1 }
           }
         }
       }
@@ -132,9 +194,17 @@ components: schemas: {
 }
 ```
 
-Arbiter automatically runs `cue import --from=jsonschema` on that payload and stores the converted definition in `.arbiter/schemas/order.cue`, so native CUE tooling can validate or extend it later without leaving the CLI workflow.
+Running `arbiter check --section domain` validates that every downstream layer can rely on this schema.
 
-Running `arbiter check --section domain` now validates that every downstream layer can rely on this schema.
+> **What you gain:** A single source of truth for your data model and business rules. From this one `Order` schema and its flows, Arbiter can generate:
+> - PostgreSQL table definitions and migrations
+> - Pydantic models for FastAPI request/response validation
+> - TypeScript interfaces for your Vue frontend
+> - Zod schemas for runtime validation
+> - Test scaffolding from your Given/When/Then flows
+> - OpenAPI documentation
+>
+> Change the schema once, regenerate, and every layer stays in sync. Product owners define *what* the system should do; engineers implement *how*.
 
 ### Layer 2 — Contracts: Bind the operations
 
@@ -236,7 +306,15 @@ contracts: workbehaviors: {
 }
 ```
 
-This is the “Contracts” layer from the overview—a transport-aware but domain-driven description of how clients will talk to the system.
+This is the "Contracts" layer from the overview—a transport-aware but domain-driven description of how clients will talk to the system.
+
+> **What you gain:** API contracts that are enforceable across your entire stack:
+> - OpenAPI specs generated automatically for documentation and client SDKs
+> - Request/response validation that matches your schema constraints
+> - Type-safe API clients for any language your frontends use
+> - Breaking change detection when contracts evolve
+>
+> The contract lives in the spec, not scattered across controller decorators or route definitions.
 
 ### Layer 3 — Capabilities: Compose services
 
@@ -342,6 +420,14 @@ clients: {
 
 > Those explicit `handler.module` entries are optional overrides intended for brownfield projects or specs synchronized with existing repositories. When Arbiter controls the directory layout, leave them undefined and the generator will derive handler paths from the service metadata.
 
+> **What you gain:** Mix-and-match technology choices without rewriting your spec:
+> - Swap PostgreSQL for MySQL or MongoDB — the schema adapts
+> - Switch from FastAPI to Django or Express — contracts stay the same
+> - Replace Vue with React or Svelte — routes and components regenerate
+> - Add a mobile client later — it inherits the same API contracts
+>
+> Your architecture decisions are recorded, not buried in boilerplate.
+
 ### Layer 4 — Execution: Generate and run
 
 The final layer turns the specification into runnable assets. Because the earlier layers stayed clean, one command now orchestrates every artifact:
@@ -358,6 +444,14 @@ docker compose up
 ```
 
 `arbiter generate` now writes directly into your project directory (or a custom path via `--project-dir`). There is no intermediate `generated/` folder to reconcile—images, services, tests, and docs stay co-located with your source tree, ready for git commits or container builds.
+
+> **What you gain:** Reproducible, auditable infrastructure from a single command:
+> - Generated code is deterministic — same spec always produces same output
+> - CI/CD pipelines can regenerate and diff to catch drift
+> - New team members get the full stack running with `arbiter generate && docker compose up`
+> - No more "it works on my machine" — the spec *is* the machine
+>
+> The four layers work together: domain truth flows through contracts into capabilities and finally execution.
 
 ## Core Concepts
 
@@ -558,7 +652,7 @@ app.listen(PORT);
 Use the generation API programmatically:
 
 ```typescript
-import { generateCommand, GenerateOptions, CLIConfig } from '@arbiter/cli';
+import { generateCommand, GenerateOptions, CLIConfig } from '@sibyllinesoft/arbiter-cli';
 
 const options: GenerateOptions = {
   projectDir: './apps/orders-api',

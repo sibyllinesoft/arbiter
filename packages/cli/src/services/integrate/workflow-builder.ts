@@ -1,5 +1,16 @@
+/**
+ * @packageDocumentation
+ * GitHub workflow builder for the integrate command.
+ *
+ * Provides functionality to:
+ * - Generate pull request validation workflows
+ * - Generate main branch CI/CD workflows
+ * - Support language-specific build steps
+ * - Configure build matrices for multi-version testing
+ */
+
 import type { BuildMatrix, ProjectLanguage } from "@/services/integrate/types.js";
-import type { PackageManagerCommandSet } from "@/utils/package-manager.js";
+import type { PackageManagerCommandSet } from "@/utils/io/package-manager.js";
 
 export function createGitHubPullRequestWorkflow(
   languages: ProjectLanguage[],
@@ -34,20 +45,17 @@ export function createGitHubPullRequestWorkflow(
     },
   };
 
+  const jobCreators: Record<string, () => Record<string, any> | undefined> = {
+    typescript: () => createNodeJob(matrix, pm),
+    python: () => createPythonJob(matrix),
+    rust: () => createRustJob(matrix),
+    go: () => createGoJob(matrix),
+  };
+
   for (const lang of languages) {
-    switch (lang.name) {
-      case "typescript":
-        workflow.jobs[`test-${lang.name}`] = createNodeJob(matrix, pm);
-        break;
-      case "python":
-        workflow.jobs[`test-${lang.name}`] = createPythonJob(matrix);
-        break;
-      case "rust":
-        workflow.jobs[`test-${lang.name}`] = createRustJob(matrix);
-        break;
-      case "go":
-        workflow.jobs[`test-${lang.name}`] = createGoJob(matrix);
-        break;
+    const creator = jobCreators[lang.name];
+    if (creator) {
+      workflow.jobs[`test-${lang.name}`] = creator();
     }
   }
 
@@ -218,34 +226,28 @@ function createGoJob(matrix?: BuildMatrix) {
   };
 }
 
+const PM_INSTALL_COMMANDS: Record<string, string> = {
+  npm: "npm ci",
+  pnpm: "pnpm install --frozen-lockfile",
+  yarn: "yarn install --frozen-lockfile",
+};
+
 function installCommand(pm: PackageManagerCommandSet): string {
-  switch (pm.name) {
-    case "npm":
-      return "npm ci";
-    case "pnpm":
-      return "pnpm install --frozen-lockfile";
-    case "yarn":
-      return "yarn install --frozen-lockfile";
-    default:
-      return pm.install;
-  }
+  return PM_INSTALL_COMMANDS[pm.name] ?? pm.install;
 }
 
 function publishCommand(pm: PackageManagerCommandSet): string {
   return pm.name === "npm" ? "npm publish" : `${pm.name} publish`;
 }
 
+const NODE_CACHE_KEYS: Record<string, "npm" | "pnpm" | "yarn"> = {
+  npm: "npm",
+  pnpm: "pnpm",
+  yarn: "yarn",
+};
+
 function getNodeCacheKey(pm: PackageManagerCommandSet): "npm" | "pnpm" | "yarn" | undefined {
-  switch (pm.name) {
-    case "pnpm":
-      return "pnpm";
-    case "yarn":
-      return "yarn";
-    case "npm":
-      return "npm";
-    default:
-      return undefined;
-  }
+  return NODE_CACHE_KEYS[pm.name];
 }
 
 function createSecurityJob() {

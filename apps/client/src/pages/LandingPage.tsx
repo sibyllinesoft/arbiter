@@ -13,13 +13,38 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ProjectList, useUnifiedTabs } from "../components";
-// @ts-ignore
-import { ConfigModal } from "../components/ConfigModal";
 import Tabs from "../components/Layout/Tabs";
 import { ProjectCreationModal } from "../components/ProjectCreation";
+// @ts-ignore
+import { ConfigModal } from "../components/io/ConfigModal";
 
 interface LandingPageProps {
   onNavigateToConfig?: () => void;
+}
+
+/** Handle project selection after deletion */
+function selectNextProject(
+  deletedId: string,
+  currentProjectId: string | undefined,
+  updatedProjects: any[],
+  setCurrentProject: (p: any) => void,
+  navigate: (path: string, options?: { replace?: boolean }) => void,
+  locationPath: string,
+): void {
+  if (currentProjectId !== deletedId) return;
+
+  if (updatedProjects.length > 0) {
+    const nextProject = updatedProjects[0];
+    setCurrentProject(nextProject ?? null);
+    if (nextProject && locationPath.startsWith("/project")) {
+      navigate(`/project/${nextProject.id}`, { replace: true });
+    }
+  } else {
+    setCurrentProject(null);
+    if (locationPath.startsWith("/project")) {
+      navigate("/", { replace: true });
+    }
+  }
 }
 
 export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
@@ -40,32 +65,26 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
 
   const handleDeleteProject = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
-    if (
-      window.confirm("Are you sure you want to delete this project? This action cannot be undone.")
-    ) {
-      try {
-        await deleteProjectMutation.mutateAsync(projectId);
-        const updatedProjects = (projects || []).filter((project) => project.id !== projectId);
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this project? This action cannot be undone.",
+    );
+    if (!confirmed) return;
 
-        if (currentProject?.id === projectId) {
-          if (updatedProjects.length > 0) {
-            const nextProject = updatedProjects[0];
-            setCurrentProject(nextProject ?? null);
-            if (nextProject && location.pathname.startsWith("/project")) {
-              navigate(`/project/${nextProject.id}`, { replace: true });
-            }
-          } else {
-            setCurrentProject(null);
-            if (location.pathname.startsWith("/project")) {
-              navigate("/", { replace: true });
-            }
-          }
-        }
-        toast.success("Project deleted successfully");
-      } catch (error) {
-        toast.error("Failed to delete project");
-        console.error("Failed to delete project:", error);
-      }
+    try {
+      await deleteProjectMutation.mutateAsync(projectId);
+      const updatedProjects = (projects || []).filter((project) => project.id !== projectId);
+      selectNextProject(
+        projectId,
+        currentProject?.id,
+        updatedProjects,
+        setCurrentProject,
+        navigate,
+        location.pathname,
+      );
+      toast.success("Project deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete project");
+      console.error("Failed to delete project:", error);
     }
   };
 

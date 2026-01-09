@@ -1,12 +1,13 @@
+/** @packageDocumentation Constraint system tests */
 import { describe, expect, it } from "bun:test";
-import { ConstraintViolationError } from "@/constraints/core.js";
+import { ConstraintViolationError } from "@/constraints/core/core.js";
 import {
   LATEST_API_VERSION,
   SchemaVersionValidator,
   VERSION_COMPATIBILITY,
   ensureLatestSchema,
   validateReadData,
-} from "@/constraints/schema.js";
+} from "@/constraints/core/schema.js";
 
 const baseEnvelope = {
   apiVersion: LATEST_API_VERSION,

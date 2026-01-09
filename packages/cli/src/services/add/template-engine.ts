@@ -1,3 +1,13 @@
+/**
+ * @packageDocumentation
+ * Template engine for the add command module.
+ *
+ * Provides functionality to:
+ * - Validate template existence
+ * - Execute templates with context
+ * - Build template context from CUE content
+ */
+
 import path from "node:path";
 import { buildTemplateContext, templateOrchestrator } from "@/templates/index.js";
 import chalk from "chalk";

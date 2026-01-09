@@ -2,7 +2,7 @@ import * as childProcess from "node:child_process";
 import { EventEmitter } from "node:events";
 import os from "node:os";
 import path from "node:path";
-import { __generateTesting } from "@/services/generate/index.js";
+import { __generateTesting } from "@/services/generate/io/index.js";
 import fs from "fs-extra";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -32,7 +32,14 @@ describe("parseAssemblyFile", () => {
     const proc = buildMockProc();
     vi.spyOn(childProcess, "spawn").mockReturnValue(proc as any);
 
-    const resultPromise = __generateTesting.parseAssemblyFile(assemblyPath);
+    const mockReporter = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      success: vi.fn(),
+    };
+
+    const resultPromise = __generateTesting.parseAssemblyFile(assemblyPath, mockReporter);
 
     proc.stderr.emit("data", "boom");
     proc.emit("close", 1);
@@ -50,7 +57,14 @@ describe("parseAssemblyFile", () => {
     const proc = buildMockProc();
     vi.spyOn(childProcess, "spawn").mockReturnValue(proc as any);
 
-    const resultPromise = __generateTesting.parseAssemblyFile(assemblyPath);
+    const mockReporter = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      success: vi.fn(),
+    };
+
+    const resultPromise = __generateTesting.parseAssemblyFile(assemblyPath, mockReporter);
 
     proc.stdout.emit("data", JSON.stringify({ product: { name: "Cue App" } }));
     proc.emit("close", 0);

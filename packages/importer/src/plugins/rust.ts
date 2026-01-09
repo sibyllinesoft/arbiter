@@ -288,98 +288,177 @@ export class RustPlugin implements ImporterPlugin {
   private inferFromCargoToml(
     cargoEvidence: Evidence,
     binaryEvidence: Evidence[],
-    context: InferenceContext,
+    _context: InferenceContext,
   ): InferredArtifact[] {
     const cargoData = cargoEvidence.data;
     if (!isCargoEvidenceData(cargoData)) {
       return [];
     }
-    const data = cargoData;
-    const packageName = data.package?.name || path.basename(path.dirname(cargoEvidence.filePath));
-    const description = data.package?.description || "Rust project";
 
+    const dependencyNames = this.getMergedDependencyNames(cargoData);
+    const frameworks = this.detectFrameworks(dependencyNames);
+    const binariesForCrate = binaryEvidence.filter((e) => e.filePath === cargoEvidence.filePath);
+    const binaryInfo = this.extractBinaryInfo(binariesForCrate);
+
+    const artifactType = this.determineRustArtifactType(
+      cargoData,
+      frameworks,
+      binariesForCrate.length > 0,
+    );
+    const artifactName = this.resolveRustArtifactName(
+      cargoData,
+      cargoEvidence.filePath,
+      binaryInfo,
+    );
+    const metadata = this.buildRustMetadata(
+      cargoEvidence.filePath,
+      dependencyNames,
+      cargoData,
+      frameworks,
+      artifactType,
+      binaryInfo,
+    );
+    const tags = this.buildRustTags(artifactType, cargoData.hasLibrary);
+    const description = cargoData.package?.description || "Rust project";
+
+    return [
+      {
+        artifact: {
+          id: `rust-${artifactType}-${artifactName}`,
+          type: artifactType,
+          name: artifactName,
+          description,
+          tags,
+          metadata,
+        },
+        provenance: {
+          evidence: [cargoEvidence.id],
+          plugins: ["rust"],
+          rules: ["cargo-heuristics"],
+          timestamp: Date.now(),
+          pipelineVersion: "1.0.0",
+        },
+        relationships: [],
+      },
+    ];
+  }
+
+  /**
+   * Merge all dependency types and return their names
+   */
+  private getMergedDependencyNames(data: CargoEvidenceData): string[] {
     const mergedDeps: Record<string, string> = {
       ...data.dependencies,
       ...data.devDependencies,
       ...data.buildDependencies,
     };
-    const dependencyNames = Object.keys(mergedDeps);
+    return Object.keys(mergedDeps);
+  }
 
-    const framework = this.findFirstMatch(dependencyNames, RUST_WEB_FRAMEWORKS);
-    const cliFramework = this.findFirstMatch(dependencyNames, RUST_CLI_FRAMEWORKS);
-    const jobFramework = this.findFirstMatch(dependencyNames, RUST_JOB_FRAMEWORKS);
-    const databaseDriver = this.findFirstMatch(dependencyNames, RUST_DATABASE_DRIVERS);
+  /**
+   * Detect frameworks from dependencies
+   */
+  private detectFrameworks(dependencyNames: string[]) {
+    return {
+      web: this.findFirstMatch(dependencyNames, RUST_WEB_FRAMEWORKS),
+      cli: this.findFirstMatch(dependencyNames, RUST_CLI_FRAMEWORKS),
+      job: this.findFirstMatch(dependencyNames, RUST_JOB_FRAMEWORKS),
+      database: this.findFirstMatch(dependencyNames, RUST_DATABASE_DRIVERS),
+    };
+  }
 
-    const binariesForCrate = binaryEvidence.filter((e) => e.filePath === cargoEvidence.filePath);
-    const hasExplicitBinary = data.hasBinaries || binariesForCrate.length > 0;
-
-    let artifactType: ArtifactType = "package";
-    if (framework) {
-      artifactType = "service";
-    } else if (jobFramework) {
-      artifactType = "job";
-    } else if (hasExplicitBinary) {
-      artifactType = "binary";
-    }
-
-    // Prefer binary names when available to avoid generic package titles.
+  /**
+   * Extract binary info from evidence
+   */
+  private extractBinaryInfo(binariesForCrate: Evidence[]): {
+    name?: string;
+    path?: string;
+  } {
     const binaryMatch = binariesForCrate.find((e) => {
       const data = e.data as Record<string, unknown>;
       return typeof data["binaryName"] === "string";
     });
     const binaryData = binaryMatch?.data as Record<string, unknown> | undefined;
-    const binaryNameValue = binaryData?.binaryName;
-    const artifactName = typeof binaryNameValue === "string" ? binaryNameValue : packageName;
+    return {
+      name: typeof binaryData?.binaryName === "string" ? binaryData.binaryName : undefined,
+      path: typeof binaryData?.binaryPath === "string" ? binaryData.binaryPath : undefined,
+    };
+  }
 
+  /**
+   * Determine artifact type based on cargo data and detected frameworks
+   */
+  private determineRustArtifactType(
+    data: CargoEvidenceData,
+    frameworks: ReturnType<typeof this.detectFrameworks>,
+    hasBinaryEvidence: boolean,
+  ): ArtifactType {
+    if (frameworks.web) {
+      return "service";
+    }
+    if (frameworks.job) {
+      return "job";
+    }
+    if (data.hasBinaries || hasBinaryEvidence) {
+      return "binary";
+    }
+    return "package";
+  }
+
+  /**
+   * Resolve the artifact name from binary info or package name
+   */
+  private resolveRustArtifactName(
+    data: CargoEvidenceData,
+    filePath: string,
+    binaryInfo: { name?: string; path?: string },
+  ): string {
+    if (binaryInfo.name) {
+      return binaryInfo.name;
+    }
+    return data.package?.name || path.basename(path.dirname(filePath));
+  }
+
+  /**
+   * Build metadata for the Rust artifact
+   */
+  private buildRustMetadata(
+    filePath: string,
+    dependencyNames: string[],
+    data: CargoEvidenceData,
+    frameworks: ReturnType<typeof this.detectFrameworks>,
+    artifactType: ArtifactType,
+    binaryInfo: { name?: string; path?: string },
+  ): Record<string, unknown> {
     const metadata: Record<string, unknown> = {
-      sourceFile: cargoEvidence.filePath,
-      root: path.dirname(cargoEvidence.filePath),
+      sourceFile: filePath,
+      root: path.dirname(filePath),
       manifest: "Cargo.toml",
       language: "rust",
       packageManager: "cargo",
       dependencies: dependencyNames,
     };
 
-    if (framework) metadata.framework = framework;
-    if (artifactType === "binary" && cliFramework) metadata.cliFramework = cliFramework;
-    if (jobFramework) metadata.jobFramework = jobFramework;
-    if (databaseDriver) metadata.databaseDriver = databaseDriver;
+    if (frameworks.web) metadata.framework = frameworks.web;
+    if (artifactType === "binary" && frameworks.cli) metadata.cliFramework = frameworks.cli;
+    if (frameworks.job) metadata.jobFramework = frameworks.job;
+    if (frameworks.database) metadata.databaseDriver = frameworks.database;
     if (data.package?.version) metadata.version = data.package.version;
-    const binaryPath = binaryData?.binaryPath;
-    if (typeof binaryPath === "string") {
-      metadata.entryPoint = binaryPath;
-    }
+    if (binaryInfo.path) metadata.entryPoint = binaryInfo.path;
 
+    return metadata;
+  }
+
+  /**
+   * Build tags for the Rust artifact
+   */
+  private buildRustTags(artifactType: ArtifactType, hasLibrary: boolean): string[] {
     const tags = new Set<string>(["rust"]);
     if (artifactType === "binary") tags.add("tool");
     if (artifactType === "service") tags.add("service");
-    if (artifactType === "package" || data.hasLibrary) tags.add("package");
+    if (artifactType === "package" || hasLibrary) tags.add("package");
     if (artifactType === "job") tags.add("job");
-
-    const provenance: Provenance = {
-      evidence: [cargoEvidence.id],
-      plugins: ["rust"],
-      rules: ["cargo-heuristics"],
-      timestamp: Date.now(),
-      pipelineVersion: "1.0.0",
-    };
-
-    const artifact = {
-      id: `rust-${artifactType}-${artifactName}`,
-      type: artifactType,
-      name: artifactName,
-      description,
-      tags: Array.from(tags),
-      metadata,
-    };
-
-    return [
-      {
-        artifact,
-        provenance,
-        relationships: [],
-      },
-    ];
+    return Array.from(tags);
   }
 
   private extractDependencies(
@@ -399,37 +478,60 @@ export class RustPlugin implements ImporterPlugin {
     });
   }
 
+  /**
+   * Parse a single binary entry from cargo bin array
+   */
+  private parseBinaryEntry(entry: unknown): CargoBinaryDefinition | null {
+    if (typeof entry === "string") {
+      return { name: entry };
+    }
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+    const record = entry as Record<string, unknown>;
+    if (typeof record.name !== "string") {
+      return null;
+    }
+    return {
+      name: record.name,
+      path: typeof record.path === "string" ? record.path : undefined,
+    };
+  }
+
+  /**
+   * Parse binaries from an array format
+   */
+  private parseBinaryArray(binArray: unknown[]): CargoBinaryDefinition[] {
+    return binArray
+      .map((entry) => this.parseBinaryEntry(entry))
+      .filter((value): value is CargoBinaryDefinition => value !== null);
+  }
+
+  /**
+   * Parse binaries from an object format
+   */
+  private parseBinaryObject(binObject: Record<string, unknown>): CargoBinaryDefinition[] {
+    const name = binObject.name;
+    if (typeof name !== "string") {
+      return [];
+    }
+    return [
+      {
+        name,
+        path: typeof binObject.path === "string" ? binObject.path : undefined,
+      },
+    ];
+  }
+
   private extractBinaries(binSection: unknown): CargoBinaryDefinition[] {
-    if (!binSection) return [];
+    if (!binSection) {
+      return [];
+    }
     if (Array.isArray(binSection)) {
-      return binSection
-        .map((entry) => {
-          if (typeof entry === "string") {
-            return { name: entry };
-          }
-          if (entry && typeof entry === "object") {
-            const record = entry as Record<string, unknown>;
-            if (typeof record.name === "string") {
-              return {
-                name: record.name,
-                path: typeof record.path === "string" ? record.path : undefined,
-              };
-            }
-          }
-          return null;
-        })
-        .filter((value): value is CargoBinaryDefinition => value !== null);
+      return this.parseBinaryArray(binSection);
     }
     if (typeof binSection === "object") {
-      const name = (binSection as Record<string, any>).name;
-      if (typeof name === "string") {
-        return [
-          {
-            name,
-            path: (binSection as Record<string, any>).path as string | undefined,
-          },
-        ];
-      }
+      return this.parseBinaryObject(binSection as Record<string, unknown>);
     }
     return [];
   }

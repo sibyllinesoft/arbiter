@@ -3,6 +3,36 @@ import { ApiClient } from "./client";
 export const AUTH_TOKEN_STORAGE_KEY = "arbiter:authToken";
 export const AUTH_TOKEN_EPOCH_STORAGE_KEY = "arbiter:authTokenEpoch";
 
+/** Default OAuth scopes */
+const DEFAULT_OAUTH_SCOPES = ["read", "write"] as const;
+
+/** Default OAuth client ID */
+const DEFAULT_CLIENT_ID = "dev-cli";
+
+/** Default redirect URI when window is unavailable */
+const DEFAULT_REDIRECT_URI = "http://localhost:3000/oauth/callback";
+
+/** Safe localStorage removal helper */
+const safeStorageRemove = (key: string): void => {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // ignore storage errors
+  }
+};
+
+/** Safe sessionStorage setter helper */
+const safeSessionStorageSet = (key: string, value: string): void => {
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch {
+    // ignore storage errors
+  }
+};
+
+/** Check if running in browser environment */
+const isBrowser = (): boolean => typeof window !== "undefined";
+
 export interface AuthMetadataResponse {
   enabled: boolean;
   provider?: string | null;
@@ -39,8 +69,10 @@ export class AuthService {
 
   private authMetadata?: AuthMetadataResponse | null;
   private authMetadataPromise: Promise<AuthMetadataResponse | null> | null = null;
+  private readonly client: ApiClient;
 
-  constructor(private readonly client: ApiClient) {
+  constructor(client: ApiClient) {
+    this.client = client;
     this.client.setUnauthorizedHandler(() => this.handleAuthRedirect());
   }
 
@@ -69,25 +101,14 @@ export class AuthService {
   }
 
   async startOAuthFlow(): Promise<void> {
-    if (typeof window === "undefined") {
-      return;
-    }
+    if (!isBrowser()) return;
 
     const metadata = await this.getAuthMetadata();
-    if (!metadata?.enabled) {
-      throw new Error("OAuth is not enabled.");
-    }
-
-    if (!metadata.authorizationEndpoint) {
+    if (!metadata?.enabled) throw new Error("OAuth is not enabled.");
+    if (!metadata.authorizationEndpoint)
       throw new Error("OAuth authorization endpoint unavailable.");
-    }
 
-    try {
-      window.sessionStorage.setItem(AuthService.OAUTH_PENDING_STORAGE_KEY, "1");
-    } catch {
-      // ignore
-    }
-
+    safeSessionStorageSet(AuthService.OAUTH_PENDING_STORAGE_KEY, "1");
     window.location.href = this.buildAuthorizeUrl(metadata);
   }
 
@@ -101,27 +122,23 @@ export class AuthService {
 
   private buildAuthorizeUrl(metadata: AuthMetadataResponse): string {
     const authorizeUrl = new URL(metadata.authorizationEndpoint!);
-    const clientId = metadata.clientId ?? "dev-cli";
-    authorizeUrl.searchParams.set("client_id", clientId);
+    authorizeUrl.searchParams.set("client_id", metadata.clientId ?? DEFAULT_CLIENT_ID);
 
     const redirectUri =
       metadata.redirectUri ??
-      (typeof window !== "undefined"
-        ? `${window.location.origin}/oauth/callback`
-        : "http://localhost:3000/oauth/callback");
+      (isBrowser() ? `${window.location.origin}/oauth/callback` : DEFAULT_REDIRECT_URI);
     authorizeUrl.searchParams.set("redirect_uri", redirectUri);
     authorizeUrl.searchParams.set("response_type", "code");
 
-    const scopes =
-      metadata.scopes && metadata.scopes.length > 0 ? metadata.scopes : ["read", "write"];
+    const scopes = metadata.scopes?.length ? metadata.scopes : DEFAULT_OAUTH_SCOPES;
     authorizeUrl.searchParams.set("scope", scopes.join(" "));
 
     const statePayload = {
-      returnTo: typeof window !== "undefined" ? window.location.href : "/",
+      returnTo: isBrowser() ? window.location.href : "/",
       timestamp: Date.now(),
     };
     const stateEncoded =
-      typeof window !== "undefined" && typeof window.btoa === "function"
+      isBrowser() && window.btoa
         ? window.btoa(JSON.stringify(statePayload))
         : JSON.stringify(statePayload);
     authorizeUrl.searchParams.set("state", stateEncoded);
@@ -130,36 +147,16 @@ export class AuthService {
   }
 
   private async handleAuthRedirect(): Promise<void> {
-    if (typeof window === "undefined") {
-      return;
-    }
+    if (!isBrowser()) return;
+    if (window.location.pathname.startsWith("/oauth/callback")) return;
 
     try {
-      if (window.location.pathname.startsWith("/oauth/callback")) {
-        return;
-      }
-
       const metadata = await this.getAuthMetadata();
-      if (!metadata?.enabled || !metadata.authorizationEndpoint) {
-        return;
-      }
+      if (!metadata?.enabled || !metadata.authorizationEndpoint) return;
 
-      try {
-        window.sessionStorage.setItem(AuthService.OAUTH_PENDING_STORAGE_KEY, "1");
-      } catch {
-        // ignore
-      }
-
-      try {
-        window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
-      } catch {
-        // ignore
-      }
-      try {
-        window.localStorage.removeItem(AUTH_TOKEN_EPOCH_STORAGE_KEY);
-      } catch {
-        // ignore
-      }
+      safeSessionStorageSet(AuthService.OAUTH_PENDING_STORAGE_KEY, "1");
+      safeStorageRemove(AUTH_TOKEN_STORAGE_KEY);
+      safeStorageRemove(AUTH_TOKEN_EPOCH_STORAGE_KEY);
       this.clearAuthToken();
 
       window.location.href = this.buildAuthorizeUrl(metadata);

@@ -1,12 +1,12 @@
+/** @packageDocumentation CLI command tests */
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import { createProjectCommands } from "@/cli/project.js";
+import { createProjectCommands } from "@/cli/commands/project.js";
 import * as check from "@/services/check/index.js";
 import * as diff from "@/services/diff/index.js";
 import * as init from "@/services/init/index.js";
 import * as list from "@/services/list/index.js";
-import * as specImport from "@/services/spec-import/index.js";
 import * as status from "@/services/status/index.js";
 import * as surface from "@/services/surface/index.js";
 
@@ -36,12 +36,17 @@ function buildProgram(): Command {
 }
 
 describe("project CLI", () => {
-  it("lists templates or presets without exiting", async () => {
-    const listAllSpy = spyOn(init, "listAll").mockImplementation(() => {});
+  it("lists presets without exiting", async () => {
+    const listPresetsSpy = spyOn(init, "listPresets").mockImplementation(() => {});
+    const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as any);
+
     const program = buildProgram();
-    await program.parseAsync(["init", "--list-templates", "--list-presets"], { from: "user" });
-    expect(listAllSpy).toHaveBeenCalled();
-    listAllSpy.mockRestore();
+    await program.parseAsync(["init", "--list-presets"], { from: "user" });
+
+    expect(listPresetsSpy).toHaveBeenCalled();
+
+    listPresetsSpy.mockRestore();
+    exitSpy.mockRestore();
   });
 
   it("runs list with format override and passes config", async () => {
@@ -77,35 +82,6 @@ describe("project CLI", () => {
     );
 
     checkSpy.mockRestore();
-    exitSpy.mockRestore();
-  });
-
-  it("imports specs with provided options", async () => {
-    const importSpy = spyOn(specImport, "importSpec").mockResolvedValue(0);
-    const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as any);
-
-    const program = buildProgram();
-    await program.parseAsync(
-      [
-        "spec-import",
-        "@/cli/__tests__/fragment.cue",
-        "--project",
-        "demo",
-        "--remote-path",
-        "services/api",
-        "--message",
-        "update",
-      ],
-      { from: "user" },
-    );
-
-    expect(importSpy).toHaveBeenCalledWith(
-      "@/cli/__tests__/fragment.cue",
-      expect.objectContaining({ project: "demo", remotePath: "services/api", message: "update" }),
-      baseConfig,
-    );
-
-    importSpy.mockRestore();
     exitSpy.mockRestore();
   });
 

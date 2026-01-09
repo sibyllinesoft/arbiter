@@ -1,11 +1,21 @@
-import type { ClientGenerationTarget } from "@/services/generate/contexts.js";
+/**
+ * @packageDocumentation
+ * Infrastructure generator strategy for artifact generation.
+ *
+ * Provides functionality to:
+ * - Generate Terraform modules from specifications
+ * - Generate Kubernetes manifests
+ * - Generate Docker configurations
+ */
+
+import type { ClientGenerationTarget } from "@/services/generate/io/contexts.js";
 import {
   ArtifactGenerator,
   type ArtifactGeneratorContext,
 } from "@/services/generate/strategies/base.js";
-import type { GenerateOptions } from "@/services/generate/types.js";
+import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
-import type { PackageManagerCommandSet } from "@/utils/package-manager.js";
+import type { PackageManagerCommandSet } from "@/utils/io/package-manager.js";
 import type { AppSpec, ConfigWithVersion } from "@arbiter/shared";
 
 type InfrastructureFn = (

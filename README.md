@@ -39,7 +39,7 @@ Define your architecture once in CUE and keep generated code, documentation, and
 Don't start from scratch. Arbiter's importer plugins scan existing repositories, detect services, analyze APIs, and bootstrap specifications from real projects—complete with confidence scoring and provenance tracking.
 
 ### Agent-First Design
-Built for automation. Every CLI command is non-interactive with structured output (JSON/NDJSON/table), proper exit codes, and comprehensive flags. Perfect for AI assistants, CI/CD pipelines, and programmatic workflows.
+Built for automation. Every CLI command is non-interactive with structured output (JSON/table), proper exit codes, and comprehensive flags. Perfect for AI assistants, CI/CD pipelines, and programmatic workflows.
 
 ### Production Awareness
 Not just scaffolding—Arbiter generates production-ready code with:
@@ -103,7 +103,7 @@ Arbiter is a TypeScript monorepo built with Bun, consisting of:
 **Command Groups**:
 - **Project Management**: `init`, `list`, status, health
 - **Spec Building**: `add` (26+ entity types: services, endpoints, databases, components)
-- **Epic & Tasks**: Project planning and task management
+- **Group & Tasks**: Project planning and task management
 - **Code Generation**: Multi-language code generation from specs
 - **Validation**: `check`, `watch`, live validation
 - **Integration**: CI/CD workflow generation, manifest sync
@@ -112,7 +112,7 @@ Arbiter is a TypeScript monorepo built with Bun, consisting of:
 **Key Features**:
 - Preset-based initialization (web-app, mobile-app, api-service, microservice)
 - Template system with Handlebars
-- Structured output formats (JSON, NDJSON, table)
+- Structured output formats (JSON, table)
 - Non-interactive operation
 - Proper exit codes (0=success, 1=error, 2=config error)
 
@@ -379,7 +379,8 @@ Tokens are cached in `~/.arbiter/auth.json`. Use `arbiter auth --logout` to clea
 
 ### 3. Environment Variables
 
-- `ARBITER_URL` / `VITE_API_URL` - API endpoint
+- `ARBITER_API_URL` - CLI API endpoint override
+- `VITE_API_URL` - Client app API endpoint
 - `ARBITER_CONFIG_PATH` - Custom config file path
 - `OAUTH_DEV_*` - OAuth server configuration
 
@@ -509,7 +510,7 @@ Check the `examples/` directory for:
 - `app-spec-example.cue` - Complete application spec
 - `sample.cue` - Basic CUE usage
 - `external-agent.ts` - Agent integration
-- `epic-task-workflow.md` - Project planning workflow
+- `group-task-workflow.md` - Project planning workflow
 
 ## 📊 Technology Stack
 

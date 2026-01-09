@@ -2,6 +2,7 @@ import path from "node:path";
 import { ConstraintViolationError, getGlobalConstraintSystem } from "@/constraints/index.js";
 import { validateCUE } from "@/cue/index.js";
 import type { CLIConfig, CheckOptions, ValidationResult } from "@/types.js";
+import { ProgressBar } from "@/utils/api/progress.js";
 import {
   formatErrorDetails,
   formatFileSize,
@@ -9,8 +10,7 @@ import {
   formatSummary,
   formatValidationTable,
   formatWarningDetails,
-} from "@/utils/formatting.js";
-import { ProgressBar } from "@/utils/progress.js";
+} from "@/utils/util/output/formatting.js";
 import { translateCueErrors } from "@arbiter/shared";
 import chalk from "chalk";
 import fs from "fs-extra";
@@ -28,7 +28,7 @@ const REQUEST_DELAY_MS = 0;
 
 /**
  * Enhanced check command with comprehensive constraint enforcement
- * Implements all "Don'ts" from TODO.md section 13
+ * Implements all "Don'ts" from docs/ARCHITECTURE_REVIEW.md section 13
  */
 export async function checkCommandConstrained(
   patterns: string[],
@@ -62,13 +62,10 @@ export async function checkCommandConstrained(
   }
 }
 
-async function runCheckWithConstraints(
-  patterns: string[],
-  options: ConstrainedCheckOptions,
-  config: CLIConfig,
-  structuredOutput: boolean,
-): Promise<number> {
-  const cwd = config.projectDir || process.cwd();
+/**
+ * Resolve file patterns and find matching files
+ */
+async function resolveFilesToCheck(patterns: string[], cwd: string): Promise<string[] | null> {
   const resolvedPatterns = patterns.length > 0 ? patterns : ["**/*.cue"];
 
   const files = await glob(resolvedPatterns, {
@@ -79,6 +76,93 @@ async function runCheckWithConstraints(
 
   if (files.length === 0) {
     console.error(chalk.red("No files matched the provided patterns."));
+    return null;
+  }
+
+  return files;
+}
+
+/**
+ * Process a single file validation
+ */
+async function processFileValidation(
+  file: string,
+  cwd: string,
+): Promise<{ result: ValidationResult; contentBytes: number }> {
+  const start = Date.now();
+  const content = await fs.readFile(file, "utf-8");
+  const contentBytes = Buffer.byteLength(content);
+
+  const validation = await validateCUE(content);
+  const translated = validation.errors.flatMap((message) => translateCueErrors(message));
+
+  const errors = translated.map((error) => ({
+    line: 0,
+    column: 0,
+    message: error.friendlyMessage,
+    severity: "error" as const,
+    category: error.category,
+  }));
+
+  const status: ValidationResult["status"] =
+    validation.valid && errors.length === 0 ? "valid" : "invalid";
+
+  const result: ValidationResult = {
+    file: path.relative(cwd, file) || path.basename(file),
+    status,
+    errors,
+    warnings: [],
+    processingTime: Date.now() - start,
+  };
+
+  return { result, contentBytes };
+}
+
+/**
+ * Format and output validation results
+ */
+function outputValidationResults(
+  results: ValidationResult[],
+  options: ConstrainedCheckOptions,
+  structuredOutput: boolean,
+  totalErrors: number,
+  totalWarnings: number,
+  fileCount: number,
+  payloadBytes: number,
+): void {
+  if (structuredOutput) {
+    console.log(formatJson(results));
+    return;
+  }
+
+  console.log(formatValidationTable(results));
+
+  if (totalWarnings > 0 && !options.quiet) {
+    console.log("\nWarnings:");
+    console.log(formatWarningDetails(results));
+  }
+
+  if (totalErrors > 0) {
+    console.log("\nErrors:");
+    console.log(formatErrorDetails(results));
+  }
+
+  console.log(
+    formatSummary(results),
+    chalk.dim(`\nProcessed ${fileCount} files, ${formatFileSize(payloadBytes)} total`),
+  );
+}
+
+async function runCheckWithConstraints(
+  patterns: string[],
+  options: ConstrainedCheckOptions,
+  config: CLIConfig,
+  structuredOutput: boolean,
+): Promise<number> {
+  const cwd = config.projectDir || process.cwd();
+
+  const files = await resolveFilesToCheck(patterns, cwd);
+  if (!files) {
     return 1;
   }
 
@@ -90,9 +174,8 @@ async function runCheckWithConstraints(
   const progress = new ProgressBar({ title: "Validating", total: files.length });
 
   for (const file of files) {
-    const start = Date.now();
-    const content = await fs.readFile(file, "utf-8");
-    payloadBytes += Buffer.byteLength(content);
+    const { result, contentBytes } = await processFileValidation(file, cwd);
+    payloadBytes += contentBytes;
 
     // Enforce payload size limit
     if (payloadBytes > MAX_PAYLOAD_BYTES) {
@@ -104,30 +187,8 @@ async function runCheckWithConstraints(
       );
     }
 
-    const validation = await validateCUE(content);
-    const translated = validation.errors.flatMap((message) => translateCueErrors(message));
-
-    const errors = translated.map((error) => ({
-      line: 0,
-      column: 0,
-      message: error.friendlyMessage,
-      severity: "error" as const,
-      category: error.category,
-    }));
-
-    const status: ValidationResult["status"] =
-      validation.valid && errors.length === 0 ? "valid" : "invalid";
-
-    const result: ValidationResult = {
-      file: path.relative(cwd, file) || path.basename(file),
-      status,
-      errors,
-      warnings: [],
-      processingTime: Date.now() - start,
-    };
-
     results.push(result);
-    totalErrors += errors.length;
+    totalErrors += result.errors.length;
     totalWarnings += result.warnings.length;
 
     progress.increment(1, result.file);
@@ -136,25 +197,15 @@ async function runCheckWithConstraints(
 
   progress.complete("Validation complete");
 
-  if (structuredOutput) {
-    console.log(formatJson(results));
-  } else {
-    console.log(formatValidationTable(results));
-    if (totalWarnings > 0 && !options.quiet) {
-      console.log("\nWarnings:");
-      console.log(formatWarningDetails(results));
-    }
-
-    if (totalErrors > 0) {
-      console.log("\nErrors:");
-      console.log(formatErrorDetails(results));
-    }
-
-    console.log(
-      formatSummary(results),
-      chalk.dim(`\nProcessed ${files.length} files, ${formatFileSize(payloadBytes)} total`),
-    );
-  }
+  outputValidationResults(
+    results,
+    options,
+    structuredOutput,
+    totalErrors,
+    totalWarnings,
+    files.length,
+    payloadBytes,
+  );
 
   return totalErrors > 0 ? 1 : 0;
 }

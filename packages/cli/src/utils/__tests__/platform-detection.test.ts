@@ -1,10 +1,14 @@
+/** @packageDocumentation Utility tests */
 import { describe, expect, it } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 
-import { detectPlatform, getPlatformServiceDefaults } from "@/utils/platform-detection.js";
+import {
+  detectPlatform,
+  getPlatformServiceDefaults,
+} from "@/utils/util/core/platform-detection.js";
 
 async function setupTempDir(files: Record<string, string | null>): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), "arbiter-platform-"));

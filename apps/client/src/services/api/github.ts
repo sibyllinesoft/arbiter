@@ -1,7 +1,20 @@
+/**
+ * @module GitHubService
+ * API service for GitHub integration operations.
+ * Handles repository listing, imports, and sync operations.
+ */
 import { ApiClient } from "./client";
 
+/**
+ * Service class for GitHub integration.
+ * Provides methods for accessing user repositories and importing projects.
+ */
 export class GitHubService {
-  constructor(private readonly client: ApiClient) {}
+  private readonly client: ApiClient;
+
+  constructor(client: ApiClient) {
+    this.client = client;
+  }
 
   async getGitHubUserRepos(): Promise<{
     success: boolean;

@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import type { SpecWorkbenchDB } from "../db";
-import type { SpecEngine } from "../specEngine";
-import { logger } from "../utils";
+import { logger } from "../io/utils";
+import type { SpecWorkbenchDB } from "../util/db";
+import type { SpecEngine } from "../util/specEngine";
 
 type Dependencies = Record<string, unknown>;
 
@@ -29,6 +29,59 @@ export class FragmentsController {
     return this.db.listFragments(projectId);
   }
 
+  private async ensureProjectExists(projectId: string): Promise<void> {
+    const existingProject = await this.db.getProject(projectId);
+    if (!existingProject) {
+      await this.db.createProject(projectId, projectId);
+    }
+  }
+
+  private async upsertFragment(
+    projectId: string,
+    fragmentPath: string,
+    content: string,
+    author?: string,
+    message?: string,
+  ) {
+    const existingFragment = await this.db.getFragment(projectId, fragmentPath);
+    if (existingFragment !== null) {
+      return this.db.updateFragment(projectId, fragmentPath, content, author, message);
+    }
+    return this.db.createFragment(
+      randomUUID(),
+      projectId,
+      fragmentPath,
+      content,
+      author,
+      message ?? "Initial fragment import",
+    );
+  }
+
+  private async validateFragments(projectId: string) {
+    if (!this.specEngine) return undefined;
+
+    try {
+      const projectFragments = await this.db.listFragments(projectId);
+      const result = await this.specEngine.validateProject(projectId, projectFragments);
+
+      if (result.success && result.resolved) {
+        await this.persistResolvedSpec(projectId, result.specHash, result.resolved);
+      }
+
+      return {
+        success: result.success,
+        specHash: result.specHash,
+        errors: result.errors,
+        warnings: result.warnings,
+      };
+    } catch (error) {
+      logger.warn("Fragment validation failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
+  }
+
   async create(payload: {
     projectId: string;
     path: string;
@@ -38,64 +91,16 @@ export class FragmentsController {
   }) {
     const projectId = payload.projectId.trim();
     const fragmentPath = normalizePath(payload.path);
-    const content = payload.content;
 
-    // Ensure project row exists
-    const existingProject = await this.db.getProject(projectId);
-    if (!existingProject) {
-      await this.db.createProject(projectId, projectId);
-    }
-
-    const existingFragment = await this.db.getFragment(projectId, fragmentPath);
-    const fragment =
-      existingFragment !== null
-        ? await this.db.updateFragment(
-            projectId,
-            fragmentPath,
-            content,
-            payload.author,
-            payload.message,
-          )
-        : await this.db.createFragment(
-            randomUUID(),
-            projectId,
-            fragmentPath,
-            content,
-            payload.author,
-            payload.message ?? "Initial fragment import",
-          );
-
-    let validation:
-      | {
-          success: boolean;
-          specHash: string;
-          errors: unknown[];
-          warnings: unknown[];
-        }
-      | undefined;
-
-    if (this.specEngine) {
-      try {
-        const projectFragments = await this.db.listFragments(projectId);
-        const validationResult = await this.specEngine.validateProject(projectId, projectFragments);
-        validation = {
-          success: validationResult.success,
-          specHash: validationResult.specHash,
-          errors: validationResult.errors,
-          warnings: validationResult.warnings,
-        };
-
-        if (validationResult.success && validationResult.resolved) {
-          await this.persistResolvedSpec(
-            projectId,
-            validationResult.specHash,
-            validationResult.resolved,
-          );
-        }
-      } catch (error) {
-        logger.warn("Fragment validation failed", error instanceof Error ? error : undefined);
-      }
-    }
+    await this.ensureProjectExists(projectId);
+    const fragment = await this.upsertFragment(
+      projectId,
+      fragmentPath,
+      payload.content,
+      payload.author,
+      payload.message,
+    );
+    const validation = await this.validateFragments(projectId);
 
     return { fragment, validation };
   }

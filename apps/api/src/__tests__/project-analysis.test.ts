@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import type { ContentFetcher } from "../content-fetcher";
-import { analyzeProjectFiles, buildProjectStructure } from "../project-analysis";
+import type { ContentFetcher } from "../git/content-fetcher";
+import { analyzeProjectFiles, buildProjectStructure } from "../git/project-analysis";
 
 const sampleFiles = [
   "Dockerfile",

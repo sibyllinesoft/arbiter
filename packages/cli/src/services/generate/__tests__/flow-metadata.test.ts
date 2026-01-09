@@ -6,7 +6,7 @@ import {
   extractTestId,
   humanizeTestId,
   sanitizeTestId,
-} from "@/services/generate/index.js";
+} from "@/services/generate/io/index.js";
 
 describe("generate helpers - flow metadata", () => {
   it("derives flow metadata including root, actions, success, and API interactions", () => {
@@ -17,7 +17,7 @@ describe("generate helpers - flow metadata", () => {
         "page:home": 'data-testid="home-root"',
         "btn:purchase": 'data-testid="purchase-btn"',
       },
-      flows: [
+      behaviors: [
         {
           id: "home:purchase",
           steps: [

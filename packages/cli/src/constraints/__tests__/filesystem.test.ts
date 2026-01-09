@@ -1,8 +1,9 @@
+/** @packageDocumentation Constraint system tests */
 import { afterEach, describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
-import { ConstraintViolationError } from "@/constraints/core.js";
-import { FileSystemConstraints } from "@/constraints/filesystem.js";
+import { ConstraintViolationError } from "@/constraints/core/core.js";
+import { FileSystemConstraints } from "@/constraints/utils/filesystem.js";
 import fs from "fs-extra";
 
 const mkTmp = async () => fs.mkdtemp(path.join(os.tmpdir(), "fs-constraints-"));
@@ -82,7 +83,7 @@ describe("FileSystemConstraints", () => {
   });
 
   it("wraps safeFileOperation and returns fn result after validation", async () => {
-    const { safeFileOperation } = await import("@/constraints/filesystem.js");
+    const { safeFileOperation } = await import("@/constraints/utils/filesystem.js");
     const dir = await mkTmp();
     const file = path.join(dir, "ok.txt");
     await fs.writeFile(file, "hello");

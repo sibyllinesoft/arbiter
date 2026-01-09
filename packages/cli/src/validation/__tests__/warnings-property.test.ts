@@ -230,7 +230,7 @@ function generateRandomSpecs(count: number): any[] {
 
       tests: Math.random() > 0.6 ? generateRandomTests() : [],
 
-      epics: Math.random() > 0.7 ? generateRandomEpics() : undefined,
+      groups: Math.random() > 0.7 ? generateRandomGroups() : undefined,
 
       security:
         Math.random() > 0.8
@@ -267,43 +267,53 @@ function generateRandomSpecs(count: number): any[] {
   return specs;
 }
 
+function maybeNull<T>(value: T): T | null {
+  return Math.random() > 0.5 ? null : value;
+}
+
+function maybeUndefined<T>(value: T): T | undefined {
+  return Math.random() > 0.5 ? undefined : value;
+}
+
+function maybeNullOrUndefined<T>(value: T): T | null | undefined {
+  return Math.random() > 0.5 ? null : undefined;
+}
+
+function generateNullProduct(): any {
+  return maybeNull({
+    name: maybeNull(randomString()),
+    goals: maybeNull([]),
+  });
+}
+
+function generateNullMetadata(): any {
+  return maybeUndefined({
+    name: maybeUndefined(randomString()),
+    version: maybeNull("1.0.0"),
+  });
+}
+
+function generateNullServices(): any {
+  return maybeNull({
+    test: {
+      type: maybeNull("internal"),
+      workload: "deployment",
+      language: maybeUndefined("typescript"),
+      ports: maybeNull([]),
+    },
+  });
+}
+
 function generateNullSpecs(count: number): any[] {
   const specs: any[] = [];
 
   for (let i = 0; i < count; i++) {
     specs.push({
-      product:
-        Math.random() > 0.5
-          ? null
-          : {
-              name: Math.random() > 0.5 ? null : randomString(),
-              goals: Math.random() > 0.5 ? null : [],
-            },
-      metadata:
-        Math.random() > 0.5
-          ? undefined
-          : {
-              name: Math.random() > 0.5 ? undefined : randomString(),
-              version: Math.random() > 0.5 ? null : "1.0.0",
-            },
-      services:
-        Math.random() > 0.5
-          ? null
-          : {
-              test: {
-                type: Math.random() > 0.5 ? null : "internal",
-                workload: "deployment",
-                language: Math.random() > 0.5 ? undefined : "typescript",
-                ports: Math.random() > 0.5 ? null : [],
-              },
-            },
-      ui:
-        Math.random() > 0.5
-          ? null
-          : {
-              routes: Math.random() > 0.5 ? null : [],
-            },
-      tests: Math.random() > 0.5 ? null : undefined,
+      product: generateNullProduct(),
+      metadata: generateNullMetadata(),
+      services: generateNullServices(),
+      ui: maybeNull({ routes: maybeNull([]) }),
+      tests: maybeNullOrUndefined({}),
     });
   }
 
@@ -496,7 +506,7 @@ function generateIncompleteSpecs(count: number): any[] {
           },
         ],
       },
-      // Missing tests, epics, security, performance, observability, environments
+      // Missing tests, groups, security, performance, observability, environments
     } as any);
   }
 
@@ -506,7 +516,7 @@ function generateIncompleteSpecs(count: number): any[] {
 function generateLargeSpec(serviceCount: number): any {
   const services: Record<string, any> = {};
   const routes: any[] = [];
-  const epics: any[] = [];
+  const groups: any[] = [];
 
   // Generate many services
   for (let i = 0; i < serviceCount; i++) {
@@ -532,10 +542,10 @@ function generateLargeSpec(serviceCount: number): any {
     });
 
     if (i % 5 === 0) {
-      epics.push({
-        id: `epic-${i}`,
-        name: `Epic ${i}`,
-        description: `Description for epic ${i}`,
+      groups.push({
+        id: `group-${i}`,
+        name: `Group ${i}`,
+        description: `Description for group ${i}`,
         tasks: [
           {
             id: `task-${i}-1`,
@@ -564,7 +574,7 @@ function generateLargeSpec(serviceCount: number): any {
       { name: "Integration", type: "integration", cases: [{ name: "test", assertion: "works" }] },
       { name: "E2E", type: "e2e", cases: [{ name: "test", assertion: "works" }] },
     ],
-    epics,
+    groups,
     security: {
       authentication: { type: "oauth2" },
       authorization: { rbac: true },
@@ -638,14 +648,14 @@ function generateRandomTests(): any[] {
   return tests;
 }
 
-function generateRandomEpics(): any[] {
-  const epicCount = Math.floor(Math.random() * 3);
-  const epics: any[] = [];
+function generateRandomGroups(): any[] {
+  const groupCount = Math.floor(Math.random() * 3);
+  const groups: any[] = [];
 
-  for (let i = 0; i < epicCount; i++) {
-    epics.push({
-      id: `epic-${i}`,
-      name: `Epic ${i}`,
+  for (let i = 0; i < groupCount; i++) {
+    groups.push({
+      id: `group-${i}`,
+      name: `Group ${i}`,
       description: Math.random() > 0.5 ? `Description ${i}` : undefined,
       tasks:
         Math.random() > 0.5
@@ -660,7 +670,7 @@ function generateRandomEpics(): any[] {
     });
   }
 
-  return epics;
+  return groups;
 }
 
 function randomString(): string {

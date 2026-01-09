@@ -2,6 +2,7 @@
  * Project browser with elegant card-based layout - Enhanced with Graphite Design System
  */
 
+import { Button, Card, Input, StatusBadge, cn } from "@design-system";
 import { clsx } from "clsx";
 import {
   Activity,
@@ -27,8 +28,30 @@ import {
   Users,
 } from "lucide-react";
 import React, { useState, useCallback } from "react";
-import { Button, Card, Input, StatusBadge, cn } from "../../design-system";
 import type { Project } from "../../types/api";
+
+/** Status variant mapping for StatusBadge component */
+const STATUS_VARIANTS: Record<string, "active" | "warning" | "inactive" | "error" | "neutral"> = {
+  active: "active",
+  draft: "warning",
+  archived: "inactive",
+  error: "error",
+};
+
+/** Validation status icon configurations */
+const VALIDATION_ICONS: Record<string, { Icon: typeof CheckCircle2; className: string }> = {
+  valid: { Icon: CheckCircle2, className: "w-4 h-4 text-emerald-500" },
+  warnings: { Icon: AlertCircle, className: "w-4 h-4 text-amber-500" },
+  errors: { Icon: AlertCircle, className: "w-4 h-4 text-red-500" },
+  pending: { Icon: Activity, className: "w-4 h-4 text-blue-500 animate-pulse" },
+};
+
+/** Time threshold constants for relative date formatting (in hours) */
+const DATE_THRESHOLDS = {
+  JUST_NOW: 1,
+  HOURS: 24,
+  DAYS: 168, // 7 days
+} as const;
 
 export interface ProjectBrowserProps {
   className?: string;
@@ -78,34 +101,13 @@ export function ProjectBrowser({
     [onSelectProject],
   );
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case "active":
-        return "active";
-      case "draft":
-        return "warning";
-      case "archived":
-        return "inactive";
-      case "error":
-        return "error";
-      default:
-        return "neutral";
-    }
-  };
+  const getStatusVariant = (status: string) => STATUS_VARIANTS[status] ?? "neutral";
 
   const getValidationIcon = (status: string) => {
-    switch (status) {
-      case "valid":
-        return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
-      case "warnings":
-        return <AlertCircle className="w-4 h-4 text-amber-500" />;
-      case "errors":
-        return <AlertCircle className="w-4 h-4 text-red-500" />;
-      case "pending":
-        return <Activity className="w-4 h-4 text-blue-500 animate-pulse" />;
-      default:
-        return null;
-    }
+    const config = VALIDATION_ICONS[status];
+    if (!config) return null;
+    const { Icon, className } = config;
+    return <Icon className={className} />;
   };
 
   const formatDate = (dateString: string) => {
@@ -113,9 +115,9 @@ export function ProjectBrowser({
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
-    if (diffInHours < 1) return "Just now";
-    if (diffInHours < 24) return `${Math.floor(diffInHours)}h ago`;
-    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
+    if (diffInHours < DATE_THRESHOLDS.JUST_NOW) return "Just now";
+    if (diffInHours < DATE_THRESHOLDS.HOURS) return `${Math.floor(diffInHours)}h ago`;
+    if (diffInHours < DATE_THRESHOLDS.DAYS) return `${Math.floor(diffInHours / 24)}d ago`;
     return date.toLocaleDateString([], { month: "short", day: "numeric" });
   };
 
@@ -368,4 +370,3 @@ export function ProjectBrowser({
 }
 
 export default ProjectBrowser;
-// @ts-nocheck

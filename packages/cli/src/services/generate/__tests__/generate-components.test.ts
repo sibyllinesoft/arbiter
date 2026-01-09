@@ -1,8 +1,5 @@
-import { __generateTesting } from "@/services/generate/index.js";
+import { __generateTesting } from "@/services/generate/io/index.js";
 import { describe, expect, it } from "vitest";
-
-const pkgManagerBun = { name: "bun", run: (cmd: string) => `bun ${cmd}` } as any;
-const pkgManagerNpm = { name: "npm", run: (cmd: string) => `npm run ${cmd}` } as any;
 
 describe("build route components and docker artifacts", () => {
   it("renders non-interactive route with sanitized test id", () => {
@@ -49,47 +46,40 @@ describe("build route components and docker artifacts", () => {
 
   it("builds default service docker artifacts for supported languages and returns null for unsupported", () => {
     expect(
-      __generateTesting.buildDefaultServiceDockerArtifacts(
-        "typescript",
-        { slug: "svc" } as any,
-        {},
-        pkgManagerBun,
-      ),
+      __generateTesting.buildDefaultServiceDockerArtifacts({
+        language: "typescript",
+        ports: [3000],
+        packageManager: "bun",
+      }),
     ).not.toBeNull();
     expect(
-      __generateTesting.buildDefaultServiceDockerArtifacts(
-        "python",
-        { slug: "svc" } as any,
-        {},
-        pkgManagerNpm,
-      ),
+      __generateTesting.buildDefaultServiceDockerArtifacts({
+        language: "python",
+        ports: [8000],
+        packageManager: "pip",
+      }),
     ).not.toBeNull();
     expect(
-      __generateTesting.buildDefaultServiceDockerArtifacts(
-        "unknown",
-        { slug: "svc" } as any,
-        {},
-        pkgManagerNpm,
-      ),
+      __generateTesting.buildDefaultServiceDockerArtifacts({
+        language: "unknown",
+        ports: [],
+      }),
     ).toBeNull();
   });
 
   it("builds default client docker artifacts when language supported", () => {
     expect(
-      __generateTesting.buildDefaultClientDockerArtifacts(
-        "typescript",
-        { slug: "web" } as any,
-        {} as any,
-        pkgManagerNpm,
-      ),
+      __generateTesting.buildDefaultClientDockerArtifacts({
+        language: "typescript",
+        ports: [5173],
+        packageManager: "npm",
+      }),
     ).not.toBeNull();
     expect(
-      __generateTesting.buildDefaultClientDockerArtifacts(
-        "go",
-        { slug: "web" } as any,
-        {} as any,
-        pkgManagerNpm,
-      ),
+      __generateTesting.buildDefaultClientDockerArtifacts({
+        language: "go",
+        ports: [],
+      }),
     ).toBeNull();
   });
 });

@@ -34,37 +34,38 @@ export class TerraformPlugin implements ImporterPlugin {
     );
   }
 
+  /**
+   * Determine which parser to use based on filename
+   */
+  private selectParser(
+    basename: string,
+  ): ((content: string, filePath: string, projectRoot: string) => Evidence[]) | null {
+    if (basename === ".terraform.lock.hcl") {
+      return this.parseTerraformLock.bind(this);
+    }
+    if (basename.endsWith(".tf")) {
+      return this.parseTerraformFile.bind(this);
+    }
+    return null;
+  }
+
   async parse(filePath: string, fileContent?: string, context?: ParseContext): Promise<Evidence[]> {
     if (!fileContent) {
       throw new Error("File content required for Terraform parsing");
     }
 
-    const evidence: Evidence[] = [];
     const basename = path.basename(filePath).toLowerCase();
-
-    try {
-      if (basename === ".terraform.lock.hcl") {
-        // Parse lockfile for providers and modules
-        const lockEvidence = this.parseTerraformLock(
-          fileContent,
-          filePath,
-          context?.projectRoot || "/",
-        );
-        evidence.push(...lockEvidence);
-      } else if (basename.endsWith(".tf")) {
-        // Parse .tf files for resources, providers, etc.
-        const tfEvidence = this.parseTerraformFile(
-          fileContent,
-          filePath,
-          context?.projectRoot || "/",
-        );
-        evidence.push(...tfEvidence);
-      }
-    } catch (error) {
-      console.warn(`Failed to parse Terraform file ${filePath}:`, error);
+    const parser = this.selectParser(basename);
+    if (!parser) {
+      return [];
     }
 
-    return evidence;
+    try {
+      return parser(fileContent, filePath, context?.projectRoot || "/");
+    } catch (error) {
+      console.warn(`Failed to parse Terraform file ${filePath}:`, error);
+      return [];
+    }
   }
 
   private parseTerraformLock(content: string, filePath: string, projectRoot: string): Evidence[] {

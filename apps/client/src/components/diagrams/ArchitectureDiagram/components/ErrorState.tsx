@@ -7,8 +7,30 @@ interface ErrorStateProps {
   onRefresh?: () => void;
 }
 
+/** Error icon SVG path */
+const ERROR_ICON_PATH = "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z";
+
+/** Error state content configuration */
+const ERROR_CONFIG = {
+  notFound: {
+    subtitle: "Project not found or has been deleted",
+    subtitleClass: "text-amber-600 dark:text-amber-300",
+    title: "Project Deleted",
+  },
+  generic: {
+    subtitle: "Error loading project architecture",
+    subtitleClass: "text-red-600 dark:text-red-300",
+    title: "Failed to load architecture data",
+  },
+} as const;
+
+/** Check if error indicates a not-found state */
+const isNotFoundError = (error: string): boolean =>
+  error.includes("not found") || error.includes("deleted");
+
 export const ErrorState: React.FC<ErrorStateProps> = ({ error, className = "", onRefresh }) => {
-  const isNotFound = error.includes("not found") || error.includes("deleted");
+  const isNotFound = isNotFoundError(error);
+  const config = isNotFound ? ERROR_CONFIG.notFound : ERROR_CONFIG.generic;
 
   return (
     <div
@@ -19,16 +41,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, className = "", o
     >
       <div className="border-b border-gray-200 bg-gray-50 p-4 dark:border-graphite-700 dark:bg-graphite-900">
         <h3 className="text-lg font-medium text-gray-900 dark:text-graphite-50">Sources</h3>
-        <p
-          className={clsx(
-            "text-sm",
-            isNotFound ? "text-amber-600 dark:text-amber-300" : "text-red-600 dark:text-red-300",
-          )}
-        >
-          {isNotFound
-            ? "Project not found or has been deleted"
-            : "Error loading project architecture"}
-        </p>
+        <p className={clsx("text-sm", config.subtitleClass)}>{config.subtitle}</p>
       </div>
       <div className="flex h-64 items-center justify-center">
         <div className="text-center">
@@ -43,15 +56,13 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, className = "", o
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={1}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                d={ERROR_ICON_PATH}
               />
             </svg>
           </div>
-          <p className="font-medium text-gray-900 dark:text-graphite-50">
-            {isNotFound ? "Project Deleted" : "Failed to load architecture data"}
-          </p>
+          <p className="font-medium text-gray-900 dark:text-graphite-50">{config.title}</p>
           <p className="mt-2 text-sm text-gray-600 dark:text-graphite-300">{error}</p>
-          {isNotFound && (
+          {isNotFound && onRefresh && (
             <button
               onClick={onRefresh}
               className="mt-4 rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"

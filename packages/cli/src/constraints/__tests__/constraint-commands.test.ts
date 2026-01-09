@@ -1,9 +1,10 @@
+/** @packageDocumentation Constraint system tests */
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
 import { addConstraintCommands } from "@/constraints/cli-integration.js";
+import * as monitoring from "@/constraints/core/monitoring.js";
 import * as constraintIndex from "@/constraints/index.js";
-import * as monitoring from "@/constraints/monitoring.js";
 
 describe("constraint CLI commands", () => {
   function stubSystem() {

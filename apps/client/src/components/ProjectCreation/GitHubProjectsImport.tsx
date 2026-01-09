@@ -1,21 +1,25 @@
-// @ts-nocheck
 /**
- * GitHubProjectsImport - Component for importing projects from GitHub repositories
+ * GitHubProjectsImport - Component for importing projects from GitHub repositories.
+ * Fetches user repos and organization repos, allowing selection and bulk import.
  */
 
-import type { GitHubOrganization, GitHubReposByOwner, GitHubRepository } from "@/types/github";
 import { useGitHubState } from "@contexts/AppContext";
 import { Button, cn } from "@design-system";
 import { useProjects } from "@hooks/api-hooks";
-import { apiService } from "@services/api";
 import { GitBranch as GitIcon, RefreshCw, Upload } from "lucide-react";
 import React from "react";
 import { toast } from "react-toastify";
+import { importSelectedRepos, loadGitHubProjects } from "./github-import-handlers";
 
+/** Props for the GitHubProjectsImport component */
 interface GitHubProjectsImportProps {
   onClose: () => void;
 }
 
+/**
+ * Component for importing multiple projects from GitHub.
+ * Displays user repos and org repos grouped by owner with selection.
+ */
 export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
   const { refetch: refetchProjects } = useProjects();
   const [isCreatingProject, setIsCreatingProject] = React.useState(false);
@@ -33,47 +37,10 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
   const handleLoadGitHubProjects = async () => {
     setLoadingGitHub(true);
     try {
-      const [reposResult, orgsResult] = await Promise.all([
-        apiService.getGitHubUserRepos(),
-        apiService.getGitHubUserOrgs(),
-      ]);
-
-      const aggregatedRepos: GitHubRepository[] = [];
-      const groupedRepos: GitHubReposByOwner = {};
-
-      if (reposResult.success && reposResult.repositories) {
-        aggregatedRepos.push(...reposResult.repositories);
-        reposResult.repositories.forEach((repo) => {
-          const owner = repo.owner.login;
-          if (!groupedRepos[owner]) groupedRepos[owner] = [];
-          groupedRepos[owner].push(repo);
-        });
-      }
-
-      if (orgsResult.success) {
-        const organizations: GitHubOrganization[] = orgsResult.organizations ?? [];
-        setGitHubOrgs(organizations);
-        for (const org of organizations) {
-          try {
-            const orgReposResult = await apiService.getGitHubOrgRepos(org.login);
-            if (orgReposResult.success && orgReposResult.repositories) {
-              // Add org repos to the collections
-              aggregatedRepos.push(...orgReposResult.repositories);
-              groupedRepos[org.login] = orgReposResult.repositories;
-            }
-          } catch (error) {
-            console.warn(`Failed to load repos for org ${org.login}:`, error);
-          }
-        }
-      }
-
-      // Set all repos and grouped repos at once
-      setGitHubRepos(aggregatedRepos);
-      setReposByOwner(groupedRepos);
-
-      if (!reposResult.success) {
-        toast.error(reposResult.error || "Failed to load GitHub repositories", { autoClose: 3000 });
-      }
+      const result = await loadGitHubProjects();
+      setGitHubRepos(result.repos);
+      setReposByOwner(result.reposByOwner);
+      setGitHubOrgs(result.organizations);
     } catch (error) {
       console.error("Failed to load GitHub projects:", error);
       toast.error("Failed to load GitHub projects", { autoClose: 3000 });
@@ -87,48 +54,14 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
   };
 
   const handleImportSelectedRepos = async () => {
-    if (selectedRepos.size === 0) {
-      toast.error("Please select at least one repository to import", { autoClose: 2000 });
-      return;
-    }
-
     setIsCreatingProject(true);
     try {
-      for (const repoId of selectedRepos) {
-        // Search through all repos (both user repos and org repos)
-        const repo = gitHubRepos.find((r) => r.id === repoId);
-        if (repo) {
-          try {
-            const scanResult = await apiService.scanGitUrl(repo.clone_url);
-            if (scanResult.success) {
-              const projectName = repo.name;
-              await apiService.createProject(projectName, scanResult.tempPath);
-              toast.success(`Project "${projectName}" imported successfully`, { autoClose: 2000 });
-            } else {
-              toast.error(
-                `Failed to scan repository "${repo.name}": ${scanResult.error || "Unknown error"}`,
-                { autoClose: 3000 },
-              );
-            }
-          } catch (error: any) {
-            const errorMessage =
-              error?.details?.error ||
-              error?.details?.detail ||
-              error?.details?.message ||
-              error?.message ||
-              "Unknown error";
-            toast.error(`Failed to scan repository "${repo.name}": ${errorMessage}`, {
-              autoClose: 3000,
-            });
-            console.error(`Scan error for ${repo.name}:`, error);
-          }
-        } else {
-          console.warn(`Repository with ID ${repoId} not found in gitHubRepos`);
-        }
+      const success = await importSelectedRepos(selectedRepos, gitHubRepos);
+      if (success) {
+        refetchProjects();
+        onClose();
+        setSelectedRepos(new Set());
       }
-      refetchProjects();
-      onClose();
-      setSelectedRepos(new Set());
     } catch (error) {
       toast.error("Failed to import repositories", { autoClose: 3000 });
       console.error("Import error:", error);
@@ -287,4 +220,3 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
     </div>
   );
 }
-// @ts-nocheck

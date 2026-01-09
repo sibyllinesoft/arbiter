@@ -1,6 +1,15 @@
+/**
+ * Dockerfile parser.
+ * Extracts base image and exposed ports from Dockerfile configurations.
+ */
 import path from "node:path";
 import type { FileParser } from "./base";
 
+/**
+ * Parser for Dockerfile files.
+ * Extracts metadata including base image from FROM instructions
+ * and exposed ports from EXPOSE instructions.
+ */
 export const dockerfileParser: FileParser = {
   name: "dockerfile",
   priority: 10,

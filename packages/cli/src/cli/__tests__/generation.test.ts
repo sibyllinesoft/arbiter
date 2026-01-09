@@ -1,15 +1,11 @@
+/** @packageDocumentation CLI command tests */
 import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
-import { requireCommandConfig } from "@/cli/context.js";
-import { createGenerationCommands } from "@/cli/generation.js";
-import * as configSvc from "@/config.js";
-import * as docsSvc from "@/services/docs/index.js";
-import * as examplesSvc from "@/services/examples/index.js";
-import * as executeSvc from "@/services/execute/index.js";
+import { createGenerationCommands } from "@/cli/commands/generation.js";
+import * as configSvc from "@/io/config/config.js";
 import * as explainSvc from "@/services/explain/index.js";
-import * as generateSvc from "@/services/generate/index.js";
-import * as renameSvc from "@/services/rename/index.js";
+import * as generateSvc from "@/services/generate/io/index.js";
 
 // Minimal config to satisfy command lookups
 const baseConfig: any = {
@@ -58,67 +54,19 @@ describe("generation CLI", () => {
     exitSpy.mockRestore();
   });
 
-  it("routes docs subcommands", async () => {
-    const docsSpy = spyOn(docsSvc, "docsCommand").mockResolvedValue(0 as any);
-    const docsGenSpy = spyOn(docsSvc, "docsGenerateCommand").mockResolvedValue(0 as any);
-    const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as any);
-
-    const program = buildProgram();
-    await program.parseAsync(["docs", "schema", "--format", "html"], { from: "user" });
-    await program.parseAsync(["docs", "cli", "--formats", "json"], { from: "user" });
-
-    expect(docsSpy).toHaveBeenCalledWith("schema", expect.anything(), baseConfig);
-    expect(docsGenSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ formats: "json" }),
-      baseConfig,
-    );
-
-    docsSpy.mockRestore();
-    docsGenSpy.mockRestore();
-    exitSpy.mockRestore();
-  });
-
-  it("runs examples, execute, explain, and rename", async () => {
-    const examplesSpy = spyOn(examplesSvc, "examplesCommand").mockResolvedValue(0 as any);
-    const executeSpy = spyOn(executeSvc, "executeCommand").mockResolvedValue(0 as any);
+  it("runs explain command", async () => {
     const explainSpy = spyOn(explainSvc, "explainCommand").mockResolvedValue(0 as any);
-    const renameSpy = spyOn(renameSvc, "renameCommand").mockResolvedValue(0 as any);
     const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as any);
 
     const program = buildProgram();
-    await program.parseAsync(["examples", "profile", "--language", "typescript"], { from: "user" });
-    await program.parseAsync(["execute", "epic-1", "--dry-run"], { from: "user" });
     await program.parseAsync(["explain", "--format", "text"], { from: "user" });
-    await program.parseAsync(["rename", "--pattern", "*.ts", "--dry-run"], { from: "user" });
 
-    expect(examplesSpy).toHaveBeenCalled();
-    expect(executeSpy).toHaveBeenCalledWith({ epic: "epic-1" });
     expect(explainSpy).toHaveBeenCalledWith(
       expect.objectContaining({ format: "text" }),
       baseConfig,
     );
-    expect(renameSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ pattern: "*.ts", dryRun: true }),
-      baseConfig,
-    );
 
-    examplesSpy.mockRestore();
-    executeSpy.mockRestore();
     explainSpy.mockRestore();
-    renameSpy.mockRestore();
-    exitSpy.mockRestore();
-  });
-
-  it("shows naming help without requiring config", async () => {
-    const helpSpy = spyOn(renameSvc, "showNamingHelp").mockImplementation(() => {});
-    const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as any);
-
-    const program = buildProgram();
-    await program.parseAsync(["rename", "--help-naming"], { from: "user" });
-
-    expect(helpSpy).toHaveBeenCalled();
-
-    helpSpy.mockRestore();
     exitSpy.mockRestore();
   });
 });

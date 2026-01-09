@@ -15,10 +15,10 @@ Need the internal architecture, template lifecycle, or DI notes?
 
 ```bash
 # Via npm
-npm install -g @arbiter/cli
+npm install -g @sibyllinesoft/arbiter-cli
 
 # Via bun
-bun install -g @arbiter/cli
+bun install -g @sibyllinesoft/arbiter-cli
 
 # Download standalone binary
 curl -L https://github.com/arbiter-framework/arbiter/releases/latest/download/arbiter-cli > arbiter
@@ -33,9 +33,7 @@ The CLI now runs CUE through the bundled `cuelang-js` WASM runtime—no external
 ## Table of Contents
 
 - [arbiter init](#arbiter-init-display-name)
-- [arbiter watch](#arbiter-watch-path)
 - [arbiter surface](#arbiter-surface-language)
-- [arbiter spec-import](#arbiter-spec-import-cue-file)
 - [arbiter check](#arbiter-check-patterns)
 - [arbiter list](#arbiter-list-type)
 - [arbiter status](#arbiter-status)
@@ -43,16 +41,13 @@ The CLI now runs CUE through the bundled `cuelang-js` WASM runtime—no external
 - [arbiter health](#arbiter-health)
 - [arbiter add](#arbiter-add)
 - [arbiter remove](#arbiter-remove)
-- [arbiter version](#arbiter-version)
 - [arbiter generate](#arbiter-generate-spec-name)
 - [arbiter docs](#arbiter-docs)
 - [arbiter examples](#arbiter-examples-type)
-- [arbiter execute](#arbiter-execute-epic)
+- [arbiter execute](#arbiter-execute-group)
 - [arbiter explain](#arbiter-explain)
 - [arbiter rename](#arbiter-rename)
 - [arbiter sync](#arbiter-sync)
-- [arbiter integrate](#arbiter-integrate)
-- [arbiter github-templates](#arbiter-github-templates)
 - [arbiter import](#arbiter-import)
 - [arbiter tests](#arbiter-tests)
 - [arbiter auth](#arbiter-auth)
@@ -64,8 +59,7 @@ All commands support these global options:
 - `-V, --version` - Display version number
 - `-c, --config <path>` - Path to configuration file
 - `--no-color` - Disable colored output
-- `--api-url <url>` - API server URL (default: http://localhost:5050)
-- `--arbiter-url <url>` - Arbiter server URL (alias for --api-url)
+- `--api-url <url>` - Arbiter API server URL (overrides config)
 - `--timeout <ms>` - Request timeout in milliseconds
 - `--local` - Operate in offline mode using local CUE files only
 - `-v, --verbose` - Enable verbose logging globally
@@ -77,69 +71,35 @@ All commands support these global options:
 
 #### `arbiter init [display-name]`
 
-Initialize a new CUE project with templates in the current directory.
+Initialize a new project from a hosted preset (API connection required).
 
 **Usage:**
 
 ```bash
-# Initialize with directory name
-arbiter init
+# Initialize with a preset and custom display name
+arbiter init "My Application" --preset web-app
 
-# Initialize with custom display name
-arbiter init "My Application"
-
-# Use specific template
-arbiter init "API Service" --template api
-
-# Force overwrite existing files
-arbiter init --force
+# See available presets
+arbiter init --list-presets
 ```
 
 **Options:**
 
-- `-t, --template <name>` - Project template (basic, kubernetes, api)
-- `-f, --force` - Overwrite existing files
-- `--list-templates` - List available templates
+- `--preset <id>` - Project preset (web-app, mobile-app, api-service, microservice)
+- `--list-presets` - List available presets
 
 **Examples:**
 
 ```bash
-# Quick start
-mkdir my-project && cd my-project
-arbiter init
+# Web application preset
+arbiter init my-project --preset web-app
 
 # API-focused project
-arbiter init "User API" --template api
+arbiter init "User API" --preset api-service
 
-# See available templates
-arbiter init --list-templates
+# Show available presets
+arbiter init --list-presets
 ```
-
-#### `arbiter watch [path]`
-
-Cross-platform file watcher with live validation and planning.
-
-**Usage:**
-
-```bash
-# Watch current directory
-arbiter watch
-
-# Watch specific directory
-arbiter watch ./src
-
-# Watch with custom patterns
-arbiter watch --pattern "**/*.cue"
-
-# Auto-generate on changes
-arbiter watch --auto-generate
-```
-
-**Options:**
-
-- `--pattern <glob>` - File patterns to watch
-- `--auto-generate` - Automatically run generate on changes
-- `--debounce <ms>` - Debounce delay for file changes
 
 #### `arbiter surface <language>`
 
@@ -160,33 +120,6 @@ arbiter surface go --docs
 ```
 
 **Supported Languages:** typescript, javascript, python, go, rust, java
-
-#### `arbiter spec-import [cue-file]`
-
-Import a local CUE specification fragment into the Arbiter service.
-
-**Usage:**
-
-```bash
-# Import the default .arbiter/assembly.cue for the configured project
-arbiter spec-import
-
-# Import a custom file and store it at an explicit fragment path
-arbiter spec-import specs/catalog.cue --remote-path assembly.cue
-
-# Import into a specific project without running local validation
-arbiter spec-import --project proj_123 --skip-validate
-```
-
-**Options:**
-
-- `--project <id>` – Target project id (defaults to the configured projectId or `cli-project`)
-- `--remote-path <path>` – Logical fragment path stored in Arbiter (defaults to the file's relative path)
-- `--skip-validate` – Skip local `cue` validation before upload
-- `--author <name>` – Revision author metadata
-- `--message <message>` – Revision message metadata
-
----
 
 ### Validation & Analysis
 
@@ -326,8 +259,8 @@ arbiter add flow cleanup-users
 - `arbiter add package <name>` - Add reusable package/library
 - `arbiter add component <name>` - Add UI component
 - `arbiter add module <name>` - Add standalone module
-- `arbiter add epic` - Manage epics using sharded CUE storage
-- `arbiter add task` - Manage tasks within epics
+- `arbiter add group` - Manage groups using sharded CUE storage
+- `arbiter add task` - Manage tasks within groups
 
 #### `arbiter remove`
 
@@ -347,25 +280,6 @@ arbiter remove database postgres
 ```
 
 **Subcommands:** Mirrors the `add` subcommands for removing components.
-
-#### `arbiter version`
-
-Semver-aware version planning and release management.
-
-**Usage:**
-
-```bash
-# Show current version info
-arbiter version
-
-# Plan next version
-arbiter version plan --type minor
-
-# Create version bump
-arbiter version bump --to 2.1.0
-```
-
----
 
 ### Code Generation
 
@@ -458,21 +372,21 @@ arbiter examples basic-web-app
 arbiter examples microservice --language typescript
 ```
 
-#### `arbiter execute <epic>`
+#### `arbiter execute <group>`
 
-Execute Arbiter epics for deterministic, agent-first code generation.
+Execute Arbiter groups for deterministic, agent-first code generation.
 
 **Usage:**
 
 ```bash
-# Execute entire epic
-arbiter execute user-auth-epic
+# Execute entire group
+arbiter execute user-auth-group
 
 # Execute with specific profile
-arbiter execute user-auth-epic --profile production
+arbiter execute user-auth-group --profile production
 
 # Execute single task
-arbiter execute user-auth-epic --task auth-001
+arbiter execute user-auth-group --task auth-001
 ```
 
 #### `arbiter explain`
@@ -532,42 +446,6 @@ arbiter sync --types package.json,docker-compose.yml
 
 # Preview sync changes
 arbiter sync --dry-run
-```
-
-#### `arbiter integrate`
-
-Generate CI/CD workflows with contract coverage and quality gates.
-
-**Usage:**
-
-```bash
-# Generate GitHub Actions workflows
-arbiter integrate --platform github
-
-# Generate GitLab CI/CD
-arbiter integrate --platform gitlab
-
-# Generate Jenkins pipeline
-arbiter integrate --platform jenkins
-```
-
-**Supported Platforms:** github, gitlab, jenkins, circleci, azure-devops
-
-#### `arbiter github-templates`
-
-Manage GitHub issue templates configuration.
-
-**Usage:**
-
-```bash
-# Generate GitHub templates
-arbiter github-templates generate
-
-# Update existing templates
-arbiter github-templates update
-
-# List available templates
-arbiter github-templates list
 ```
 
 ---
@@ -660,7 +538,6 @@ The Arbiter CLI is specifically designed for AI agents and automation:
 # All commands support --format json
 arbiter check --format json
 arbiter health --format json
-arbiter version --format json
 ```
 
 ### Exit Codes

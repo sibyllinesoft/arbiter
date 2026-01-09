@@ -83,9 +83,10 @@ export class GoPlugin implements ImporterPlugin {
       const goLine = lines.find((line) => line.startsWith("go "));
       const requireLines = lines.filter((line) => line.startsWith("\t") && line.includes(" "));
 
-      const moduleName = moduleLine
+      const moduleNameRaw = moduleLine
         ? moduleLine.replace("module ", "").trim()
         : path.basename(path.dirname(filePath));
+      const moduleName = this.extractModuleName(moduleNameRaw);
       const goVersion = goLine ? goLine.replace("go ", "").trim() : "1.0";
 
       const deps = requireLines
@@ -150,25 +151,27 @@ export class GoPlugin implements ImporterPlugin {
     let inferredType = this.applyHeuristics(classification.type, filePatterns, hasDocker);
     const artifacts: InferredArtifact[] = [];
 
+    const metadata: Record<string, unknown> = {
+      sourceFile: goData.filePath,
+      root: relativeDir === "." ? "" : relativeDir,
+      manifest: "go.mod",
+      language: "go",
+      goVersion: goData.goVersion,
+      classification,
+    };
+
     const artifact = {
       id: `go-${inferredType}-${name}`,
       type: inferredType as any,
       name,
       description: goData.description,
       tags: Array.from(new Set<string>(["go", inferredType, ...classification.tags])),
-      metadata: {
-        sourceFile: goData.filePath,
-        root: relativeDir === "." ? "" : relativeDir,
-        manifest: "go.mod",
-        language: "go",
-        goVersion: goData.goVersion,
-        classification,
-      },
+      metadata,
     };
 
     if (dockerBuild) {
-      artifact.metadata.buildContext = this.toRelative(projectRoot, dockerBuild.buildContext);
-      artifact.metadata.dockerfilePath = this.toRelative(projectRoot, dockerBuild.dockerfile);
+      metadata.buildContext = this.toRelative(projectRoot, dockerBuild.buildContext);
+      metadata.dockerfilePath = this.toRelative(projectRoot, dockerBuild.dockerfile);
     }
 
     artifacts.push({
@@ -184,6 +187,16 @@ export class GoPlugin implements ImporterPlugin {
     });
 
     return artifacts;
+  }
+
+  /**
+   * Normalizes a Go module path to a friendly service name by
+   * stripping host/org prefixes (e.g., github.com/org/app -> app).
+   */
+  private extractModuleName(modulePath: string): string {
+    if (!modulePath) return "go-service";
+    const parts = modulePath.split("/");
+    return parts[parts.length - 1] || modulePath;
   }
 
   private hasCmdEntrypoint(filePatterns: string[]): boolean {

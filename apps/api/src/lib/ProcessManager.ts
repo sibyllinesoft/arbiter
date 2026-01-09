@@ -1,6 +1,6 @@
-import type { SpawnOptions } from "bun";
+type BunSpawnOptions = NonNullable<Parameters<typeof Bun.spawn>[1]>;
 
-export interface SafeCommandOptions extends SpawnOptions {
+export interface SafeCommandOptions extends BunSpawnOptions {
   timeoutMs?: number;
 }
 
@@ -20,8 +20,8 @@ export async function runSafeCommand(
     });
 
     await proc.exited;
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
+    const stdout = proc.stdout ? await new Response(proc.stdout as any).text() : "";
+    const stderr = proc.stderr ? await new Response(proc.stderr as any).text() : "";
 
     return {
       stdout: stdout.trim(),
