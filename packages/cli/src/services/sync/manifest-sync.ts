@@ -270,7 +270,7 @@ export async function applyPackageChanges(
 /**
  * Sync package.json with Arbiter configuration
  */
-function createSyncErrorResult(): SyncResult {
+function createEmptySyncResult(): SyncResult {
   return {
     modified: false,
     conflicts: [],
@@ -323,7 +323,7 @@ export async function syncPackageJson(
       chalk.red(`  ❌ Failed to sync ${filePath}:`),
       error instanceof Error ? error.message : String(error),
     );
-    return createSyncErrorResult();
+    return createEmptySyncResult();
   }
 }
 

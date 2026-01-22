@@ -14,6 +14,7 @@ import {
 } from "../../db/client";
 import { logger } from "../../io/utils";
 import { ArtifactRepository } from "../../repositories/ArtifactRepository";
+import { EntityRepository } from "../../repositories/EntityRepository";
 import { EventRepository } from "../../repositories/EventRepository";
 import { ProjectRepository } from "../../repositories/ProjectRepository";
 import type { DbProject, WithMetadata } from "../../repositories/types";
@@ -74,6 +75,7 @@ export class SpecWorkbenchDB {
   private readonly projectsRepo: ProjectRepository;
   private readonly artifactsRepo: ArtifactRepository;
   private readonly eventsRepo: EventRepository;
+  private readonly entitiesRepo: EntityRepository;
 
   private constructor(
     private readonly config: ServerConfig,
@@ -86,6 +88,12 @@ export class SpecWorkbenchDB {
     this.projectsRepo = new ProjectRepository(this.drizzle);
     this.artifactsRepo = new ArtifactRepository(this.drizzle);
     this.eventsRepo = new EventRepository(this.drizzle, (fn) => this.withTransaction(fn));
+    this.entitiesRepo = new EntityRepository(this.drizzle);
+  }
+
+  /** Get the entity repository for entity-level tracking */
+  get entityRepository(): EntityRepository {
+    return this.entitiesRepo;
   }
 
   private async initializeSchema(): Promise<void> {
@@ -417,5 +425,10 @@ export class SpecWorkbenchDB {
       logger.error("Database health check failed", error as Error);
       return false;
     }
+  }
+
+  /** Backfill missing artifact descriptions from metadata (for testing/maintenance) */
+  async backfillArtifactDescriptions(): Promise<void> {
+    await backfillArtifactDescriptions(this.drizzle, this.driver, (fn) => this.withTransaction(fn));
   }
 }

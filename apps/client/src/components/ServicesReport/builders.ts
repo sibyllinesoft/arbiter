@@ -139,7 +139,7 @@ export function buildServiceInitialValues(service: NormalizedService): Record<st
       : buildEnvironmentMap(service.raw);
   const environmentPairs: KeyValueEntry[] = Object.entries(environmentMap).map(([key, value]) => ({
     key,
-    value: value ?? "",
+    value: typeof value === "string" ? value : value != null ? String(value) : "",
   }));
   if (environmentPairs.length > 0) {
     values.environmentVariables = environmentPairs;

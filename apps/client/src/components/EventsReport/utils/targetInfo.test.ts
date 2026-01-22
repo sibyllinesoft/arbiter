@@ -1,5 +1,5 @@
-import { describe, expect, it } from "bun:test";
 import type { Event } from "@/types/api";
+import { describe, expect, it } from "vitest";
 import { coerceToString, getEventTargetInfo } from "./targetInfo";
 
 const createEvent = (overrides: Partial<Event> = {}): Event => ({

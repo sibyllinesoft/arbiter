@@ -3,6 +3,7 @@
  * Supports line, bar, scatter, pie, and area charts.
  */
 import * as d3 from "d3";
+import type { Selection } from "d3-selection";
 import React, { useEffect, useRef } from "react";
 import {
   type RenderContext,
@@ -53,7 +54,7 @@ const CHART_RENDERERS: Record<ChartData["type"], (ctx: RenderContext) => void> =
 
 /** Add a title to the chart SVG */
 function addChartTitle(
-  svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
+  svg: Selection<SVGSVGElement, unknown, null, undefined>,
   title: string,
   width: number,
 ): void {

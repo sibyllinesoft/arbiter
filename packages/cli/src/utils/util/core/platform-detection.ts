@@ -327,6 +327,15 @@ type ServiceDefaults = {
   language?: string;
 };
 
+/** Return type for getPlatformServiceDefaults - all service defaults are optional */
+export type PlatformServiceDefaultsResult = {
+  artifactType: "external";
+  platform?: "cloudflare" | "vercel" | "supabase" | "kubernetes";
+  workload?: "deployment" | "statefulset" | "serverless" | "managed";
+  runtime?: string;
+  language?: string;
+};
+
 /** Service defaults mapping for each platform service type. */
 const SERVICE_DEFAULTS: Record<string, ServiceDefaults> = {
   // Cloudflare services
@@ -356,7 +365,9 @@ const SERVICE_DEFAULTS: Record<string, ServiceDefaults> = {
  * @param serviceType - Platform service type identifier
  * @returns Service defaults with artifact type
  */
-export function getPlatformServiceDefaults(serviceType: PlatformServiceType) {
+export function getPlatformServiceDefaults(
+  serviceType: PlatformServiceType,
+): PlatformServiceDefaultsResult {
   const config = SERVICE_DEFAULTS[serviceType];
   return config
     ? { artifactType: "external" as const, ...config }

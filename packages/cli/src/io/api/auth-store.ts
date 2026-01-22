@@ -11,6 +11,9 @@ import path from "node:path";
 import type { AuthSession } from "@/types.js";
 import fs from "fs-extra";
 
+// Re-export AuthSession for use by auth commands
+export type { AuthSession };
+
 /**
  * Resolve the authentication file path.
  * @returns Object with authDir and authFile paths

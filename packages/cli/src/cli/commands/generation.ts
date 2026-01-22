@@ -10,7 +10,7 @@
 
 import { requireCommandConfig } from "@/cli/context.js";
 import { loadConfigWithGitDetection } from "@/io/config/config.js";
-import { explainCommand } from "@/services/explain/index.js";
+import { type ExplainOptions, explainCommand } from "@/services/explain/index.js";
 import { generateCommand as runGenerateCommand } from "@/services/generate/io/index.js";
 import type { GenerationReporter } from "@/services/generate/util/types.js";
 import type { CLIConfig, GenerateOptions } from "@/types.js";
@@ -88,7 +88,12 @@ async function handleExplainCommand(
 ): Promise<void> {
   try {
     const config = requireCommandConfig(command);
-    const exitCode = await explainCommand(options, config);
+    // Cast format to expected type - Commander provides string, but we validate it
+    const explainOptions: ExplainOptions = {
+      ...options,
+      format: options.format as "text" | "json" | undefined,
+    };
+    const exitCode = await explainCommand(explainOptions, config);
     process.exit(exitCode);
   } catch (error) {
     handleCommandError(error);

@@ -61,6 +61,10 @@ const isApiSurfaceComponent: ComponentFilter = (c) =>
 
 /** Filter configurations for each diagram type */
 const DIAGRAM_FILTERS: Record<DiagramType, DiagramFilterConfig> = {
+  system_overview: {
+    componentFilter: () => true,
+    connectionTypes: ["api_call", "dependency", "user_navigation", "user_interaction"],
+  },
   user_journey: {
     componentFilter: isUserJourneyComponent,
     connectionTypes: ["user_navigation", "user_interaction", "capability_usage"],

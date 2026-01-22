@@ -18,6 +18,7 @@ export interface TerraformData {
   [key: string]: unknown;
 }
 
+/** Importer plugin for Terraform configurations. Parses .tf files and modules. */
 export class TerraformPlugin implements ImporterPlugin {
   name(): string {
     return "terraform";

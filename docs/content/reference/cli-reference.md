@@ -159,8 +159,8 @@ List components of a specific type in the project.
 # List all services
 arbiter list services
 
-# List all flows
-arbiter list flows
+# List all behaviors
+arbiter list behaviors
 
 # List with JSON output
 arbiter list services --format json
@@ -239,7 +239,7 @@ arbiter add endpoint /api/users
 arbiter add schema User
 
 # Add a background job
-arbiter add flow cleanup-users
+arbiter add behavior cleanup-users
 ```
 
 **Subcommands:**
@@ -250,7 +250,7 @@ arbiter add flow cleanup-users
 - `arbiter add contract-operation <contract> <operation>` - Add operation to contract
 - `arbiter add endpoint <path>` - Add API endpoint to a service
 - `arbiter add route <path>` - Add UI route for frontend applications
-- `arbiter add flow <id>` - Add user flow for testing and validation
+- `arbiter add behavior <id>` - Add user behavior for testing and validation
 - `arbiter add load-balancer` - Add load balancer with health check invariants
 - `arbiter add database <name>` - Add database with automatic service attachment
 - `arbiter add cache <name>` - Add cache service with automatic attachment

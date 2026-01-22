@@ -1,4 +1,4 @@
-import { type GroupArtifact, type GroupSpec, buildGroups } from "./groupBuilder";
+import { type GroupArtifact, type GroupSpec, type TaskSpec, buildGroups } from "./groupBuilder";
 /**
  * Group/Issue Spec Builder - Modular Implementation
  *
@@ -12,7 +12,7 @@ import {
   sortTasks,
   toOptionalString,
 } from "./helpers";
-import { type TaskArtifact, type TaskSpec, buildTasks } from "./taskBuilder";
+import { type TaskArtifact, buildTasks } from "./taskBuilder";
 
 export { coerceStringArray } from "./helpers";
 export type { GroupSpec, TaskSpec, GroupArtifact, TaskArtifact };

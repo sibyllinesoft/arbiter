@@ -70,7 +70,7 @@ Test arbiter help output:
       arbiter init my-app --preset web-app # Initialize from a hosted preset
       arbiter add service billing          # Add service specification
       arbiter add api/order                # Add API endpoint specification
-      arbiter add flow checkout            # Add user flow specification
+      arbiter add behavior checkout         # Add user behavior specification
       arbiter generate                     # Generate code from specifications
 
     3. VALIDATION & FEEDBACK:

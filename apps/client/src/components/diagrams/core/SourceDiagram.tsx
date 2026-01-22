@@ -1,10 +1,10 @@
 import { useTheme } from "@/stores/ui-store";
+import type { ResolvedSpecResponse } from "@/types/api";
 import { apiService } from "@services/api";
 import { clsx } from "clsx";
 import { AlertTriangle, Clipboard, Download, FileText, Hash, Loader2 } from "lucide-react";
 import { type FC, useCallback, useEffect, useState } from "react";
 import MonacoEditor from "../../Editor/MonacoEditor";
-import type { ResolvedSpecResponse } from "../../types/api";
 
 const CUE_HEADER = `// CUE Specification
 // This is a reconstructed view of the resolved specification

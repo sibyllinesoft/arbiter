@@ -93,6 +93,104 @@ Use a personal access token with `repo` scope (or `public_repo` for public repos
 - Titles use `prefixes.group` / `prefixes.task` plus the group/task name.
 - Labels combine `labels.default`, mapped priority/type labels, status/priority tags, and any labels already present on the group/task in Arbiter.
 
+## Issue Schema Compatibility
+
+Arbiter's issue schema is designed for compatibility with GitHub, GitLab, and Jira. When syncing from external systems, the following fields track the source:
+
+```cue
+issues: {
+  "feature-auth": {
+    entityId:     "550e8400-e29b-41d4-a716-446655440001"
+    title:        "Implement OAuth authentication"
+    type:         "feature"
+    status:       "in_progress"
+    assignees:    ["alice", "bob"]    // Multiple assignees (GitHub/GitLab)
+    labels:       ["auth", "security"]
+    milestone:    "v2.0"              // Links to a group representing the milestone
+    weight:       5                   // Story points (GitLab weight, Jira points)
+
+    // External source tracking
+    source:       "github"            // "local" | "github" | "gitlab" | "jira" | "linear"
+    externalId:   "42"                // GitHub issue number
+    externalUrl:  "https://github.com/org/repo/issues/42"
+    externalRepo: "org/repo"
+  }
+}
+```
+
+### Field Mapping
+
+| Arbiter Field | GitHub | GitLab | Jira |
+|---------------|--------|--------|------|
+| `title` | title | title | summary |
+| `description` | body | description | description |
+| `type` | - (use labels) | - (use labels) | issuetype |
+| `status` | state (open/closed) | state | status |
+| `assignees` | assignees | assignees | assignee |
+| `labels` | labels | labels | labels |
+| `milestone` | milestone | milestone | fixVersion |
+| `parent` | - (use projects) | epic | parent |
+| `weight` | - | weight | story points |
+| `due` | - (use projects) | due_date | duedate |
+| `externalId` | number | iid | key |
+
+### Milestones and Epics are Groups
+
+GitHub milestones and GitLab epics are represented as Arbiter groups with a `type` field:
+
+```cue
+groups: {
+  "v2-release": {
+    entityId:    "550e8400-e29b-41d4-a716-446655440010"
+    name:        "v2.0 Release"
+    description: "Q2 2024 major release"
+    type:        "milestone"           // "group" | "milestone" | "epic" | "release" | "sprint"
+
+    // External source tracking
+    source:      "github"
+    externalId:  "5"                   // GitHub milestone number
+    externalUrl: "https://github.com/org/repo/milestone/5"
+  }
+
+  "auth-epic": {
+    entityId:    "550e8400-e29b-41d4-a716-446655440011"
+    name:        "Authentication"
+    type:        "epic"
+    memberOf:    "v2-release"          // Epic belongs to milestone
+    source:      "gitlab"
+    externalId:  "42"
+  }
+}
+```
+
+Issues connect to groups via `memberOf`. The `milestone` field identifies THE milestone for sync:
+
+```cue
+issues: {
+  "auth-feature": {
+    title:     "Implement OAuth"
+    memberOf:  "auth-epic"             // Primary group membership
+    milestone: "v2-release"            // Which group is the milestone (for sync)
+    source:    "github"
+    externalId: "123"
+  }
+}
+```
+
+**Key points:**
+- `type` on groups tells sync what external entity to create (milestone vs epic)
+- `memberOf` is the primary connection from issues to groups
+- `milestone` specifically identifies the milestone group for idempotent sync
+
+### Bidirectional Sync Considerations
+
+When importing issues from GitHub/GitLab:
+
+1. **Source tracking**: Always set `source`, `externalId`, `externalUrl` to enable round-trip sync
+2. **Entity IDs**: Generate stable UUIDs (`entityId`) for each imported issue
+3. **Comments**: Import issue comments with their external IDs for thread continuity
+4. **Labels**: Map external labels to Arbiter labels; consider prefixing imported labels
+
 ## Troubleshooting
 - **Missing config**: ensure `.arbiter/config.json` contains a `github` block.
 - **Auth failures**: verify the token and scopes; check `tokenEnv` name.

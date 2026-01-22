@@ -7,8 +7,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Fragment } from "../../types/api";
-import EditorPane from "./EditorPane";
+import type { Fragment } from "../../../types/api";
+import EditorPane from "../EditorPane";
 
 // Mock child components
 vi.mock("./FileTree", () => ({
@@ -85,8 +85,8 @@ import {
   useEditorContent,
   useEditorState,
   useStatus,
-} from "../../contexts/AppContext";
-import { useCurrentProject } from "../../contexts/ProjectContext";
+} from "../../../contexts/AppContext";
+import { useCurrentProject } from "../../../contexts/ProjectContext";
 
 // Mock Lucide icons
 vi.mock("lucide-react", () => ({

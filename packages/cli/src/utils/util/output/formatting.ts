@@ -371,7 +371,7 @@ function formatComponentStatus(components: Array<{ status?: string }>): {
  * Create a new status table with standard headers.
  * @returns Configured table instance
  */
-function createStatusTable(): Table.Table {
+function createStatusTable(): InstanceType<typeof Table> {
   return new Table({
     head: [chalk.cyan("Category"), chalk.cyan("Status"), chalk.cyan("Details")],
     style: { head: [], border: ["dim"] },

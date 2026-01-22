@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { CheckCircle } from "lucide-react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "../../test/utils";
+import { render, screen } from "../../../test/utils";
 import Toast, { ToastContainer, ToastManager, toast } from "./Toast";
 
 describe("Toast", () => {

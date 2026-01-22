@@ -130,7 +130,10 @@ export function EndpointModal({
     try {
       setSubmitting(true);
       setSubmitError(null);
-      await onSubmit(payload);
+      await onSubmit({
+        entityType: payload.entityType,
+        values: payload.values as Record<string, import("@/types/forms").FieldValue>,
+      });
       onClose();
     } catch (error) {
       const fallbackMessage =

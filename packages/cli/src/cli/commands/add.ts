@@ -28,7 +28,7 @@ type EntityType =
   | "contract-operation"
   | "endpoint"
   | "route"
-  | "flow"
+  | "behavior"
   | "locator"
   | "schema"
   | "package"
@@ -47,6 +47,9 @@ interface OptionConfig {
   defaultValue?: string | number | ((v: string) => number);
 }
 
+/** Extended options type that allows dynamic properties from CLI flags */
+type ExtendedAddOptions = AddOptions & Record<string, unknown>;
+
 /**
  * Configuration for an add subcommand.
  */
@@ -60,7 +63,10 @@ interface AddSubcommandConfig {
   /** Available options for this subcommand */
   options: OptionConfig[];
   /** Optional transform function to modify options before execution */
-  transformOptions?: (options: AddOptions, name: string) => { name: string; options: AddOptions };
+  transformOptions?: (
+    options: ExtendedAddOptions,
+    name: string,
+  ) => { name: string; options: ExtendedAddOptions };
 }
 
 /**
@@ -96,31 +102,34 @@ function createActionHandler(
 ) {
   return async (
     nameOrArg1: string,
-    optionsOrArg2: AddOptions | string,
-    maybeOptionsOrCommand?: AddOptions | Command,
+    optionsOrArg2: ExtendedAddOptions | string,
+    maybeOptionsOrCommand?: ExtendedAddOptions | Command,
     maybeCommand?: Command,
   ) => {
     // Handle both single and double argument commands
     let name: string;
-    let options: AddOptions;
+    let options: ExtendedAddOptions;
     let command: Command;
 
     if (typeof optionsOrArg2 === "string") {
       // Double argument: contract-operation <contract> <operation>
       name = optionsOrArg2; // operation is the name
-      options = maybeOptionsOrCommand as AddOptions;
+      options = maybeOptionsOrCommand as ExtendedAddOptions;
       options = { ...options, contract: nameOrArg1 }; // contract is first arg
       command = maybeCommand as Command;
     } else if (maybeOptionsOrCommand instanceof Command) {
-      // Single argument with Command
+      // Single argument with Command as third parameter
       name = nameOrArg1;
       options = optionsOrArg2;
       command = maybeOptionsOrCommand;
-    } else {
-      // Single argument
+    } else if (maybeCommand instanceof Command) {
+      // Single argument with Command as fourth parameter
       name = nameOrArg1;
       options = optionsOrArg2;
-      command = maybeOptionsOrCommand as Command;
+      command = maybeCommand;
+    } else {
+      // Fallback - should not normally reach here
+      throw new Error("Unable to determine command context");
     }
 
     try {
@@ -149,7 +158,18 @@ function createActionHandler(
 function addOptions(cmd: Command, options: OptionConfig[]): Command {
   for (const opt of options) {
     if (opt.defaultValue !== undefined) {
-      cmd = cmd.option(opt.flags, opt.description, opt.defaultValue);
+      // Handle different default value types for Commander overloads
+      if (typeof opt.defaultValue === "function") {
+        // Parser function overload
+        cmd = cmd.option(
+          opt.flags,
+          opt.description,
+          opt.defaultValue as (value: string, previous: number) => number,
+        );
+      } else {
+        // Static default value overload
+        cmd = cmd.option(opt.flags, opt.description, opt.defaultValue as string);
+      }
     } else {
       cmd = cmd.option(opt.flags, opt.description);
     }
@@ -323,16 +343,16 @@ const ADD_SUBCOMMANDS: AddSubcommandConfig[] = [
     ],
   },
   {
-    name: "flow <id>",
-    description: "add a user flow for testing and validation",
-    entityType: "flow",
+    name: "behavior <id>",
+    description: "add a user behavior for testing and validation",
+    entityType: "behavior",
     options: [
-      { flags: "--description <description>", description: "flow description" },
+      { flags: "--description <description>", description: "behavior description" },
       {
         flags: "--steps <steps>",
-        description: 'JSON array of flow steps (e.g. "[{"visit":"/"}]")',
+        description: 'JSON array of behavior steps (e.g. "[{"visit":"/"}]")',
       },
-      { flags: "--expected-outcome <outcome>", description: "expected outcome of the flow" },
+      { flags: "--expected-outcome <outcome>", description: "expected outcome of the behavior" },
     ],
   },
   {

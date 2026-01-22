@@ -1,5 +1,5 @@
 import { CheckCircle, Clock, XCircle } from "lucide-react";
-import { render, screen } from "../../test/utils";
+import { render, screen } from "../../../test/utils";
 import StatusBadge from "./StatusBadge";
 
 describe("StatusBadge", () => {

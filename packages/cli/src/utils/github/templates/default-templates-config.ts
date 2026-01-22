@@ -76,10 +76,10 @@ export const DEFAULT_TEMPLATES_CONFIG: GitHubTemplatesConfig = {
       ],
     },
   },
-  task: {
+  issue: {
     inherits: "arbiter-default",
-    name: "Task",
-    title: "[TASK] {{type}}: {{name}}",
+    name: "Issue",
+    title: "[ISSUE] {{type}}: {{name}}",
     labels: ["type:{{type}}", "priority:{{priority}}", "status:{{status}}", "group:{{groupId}}"],
     sections: {
       description: "## 📋 Task Description\n\n{{description}}\n\n**Context:** {{context}}\n\n",

@@ -1,7 +1,7 @@
 /**
  * API client modules for backend communication
  */
-export { ApiError, ApiService } from "./client";
+export { ApiError, ApiClient } from "./client";
 export type { ApiServiceOptions, UnauthorizedHandler } from "./client";
 export * from "./auth";
 export * from "./fragments";

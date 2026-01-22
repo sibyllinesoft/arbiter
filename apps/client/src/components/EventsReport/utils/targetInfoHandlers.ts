@@ -25,7 +25,7 @@ export type HandlerContext = {
   data: Record<string, unknown>;
   takeString: (...keys: string[]) => string | undefined;
   getArray: (key: string) => unknown[];
-  lookupEvent?: (eventId: string) => Event | undefined;
+  lookupEvent?: ((eventId: string) => Event | undefined) | undefined;
   seen: Set<string>;
   getEventTargetInfo: (event: Event, context: GetEventTargetContext) => EventTargetInfo;
 };

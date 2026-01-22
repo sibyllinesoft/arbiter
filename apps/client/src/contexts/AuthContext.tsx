@@ -113,7 +113,7 @@ async function handleExistingToken(
 
 /** Initiate OAuth flow if enabled and not already pending */
 async function initiateOAuthIfNeeded(
-  metadata: { enabled?: boolean; authorizationEndpoint?: string } | null,
+  metadata: { enabled?: boolean; authorizationEndpoint?: string | null } | null,
   setStatus: (value: AuthStatus) => void,
 ): Promise<boolean> {
   if (!metadata?.enabled || !metadata.authorizationEndpoint) return false;

@@ -10,9 +10,14 @@ import {
   resolveServiceArtifactType,
   resolveServiceWorkload,
 } from "@/utils/api/service-metadata.js";
-import type { DeploymentServiceConfig as DeploymentServiceConfigBase } from "@arbiter/shared";
+import type { ServiceConfig } from "@arbiter/shared";
+
+/** Base configuration type for deployment services */
+type DeploymentServiceConfigBase = Partial<ServiceConfig>;
 
 export type ComposeServiceConfig = DeploymentServiceConfigBase & {
+  /** Artifact type for deployment classification */
+  artifactType?: "internal" | "external";
   resolvedBuildContext?: string;
   resolvedSourceDirectory?: string;
   dependencies?: string[];

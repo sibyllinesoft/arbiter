@@ -22,15 +22,15 @@ export interface NormalizedService {
   key: string;
   identifier: string;
   displayName: string;
-  description?: string;
+  description?: string | undefined;
   metadataItems: ServiceMetadataItem[];
   endpoints: NormalizedEndpointCard[];
   hasSource: boolean;
-  typeLabel?: string;
+  typeLabel?: string | undefined;
   raw: Record<string, unknown> | null;
-  sourcePath?: string;
-  artifactId?: string | null;
-  environment?: EnvironmentMap;
+  sourcePath?: string | undefined;
+  artifactId?: string | null | undefined;
+  environment?: EnvironmentMap | undefined;
 }
 
 export interface ExternalArtifactCard {

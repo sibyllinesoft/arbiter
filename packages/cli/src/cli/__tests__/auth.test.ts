@@ -1,8 +1,9 @@
 /** @packageDocumentation CLI command tests */
-import { describe, expect, it, spyOn } from "bun:test";
+import { beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
 import { createAuthCommand } from "@/cli/commands/auth.js";
+import { __contextTesting } from "@/cli/context.js";
 import * as authStore from "@/io/api/auth-store.js";
 import * as authService from "@/services/auth/index.js";
 
@@ -25,6 +26,10 @@ const minimalConfig = {
 } as const;
 
 describe("auth CLI", () => {
+  beforeEach(() => {
+    __contextTesting.setActiveConfig(null);
+  });
+
   it("prints status when authenticated", async () => {
     const program = new Command();
     // Commander stores config on the root command

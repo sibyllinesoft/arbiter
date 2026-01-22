@@ -30,14 +30,35 @@ export function formatCueArray(arr: unknown[], indent: string): string {
   return `[\n${items.join(",\n")}\n${indent}]`;
 }
 
+/**
+ * Quote a CUE key if it contains special characters
+ */
+export function formatCueKey(key: string): string {
+  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key) ? key : `"${key}"`;
+}
+
 export function formatCueRecord(obj: Record<string, unknown>, indent: string): string {
   const entries = Object.entries(obj);
   if (entries.length === 0) return "{}";
   const formattedEntries = entries.map(([k, v]) => {
-    const key = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(k) ? k : `"${k}"`;
+    const key = formatCueKey(k);
     return `${indent}\t${key}: ${formatCueObject(v, `${indent}\t`)}`;
   });
   return `{\n${formattedEntries.join("\n")}\n${indent}}`;
+}
+
+/**
+ * Format a JavaScript object as top-level CUE declarations (without outer braces)
+ * This is used for package-level content where fields are not wrapped in {}
+ */
+export function formatCueTopLevel(obj: Record<string, unknown>): string {
+  const entries = Object.entries(obj);
+  if (entries.length === 0) return "";
+  const formattedEntries = entries.map(([k, v]) => {
+    const key = formatCueKey(k);
+    return `${key}: ${formatCueObject(v, "")}`;
+  });
+  return formattedEntries.join("\n");
 }
 
 /**
@@ -55,7 +76,8 @@ export function indentBlock(text: string, spaces: number): string {
  * Build a section merge fragment for append-only operations
  */
 export function buildSectionMerge(parts: string[], key: string, valueCue: string): string {
-  let block = `${key}: ${valueCue}`;
+  const quotedKey = formatCueKey(key);
+  let block = `${quotedKey}: ${valueCue}`;
   for (let i = parts.length - 1; i >= 0; i--) {
     const name = parts[i];
     block = `${name}: ${name} & {\n${indentBlock(block, 2)}\n}`;

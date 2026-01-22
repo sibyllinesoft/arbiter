@@ -41,6 +41,12 @@ interface OAuthTokenResponse {
   refresh_token?: string;
 }
 
+/** Type alias for OAuth metadata response */
+type OAuthMetadata = OAuthMetadataResponse;
+
+/** Type alias for token response */
+type TokenResponse = OAuthTokenResponse;
+
 function base64UrlEncode(data: Buffer): string {
   return data.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }

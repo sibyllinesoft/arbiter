@@ -72,11 +72,13 @@ interface CargoEvidenceData extends Record<string, unknown> {
   fullCargo: Record<string, unknown>;
 }
 
+/** Type guard to check if data is CargoEvidenceData. */
 function isCargoEvidenceData(data: Record<string, unknown>): data is CargoEvidenceData {
   const configType = data["configType"];
   return typeof configType === "string" && configType === "cargo-toml";
 }
 
+/** Importer plugin for Rust projects. Parses Cargo.toml and detects crate types. */
 export class RustPlugin implements ImporterPlugin {
   name(): string {
     return "rust";

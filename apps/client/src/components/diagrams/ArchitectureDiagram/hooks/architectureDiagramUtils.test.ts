@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { computeTaskOptions, syncOptimisticRemovals } from "./architectureDiagramUtils";
 
 describe("computeTaskOptions", () => {
@@ -22,11 +22,11 @@ describe("computeTaskOptions", () => {
     };
     const result = computeTaskOptions(projectData);
     expect(result.groupSelectionOptions).toHaveLength(1);
-    expect(result.groupSelectionOptions[0].id).toBe("group-1");
-    expect(result.groupSelectionOptions[0].name).toBe("Sprint 1");
+    expect(result.groupSelectionOptions[0]!.id).toBe("group-1");
+    expect(result.groupSelectionOptions[0]!.name).toBe("Sprint 1");
     expect(result.openTaskOptions).toHaveLength(1);
-    expect(result.openTaskOptions[0].id).toBe("task-1");
-    expect(result.openTaskOptions[0].name).toBe("Task One");
+    expect(result.openTaskOptions[0]!.id).toBe("task-1");
+    expect(result.openTaskOptions[0]!.name).toBe("Task One");
   });
 
   it("processes groups object from spec", () => {
@@ -61,7 +61,7 @@ describe("computeTaskOptions", () => {
     };
     const result = computeTaskOptions(projectData);
     expect(result.openTaskOptions).toHaveLength(1);
-    expect(result.openTaskOptions[0].id).toBe("task-1");
+    expect(result.openTaskOptions[0]!.id).toBe("task-1");
   });
 
   it("deduplicates groups", () => {
@@ -75,7 +75,7 @@ describe("computeTaskOptions", () => {
     };
     const result = computeTaskOptions(projectData);
     expect(result.groupSelectionOptions).toHaveLength(1);
-    expect(result.groupSelectionOptions[0].name).toBe("Sprint 1");
+    expect(result.groupSelectionOptions[0]!.name).toBe("Sprint 1");
   });
 
   it("deduplicates tasks within groups", () => {
@@ -95,7 +95,7 @@ describe("computeTaskOptions", () => {
     };
     const result = computeTaskOptions(projectData);
     expect(result.openTaskOptions).toHaveLength(1);
-    expect(result.openTaskOptions[0].name).toBe("Task One");
+    expect(result.openTaskOptions[0]!.name).toBe("Task One");
   });
 
   it("handles string tasks", () => {
@@ -106,7 +106,7 @@ describe("computeTaskOptions", () => {
     };
     const result = computeTaskOptions(projectData);
     expect(result.openTaskOptions).toHaveLength(1);
-    expect(result.openTaskOptions[0].name).toBe("Simple task");
+    expect(result.openTaskOptions[0]!.name).toBe("Simple task");
   });
 
   it("handles tasks object", () => {
@@ -140,7 +140,7 @@ describe("computeTaskOptions", () => {
       },
     };
     const result = computeTaskOptions(projectData);
-    expect(result.openTaskOptions[0].status).toBe("in_progress");
+    expect(result.openTaskOptions[0]!.status).toBe("in_progress");
   });
 
   it("falls back to top-level groups", () => {

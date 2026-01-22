@@ -38,7 +38,7 @@ const StepItem: React.FC<{ step: (typeof NEXT_STEPS)[number] }> = ({ step }) => 
     <li>
       {step.text}
       <CodeSnippet>{step.code}</CodeSnippet>
-      {step.suffix ?? ""}
+      {"suffix" in step ? step.suffix : ""}
     </li>
   );
 };

@@ -8,9 +8,9 @@ import type { NormalizedEndpointCard } from "@/components/ServicesReport/types";
 type RawData = Record<string, unknown>;
 
 interface EndpointInput {
-  method?: string;
-  path?: string;
-  description?: string;
+  method?: string | undefined;
+  path?: string | undefined;
+  description?: string | undefined;
 }
 
 interface EndpointRegistry {
@@ -107,7 +107,8 @@ function parseEndpointEntry(registry: EndpointRegistry, entry: unknown): void {
 
 /** Process array or object endpoint sources */
 function processEndpointSources(registry: EndpointRegistry, raw: RawData): void {
-  const sources = [raw?.endpoints, raw?.routes, raw?.metadata?.endpoints, raw?.metadata?.routes];
+  const metadata = raw?.metadata as RawData | undefined;
+  const sources = [raw?.endpoints, raw?.routes, metadata?.endpoints, metadata?.routes];
 
   for (const source of sources) {
     if (!source) continue;
@@ -118,7 +119,11 @@ function processEndpointSources(registry: EndpointRegistry, raw: RawData): void 
 
 /** Process OpenAPI paths format */
 function processOpenApiPaths(registry: EndpointRegistry, raw: RawData): void {
-  const paths = raw?.openapi?.paths ?? raw?.openApi?.paths ?? raw?.metadata?.openapi?.paths;
+  const openapi = raw?.openapi as RawData | undefined;
+  const openApi = raw?.openApi as RawData | undefined;
+  const metadata = raw?.metadata as RawData | undefined;
+  const metaOpenapi = metadata?.openapi as RawData | undefined;
+  const paths = openapi?.paths ?? openApi?.paths ?? metaOpenapi?.paths;
   if (!paths || typeof paths !== "object") return;
 
   for (const [pathKey, methods] of Object.entries(paths)) {

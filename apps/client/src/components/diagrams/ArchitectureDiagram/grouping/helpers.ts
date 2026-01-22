@@ -45,7 +45,7 @@ export const CUE_FILE_REGEX = /\.cue$/i;
  * Gets the display configuration for a component type.
  */
 export const getTypeConfig = (type: string): TypeDisplayConfig =>
-  TYPE_CONFIG[type] ?? TYPE_CONFIG.other;
+  TYPE_CONFIG[type] ?? TYPE_CONFIG.other!;
 
 /**
  * Converts unknown value to lowercase string.

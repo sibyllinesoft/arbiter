@@ -58,6 +58,7 @@ const DEFAULT_EDGE_OPTIONS = {
     hover: "#3b82f6",
   },
   smooth: {
+    enabled: true,
     type: "cubicBezier",
     forceDirection: "horizontal",
     roundness: 0.4,

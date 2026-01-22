@@ -52,7 +52,7 @@ Before using Arbiter's code generation system, ensure you have:
 3. **Add acceptance criteria (BDD)**
    ```bash
    # Define behavior using Given/When/Then syntax
-   arbiter add flow "place order" \
+   arbiter add behavior "place order" \
      --given "a customer with items in cart" \
      --when "they submit the order" \
      --then "an order is created" \
@@ -151,7 +151,7 @@ Product owners can also define expected behaviors using Given/When/Then syntax. 
 
 ```bash
 # Define the happy path for order submission
-arbiter add flow "submit order" \
+arbiter add behavior "submit order" \
   --given "a draft order with valid line items" \
   --when "the customer submits the order" \
   --then "the order status changes to submitted" \
@@ -159,7 +159,7 @@ arbiter add flow "submit order" \
   --and-then "an OrderSubmitted event is emitted"
 
 # Define validation behavior
-arbiter add flow "reject empty order" \
+arbiter add behavior "reject empty order" \
   --given "a draft order with no line items" \
   --when "the customer attempts to submit" \
   --then "the submission is rejected" \

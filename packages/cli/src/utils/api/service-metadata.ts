@@ -75,7 +75,10 @@ export function resolveServiceWorkload(
  * @returns Explicit type or undefined
  */
 function getExplicitType(service: ServiceRecord): string | undefined {
-  return (service.type || service.artifactType || service.serviceType) as string | undefined;
+  if (typeof service.external === "boolean") {
+    return service.external ? "external" : "internal";
+  }
+  return undefined;
 }
 
 /**
@@ -138,8 +141,9 @@ export function resolveServiceArtifactType(
  */
 export function isInternalService(service: Partial<ServiceConfig> | undefined): boolean {
   if (!service) return true;
-  if (service.type === "internal") return true;
-  if (service.type === "external") return false;
+  if (typeof service.external === "boolean") {
+    return !service.external;
+  }
   return resolveServiceArtifactType(service) === "internal";
 }
 

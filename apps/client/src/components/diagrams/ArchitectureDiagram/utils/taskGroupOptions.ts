@@ -179,7 +179,8 @@ function processTask(
 ): void {
   if (!task && typeof task !== "string") return;
 
-  const taskData = typeof task === "string" ? { name: task } : { ...task };
+  const taskData: Record<string, unknown> =
+    typeof task === "string" ? { name: task } : { ...(task as object) };
   const taskIdRaw = taskData.id ?? `${groupId}-${taskIndex + 1}`;
   const taskId = String(taskIdRaw ?? "").trim();
   if (!taskId) return;

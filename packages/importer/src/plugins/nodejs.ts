@@ -46,6 +46,7 @@ interface HeuristicsContext {
   hasCliDep: boolean;
 }
 
+/** Importer plugin for Node.js projects. Parses package.json and infers project type. */
 export class NodeJSPlugin implements ImporterPlugin {
   name(): string {
     return "nodejs";

@@ -32,13 +32,14 @@ export function createNodeRegistry(helpers: BuilderHelpers): {
     artifact: Record<string, unknown> | undefined,
   ): string | undefined => {
     const primaryId = id?.trim() || "node";
-    const artifactId =
+    const rawArtifactId =
       (artifact as Record<string, unknown>)?.artifactId ||
       (artifact as Record<string, unknown>)?.artifact_id;
+    const artifactId = typeof rawArtifactId === "string" ? rawArtifactId : undefined;
     const nameKey = (artifact?.name ?? title ?? primaryId).toString().toLowerCase();
 
     const existingId =
-      (artifactId && state.idMap[String(artifactId)]) ||
+      (artifactId && state.idMap[artifactId]) ||
       (nameKey && state.idMap[nameKey]) ||
       state.idMap[primaryId];
     if (existingId) return existingId;

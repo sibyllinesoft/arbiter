@@ -70,6 +70,8 @@ export type {
 } from "./types/github.js";
 
 import type { UIOptionCatalog, UIOptionGeneratorMap } from "@arbiter/shared";
+// Import types used within this file
+import type { GitHubSyncConfig } from "./types/github.js";
 
 /**
  * Primary configuration object consumed by the CLI.

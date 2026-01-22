@@ -1,7 +1,7 @@
 /**
  * Helper utilities for CUE parsing
  */
-import type { DiagramComponent } from "../../types/architecture";
+import type { DiagramComponent, DiagramPort } from "../../types/architecture";
 import type { KnownWorkload } from "./types";
 
 const WORKLOAD_VALUES = new Set<KnownWorkload>([
@@ -81,19 +81,14 @@ export const deriveServiceLayer = (kind?: string): DiagramComponent["layer"] => 
   return "service";
 };
 
-export const parseServicePorts = (serviceData: Record<string, unknown>): unknown[] => {
+export const parseServicePorts = (serviceData: Record<string, unknown>): DiagramPort[] => {
   const ports = serviceData.ports as Array<Record<string, unknown>> | undefined;
   if (!ports) return [];
 
   return ports.map((port, index) => ({
     id: `port_${port.name || index}`,
     position: { x: 40 + index * 30, y: 100 },
-    type: "bidirectional",
-    protocol: port.protocol || "http",
-    metadata: {
-      port: port.port,
-      targetPort: port.targetPort,
-      name: port.name,
-    },
+    type: "bidirectional" as const,
+    protocol: (port.protocol as DiagramPort["protocol"]) || "http",
   }));
 };

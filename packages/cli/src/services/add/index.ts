@@ -56,7 +56,7 @@ const SUBCOMMAND_HANDLERS: Record<string, SubcommandHandler> = {
   client: addClient,
   endpoint: addEndpoint,
   route: addRoute,
-  flow: addFlow,
+  behavior: addFlow,
   locator: addLocator,
   schema: addSchema,
   contract: addContractWorkflow,
@@ -351,6 +351,7 @@ ui: {
       capabilities: ["view"]
       components: ["HomePage"]
     },
+    ...
   ]
 }
 
@@ -360,7 +361,7 @@ locators: {
   "toast:ok":   "[data-testid=\\"toast-ok\\"]"
 }
 
-flows: [
+behaviors: [
   {
     id: "baseline_e2e"
     steps: [
@@ -370,6 +371,7 @@ flows: [
       { expect: { locator: "toast:ok", text: { contains: "ready" } } },
     ]
   },
+  ...
 ]
 
 // V1 compatibility structure
@@ -524,7 +526,7 @@ function getShardTypeForSubcommand(subcommand: string): string {
     client: "clients",
     endpoint: "endpoints",
     route: "routes",
-    flow: "flows",
+    behavior: "behaviors",
     schema: "schemas",
     locator: "locators",
     contract: "contracts",

@@ -66,6 +66,8 @@ interface RunContext {
 
 interface LanguageInfo {
   name: string;
+  detected: boolean;
+  files: string[];
   framework?: string;
 }
 

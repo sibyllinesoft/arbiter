@@ -70,6 +70,7 @@ interface GeneratorModule {
   options?: unknown;
 }
 
+/** Normalizes input values to a string array, handling arrays and comma-separated strings. */
 function normalizeValues(values: unknown): string[] {
   if (!values) return [];
   if (Array.isArray(values)) {
@@ -88,6 +89,7 @@ function normalizeValues(values: unknown): string[] {
   return [];
 }
 
+/** Normalizes a language-to-frameworks map, ensuring valid structure. */
 function normalizeFrameworkMap(values: unknown): Record<string, string[]> {
   if (!values || typeof values !== "object") {
     return {};
@@ -108,6 +110,7 @@ function normalizeFrameworkMap(values: unknown): Record<string, string[]> {
   return normalized;
 }
 
+/** Executes a generator script and returns its output. */
 async function executeGenerator(
   generatorPath: string,
   baseDir: string,
@@ -143,6 +146,7 @@ async function executeGenerator(
   return result;
 }
 
+/** Removes duplicate values while preserving order. */
 function unique(values: string[]): string[] {
   const seen = new Set<string>();
   const deduped: string[] = [];
@@ -267,6 +271,16 @@ async function resolveMapOptions(
   return undefined;
 }
 
+/**
+ * Resolves UI option configuration to a catalog of available options.
+ *
+ * Processes both static values and dynamic generators to build the final catalog.
+ * Generator scripts can provide dynamic options based on project context.
+ *
+ * @param config - UI option configuration with static values and/or generators
+ * @param params - Resolution parameters including base directory and logger
+ * @returns Resolved catalog and any diagnostic messages from generators
+ */
 export async function resolveUIOptionCatalog(
   config: UIOptionConfig,
   params: ResolveUIOptionsParams = {},
@@ -317,6 +331,16 @@ function cloneServiceFrameworks(
   );
 }
 
+/**
+ * Builds a UI option configuration from a catalog and generator map.
+ *
+ * Combines static values from the catalog with generator script paths
+ * to create a configuration that can be serialized and later resolved.
+ *
+ * @param catalog - Static option values by category
+ * @param generators - Map of generator script paths by option key
+ * @returns Combined configuration with values and generators
+ */
 export function buildUIOptionConfig(
   catalog: UIOptionCatalog | undefined,
   generators: UIOptionGeneratorMap | undefined,

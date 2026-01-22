@@ -60,7 +60,8 @@ function exitWithCode(code: number): never {
 function getConfigWithFormat(command: Command, options: { format?: string }): CLIConfig {
   const config = { ...requireCommandConfig(command) };
   if (typeof options.format === "string") {
-    config.format = options.format;
+    // Cast format - Commander provides string, but we validate acceptable values
+    config.format = options.format as "table" | "json" | "yaml";
   }
   return config;
 }

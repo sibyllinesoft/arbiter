@@ -13,6 +13,15 @@ export interface CueAst {
   root: CueNode;
 }
 
+/**
+ * Parses CUE content into an AST representation.
+ *
+ * Creates a temporary workspace, exports the CUE to JSON, then builds a tree structure.
+ *
+ * @param content - Raw CUE content string to parse
+ * @returns AST with root node containing the parsed structure
+ * @throws Error if CUE parsing or export fails
+ */
 export async function parseCueToAst(content: string): Promise<CueAst> {
   const workspace = mkdtempSync(path.join(tmpdir(), "cue-ast-"));
   const filePath = path.join(workspace, "input.cue");
@@ -36,6 +45,7 @@ export async function parseCueToAst(content: string): Promise<CueAst> {
   }
 }
 
+/** Recursively builds a tree of CueNode from a JSON value. */
 function buildTree(value: unknown, path: string): CueNode {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const entries = Object.entries(value as Record<string, unknown>);

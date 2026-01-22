@@ -9,6 +9,7 @@ import type { OptionInfo, ParsedCommandInfo, TemplateConfig, TemplateData } from
 import * as fs from "fs-extra";
 import { getAdvancedHTMLTemplate, getAdvancedMarkdownTemplate } from "./builtin-templates.js";
 
+/** Renders documentation templates with variable substitution and built-in template support. */
 export class DocsTemplateImplementor {
   private templateCache = new Map<string, string>();
 

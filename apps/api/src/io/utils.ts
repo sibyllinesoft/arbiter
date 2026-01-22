@@ -73,13 +73,14 @@ export async function formatCUE(
   content: string,
 ): Promise<{ formatted: string; success: boolean; error?: string }> {
   // Write content to temporary file
-  const tempFile = `/tmp/temp_${generateId()}.cue`;
+  const tempFileName = `temp_${generateId()}.cue`;
+  const tempFile = `/tmp/${tempFileName}`;
 
   try {
     await Bun.write(tempFile, content);
 
     const runner = new CueRunner({ cwd: "/tmp" });
-    const result = await runner.fmt([tempFile]);
+    const result = await runner.fmt([tempFileName]);
 
     if (result.success) {
       const formatted = await Bun.file(tempFile).text();

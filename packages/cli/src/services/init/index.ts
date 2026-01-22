@@ -120,7 +120,7 @@ export async function initCommand(
 
     const validation = validateInitRequirements(options, config);
     if (!validation.valid) {
-      return validation.exitCode;
+      return (validation as { valid: false; exitCode: number }).exitCode;
     }
 
     const projectName = displayName || options.name || path.basename(process.cwd());

@@ -33,7 +33,7 @@ const resolveRoutesPackageKey = (
     return routeInfo.baseRoutePath;
   }
   if (metadata.packageRoot) return String(metadata.packageRoot);
-  if (routeInfo?.routeSegments.length) return routeInfo.routeSegments[0];
+  if (routeInfo?.routeSegments.length) return routeInfo.routeSegments[0] ?? "/";
 
   const routeIdentifier = getRouteIdentifier(item);
   return routeIdentifier || "/";
@@ -54,7 +54,7 @@ const resolveDefaultPackageKey = (
   if (normalizedServiceName) return normalizedServiceName;
   if (metadata.packageName) return String(metadata.packageName);
   if (metadata.root) return String(metadata.root);
-  if (filePath.includes("/")) return filePath.split("/")[0];
+  if (filePath.includes("/")) return filePath.split("/")[0] ?? "";
 
   return filePath;
 };

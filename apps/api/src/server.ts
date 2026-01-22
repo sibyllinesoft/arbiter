@@ -17,6 +17,7 @@ import { EventService } from "./io/events";
 import { tunnelManager } from "./io/tunnel-manager";
 import { createProblemDetails, getCurrentTimestamp, logger } from "./io/utils";
 import { AppError } from "./scanner/errors";
+import { EntitySyncService } from "./services/EntitySyncService";
 import { loadConfig } from "./util/config";
 import { SpecWorkbenchDB } from "./util/db";
 import { SpecEngine } from "./util/specEngine";
@@ -84,12 +85,14 @@ export class SpecWorkbenchServer {
     });
 
     // Initialize modular components
+    const entitySyncService = new EntitySyncService(this.db.entityRepository);
     const dependencies: Dependencies = {
       db: this.db,
       specEngine: this.specEngine,
       events: this.events,
       auth: this.auth,
       config: this.config,
+      entitySyncService,
     };
 
     this.apiRouter = createApiRouter(dependencies);

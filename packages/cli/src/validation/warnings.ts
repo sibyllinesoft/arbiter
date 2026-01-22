@@ -22,6 +22,7 @@ interface NormalizedSpec {
   product?: { name?: string; goals?: string[] };
   metadata?: { name?: string; version?: string; description?: string };
   services?: Record<string, any>;
+  clients?: Record<string, any>;
   paths?: Record<string, any>;
   contracts?: Record<string, any>;
   ui?: { routes?: any[] };
@@ -34,6 +35,7 @@ interface NormalizedSpec {
   locators?: any;
   data?: any;
   docs?: any;
+  relationships?: Record<string, any>;
 }
 
 /** Validation warning or error structure */
@@ -66,6 +68,7 @@ export function validateSpecification(spec: any): ValidationResult {
   warnings.push(...validateTestDefinitions(normalizedSpec));
   warnings.push(...validateGroupsAndIssues(normalizedSpec));
   warnings.push(...validateServiceCompleteness(normalizedSpec));
+  warnings.push(...validateOrphanServices(normalizedSpec));
   warnings.push(...validateDocumentation(normalizedSpec));
   warnings.push(...validateSecurity(normalizedSpec));
   warnings.push(...validatePerformanceSpecs(normalizedSpec));
@@ -96,6 +99,7 @@ function normalizeSpec(spec: any): NormalizedSpec {
     product: spec.product,
     metadata: spec.metadata,
     services: spec.services,
+    clients: spec.clients,
     paths: spec.paths,
     contracts: spec.contracts,
     ui: spec.ui,
@@ -108,6 +112,7 @@ function normalizeSpec(spec: any): NormalizedSpec {
     locators: spec.locators,
     data: spec.data,
     docs: spec.docs,
+    relationships: spec.relationships,
   };
 }
 
@@ -362,6 +367,80 @@ function validateServiceCompleteness(spec: NormalizedSpec): ValidationWarning[] 
   return Object.entries(spec.services || {}).flatMap(([name, service]) =>
     validateSingleService(name, service),
   );
+}
+
+/**
+ * Collect all service names that are targets of relationships.
+ * @param relationships - Relationships map from spec
+ * @returns Set of service names that have dependents
+ */
+function collectServicesWithDependents(
+  relationships: Record<string, any> | undefined,
+): Set<string> {
+  const servicesWithDependents = new Set<string>();
+
+  if (!relationships) return servicesWithDependents;
+
+  for (const rel of Object.values(relationships)) {
+    if (!rel || typeof rel !== "object") continue;
+
+    // The "to" field indicates the target of the relationship
+    // If something points TO a service, that service has a dependent
+    if (typeof rel.to === "string") {
+      servicesWithDependents.add(rel.to);
+    }
+  }
+
+  return servicesWithDependents;
+}
+
+/**
+ * Check if a service should be validated for orphan status.
+ * Only external services are excluded - they're consumed from outside our system.
+ * @param service - Service configuration
+ * @returns True if service should be checked for dependents
+ */
+function shouldCheckForDependents(service: any): boolean {
+  // Skip external services - they're consumed from outside our system boundary
+  if (service.external) return false;
+
+  return true;
+}
+
+/**
+ * Validate that services have at least one dependent (client or other service).
+ * Warns about "orphan" services that nothing depends on.
+ * @param spec - Normalized specification
+ * @returns Array of validation warnings for orphan services
+ */
+function validateOrphanServices(spec: NormalizedSpec): ValidationWarning[] {
+  const warnings: ValidationWarning[] = [];
+  const services = spec.services || {};
+  const serviceNames = Object.keys(services);
+
+  // No services means nothing to validate
+  if (serviceNames.length === 0) return warnings;
+
+  // Collect services that have dependents via relationships
+  const servicesWithDependents = collectServicesWithDependents(spec.relationships);
+
+  // Check each service for orphan status
+  for (const [serviceName, service] of Object.entries(services)) {
+    if (!shouldCheckForDependents(service)) continue;
+
+    if (!servicesWithDependents.has(serviceName)) {
+      warnings.push(
+        createWarning(
+          "Service Architecture",
+          `Service '${serviceName}' has no dependents - nothing uses this service`,
+          `Add a relationship showing which clients or services depend on '${serviceName}', or verify this service is needed`,
+          `services.${serviceName}`,
+        ),
+      );
+    }
+  }
+
+  return warnings;
 }
 
 /**

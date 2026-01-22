@@ -21,7 +21,7 @@ describe("version helpers", () => {
 
   it("allows compatibility with allowCompat when only warnings remain", async () => {
     const result = await checkCompatibility(
-      { arbiter: CURRENT_VERSIONS.arbiter, cue: "0.5.0" },
+      { arbiter: CURRENT_VERSIONS.arbiter, cue: "1.2.0" },
       true,
     );
     expect(result.compatible).toBe(true);

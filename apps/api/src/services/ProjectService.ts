@@ -4,7 +4,7 @@ import { ScannerRunner } from "@arbiter/importer";
 import { NodeJSPlugin, goPlugin, pythonPlugin, rustPlugin } from "@arbiter/importer/plugins";
 import type { ContentFetcher } from "../git/content-fetcher";
 import { createGithubContentFetcher, createLocalContentFetcher } from "../git/content-fetcher";
-import { gitScanner } from "../git/git-scanner";
+import { type GitScanResult, type ProjectStructure, gitScanner } from "../git/git-scanner";
 import { parseGitUrl } from "../git/git-url";
 import { analyzeProjectFiles } from "../git/project-analysis";
 import type { EventService } from "../io/events";
@@ -49,7 +49,7 @@ interface PathAnalysisResult {
 
 interface ScanContext {
   files: string[];
-  structure: Record<string, unknown> | undefined;
+  structure: ProjectStructure | undefined;
   gitUrl: string | undefined;
   branch: string | undefined;
   contentFetcher: ContentFetcher | undefined;
@@ -101,7 +101,13 @@ export class ProjectService {
       result = this.createFromPreset(dto.presetId, projectId, dto.name);
     } else if (dto.path) {
       const analysis = await this.analyzePath(projectId, dto.name, dto.path);
-      result = { ...analysis, presetData: null };
+      result = {
+        services: analysis.serviceCount,
+        databases: analysis.databaseCount,
+        artifacts: analysis.artifacts,
+        structure: analysis.structure,
+        presetData: null,
+      };
     } else {
       result = {
         services: 0,
@@ -265,13 +271,10 @@ export class ProjectService {
     return context;
   }
 
-  private buildContextFromGitResolution(
-    resolved: Record<string, unknown>,
-    base: ScanContext,
-  ): ScanContext {
+  private buildContextFromGitResolution(resolved: GitScanResult, base: ScanContext): ScanContext {
     const context = { ...base };
-    context.files = (resolved.files as string[]) ?? [];
-    context.structure = resolved.projectStructure as Record<string, unknown>;
+    context.files = resolved.files ?? [];
+    context.structure = resolved.projectStructure;
     context.gitUrl = resolved.gitUrl as string | undefined;
     context.branch = resolved.branch as string | undefined;
     context.cleanupNeeded = true;
@@ -311,7 +314,10 @@ export class ProjectService {
 
     const artifacts: ProjectArtifact[] = analysis.artifacts;
     let { serviceCount, databaseCount } = analysis;
-    const structure = analysis.structure ?? { ...DEFAULT_STRUCTURE };
+    const structure = (analysis.structure ?? { ...DEFAULT_STRUCTURE }) as unknown as Record<
+      string,
+      unknown
+    >;
 
     if (absoluteProjectRoot) {
       const importerArtifacts = await this.runImporterPipeline(absoluteProjectRoot, projectName);
@@ -413,7 +419,7 @@ export class ProjectService {
       });
 
       const manifest = await scanner.scan();
-      return manifest.artifacts as { artifact: Record<string, unknown> }[];
+      return manifest.artifacts.map((a) => ({ artifact: a as unknown as Record<string, unknown> }));
     } catch (error) {
       console.warn("[ProjectService] Importer pipeline failed:", error);
       return [];

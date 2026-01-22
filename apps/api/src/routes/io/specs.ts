@@ -6,6 +6,7 @@ import path from "path";
 import fs from "fs-extra";
 import { Hono } from "hono";
 import type { Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { buildGroupIssueSpec } from "../../io/utils";
 import {
   buildBackendRoutes,
@@ -23,7 +24,10 @@ function generateRequestId(): string {
 }
 
 function errorResponse(c: Context, message: string, details?: string, status = 500) {
-  return c.json({ success: false, error: message, ...(details && { message: details }) }, status);
+  return c.json(
+    { success: false, error: message, ...(details && { message: details }) },
+    status as ContentfulStatusCode,
+  );
 }
 
 function successResponse(c: Context, data: Record<string, unknown>) {

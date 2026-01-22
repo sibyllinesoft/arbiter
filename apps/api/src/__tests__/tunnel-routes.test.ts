@@ -16,7 +16,7 @@ const mockManager = {
 } as unknown as TunnelManager;
 
 // Patch the route module's tunnelManager import
-vi.mock("../tunnel-manager", () => {
+vi.mock("../io/tunnel-manager", () => {
   return {
     tunnelManager: mockManager,
   };

@@ -3,7 +3,7 @@
  */
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import SplitPane from "./SplitPane";
+import SplitPane from "../SplitPane";
 
 const defaultRect: DOMRect = {
   x: 0,

@@ -1,8 +1,9 @@
 /** @packageDocumentation Tests for add CLI commands */
-import { describe, expect, it, spyOn } from "bun:test";
+import { beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
 import { createAddCommands } from "@/cli/commands/add.js";
+import { __contextTesting } from "@/cli/context.js";
 import * as addSvc from "@/services/add/index.js";
 
 const baseConfig: any = {
@@ -31,6 +32,10 @@ function buildProgram(): Command {
 }
 
 describe("add CLI", () => {
+  beforeEach(() => {
+    __contextTesting.setActiveConfig(null);
+  });
+
   it("dispatches service with parsed port", async () => {
     const addSpy = spyOn(addSvc, "runAddCommand").mockResolvedValue(0);
     const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as any);

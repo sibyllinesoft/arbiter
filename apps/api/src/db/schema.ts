@@ -133,6 +133,81 @@ export const artifacts = sqliteTable(
   }),
 );
 
+/** Entities table for tracking specification entities with UUIDs and timestamps */
+export const entities = sqliteTable(
+  "entities",
+  {
+    /** UUID identifier from CUE spec (entityId field) */
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** Entity type (service, client, schema, flow, etc.) */
+    type: text("type").notNull(),
+    /** Key/slug in the spec (e.g., "invoiceService") */
+    slug: text("slug").notNull(),
+    /** Location in spec (e.g., "services.invoiceService") */
+    path: text("path"),
+    /** Human-readable name */
+    name: text("name").notNull(),
+    description: text("description"),
+    /** SHA-256 hash of entity JSON for change detection */
+    contentHash: text("content_hash").notNull(),
+    /** Full entity JSON data */
+    data: text("data").notNull(),
+    /** Reference to current revision */
+    headRevisionId: text("head_revision_id"),
+    /** Optional link to source CUE fragment */
+    fragmentId: text("fragment_id").references(() => fragments.id, { onDelete: "set null" }),
+    createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%d %H:%M:%f', 'now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(strftime('%Y-%m-%d %H:%M:%f', 'now'))`),
+  },
+  (table) => ({
+    projectIdx: index("idx_entities_project_id").on(table.projectId),
+    typeIdx: index("idx_entities_type").on(table.type),
+    slugIdx: index("idx_entities_slug").on(table.slug),
+    projectTypeSlug: uniqueIndex("uniq_entities_project_type_slug").on(
+      table.projectId,
+      table.type,
+      table.slug,
+    ),
+  }),
+);
+
+/** Entity revisions table for version history of entities */
+export const entityRevisions = sqliteTable(
+  "entity_revisions",
+  {
+    id: text("id").primaryKey(),
+    entityId: text("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    revisionNumber: integer("revision_number").notNull(),
+    /** SHA-256 hash of entity JSON */
+    contentHash: text("content_hash").notNull(),
+    /** Full entity JSON at this revision */
+    data: text("data").notNull(),
+    /** Type of change: created, updated, renamed, moved */
+    changeType: text("change_type").notNull(),
+    /** Previous slug if renamed */
+    previousSlug: text("previous_slug"),
+    /** Previous path if moved */
+    previousPath: text("previous_path"),
+    /** Author of the change */
+    author: text("author"),
+    /** Commit message or change description */
+    message: text("message"),
+    createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%d %H:%M:%f', 'now'))`),
+  },
+  (table) => ({
+    entityIdx: index("idx_entity_revisions_entity_id").on(table.entityId),
+    entityRevisionUnique: uniqueIndex("uniq_entity_revision").on(
+      table.entityId,
+      table.revisionNumber,
+    ),
+  }),
+);
+
 /** Type for a project row selected from the database */
 export type ProjectRow = typeof projects.$inferSelect;
 /** Type for a fragment row selected from the database */
@@ -145,6 +220,10 @@ export type VersionRow = typeof versions.$inferSelect;
 export type EventRow = typeof events.$inferSelect;
 /** Type for an artifact row selected from the database */
 export type ArtifactRow = typeof artifacts.$inferSelect;
+/** Type for an entity row selected from the database */
+export type EntityRow = typeof entities.$inferSelect;
+/** Type for an entity revision row selected from the database */
+export type EntityRevisionRow = typeof entityRevisions.$inferSelect;
 
 /** Combined schema object for Drizzle ORM */
 export const schema = {
@@ -154,4 +233,6 @@ export const schema = {
   versions,
   events,
   artifacts,
+  entities,
+  entityRevisions,
 };

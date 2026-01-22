@@ -18,6 +18,7 @@ export interface KubernetesData {
   [key: string]: unknown;
 }
 
+/** Importer plugin for Kubernetes manifests and Helm charts. */
 export class KubernetesPlugin implements ImporterPlugin {
   name(): string {
     return "kubernetes";

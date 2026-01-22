@@ -2,6 +2,7 @@
  * Utility functions for Git URL import functionality.
  */
 
+import type { Project } from "@/types/api";
 import { apiService } from "@services/api";
 import { toast } from "react-toastify";
 
@@ -110,7 +111,7 @@ async function cleanupTempResources(scanResult: ScanResult): Promise<void> {
 /** Import a project from scan result */
 export async function importFromScan(
   scanResult: ScanResult,
-): Promise<{ success: boolean; project?: unknown }> {
+): Promise<{ success: boolean; project?: Project }> {
   try {
     const projectName = extractProjectName(scanResult);
     const projectPath = !scanResult.isLocalFileSelection ? scanResult.tempPath : undefined;

@@ -4,10 +4,10 @@ import type { KeyValueEntry } from "@amalto/key-value-editor";
 export interface GroupIssueOption {
   id: string;
   name: string;
-  groupId?: string;
-  groupName?: string;
-  status?: string;
-  completed?: boolean;
+  groupId?: string | undefined;
+  groupName?: string | undefined;
+  status?: string | undefined;
+  completed?: boolean | undefined;
 }
 
 export interface IssueGroupOption {

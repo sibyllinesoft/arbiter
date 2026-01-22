@@ -11,6 +11,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { DocumentationGenerator } from "@/docs/generator/documentation-generator.js";
 import { EnhancedCUEParser } from "@/docs/parser/enhanced-cue-parser.js";
+import type { ParsedSchema } from "@/docs/parser/schema-parser.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

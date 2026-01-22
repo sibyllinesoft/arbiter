@@ -3,10 +3,11 @@
  * Each function handles the rendering logic for a specific chart type.
  */
 import * as d3 from "d3";
+import type { Selection } from "d3-selection";
 import type { PieArcDatum } from "d3-shape";
 import type { ChartData } from "./Chart";
 
-type ChartGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
+type ChartGroup = Selection<SVGGElement, unknown, null, undefined>;
 
 export interface RenderContext {
   g: ChartGroup;
@@ -127,7 +128,7 @@ export function renderBarChart(ctx: RenderContext): void {
     .attr("height", (d: number) => innerHeight - yScale(d))
     .attr("fill", (_d: number, i: number) => {
       const colors = dataset.backgroundColor as string[];
-      return Array.isArray(colors) ? colors[i] || colors[0] : colors || "#3b82f6";
+      return Array.isArray(colors) ? (colors[i] ?? colors[0] ?? "#3b82f6") : (colors ?? "#3b82f6");
     });
 }
 
@@ -185,14 +186,14 @@ export function renderPieChart(ctx: RenderContext): void {
   const pieData = pie(values);
   const colors = (dataset.backgroundColor as string[]) ?? [];
 
-  g.selectAll(".arc")
+  g.selectAll<SVGGElement, PieArcDatum<number>>(".arc")
     .data(pieData)
     .enter()
     .append("g")
     .attr("class", "arc")
     .attr("transform", `translate(${centerX}, ${centerY})`)
-    .each(function (this: SVGGElement, d: PieArcDatum<number>, i: number) {
-      const group = d3.select(this as SVGGElement);
+    .each(function (d, i) {
+      const group = d3.select(this);
 
       group
         .append("path")

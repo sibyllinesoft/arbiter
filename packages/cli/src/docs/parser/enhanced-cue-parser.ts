@@ -9,6 +9,9 @@ import { existsSync, readFileSync } from "fs";
 import path from "path";
 import { ParsedField, ParsedSchema, ParsedType } from "@/docs/parser/schema-parser.js";
 
+/** Type alias for parsed CUE type information (same as ParsedType) */
+type CUETypeInfo = ParsedType;
+
 export interface CUEStructField {
   name: string;
   type: string;
@@ -28,6 +31,7 @@ export interface CUEContext {
   references: Map<string, string>;
 }
 
+/** Parser for CUE schema files that extracts type information and relationships. */
 export class EnhancedCUEParser {
   private schemas = new Map<string, ParsedSchema>();
   private globalContext: CUEContext = {

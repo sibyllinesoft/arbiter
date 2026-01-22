@@ -22,6 +22,7 @@ export interface GoData extends Record<string, unknown> {
   goVersion?: string;
 }
 
+/** Importer plugin for Go projects. Parses go.mod and Go source files. */
 export class GoPlugin implements ImporterPlugin {
   name(): string {
     return "go";

@@ -1,5 +1,6 @@
 import Button from "@/design-system/components/Button";
 import Modal from "@/design-system/components/Modal";
+import type { SelectOption } from "@/design-system/components/Select";
 import { useTheme } from "@/stores/ui-store";
 import type { FieldConfig, FieldValue } from "@/types/forms";
 import { useEffect, useMemo, useState } from "react";
@@ -30,7 +31,10 @@ import {
 } from "./utils";
 
 /** Get resolved options for a field */
-function getResolvedOptions(field: FieldConfig, values: Record<string, FieldValue>): unknown[] {
+function getResolvedOptions(
+  field: FieldConfig,
+  values: Record<string, FieldValue>,
+): Array<string | SelectOption> {
   if (field.type !== "select") return [];
   return field.resolveOptions ? field.resolveOptions(values) : (field.options ?? []);
 }
@@ -39,7 +43,7 @@ function getResolvedOptions(field: FieldConfig, values: Record<string, FieldValu
 function isFieldVisible(
   field: FieldConfig,
   values: Record<string, FieldValue>,
-  resolvedOptions: unknown[],
+  resolvedOptions: Array<string | SelectOption>,
 ): boolean {
   if (!field.isVisible) return true;
   return field.isVisible(values, resolvedOptions);
@@ -297,7 +301,8 @@ export function AddEntityModal({
     const payloadValues: Record<string, FieldValue> = {};
 
     for (const field of fields) {
-      const { error, payload } = validateField(field, values[field.name]);
+      const fieldValue = values[field.name] ?? null;
+      const { error, payload } = validateField(field, fieldValue);
       if (error) {
         validationErrors[field.name] = error;
       }

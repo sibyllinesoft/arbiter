@@ -23,6 +23,12 @@ export interface DockerData {
   [key: string]: unknown;
 }
 
+/**
+ * Importer plugin for Docker files (Dockerfiles and docker-compose.yml).
+ *
+ * Parses Dockerfile instructions and docker-compose service definitions
+ * to infer container-based artifacts and their configurations.
+ */
 export class DockerPlugin implements ImporterPlugin {
   name(): string {
     return "docker";

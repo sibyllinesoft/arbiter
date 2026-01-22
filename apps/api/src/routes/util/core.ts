@@ -1,5 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
-import { type Context, Hono } from "hono";
+import { Hono } from "hono";
+import type { Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { z } from "zod";
 import { CoreController } from "../../controllers/CoreController";
 import { fetchSchema, searchSchema } from "../../schemas/core";
@@ -13,7 +15,7 @@ function createErrorResponse(c: Context, error: unknown, defaultMessage: string)
   const status = err.status ?? (isNotFound ? 404 : 500);
   const message = err.message ?? (isNotFound ? "File not found" : defaultMessage);
 
-  return c.json({ success: false, error: message }, { status });
+  return c.json({ success: false, error: message }, status as ContentfulStatusCode);
 }
 
 export function createCoreRouter(deps: Dependencies) {

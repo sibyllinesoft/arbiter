@@ -18,20 +18,24 @@ export interface CompatibilityResult {
     severity: "error" | "warning" | "info";
     message: string;
   }>;
-  recommendations?: string[];
-  version_mismatches?: Array<{
-    component: string;
-    expected: string;
-    actual: string;
-    [key: string]: any;
-  }>;
-  migration_required?: boolean;
-  migration_path?: {
-    fromVersion: string;
-    toVersion: string;
-    steps: string[];
-  };
-  timestamp?: string;
+  recommendations?: string[] | undefined;
+  version_mismatches?:
+    | Array<{
+        component: string;
+        expected: string;
+        actual: string;
+        [key: string]: any;
+      }>
+    | undefined;
+  migration_required?: boolean | undefined;
+  migration_path?:
+    | {
+        fromVersion: string;
+        toVersion: string;
+        steps: string[];
+      }
+    | undefined;
+  timestamp?: string | undefined;
 }
 
 export const CURRENT_VERSIONS: VersionSet = {
@@ -133,6 +137,13 @@ function buildMigrationPath(
   };
 }
 
+/**
+ * Checks version compatibility between provided versions and required versions.
+ *
+ * @param versions - Partial version set to check against current requirements
+ * @param allowCompat - If true, warnings won't cause incompatibility
+ * @returns Compatibility result with issues, recommendations, and migration info
+ */
 export async function checkCompatibility(
   versions: Partial<VersionSet>,
   allowCompat = false,
@@ -402,6 +413,16 @@ function applyComponentMigration(
   operations.push(`Successfully migrated ${component} from ${fromVersion} to ${toVersion}`);
 }
 
+/**
+ * Executes a migration for a component from one version to another.
+ *
+ * Applies component-specific migration logic and records operations performed.
+ *
+ * @param component - The component to migrate (e.g., "arbiter", "cue", "node")
+ * @param fromVersion - The source version
+ * @param toVersion - The target version
+ * @returns Migration result with success status, operations, and warnings
+ */
 export async function executeMigration(
   component: string,
   fromVersion: string,
@@ -447,6 +468,11 @@ export async function executeMigration(
   }
 }
 
+/**
+ * Returns comprehensive runtime version and build information.
+ *
+ * Includes current versions, build metadata, and compatibility settings.
+ */
 export function getRuntimeVersionInfo(): {
   versions: VersionSet;
   build_info: {
@@ -480,6 +506,12 @@ export function getRuntimeVersionInfo(): {
   };
 }
 
+/**
+ * Validates that a version set contains required components.
+ *
+ * @param versions - The version set to validate
+ * @returns True if arbiter and cue versions are defined
+ */
 export function validateVersionSet(versions: VersionSet): boolean {
   return versions.arbiter !== undefined && versions.cue !== undefined;
 }

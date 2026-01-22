@@ -31,7 +31,23 @@ export interface ShardManifest {
 }
 
 /**
+ * External source types for tracking where entities originated.
+ *
+ * @public
+ */
+export type ExternalSource = "local" | "github" | "gitlab" | "jira" | "linear";
+
+/**
+ * Group type for sync identification.
+ * Milestones and epics are just groups with a specific type.
+ *
+ * @public
+ */
+export type GroupType = "group" | "milestone" | "epic" | "release" | "sprint" | "iteration";
+
+/**
  * High-level group description stored in CUE.
+ * Groups can represent milestones, epics, releases, or sprints.
  *
  * @public
  */
@@ -39,6 +55,8 @@ export interface Group {
   id: string;
   name: string;
   description?: string;
+  /** Group type - identifies what this group represents for sync purposes */
+  type?: GroupType;
   priority: "critical" | "high" | "medium" | "low";
   status: "planning" | "in_progress" | "completed" | "cancelled";
   owner?: string;
@@ -52,6 +70,8 @@ export interface Group {
   dependencies?: string[];
   labels?: string[];
   tags?: string[];
+  /** Parent group for nested groups (e.g., epic belongs to milestone) */
+  memberOf?: string;
   config?: {
     allowParallelTasks?: boolean;
     autoProgress?: boolean;
@@ -62,10 +82,20 @@ export interface Group {
     generatedFrom?: string;
     cuePackage?: string;
   };
+  // External source tracking for GitHub/GitLab sync
+  /** Where this group originated */
+  source?: ExternalSource;
+  /** External system ID (e.g., GitHub milestone number) */
+  externalId?: string;
+  /** Full URL to the group in the external system */
+  externalUrl?: string;
+  /** Repository in the external system (e.g., "owner/repo") */
+  externalRepo?: string;
 }
 
 /**
  * Task representation associated with an group shard.
+ * Tasks map to GitHub/GitLab issues.
  *
  * @public
  */
@@ -78,11 +108,20 @@ export interface Task {
   priority: "critical" | "high" | "medium" | "low";
   status: "todo" | "in_progress" | "review" | "testing" | "completed" | "cancelled";
   assignee?: string;
+  /** Multiple assignees (GitHub/GitLab compatible) */
+  assignees?: string[];
   reviewer?: string;
   estimatedHours?: number;
   actualHours?: number;
   dependsOn?: string[];
   acceptanceCriteria?: string[];
+  labels?: string[];
+  /** Parent group for membership */
+  memberOf?: string;
+  /** Milestone group reference (for GitHub/GitLab milestone sync) */
+  milestone?: string;
+  /** Story points / weight (GitLab weight, Jira points) */
+  weight?: number;
   config?: {
     canRunInParallel?: boolean;
     requiresReview?: boolean;
@@ -105,6 +144,15 @@ export interface Task {
       coverage?: number;
     };
   };
+  // External source tracking for GitHub/GitLab sync
+  /** Where this task originated */
+  source?: ExternalSource;
+  /** External system issue ID (e.g., GitHub issue number) */
+  externalId?: string;
+  /** Full URL to the issue in the external system */
+  externalUrl?: string;
+  /** Repository in the external system (e.g., "owner/repo") */
+  externalRepo?: string;
 }
 
 /**

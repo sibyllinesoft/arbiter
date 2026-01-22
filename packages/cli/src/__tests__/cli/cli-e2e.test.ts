@@ -7,7 +7,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-const CLI_ENTRY = path.resolve(import.meta.dir, "@/cli.ts");
+const CLI_ENTRY = path.resolve(import.meta.dir, "../../cli.ts");
 const BUN_EXECUTABLE = process.env.BUN_PATH || "bun";
 const hasCue =
   spawnSync("cue", ["version"], { stdio: "ignore" }).status === 0 ||
@@ -87,7 +87,7 @@ async function scaffoldDemoProject(projectDir: string): Promise<void> {
   await add("schema", "HealthResponse");
   await add("route", "/dashboard", "--component", "Dashboard");
   await add(
-    "flow",
+    "behavior",
     "checkout",
     "--steps",
     JSON.stringify([
@@ -381,7 +381,7 @@ if (!shouldRunE2E) {
       const assembly = await readFile(assemblyPath, "utf-8");
       expect(assembly).toContain("services:");
       expect(assembly).toContain("locators:");
-      expect(assembly).toContain("flows:");
+      expect(assembly).toContain("behaviors:");
 
       const expectedDirs = ["services", "tests"];
       await Promise.all(

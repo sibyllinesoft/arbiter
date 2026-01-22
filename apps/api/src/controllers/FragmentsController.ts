@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { logger } from "../io/utils";
+import type { EntityRepository } from "../repositories/EntityRepository";
+import type { EntitySyncService, SyncResult } from "../services/EntitySyncService";
 import type { SpecWorkbenchDB } from "../util/db";
 import type { SpecEngine } from "../util/specEngine";
 
@@ -19,10 +21,12 @@ function normalizePath(fragmentPath: string): string {
 export class FragmentsController {
   private db: SpecWorkbenchDB;
   private specEngine?: SpecEngine;
+  private entitySyncService?: EntitySyncService;
 
   constructor(deps: Dependencies) {
     this.db = deps.db as SpecWorkbenchDB;
     this.specEngine = deps.specEngine as SpecEngine | undefined;
+    this.entitySyncService = deps.entitySyncService as EntitySyncService | undefined;
   }
 
   async list(projectId: string) {
@@ -57,15 +61,17 @@ export class FragmentsController {
     );
   }
 
-  private async validateFragments(projectId: string) {
+  private async validateFragments(projectId: string, author?: string) {
     if (!this.specEngine) return undefined;
 
     try {
       const projectFragments = await this.db.listFragments(projectId);
       const result = await this.specEngine.validateProject(projectId, projectFragments);
 
+      let entitySync: SyncResult | undefined;
       if (result.success && result.resolved) {
         await this.persistResolvedSpec(projectId, result.specHash, result.resolved);
+        entitySync = await this.syncEntities(projectId, result.resolved, author);
       }
 
       return {
@@ -73,9 +79,34 @@ export class FragmentsController {
         specHash: result.specHash,
         errors: result.errors,
         warnings: result.warnings,
+        entitySync,
       };
     } catch (error) {
       logger.warn("Fragment validation failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
+  }
+
+  private async syncEntities(
+    projectId: string,
+    resolved: Record<string, unknown>,
+    author?: string,
+  ): Promise<SyncResult | undefined> {
+    if (!this.entitySyncService) return undefined;
+
+    try {
+      const result = await this.entitySyncService.syncEntities(
+        projectId,
+        resolved,
+        author,
+        "Synced from spec validation",
+      );
+      return result;
+    } catch (error) {
+      logger.warn("Entity sync failed", {
+        projectId,
         error: error instanceof Error ? error.message : String(error),
       });
       return undefined;
@@ -100,7 +131,7 @@ export class FragmentsController {
       payload.author,
       payload.message,
     );
-    const validation = await this.validateFragments(projectId);
+    const validation = await this.validateFragments(projectId, payload.author);
 
     return { fragment, validation };
   }

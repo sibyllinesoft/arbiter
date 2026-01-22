@@ -4,10 +4,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useEditorActions, useEditorState, useStatus } from "../../contexts/AppContext";
-import { useCurrentProject } from "../../contexts/ProjectContext";
-import type { Fragment } from "../../types/api";
-import FileTree from "./FileTree";
+import { useEditorActions, useEditorState, useStatus } from "../../../contexts/AppContext";
+import { useCurrentProject } from "../../../contexts/ProjectContext";
+import type { Fragment } from "../../../types/api";
+import FileTree from "../FileTree";
 
 vi.mock("react-toastify", () => ({
   toast: {

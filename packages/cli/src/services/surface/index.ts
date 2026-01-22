@@ -94,7 +94,7 @@ function buildSurfaceOutput(
 /**
  * Log project info in non-agent mode.
  */
-function logProjectInfo(namingResult: { context: { name: string }; filename: string }): void {
+function logProjectInfo(namingResult: { context: { name?: string }; filename: string }): void {
   if (namingResult.context.name) {
     console.log(chalk.dim(`   Project: ${namingResult.context.name}`));
     console.log(chalk.dim(`   Output: ${namingResult.filename}`));

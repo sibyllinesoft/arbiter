@@ -1,7 +1,7 @@
+import type { IRResponse } from "@/types/api";
 import { apiService } from "@services/api";
 import mermaid from "mermaid";
 import React, { useEffect, useRef, useState } from "react";
-import type { IRResponse } from "../../types/api";
 
 interface FlowDiagramProps {
   projectId: string;

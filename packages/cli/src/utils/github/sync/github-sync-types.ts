@@ -42,6 +42,13 @@ export interface SyncResult {
   itemId: string;
   githubNumber?: number;
   details?: string;
+  /** External tracking info for updating local entities */
+  external?: {
+    source: "github";
+    externalId: string;
+    externalUrl: string;
+    externalRepo: string;
+  };
 }
 
 export interface SyncPreview {
@@ -90,8 +97,8 @@ function buildResult(
 function processCategory<T extends { id: string; name: string }>(
   category: {
     create: T[];
-    update: Array<{ [key: string]: T; existing: any }>;
-    close: Array<{ [key: string]: T; existing: any }>;
+    update: Array<Record<string, unknown>>;
+    close: Array<Record<string, unknown>>;
   },
   type: SyncResult["type"],
   itemKey: string,

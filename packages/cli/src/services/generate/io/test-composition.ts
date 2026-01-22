@@ -9,13 +9,14 @@ import { writeFileWithHooks } from "@/services/generate/util/hook-executor.js";
 import { joinRelativePath, toPathSegments } from "@/services/generate/util/shared.js";
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { ProjectStructureConfig } from "@/types.js";
-import type {
-  DeploymentServiceConfig,
-  TestCase,
-  TestCompositionResult,
-  TestSuite,
-} from "@arbiter/shared";
+import type { ServiceConfig, TestCase, TestCompositionResult, TestSuite } from "@arbiter/shared";
 import fs from "fs-extra";
+
+/** Type alias for deployment service configuration */
+type DeploymentServiceConfig = Partial<ServiceConfig> & {
+  /** Artifact type for deployment classification */
+  artifactType?: "internal" | "external";
+};
 
 const DEFAULT_PROJECT_STRUCTURE: ProjectStructureConfig = {
   servicesDirectory: "services",
@@ -24,6 +25,7 @@ const DEFAULT_PROJECT_STRUCTURE: ProjectStructureConfig = {
   toolsDirectory: "tools",
   testsDirectory: "tests",
   docsDirectory: "docs",
+  infraDirectory: "infra",
 };
 
 /**
@@ -275,7 +277,7 @@ export class TestCompositionEngine {
           },
         };
       })
-      .filter((tc): tc is TestCase => tc !== null);
+      .filter((tc): tc is NonNullable<typeof tc> => tc !== null) as TestCase[];
   }
 
   /**

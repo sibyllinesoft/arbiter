@@ -38,6 +38,11 @@ export interface CueExportResult {
   raw: ExternalToolResult;
 }
 
+/**
+ * Executes CUE commands (vet, export, fmt) using the embedded cuelang-js runtime.
+ *
+ * Provides structured output with diagnostics parsing for validation errors.
+ */
 export class CueRunner {
   private readonly cwd: string;
   private readonly timeoutMs: number;
@@ -275,6 +280,7 @@ export class CueRunner {
   }
 }
 
+/** Safely parses JSON string, returning a discriminated union result. */
 function safeJsonParse<T = unknown>(
   json: string,
 ): { success: true; data: T } | { success: false; error: string } {
@@ -289,6 +295,12 @@ function safeJsonParse<T = unknown>(
   }
 }
 
+/**
+ * Factory function to create a CueRunner instance.
+ *
+ * @param options - Configuration options including working directory and timeout
+ * @returns Configured CueRunner instance
+ */
 export function createCueRunner(options: CueRunnerOptions): CueRunner {
   return new CueRunner(options);
 }

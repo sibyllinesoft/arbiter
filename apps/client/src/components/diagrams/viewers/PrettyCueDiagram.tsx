@@ -1,7 +1,7 @@
+import type { ResolvedSpecResponse } from "@/types/api";
 import { apiService } from "@services/api";
 import { AlertTriangle, CheckCircle, ChevronDown, ChevronRight, Hash, Loader2 } from "lucide-react";
 import React, { useState, useEffect } from "react";
-import type { ResolvedSpecResponse } from "../../types/api";
 
 interface PrettyCueDiagramProps {
   /** Project ID to fetch resolved spec data */

@@ -16,7 +16,9 @@ export function buildResolvedSpec(
 ): Record<string, unknown> {
   const frontendViewSet = extractFrontendViews(artifacts);
   const hasServices = Object.keys(services).length > 0;
-  const { groups, tasks } = buildGroupIssueSpec(artifacts);
+  const { groups, tasks } = buildGroupIssueSpec(
+    artifacts as Parameters<typeof buildGroupIssueSpec>[0],
+  );
 
   const flows = hasServices ? [{ id: "main-flow", name: "Main Application Flow" }] : [];
   const capabilities = hasServices ? [{ id: "api-capability", name: "API Services" }] : [];

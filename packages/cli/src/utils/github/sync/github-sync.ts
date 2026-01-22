@@ -28,6 +28,12 @@ export type {
   SyncPreview,
 } from "@/utils/github/sync/github-sync-types.js";
 
+/**
+ * Client for synchronizing Arbiter groups and tasks to GitHub issues and milestones.
+ *
+ * Handles idempotent sync operations using arbiter-id tracking in issue bodies.
+ * Supports creating, updating, and closing issues/milestones based on local state.
+ */
 export class GitHubSyncClient {
   private octokit: Octokit;
   private config: GitHubSyncConfig;
@@ -263,7 +269,7 @@ export class GitHubSyncClient {
 
     if (dryRun) {
       const preview = await this.generateSyncPreview(groups);
-      return this.convertPreviewToResults(preview);
+      return convertPreviewToResults(preview);
     }
 
     await this.loadExistingData();
@@ -487,6 +493,32 @@ export class GitHubSyncClient {
   }
 
   /**
+   * Build external tracking info for a GitHub issue.
+   */
+  private buildExternalTracking(issueNumber: number): SyncResult["external"] {
+    const { owner, repo } = this.config.repository;
+    return {
+      source: "github",
+      externalId: String(issueNumber),
+      externalUrl: `https://github.com/${owner}/${repo}/issues/${issueNumber}`,
+      externalRepo: `${owner}/${repo}`,
+    };
+  }
+
+  /**
+   * Build external tracking info for a GitHub milestone.
+   */
+  private buildMilestoneExternalTracking(milestoneNumber: number): SyncResult["external"] {
+    const { owner, repo } = this.config.repository;
+    return {
+      source: "github",
+      externalId: String(milestoneNumber),
+      externalUrl: `https://github.com/${owner}/${repo}/milestone/${milestoneNumber}`,
+      externalRepo: `${owner}/${repo}`,
+    };
+  }
+
+  /**
    * Create a new GitHub issue for a group.
    */
   private async createGroupIssue(group: Group, groupTitle: string): Promise<SyncResult> {
@@ -515,6 +547,7 @@ export class GitHubSyncClient {
       itemId: group.id,
       githubNumber: newIssue.data.number,
       details: `Created GitHub issue #${newIssue.data.number}`,
+      external: this.buildExternalTracking(newIssue.data.number),
     };
   }
 
@@ -546,6 +579,7 @@ export class GitHubSyncClient {
       itemId: group.id,
       githubNumber: existingIssue.number,
       details: `Updated GitHub issue #${existingIssue.number}`,
+      external: this.buildExternalTracking(existingIssue.number),
     };
   }
 
@@ -560,6 +594,7 @@ export class GitHubSyncClient {
       itemId: group.id,
       githubNumber: existingIssue.number,
       details: `No changes needed for GitHub issue #${existingIssue.number}`,
+      external: this.buildExternalTracking(existingIssue.number),
     };
   }
 
@@ -591,6 +626,7 @@ export class GitHubSyncClient {
       itemId: group.id,
       githubNumber: existingIssue.number,
       details: `Closed GitHub issue #${existingIssue.number}`,
+      external: this.buildExternalTracking(existingIssue.number),
     };
   }
 
@@ -666,6 +702,7 @@ export class GitHubSyncClient {
       itemId: task.id,
       githubNumber: newIssue.data.number,
       details: `Created GitHub issue #${newIssue.data.number}`,
+      external: this.buildExternalTracking(newIssue.data.number),
     };
   }
 
@@ -704,6 +741,7 @@ export class GitHubSyncClient {
       itemId: task.id,
       githubNumber: existingIssue.number,
       details: `Updated GitHub issue #${existingIssue.number}`,
+      external: this.buildExternalTracking(existingIssue.number),
     };
   }
 
@@ -718,6 +756,7 @@ export class GitHubSyncClient {
       itemId: task.id,
       githubNumber: existingIssue.number,
       details: `No changes needed for GitHub issue #${existingIssue.number}`,
+      external: this.buildExternalTracking(existingIssue.number),
     };
   }
 
@@ -749,6 +788,7 @@ export class GitHubSyncClient {
       itemId: task.id,
       githubNumber: existingIssue.number,
       details: `Closed GitHub issue #${existingIssue.number}`,
+      external: this.buildExternalTracking(existingIssue.number),
     };
   }
 
@@ -836,6 +876,7 @@ export class GitHubSyncClient {
       itemId: group.id,
       githubNumber: newMilestone.data.number,
       details: `Created GitHub milestone #${newMilestone.data.number}`,
+      external: this.buildMilestoneExternalTracking(newMilestone.data.number),
     };
   }
 
@@ -867,6 +908,7 @@ export class GitHubSyncClient {
       itemId: group.id,
       githubNumber: existingMilestone.number,
       details: `Updated GitHub milestone #${existingMilestone.number}`,
+      external: this.buildMilestoneExternalTracking(existingMilestone.number),
     };
   }
 
@@ -900,6 +942,7 @@ export class GitHubSyncClient {
       itemId: group.id,
       githubNumber: existingMilestone.number,
       details: `Closed GitHub milestone #${existingMilestone.number}`,
+      external: this.buildMilestoneExternalTracking(existingMilestone.number),
     };
   }
 

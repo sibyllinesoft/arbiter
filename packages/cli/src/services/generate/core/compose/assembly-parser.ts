@@ -119,6 +119,12 @@ export function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): Conf
     testability: cueData.testability,
     ops: cueData.ops,
     processes: cueData.processes ?? cueData.stateModels,
+    // UI-related fields
+    ui: cueData.ui,
+    locators: cueData.locators,
+    deployment: cueData.deployment,
+    // API paths for OpenAPI generation
+    paths: cueData.paths,
   };
 
   const config: ConfigWithVersion = {

@@ -59,7 +59,7 @@ function extractBasePath(route: RawData, router: RawData): string | undefined {
   const routerBasePath = coerceDisplayValue(
     router?.basePath ?? router?.pathPrefix ?? router?.prefix,
   );
-  return metadataBasePath || routerBasePath;
+  return (metadataBasePath || routerBasePath) ?? undefined;
 }
 
 function createViewFromRoute(
@@ -268,8 +268,8 @@ export const normalizeClient = (
   const combinedViews = combineViews(baseViews, manualViewMap, candidateKeys);
 
   const metadataItems = buildMetadataItems(
-    language,
-    framework,
+    language ?? undefined,
+    framework ?? undefined,
     frameworks,
     typeLabel,
     sourcePath,

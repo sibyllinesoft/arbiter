@@ -53,11 +53,11 @@ function generateTaskIdentifiers(
 function applyOptionalFields(
   task: NormalizedTask,
   fields: {
-    status?: string;
-    assignee?: string;
-    priority?: string;
-    description?: string;
-    artifactId?: string;
+    status?: string | undefined;
+    assignee?: string | undefined;
+    priority?: string | undefined;
+    description?: string | undefined;
+    artifactId?: string | undefined;
   },
 ): void {
   if (fields.status) task.status = fields.status;
@@ -138,7 +138,7 @@ export function normalizeTask({
     assignee: extractAssignee(taskRecord, metadata),
     priority: getString(taskRecord, "priority") ?? getString(metadata, "priority") ?? undefined,
     description: extractDescription(taskRecord, metadata),
-    artifactId: extractArtifactId(taskRecord, metadata),
+    artifactId: extractArtifactId(taskRecord, metadata) ?? undefined,
   });
 
   applyGroupContext(

@@ -101,13 +101,13 @@ export function parseFlowConnections(
 
   const flowSteps: FlowStep[] = steps.map((step, index) => ({
     id: `${flow.id || flowIndex}_step_${index}`,
-    type: Object.keys(step)[0]!,
+    type: Object.keys(step)[0] as FlowStep["type"],
     target:
       (step.visit as string) ||
       ((step.click as Record<string, unknown>)?.locator as string) ||
       ((step.fill as Record<string, unknown>)?.locator as string) ||
       "",
-    value: (step.fill as Record<string, unknown>)?.value,
+    value: (step.fill as Record<string, unknown>)?.value as string | undefined,
     expectation: step.expect ?? step.expect_api,
   }));
 

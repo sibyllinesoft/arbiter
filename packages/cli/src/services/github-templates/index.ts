@@ -429,7 +429,7 @@ async function resolveTemplateResult(
   templateType: string,
   templateManager: UnifiedGitHubTemplateManager,
   sampleData: any,
-): Promise<{ title: string; body: string; labels: string[]; assignees?: string[] } | null> {
+): Promise<{ title: string; body: string; labels?: string[]; assignees?: string[] } | null> {
   switch (templateType.toLowerCase()) {
     case "group":
       return templateManager.generateGroupTemplate(sampleData);
@@ -449,7 +449,7 @@ async function resolveTemplateResult(
 function printTemplateResult(result: {
   title: string;
   body: string;
-  labels: string[];
+  labels?: string[];
   assignees?: string[];
 }): void {
   console.log(chalk.green("Generated Template Output:\n"));

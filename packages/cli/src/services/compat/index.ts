@@ -18,6 +18,9 @@ import {
 } from "@arbiter/shared";
 import { z } from "zod";
 
+/** Type alias for runtime version information returned by getRuntimeVersionInfo */
+type RuntimeInfo = ReturnType<typeof getRuntimeVersionInfo>;
+
 // =============================================================================
 // COMMAND SCHEMAS
 // =============================================================================

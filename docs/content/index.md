@@ -6,18 +6,25 @@ sidebar_position: 1
 description: Agent-first CLI for collaborative, spec-driven development. Keep AI agents on rails with guided CUE specification workflows.
 ---
 
-**Arbiter keeps agents on rails.** It's a CLI-first specification platform designed to simplify validation, enable collaborative spec-driven development, and guide both humans and AI agents through structured workflows.
+Arbiter will completely change how you build software with agents. It takes the core tenent of spec driven development--That spec should be the new level of abstraction, rather than code--and makes it robust.
 
-## Why Arbiter?
+Spec driven development seems like a great idea in theory, but when you try it you quickly realize that agents are pretty hit-or-miss about following specs and this behavior gets worse as the spec gets longer and more complicated. To make matters worse, markdown specs are tedious to review and they don't enforce any project structure. Because of this, spec driven development is good for bootstrapping small greenfield projects, but it falls over hard for larger and pre-existing projects.
 
-Traditional development tools force you to choose between flexibility and structure. Arbiter gives you both:
+In an ideal world, specs would be so good that if you deleted the source code you could re-create working software from the spec quickly. We're a long way from that, but Arbiter is my attempt to move us towards that goal. Arbiter uses structured specs with entities and metadata, and these specs are used to automatically generate scaffolding (code, tests, infrastructure, docs, etc) in a predictable, deterministic way. This saves a ton of tokens as agents don't have to manually generate all of it, it reduces errors, and software built from a spec has the same basic structure every time.
 
-- **Agent-First Design**: The CLI is the primary interface, built from the ground up for agentic use with baked-in directions, next-step prompts, and structured outputs that keep AI assistants focused and productive.
-- **Guided Workflows**: Start with `arbiter init`, build incrementally with `arbiter add`, validate continuously with `arbiter check`. Each command suggests what to do next.
-- **Specification Validation Made Simple**: CUE-based schemas catch errors before they become code. Type-safe, composable, and collaborative.
-- **Flexible Control**: Use the CLI for guided workflows (recommended), the web UI for visual modifications, or write CUE directly when you need full control. The CLI is designed to scaffold your spec before manual editing begins.
+## How Does It Work?
+
+Arbiter is a command line tool that agents can use to modify CUE spec files stored in a `.arbiter/` directory in your project root. Arbiter prompts agents through a lightweight specification workflow, adding elements to the spec one at a time via shell commands as you define them rather than waiting till the end of the specification process to write a markdown document.
+
+Because these specs are structured, you can generate C4-style architecture and process diagrams from them and review those rather than having to go line by line through a 20 page markdown file. These diagrams make it easy for non-technical team members to contribute to the system design. Once you're satisfied with the spec,Arbiter can validate its correctness and generate scaffolding automatically. You don't have to wait for agents to create files and generate stubs, they're all generated according to preconfigured rules. Even better, Arbiter's code generation is fully customizable, so if you have organization or team specific practices you'd like the code to follow, it's easy to make Arbiter enforce them.
+
+## Why CUE rather than JSON?
+
+CUE comes with a much stronger validation and composition story than JSON schema. CUE can also represent complex constraints and type systems that would be unweildly or impossible in JSON schema. The downside is fewer options in terms of tooling.
 
 ## The Arbiter Philosophy
+
+Unlike other spec driven development tools, Arbiter is focused on building a model of your software. Software architects have been doing this for decades, but the practice
 
 **CLI → Spec → Generation → Implementation**
 

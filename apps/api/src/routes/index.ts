@@ -7,6 +7,7 @@ import { createImportRouter } from "./core/import";
 import { createIrRouter } from "./core/ir";
 // io routes
 import { createConfigRouter } from "./io/config";
+import { createEntitiesRouter } from "./io/entities";
 import { createFragmentsRouter } from "./io/fragments";
 import { createProjectsRouter } from "./io/projects";
 import { createSpecsRouter } from "./io/specs";
@@ -33,6 +34,7 @@ export { createImportRouter } from "./core/import";
 export { createGithubRouter } from "./util/github";
 export { createEventsRouter } from "./core/events";
 export { createAuthRouter } from "./util/auth";
+export { createEntitiesRouter } from "./io/entities";
 export { createFragmentsRouter } from "./io/fragments";
 
 function buildOAuthRedirectUrl(config: any, requestUrl: string): string {
@@ -69,6 +71,7 @@ function mountRouters(api: Hono, deps: Dependencies) {
   api.route("/", createCliRouter(deps));
   api.route("/", createProjectsRouter(deps));
   api.route("/", createFragmentsRouter(deps));
+  api.route("/", createEntitiesRouter(deps));
   api.route("/", createSpecsRouter(deps));
   api.route("/", createIrRouter(deps));
   api.route("/", createEventsRouter(deps));

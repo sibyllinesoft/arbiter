@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import type { ProjectEntities } from "@arbiter/shared/types/entities";
 import type { EventService } from "../../../io/events";
 import { coerceStringArray } from "../../../io/utils";
+import type { EventType } from "../../../util/types";
 import { getDatabaseType, hasOwn, normalizeMetadata, toSlug } from "../../helpers/projects-helpers";
 import type { Dependencies } from "./types";
 
@@ -52,7 +53,7 @@ export async function broadcastEvent(
   if (eventsService?.broadcastToProject) {
     await eventsService.broadcastToProject(projectId, {
       project_id: projectId,
-      event_type: eventType,
+      event_type: eventType as EventType,
       data: payload,
     });
   } else if (typeof db?.createEvent === "function") {

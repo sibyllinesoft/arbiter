@@ -10,6 +10,9 @@
         name:   #Human
         goals?: [...#Human]
         constraints?: [...#Human]
+        // Named actors/personas that interact with the system
+        actors?: { [#Slug]: #ActorSpec }
+        // Simple role list (deprecated - use actors for richer modeling)
         roles?: [...#Role] & list.MinItems(1)
         slos?: {
           p95_page_load_ms?: int & >0
@@ -53,6 +56,7 @@
 
     // ---------- Flow grammar ----------
     #Flow: {
+      #EntityMeta
       id:            #FlowID
       preconditions?: {
         role?: #Role
@@ -76,6 +80,7 @@
 
     // ---------- FSM shape (minimal) ----------
     #FSM: {
+      #EntityMeta
       id:      #Slug
       initial: #Slug
       states:  { [#Slug]: { on?: { [#Slug]: #Slug } } }
@@ -115,6 +120,7 @@
     }
 
     #Operation: {
+      #EntityMeta
       id?: string
       version?: string
       description?: #Human
@@ -127,6 +133,7 @@
     }
 
     #CapabilitySpec: {
+      #EntityMeta
       name?: #Human
       description?: string
       owner?: #Human

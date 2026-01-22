@@ -93,7 +93,7 @@ arbiterSpec: {
 
   // APIs & UI
   resources?: {[Name=string]: {...}}        // replaces components/paths/ui/locators}       // OpenAPI-style (legacy)
-  flows?: [...#Flow]
+  behaviors?: [...#Behavior]
 
   // Runtime surfaces
   services?: {[ServiceName=string]: #Service}

@@ -281,8 +281,11 @@ export class ApiClient {
 
       if (!response.ok || response.status === 404) {
         const recoveryResult = await this.tryHealthRecovery();
-        if (!recoveryResult?.success) {
-          return recoveryResult as CommandResult<{ status: string; timestamp: string }>;
+        if (!recoveryResult) {
+          return { success: false, error: "Health recovery returned null", exitCode: 2 };
+        }
+        if (!recoveryResult.success) {
+          return { success: false, error: recoveryResult.error, exitCode: recoveryResult.exitCode };
         }
         response = recoveryResult.data as Response;
       }

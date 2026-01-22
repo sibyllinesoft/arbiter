@@ -69,7 +69,12 @@ function createRemoveActionHandler(entityType: EntityType) {
 
     try {
       const config = requireCommandConfig(command);
-      const exitCode = await removeCommand(entityType, name, options, config);
+      const exitCode = await removeCommand(
+        entityType,
+        name,
+        options as RemoveOptions & Record<string, unknown>,
+        config,
+      );
       process.exit(exitCode);
     } catch (error) {
       handleCommandError(error);

@@ -58,6 +58,47 @@ export interface ConfigEntry {
   description?: string;
 }
 
+// ---------- Entity Metadata ----------
+
+/**
+ * Base metadata for all tracked entities.
+ * Enables UUID tracking across renames and timestamps for change history.
+ *
+ * @public
+ */
+export interface EntityMeta {
+  /** Stable UUID identifier - persists across renames */
+  entityId?: string;
+  /** Creation timestamp (ISO 8601) */
+  createdAt?: ISODateTime;
+  /** Last modification timestamp (ISO 8601) */
+  updatedAt?: ISODateTime;
+}
+
+/**
+ * Entity types that support tracking with UUIDs and timestamps.
+ *
+ * @public
+ */
+export type TrackedEntityType =
+  | "service"
+  | "client"
+  | "package"
+  | "tool"
+  | "group"
+  | "endpoint"
+  | "view"
+  | "actor"
+  | "capability"
+  | "operation"
+  | "flow"
+  | "route"
+  | "schema"
+  | "database"
+  | "issue"
+  | "process"
+  | "comment";
+
 export interface TemplateInfo {
   name: string;
   description: string;
@@ -178,12 +219,16 @@ export interface ExternalResourceSpec {
   notes?: string;
 }
 
-export interface ServiceConfig {
+export interface ServiceConfig extends EntityMeta {
   name: string;
-  type: ServiceArtifactType;
+  /** Whether this is an external/third-party service */
+  external?: boolean;
+  /** C4/grouping kind - defaults to "service", can be "container", "component", etc. */
+  kind?: string;
+  /** Arbitrary metadata for context-specific properties */
+  metadata?: Record<string, unknown>;
   source?: ServiceSourceConfig;
   workload?: ServiceWorkload;
-  artifactType?: ServiceArtifactType;
   language: string;
   // Platform compatibility: optional platform-specific identifiers (e.g., cloudflare_worker)
   serviceType?: string;
@@ -434,7 +479,7 @@ export interface EnhancedGenerateOptions {
 // =============================================================================
 
 // Exact issue schema specification with clean, standardized approach
-export interface IssueSpec {
+export interface IssueSpec extends EntityMeta {
   /** Title of the issue - required, max 255 characters */
   title: string;
   /** Body content with Markdown and templating support - required */
@@ -745,7 +790,7 @@ export interface FlowVariant {
   override?: any;
 }
 
-export interface FlowSpec {
+export interface FlowSpec extends EntityMeta {
   id: FlowID;
   preconditions?: {
     role?: Role;
@@ -793,18 +838,51 @@ export interface FSMState {
   on?: Record<Slug, Slug>;
 }
 
-export interface FSMSpec {
+export interface FSMSpec extends EntityMeta {
   id: Slug;
   initial: Slug;
   states: Record<Slug, FSMState>;
 }
 
-export interface CapabilitySpec {
+export interface CapabilitySpec extends EntityMeta {
   name?: Human;
   description?: string;
   owner?: Human;
   gherkin?: string;
   depends_on?: Cap[];
+  tags?: Slug[];
+}
+
+/**
+ * Relationship type - open-ended to support various contexts.
+ * Common values: uses, depends_on, calls, reads, writes, authenticates, notifies
+ *
+ * @public
+ */
+export type RelationshipType = Slug;
+
+/**
+ * Explicit connection between entities.
+ * Complements implicit relationships derived from dependencies and handler refs.
+ *
+ * @public
+ */
+export interface RelationshipSpec extends EntityMeta {
+  /** Source entity slug (service, client, package, actor, group) */
+  from: Slug;
+  /** Target entity slug */
+  to: Slug;
+  /** Human-readable description of the relationship */
+  label?: string;
+  /** Detailed description */
+  description?: string;
+  /** Relationship semantics (uses, depends_on, calls, reads, writes, etc.) */
+  type?: RelationshipType;
+  /** Technology or protocol (e.g., "HTTPS/JSON", "gRPC", "PostgreSQL", "AMQP") */
+  technology?: string;
+  /** Whether the relationship is bidirectional */
+  bidirectional?: boolean;
+  /** Tags for filtering/categorization */
   tags?: Slug[];
 }
 
@@ -874,9 +952,15 @@ export interface AppSpec {
   observability?: any;
   data?: any;
   metadata?: Record<string, unknown>;
+  /** Explicit relationships between entities (complements implicit deps) */
+  relationships?: Record<Slug, RelationshipSpec>;
+  /** Work items tracking spec changes */
+  issues?: Record<Slug, IssueConfig>;
+  /** Comments attached to entities (discussions, agent guidance, memory) */
+  comments?: Record<Slug, CommentConfig>;
 }
 
-export interface OperationSpec {
+export interface OperationSpec extends EntityMeta {
   id?: string;
   version?: string;
   description?: string;
@@ -899,16 +983,42 @@ export interface ConfigWithVersion {
   app: AppSpec;
 }
 
-export interface ClientConfig {
+/**
+ * View/route specification within a client application (component level).
+ *
+ * @public
+ */
+export interface ClientViewSpec extends EntityMeta {
+  /** Human-readable description */
+  description?: string;
+  /** Route path pattern (e.g., "/users/:id") */
+  path?: string;
+  /** Route identifier (e.g., "users:detail") */
+  route?: string;
+  /** Component/page that renders this view */
+  component?: string;
+  /** Required capabilities/permissions */
+  requires?: string[];
+  /** Tags for filtering */
+  tags?: string[];
+}
+
+export interface ClientConfig extends EntityMeta {
   language: string;
   template?: string;
   framework?: string;
   sourceDirectory?: string;
   description?: string;
+  /** C4/grouping kind - defaults to "client", can be "container", "component", etc. */
+  kind?: string;
+  /** Arbitrary metadata for context-specific properties */
+  metadata?: Record<string, unknown>;
   tags?: string[];
   port?: number;
   env?: Record<string, string>;
   hooks?: string[];
+  /** Component-level children (views/routes) */
+  views?: Record<Slug, ClientViewSpec>;
   /** Group this client belongs to */
   memberOf?: string;
 }
@@ -918,9 +1028,13 @@ export interface ClientConfig {
  *
  * @public
  */
-export interface PackageConfig {
+export interface PackageConfig extends EntityMeta {
   name?: string;
   description?: string;
+  /** C4/grouping kind - defaults to "package", can be "component", "library", etc. */
+  kind?: string;
+  /** Arbitrary metadata for context-specific properties */
+  metadata?: Record<string, unknown>;
   language?: string;
   template?: string;
   sourceDirectory?: string;
@@ -934,9 +1048,13 @@ export interface PackageConfig {
  *
  * @public
  */
-export interface ToolConfig {
+export interface ToolConfig extends EntityMeta {
   name?: string;
   description?: string;
+  /** C4/grouping kind - defaults to "tool" */
+  kind?: string;
+  /** Arbitrary metadata for context-specific properties */
+  metadata?: Record<string, unknown>;
   language?: string;
   template?: string;
   sourceDirectory?: string;
@@ -946,15 +1064,43 @@ export interface ToolConfig {
 }
 
 /**
- * Configuration for an artifact group used to organize related artifacts.
+ * Group type/kind - open-ended to support context-specific groupings.
+ * Common sync values: group, milestone, epic, release, sprint, iteration
+ * Architecture values: system, container, component, domain, layer, boundary
  *
  * @public
  */
-export interface GroupSpec {
+export type GroupType = string;
+
+/**
+ * Group status for milestone/epic tracking.
+ *
+ * @public
+ */
+export type GroupStatus = "open" | "closed" | "active";
+
+/**
+ * Configuration for an artifact group used to organize related artifacts.
+ *
+ * Milestones (GitHub), epics (GitLab/Jira), and releases are represented as groups
+ * with the appropriate `kind` field. Architecture levels (system, container, component)
+ * also use `kind` for C4-style views.
+ *
+ * @public
+ */
+export interface GroupSpec extends EntityMeta {
   /** Display name of the group */
   name: string;
   /** Description of what this group contains */
   description?: string;
+  /**
+   * Group kind - identifies what this group represents
+   * Sync: group, milestone, epic, release, sprint, iteration
+   * Architecture: system, container, component, domain, layer, boundary
+   */
+  kind?: GroupType;
+  /** Arbitrary metadata for context-specific properties */
+  metadata?: Record<string, unknown>;
   /** Override directory name (defaults to slugified name) */
   directory?: string;
   /** Tags for filtering/categorization */
@@ -963,4 +1109,186 @@ export interface GroupSpec {
   structure?: Partial<ProjectStructureConfig>;
   /** Parent group (for nested groups) */
   memberOf?: string;
+  /** Due date for milestone/release groups */
+  due?: ISODateTime;
+  /** Group status */
+  status?: GroupStatus;
+
+  // ---------- External Source Tracking ----------
+  /** Where this group originated (local spec or external system) */
+  source?: ExternalSource;
+  /** External system ID (e.g., GitHub milestone number, GitLab epic ID) */
+  externalId?: string;
+  /** Full URL to the group in the external system */
+  externalUrl?: string;
+  /** Repository or project in the external system */
+  externalRepo?: string;
+}
+
+/**
+ * Issue priority levels.
+ *
+ * @public
+ */
+export type IssuePriority = "critical" | "high" | "medium" | "low";
+
+/**
+ * Issue workflow status.
+ *
+ * @public
+ */
+export type IssueStatus =
+  | "open"
+  | "in_progress"
+  | "blocked"
+  | "review"
+  | "done"
+  | "closed"
+  | "wontfix";
+
+/**
+ * Reference to another entity.
+ *
+ * @public
+ */
+export interface EntityRef {
+  /** Entity type (e.g., "service", "endpoint") */
+  type: TrackedEntityType;
+  /** Entity identifier (UUID or slug) */
+  id: string;
+}
+
+/**
+ * External system source types.
+ *
+ * @public
+ */
+export type ExternalSource = "local" | "github" | "gitlab" | "jira" | "linear";
+
+/**
+ * Issue type for categorization (compatible with GitHub/GitLab/Jira).
+ *
+ * @public
+ */
+export type IssueType =
+  | "issue"
+  | "bug"
+  | "feature"
+  | "task"
+  | "epic"
+  | "milestone"
+  | "story"
+  | "spike";
+
+/**
+ * Configuration for a trackable work item (issue, epic, etc.).
+ *
+ * Compatible with GitHub Issues, GitLab Issues, and Jira for bidirectional sync.
+ *
+ * @public
+ */
+export interface IssueConfig extends EntityMeta {
+  /** Issue title (required) */
+  title: string;
+  /** Detailed description of the issue */
+  description?: string;
+  /** Issue type/category */
+  type?: IssueType;
+  /** Current workflow status */
+  status?: IssueStatus;
+  /** Priority level */
+  priority?: IssuePriority;
+  /** References to other entities this issue relates to */
+  references?: EntityRef[];
+  /** People or teams responsible (supports multiple assignees like GitHub/GitLab) */
+  assignees?: string[];
+  /** Labels for categorization (maps to GitHub labels, GitLab labels) */
+  labels?: string[];
+  /** Due date in ISO format */
+  due?: ISODateTime;
+  /** Creation timestamp */
+  created?: ISODateTime;
+  /** Last update timestamp */
+  updated?: ISODateTime;
+  /** Closed/completed timestamp */
+  closedAt?: ISODateTime;
+  /** Parent issue for hierarchical tracking (epic/story relationship) */
+  parent?: string;
+  /** Milestone this issue belongs to (maps to GitHub milestone, GitLab milestone) */
+  milestone?: string;
+  /** Related issues */
+  related?: Array<{
+    issue: string;
+    type: "blocks" | "blocked-by" | "duplicates" | "related-to";
+  }>;
+  /** Group this issue belongs to */
+  memberOf?: string;
+
+  // ---------- Estimation & Tracking ----------
+  /** Story points / weight (GitLab weight, Jira story points) */
+  weight?: number;
+  /** Time estimate in hours */
+  estimate?: number;
+  /** Time spent in hours */
+  timeSpent?: number;
+
+  // ---------- External Source Tracking ----------
+  /** Where this issue originated (local spec or external system) */
+  source?: ExternalSource;
+  /** External system issue ID (e.g., GitHub issue number "123", Jira key "PROJ-123") */
+  externalId?: string;
+  /** Full URL to the issue in the external system */
+  externalUrl?: string;
+  /** Repository or project in the external system (e.g., "owner/repo") */
+  externalRepo?: string;
+}
+
+/**
+ * Comment purpose/category.
+ *
+ * @public
+ */
+export type CommentKind = "discussion" | "guidance" | "memory" | "decision" | "note";
+
+/**
+ * Configuration for a comment attached to entities in the spec.
+ *
+ * Comments serve multiple purposes:
+ * 1. Human discussions: Notes, feedback, and commentary on issues/epics/entities
+ * 2. Agent guidance: Additional context beyond description fields to guide code generation
+ * 3. Knowledge graph: Memory storage for AI agents to persist context and decisions
+ *
+ * @public
+ */
+export interface CommentConfig extends EntityMeta {
+  /** Comment content (markdown supported) */
+  content: string;
+  /** Entity this comment is attached to (entity UUID or slug) */
+  target: string;
+  /** Type of target entity (e.g., "issue", "service", "endpoint") */
+  targetType?: TrackedEntityType;
+  /** Author of the comment */
+  author?: string;
+  /** Optional thread ID for grouping related comments */
+  threadId?: string;
+  /** Parent comment ID for nested replies */
+  parentId?: string;
+  /** Comment purpose/category */
+  kind?: CommentKind;
+  /** Tags for filtering/categorization */
+  tags?: string[];
+  /** Timestamp when comment was created */
+  created?: ISODateTime;
+  /** Timestamp when comment was last edited */
+  edited?: ISODateTime;
+  /** Whether this comment is resolved/archived */
+  resolved?: boolean;
+
+  // ---------- External Source Tracking ----------
+  /** Where this comment originated (local spec or external system) */
+  source?: ExternalSource;
+  /** External system comment ID */
+  externalId?: string;
+  /** Full URL to the comment in the external system */
+  externalUrl?: string;
 }

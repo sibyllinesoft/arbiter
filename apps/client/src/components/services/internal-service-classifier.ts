@@ -1,9 +1,9 @@
 export interface InternalServiceCandidate {
   raw: Record<string, unknown> | null;
-  typeLabel?: string;
+  typeLabel?: string | undefined;
   endpoints: Array<unknown>;
   hasSource: boolean;
-  sourcePath?: string;
+  sourcePath?: string | undefined;
 }
 
 type RawRecord = Record<string, unknown>;

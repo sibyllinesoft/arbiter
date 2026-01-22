@@ -105,9 +105,9 @@ const findCommentIndex = (line: string): number => {
   let inSingle = false;
   let inDouble = false;
   for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
+    const char = line[index] ?? "";
     if (isUnquotedComment(char, inSingle, inDouble)) return index;
-    const newState = updateQuoteState(char, inSingle, inDouble);
+    const newState = updateQuoteState(char ?? "", inSingle, inDouble);
     inSingle = newState.inSingle;
     inDouble = newState.inDouble;
   }

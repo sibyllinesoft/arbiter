@@ -17,6 +17,12 @@ export interface MigrationStep {
   risk: "low" | "medium" | "high";
 }
 
+/**
+ * Returns available migration paths for a given component.
+ *
+ * @param component - The component name (e.g., "arbiter", "cue", "node")
+ * @returns Array of migration path strings in format "vX.X.X -> vY.Y.Y"
+ */
 export function getAvailableMigrationPaths(component: string): string[] {
   const paths: string[] = [];
 
@@ -41,6 +47,14 @@ export function getAvailableMigrationPaths(component: string): string[] {
   return paths;
 }
 
+/**
+ * Checks if a valid migration path exists between two versions.
+ *
+ * @param component - The component name to check migration for
+ * @param fromVersion - The source version (e.g., "v1.0.0")
+ * @param toVersion - The target version (e.g., "v2.0.0")
+ * @returns True if a migration path exists, false otherwise
+ */
 export function hasMigrationPath(
   component: string,
   fromVersion: string,
@@ -87,6 +101,17 @@ function parseVersion(version: string): { major: number; minor: number; patch: n
   };
 }
 
+/**
+ * Estimates the duration of a migration in milliseconds.
+ *
+ * Duration is calculated based on the version difference and component type.
+ * Major version changes take longer than minor/patch changes.
+ *
+ * @param component - The component being migrated
+ * @param fromVersion - The source version
+ * @param toVersion - The target version
+ * @returns Estimated duration in milliseconds (min: 10000, max: 600000)
+ */
 export function estimateMigrationDuration(
   component: string,
   fromVersion: string,

@@ -10,9 +10,9 @@ export interface ArchitecturalElement {
   /**
    * Fine-grained classification for simplified schema (e.g. queue, proxy, database, endpoint, view).
    */
-  kind?: string;
+  kind?: string | undefined;
   description?: string | undefined;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> | undefined;
 }
 
 export type ElementType =
@@ -35,28 +35,28 @@ export interface DiagramComponent extends ArchitecturalElement {
   layer: DiagramLayer;
 
   // Technical details from CUE
-  technology?: string;
-  language?: string;
-  framework?: string[];
+  technology?: string | undefined;
+  language?: string | undefined;
+  framework?: string[] | undefined;
 
   // Connection points
-  ports?: DiagramPort[];
+  ports?: DiagramPort[] | undefined;
 
   // From CUE services
   artifactType?: "internal" | "external" | undefined;
   workload?: "deployment" | "statefulset" | "daemonset" | "job" | "cronjob" | undefined;
-  replicas?: number;
+  replicas?: number | undefined;
 
   // From UI routes
-  routePath?: string;
-  capabilities?: string[];
+  routePath?: string | undefined;
+  capabilities?: string[] | undefined;
 
   // From flows
-  flowSteps?: FlowStep[];
+  flowSteps?: FlowStep[] | undefined;
 
   // From state machines
-  states?: Record<string, unknown>;
-  transitions?: Record<string, string>;
+  states?: Record<string, unknown> | undefined;
+  transitions?: Record<string, string> | undefined;
 }
 
 export interface DiagramPort {
@@ -110,9 +110,9 @@ export type ConnectionType =
 export interface FlowStep {
   id: string;
   type: "visit" | "click" | "fill" | "expect" | "expect_api";
-  target?: string;
-  value?: string;
-  expectation?: unknown;
+  target?: string | undefined;
+  value?: string | undefined;
+  expectation?: unknown | undefined;
 }
 
 // Layout configuration for different diagram types

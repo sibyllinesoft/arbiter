@@ -109,15 +109,15 @@ describe("buildTaskGroups", () => {
     const groups = buildTaskGroups(null);
 
     expect(groups).toHaveLength(1);
-    expect(groups[0].id).toBe("unscoped");
-    expect(groups[0].type).toBe("unscoped");
+    expect(groups[0]!.id).toBe("unscoped");
+    expect(groups[0]!.type).toBe("unscoped");
   });
 
   it("returns unscoped group when resolved is undefined", () => {
     const groups = buildTaskGroups(undefined);
 
     expect(groups).toHaveLength(1);
-    expect(groups[0].id).toBe("unscoped");
+    expect(groups[0]!.id).toBe("unscoped");
   });
 
   it("processes groups from spec.groups", () => {
@@ -134,9 +134,9 @@ describe("buildTaskGroups", () => {
 
     // unscoped + 2 groups
     expect(groups).toHaveLength(3);
-    expect(groups[1].name).toBe("Backend");
-    expect(groups[1].tasks).toHaveLength(1);
-    expect(groups[2].name).toBe("Frontend");
+    expect(groups[1]!.name).toBe("Backend");
+    expect(groups[1]!.tasks).toHaveLength(1);
+    expect(groups[2]!.name).toBe("Frontend");
   });
 
   it("processes global tasks into unscoped group", () => {
@@ -148,8 +148,8 @@ describe("buildTaskGroups", () => {
 
     const groups = buildTaskGroups(resolved);
 
-    expect(groups[0].id).toBe("unscoped");
-    expect(groups[0].tasks).toHaveLength(2);
+    expect(groups[0]!.id).toBe("unscoped");
+    expect(groups[0]!.tasks).toHaveLength(2);
   });
 
   it("assigns global tasks to matching groups by groupId", () => {
@@ -164,7 +164,7 @@ describe("buildTaskGroups", () => {
 
     const backendGroup = groups.find((g) => g.id === "backend");
     expect(backendGroup?.tasks).toHaveLength(1);
-    expect(backendGroup?.tasks[0].name).toBe("Backend Task");
+    expect(backendGroup?.tasks[0]!.name).toBe("Backend Task");
 
     const unscopedGroup = groups.find((g) => g.id === "unscoped");
     expect(unscopedGroup?.tasks).toHaveLength(0);
@@ -178,7 +178,7 @@ describe("buildTaskGroups", () => {
     };
 
     const groups = buildTaskGroups(resolved);
-    const taskNames = groups[0].tasks.map((t) => t.name);
+    const taskNames = groups[0]!.tasks.map((t) => t.name);
 
     expect(taskNames).toEqual(["Apple", "Mango", "Zebra"]);
   });

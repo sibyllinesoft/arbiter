@@ -6,6 +6,7 @@ import path from "path";
 import fs from "fs-extra";
 import { Hono } from "hono";
 import type { Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 type Dependencies = Record<string, unknown>;
 
@@ -62,7 +63,7 @@ function errorResponse(c: Context, message: string, details?: string, status = 5
       error: message,
       ...(details && { message: details }),
     },
-    status,
+    status as ContentfulStatusCode,
   );
 }
 

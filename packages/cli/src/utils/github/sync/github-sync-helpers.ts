@@ -54,7 +54,7 @@ export function mapSemanticLabels(
   for (const label of labels) {
     // Check type-specific mappings first
     const typeSpecificLabels =
-      itemType === "group" ? config.labels?.groups?.[label] : config.labels?.tasks?.[label];
+      itemType === "group" ? config.labels?.groups?.[label] : config.labels?.issues?.[label];
 
     if (typeSpecificLabels) {
       mappedLabels.push(...typeSpecificLabels);
@@ -78,7 +78,7 @@ export function mapSemanticLabels(
   }
 
   // Add prefix labels if configured
-  const prefix = itemType === "group" ? config.prefixes?.group : config.prefixes?.task;
+  const prefix = itemType === "group" ? config.prefixes?.group : config.prefixes?.issue;
   if (prefix) {
     mappedLabels.unshift(prefix);
   }

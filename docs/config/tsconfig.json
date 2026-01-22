@@ -8,7 +8,7 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
+    "baseUrl": "../..",
     "types": ["bun-types"],
     "paths": {
       "@arbiter/shared": ["./packages/shared/src"],
@@ -22,12 +22,12 @@
     }
   },
   "include": [
-    "packages/cli/src/index.ts",
-    "packages/shared/src/index.ts",
-    "packages/api-types/src/index.ts"
+    "../../packages/cli/src/index.ts",
+    "../../packages/shared/src/index.ts",
+    "../../packages/api-types/src/index.ts"
   ],
   "exclude": [
-    "packages/cli/src/docs/**",
+    "../../packages/cli/src/docs/**",
     "**/__tests__/**",
     "**/dist/**",
     "node_modules"

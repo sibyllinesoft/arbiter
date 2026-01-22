@@ -278,7 +278,7 @@ export class ConstraintMonitor extends EventEmitter {
   /**
    * Get chalk color function based on success rate
    */
-  private getSuccessRateColor(successRate: number): chalk.ChalkFunction {
+  private getSuccessRateColor(successRate: number): (text: string) => string {
     if (successRate >= 95) return chalk.green;
     if (successRate >= 80) return chalk.yellow;
     return chalk.red;
@@ -287,7 +287,7 @@ export class ConstraintMonitor extends EventEmitter {
   /**
    * Get chalk color function based on average duration
    */
-  private getDurationColor(avgDuration: number): chalk.ChalkFunction {
+  private getDurationColor(avgDuration: number): (text: string) => string {
     const warningThreshold = this.config.alertThresholds.maxAverageResponseTime;
     const dangerThreshold = warningThreshold * 1.5;
 

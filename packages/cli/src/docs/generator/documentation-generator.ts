@@ -130,6 +130,7 @@ export interface Templates {
   htmlFooter: () => string;
 }
 
+/** Generates documentation in multiple formats (Markdown, HTML, JSON) from parsed CUE schemas. */
 export class DocumentationGenerator {
   private options: GeneratorOptions;
   private templates: Templates;

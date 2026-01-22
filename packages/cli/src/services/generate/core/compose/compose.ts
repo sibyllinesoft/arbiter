@@ -309,7 +309,6 @@ function parseServiceForCompose(name: string, config: any): ComposeServiceConfig
 
   const service: ComposeServiceConfig = {
     name: name,
-    type: artifactType,
     artifactType,
     language: config.language || "container",
     workload,

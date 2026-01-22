@@ -56,6 +56,7 @@ export interface SchemaParserOptions {
   runner?: Pick<CueRunner, "exportJson">;
 }
 
+/** Parses CUE schema directories and extracts type definitions using the CUE runner. */
 export class CUESchemaParser {
   private readonly includePrivate: boolean;
   private readonly runner: Pick<CueRunner, "exportJson">;

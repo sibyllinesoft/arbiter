@@ -23,6 +23,7 @@ const PYTHON_WEB_FRAMEWORKS = ["django", "flask", "fastapi", "tornado", "sanic",
 const PYTHON_FRONTEND_FILES = ["streamlit_app.py", "app.py", "dash_app.py", "gradio_app.py"];
 const PYTHON_CLI_LIBRARIES = ["click", "typer", "argparse", "fire", "docopt"];
 
+/** Importer plugin for Python projects. Parses pyproject.toml, setup.py, and requirements.txt. */
 export class PythonPlugin implements ImporterPlugin {
   name(): string {
     return "python";

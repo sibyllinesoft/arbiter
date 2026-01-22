@@ -17,9 +17,9 @@ export type ResourceComponentParams = {
   name: string;
   kind: string;
   layer: DiagramComponent["layer"];
-  description?: string;
-  metadata?: Record<string, unknown>;
-  routePath?: string;
-  size?: { width: number; height: number };
-  capabilities?: string[];
+  description?: string | undefined;
+  metadata?: Record<string, unknown> | undefined;
+  routePath?: string | undefined;
+  size?: { width: number; height: number } | undefined;
+  capabilities?: string[] | undefined;
 };

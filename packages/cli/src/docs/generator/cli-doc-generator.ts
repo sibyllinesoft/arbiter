@@ -11,6 +11,7 @@ import type { CommandMetadata, DocGenerationOptions, ParsedCommandInfo } from "@
 import type { Command, Option } from "commander";
 import * as fs from "fs-extra";
 
+/** Generates documentation from Commander.js command definitions. */
 export class CLIDocumentationGenerator {
   private commands: ParsedCommandInfo[] = [];
   private rootCommand?: Command;
@@ -248,9 +249,9 @@ export class CLIDocumentationGenerator {
    */
   private extractTags(command: Command): string[] {
     const description = command.description().toLowerCase();
-    return CLIDocGenerator.TAG_RULES.filter((rule) => rule.check(description, command)).map(
-      (rule) => rule.tag,
-    );
+    return CLIDocumentationGenerator.TAG_RULES.filter((rule) =>
+      rule.check(description, command),
+    ).map((rule) => rule.tag);
   }
 
   /**

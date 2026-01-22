@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { computeGroupedComponents } from "./computeGroupedComponents";
 
 describe("computeGroupedComponents", () => {
@@ -25,7 +25,7 @@ describe("computeGroupedComponents", () => {
     const servicesGroup = result.find((g) => g.label === "Services");
     expect(servicesGroup).toBeDefined();
     expect(servicesGroup!.items.length).toBe(1);
-    expect(servicesGroup!.items[0].name).toBe("api-service");
+    expect(servicesGroup!.items[0]!.name).toBe("api-service");
   });
 
   it("processes databases from spec", () => {
@@ -116,7 +116,7 @@ describe("computeGroupedComponents", () => {
     const tasksGroup = result.find((g) => g.label === "Tasks");
     expect(tasksGroup).toBeDefined();
     expect(tasksGroup!.items.length).toBe(1);
-    expect(tasksGroup!.items[0].name).toBe("Pending task");
+    expect(tasksGroup!.items[0]!.name).toBe("Pending task");
   });
 
   it("deduplicates tasks by ID", () => {
@@ -148,7 +148,7 @@ describe("computeGroupedComponents", () => {
     const servicesGroup = result.find((g) => g.label === "Services");
     expect(servicesGroup).toBeDefined();
     expect(servicesGroup!.items.length).toBe(1);
-    expect(servicesGroup!.items[0].name).toBe("service-2");
+    expect(servicesGroup!.items[0]!.name).toBe("service-2");
   });
 
   it("processes frontend packages", () => {

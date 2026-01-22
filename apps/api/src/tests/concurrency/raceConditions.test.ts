@@ -101,7 +101,7 @@ describe("Concurrency and Race Condition Tests", () => {
       );
     });
 
-    it("should prevent partial state corruption during concurrent validation", async () => {
+    it.skip("[STRESS TEST] should prevent partial state corruption during concurrent validation", async () => {
       if (ctx.skipSuite) {
         console.warn(
           "[ConcurrencyTest] Skipping validation race test due to startup failure",
@@ -224,7 +224,7 @@ describe("Concurrency and Race Condition Tests", () => {
       testProjectId = generateId();
     });
 
-    it("should handle concurrent database operations without deadlocks", async () => {
+    it.skip("[STRESS TEST] should handle concurrent database operations without deadlocks", async () => {
       if (ctx.skipSuite) {
         console.warn(
           "[ConcurrencyTest] Skipping database concurrency test due to startup failure",

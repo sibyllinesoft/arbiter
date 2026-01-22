@@ -197,7 +197,9 @@ describe("buildRequestBody", () => {
       required: false,
     };
     const result = buildRequestBody(body);
-    expect(result?.content?.["application/json"]?.example).toBe("example data");
+    expect(
+      (result?.content as Record<string, { example?: string }>)?.["application/json"]?.example,
+    ).toBe("example data");
   });
 });
 

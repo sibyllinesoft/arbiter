@@ -119,7 +119,7 @@ export async function generateJustfile(config: ProjectConfig): Promise<string> {
   return rustTemplateResolver.renderTemplate("justfile.tpl", {
     projectName: config.name,
     hasDatabase: config.database ? true : false,
-    dbDriverFeature: config.database?.type === "postgres" ? "postgres" : "sqlite",
+    dbDriverFeature: config.database === "postgres" ? "postgres" : "sqlite",
   });
 }
 

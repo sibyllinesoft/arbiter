@@ -186,9 +186,9 @@ export class UnifiedGitHubTemplateManager {
     group: Group,
     options: GitHubTemplateOptions = {},
   ): Promise<GeneratedTemplate> {
-    const templateRef = this.config.task;
+    const templateRef = this.config.issue;
     if (!templateRef) {
-      throw new Error("Task template not configured");
+      throw new Error("Issue template not configured");
     }
 
     const context = { ...task, group, groupId: group.id };
@@ -265,7 +265,9 @@ export class UnifiedGitHubTemplateManager {
   /**
    * Build sections with default description
    */
-  private buildSectionsWithDefaults(sections?: Record<string, string>): Record<string, string> {
+  private buildSectionsWithDefaults(
+    sections?: Partial<GitHubTemplateSections>,
+  ): Partial<GitHubTemplateSections> {
     return {
       ...sections,
       description: sections?.description || "## Description\n\n{{description}}",
@@ -313,7 +315,8 @@ export class UnifiedGitHubTemplateManager {
 
     const title = renderString(resolvedConfig.title || "{{name}}", data);
     const sectionsWithDefaults = this.buildSectionsWithDefaults(resolvedConfig.sections);
-    const body = generateTemplateBody(sectionsWithDefaults, data);
+    // After buildSectionsWithDefaults, description is guaranteed to be set
+    const body = generateTemplateBody(sectionsWithDefaults as GitHubTemplateSections, data);
     const labels = processLabels(resolvedConfig.labels || [], data);
     const assignees = this.processAssignees(resolvedConfig.assignees || [], data);
 
@@ -753,8 +756,8 @@ export class UnifiedGitHubTemplateManager {
       files[".github/ISSUE_TEMPLATE/group.yml"] = await this.generateIssueTemplateFile("group");
     }
 
-    if (this.config.task) {
-      files[".github/ISSUE_TEMPLATE/task.yml"] = await this.generateIssueTemplateFile("task");
+    if (this.config.issue) {
+      files[".github/ISSUE_TEMPLATE/issue.yml"] = await this.generateIssueTemplateFile("issue");
     }
 
     if (this.config.bugReport) {

@@ -1,6 +1,6 @@
 import { ConnectionValidator } from "@/core/connection-validator.js";
 import { ApiClient } from "@/io/api/api-client.js";
-import { type CLIConfig, loadConfig } from "@/io/config/config.js";
+import { type Config as CLIConfig, loadConfig } from "@/io/config/config.js";
 import chalk from "chalk";
 import { Command } from "commander";
 

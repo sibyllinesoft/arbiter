@@ -129,7 +129,8 @@ async function resolveRepositoryConfig(
     templates: config.github?.templates,
   };
 
-  return { finalRepo, githubConfig, smartRepoConfig };
+  // After the owner/repo check above, we know they're defined
+  return { finalRepo: finalRepo as Required<typeof finalRepo>, githubConfig, smartRepoConfig };
 }
 
 /**

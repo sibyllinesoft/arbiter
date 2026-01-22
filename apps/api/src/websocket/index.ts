@@ -301,7 +301,7 @@ export class WebSocketHandler {
     startTime: number,
   ): void {
     withTimeout(
-      this.events.handleConnection(ws, ws.data.authContext),
+      Promise.resolve(this.events.handleConnection(ws, ws.data.authContext)),
       3000,
       "Connection registration timeout",
     )

@@ -7,7 +7,7 @@ const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:5050";
 
 /** MCP tool response type */
 type McpToolResponse = {
-  content: Array<{ type: string; text: string }>;
+  content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
 };
 

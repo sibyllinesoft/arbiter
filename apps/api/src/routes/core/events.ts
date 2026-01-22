@@ -5,6 +5,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { z } from "zod";
 import { EventsController } from "../../controllers/EventsController";
 import { revertEventsSchema, setHeadSchema } from "../../schemas/events";
@@ -44,7 +45,7 @@ function withErrorHandling(
       const message = getErrorMessage(error, fallbackMessage);
       return c.json(
         { success: false, error: message },
-        { status: getErrorStatus(message, defaultStatus) },
+        getErrorStatus(message, defaultStatus) as ContentfulStatusCode,
       );
     }
   };
