@@ -17,9 +17,9 @@ describe("generate coverage spot checks", () => {
 
     const appSpec = {
       product: { name: "MegaApp" },
-      clients: {
-        web: { sourceDirectory: "custom/web" },
-        admin: {},
+      packages: {
+        web: { subtype: "frontend", sourceDirectory: "custom/web" },
+        admin: { subtype: "frontend" },
       },
     } as unknown as AppSpec;
 
@@ -75,8 +75,9 @@ describe("generate coverage spot checks", () => {
 
   it("derives service endpoints from paths and behaviors", () => {
     const appSpec = {
-      services: {
+      packages: {
         Orders: {
+          subtype: "service",
           language: "typescript",
           domains: ["orders"],
         },

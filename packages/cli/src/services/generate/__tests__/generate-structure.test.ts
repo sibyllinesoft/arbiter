@@ -45,7 +45,7 @@ describe("generate structure helpers", () => {
 
     const appSpec: any = {
       product: { name: "App" },
-      services: { Orders: { language: "typescript", ports: [{ port: 4000 }] } },
+      packages: { Orders: { subtype: "service", language: "typescript", ports: [{ port: 4000 }] } },
       paths: { Orders: { "/orders/cart": {} } },
       ui: { routes: [] },
       locators: {},

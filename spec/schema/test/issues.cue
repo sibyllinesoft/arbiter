@@ -6,10 +6,12 @@ package test
 #Slug:          =~"^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
 #Human:         string & !=""
 #ISODateTime:   =~"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+#URL:           =~"^https?://[^\\s]+$"
 
 // Entity types that can be referenced by issues
-#EntityType: "service" | "client" | "package" | "tool" | "group" |
-             "capability" | "operation" | "behavior" | "issue"
+#EntityType: "package" | "resource" | "group" |
+             "endpoint" | "view" |
+             "capability" | "operation" | "behavior" | "issue" | "actor" | "relationship"
 
 // Structured reference to another entity
 #EntityRef: {
@@ -18,30 +20,46 @@ package test
     label?: #Human
 }
 
-// Issue workflow states
-#IssueStatus: "open" | "in-progress" | "resolved" | "closed" | "wont-fix"
+// Issue workflow states (aligned with TypeScript)
+#IssueStatus: "open" | "in_progress" | "blocked" | "review" | "done" | "closed" | "wontfix"
 
 // Issue priority levels
 #IssuePriority: "critical" | "high" | "medium" | "low"
+
+// Issue type
+#IssueType: "issue" | "bug" | "feature" | "task" | "epic" | "milestone" | "story" | "spike"
+
+// External source
+#ExternalSource: "local" | "github" | "gitlab" | "jira" | "linear"
 
 // Issue configuration
 #IssueConfig: {
     title:        #Human
     description?: string
+    type?:        #IssueType | *"issue"
     status:       #IssueStatus | *"open"
     priority?:    #IssuePriority
     references?:  [...#EntityRef]
-    assignee?:    #Human
+    assignees?:   [...#Human]
     labels?:      [...#Slug]
     due?:         #ISODateTime
     created?:     #ISODateTime
     updated?:     #ISODateTime
+    closedAt?:    #ISODateTime
     parent?:      #Slug
+    milestone?:   #Slug
     related?:     [...{
         issue: #Slug
         type:  "blocks" | "blocked-by" | "duplicates" | "related-to"
     }]
     memberOf?:    #Slug
+    weight?:      int & >=0
+    estimate?:    number & >=0
+    timeSpent?:   number & >=0
+    source?:      #ExternalSource | *"local"
+    externalId?:  string
+    externalUrl?: #URL
+    externalRepo?: string
 }
 
 // Test cases
@@ -55,12 +73,13 @@ test_basic: #IssueConfig & {
 test_full: #IssueConfig & {
     title:       "Implement user authentication"
     description: "Add OAuth2 authentication flow"
-    status:      "in-progress"
+    type:        "feature"
+    status:      "in_progress"
     priority:    "high"
-    assignee:    "Backend Team"
+    assignees:   ["Backend Team"]
     labels:      ["security", "feature"]
     references: [
-        {type: "service", slug: "auth-service"},
+        {type: "package", slug: "auth-service"},
         {type: "package", slug: "shared-types"},
     ]
     related: [
@@ -74,9 +93,9 @@ test_multi_refs: #IssueConfig & {
     status: "open"
     priority: "critical"
     references: [
-        {type: "service", slug: "api-gateway"},
-        {type: "service", slug: "auth-service"},
-        {type: "client", slug: "web-app"},
+        {type: "package", slug: "api-gateway"},
+        {type: "package", slug: "auth-service"},
+        {type: "package", slug: "web-app"},
         {type: "group", slug: "core-services"},
     ]
 }
@@ -87,4 +106,15 @@ test_hierarchy: #IssueConfig & {
     status: "open"
     parent: "main-issue"
     memberOf: "q1-planning"
+}
+
+// Valid: Issue from external source
+test_external: #IssueConfig & {
+    title: "Bug from GitHub"
+    type: "bug"
+    status: "open"
+    source: "github"
+    externalId: "123"
+    externalUrl: "https://github.com/org/repo/issues/123"
+    externalRepo: "org/repo"
 }

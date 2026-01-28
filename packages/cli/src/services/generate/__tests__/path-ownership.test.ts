@@ -43,18 +43,21 @@ describe("generate helpers - path ownership and proxies", () => {
   it("determines path ownership from explicit paths and flows", () => {
     const appSpec: AppSpec = {
       product: { name: "Demo" },
-      services: {
+      packages: {
         "billing-service": {
+          subtype: "service",
           language: "typescript",
           domains: ["billing"],
           ports: [{ port: 9000 }],
         },
         "checkout-service": {
+          subtype: "service",
           language: "node",
           capabilities: [{ contractRef: "checkout@v1" }],
           ports: [{ port: 4100 }],
         },
         "webhook-handler": {
+          subtype: "service",
           language: "typescript",
           capabilities: [{ contractRef: "payments/webhook@v1" }],
         },
@@ -88,9 +91,13 @@ describe("generate helpers - path ownership and proxies", () => {
   it("builds dev proxy config for owned paths", () => {
     const appSpec: AppSpec = {
       product: { name: "Proxy Demo" },
-      services: {
-        "billing-service": { language: "typescript", ports: [{ targetPort: 9200 }] },
-        "checkout-service": { language: "typescript", ports: [{ port: 4100 }] },
+      packages: {
+        "billing-service": {
+          subtype: "service",
+          language: "typescript",
+          ports: [{ targetPort: 9200 }],
+        },
+        "checkout-service": { subtype: "service", language: "typescript", ports: [{ port: 4100 }] },
       },
       locators: {},
       ui: { routes: [] },

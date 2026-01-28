@@ -6,7 +6,7 @@ import {
   type PathRouterInput,
   createRouter,
   validateGroupReferences,
-} from "../core/router.js";
+} from "../core/compose/router.js";
 
 const baseStructure: ProjectStructureConfig = {
   clientsDirectory: "clients",

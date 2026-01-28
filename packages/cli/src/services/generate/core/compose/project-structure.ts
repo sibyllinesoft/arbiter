@@ -74,8 +74,9 @@ ${appSpec.product.constraints.map((constraint) => `- ${constraint}`).join("\n")}
  * Generate README routes section
  */
 function generateReadmeRoutes(appSpec: AppSpec): string {
+  const routes = (appSpec as any).ui?.routes;
   return (
-    appSpec.ui?.routes
+    routes
       ?.map(
         (route: any) =>
           `- **${route.path}** (${route.id}): ${route.capabilities?.join(", ") ?? "none"}`,
@@ -191,14 +192,15 @@ export function buildDevProxyConfig(
     const prefix = `/${firstSegment}`;
     if (proxies[prefix]) continue;
 
-    const serviceEntry = Object.entries(appSpec.services ?? {}).find(
-      ([serviceName]) => slugify(serviceName, serviceName) === ownerSlug,
+    const packageEntry = Object.entries(appSpec.packages ?? {}).find(
+      ([packageName]) => slugify(packageName, packageName) === ownerSlug,
     );
-    if (!serviceEntry) continue;
-    const [, serviceSpec] = serviceEntry;
-    if (!isTypeScriptServiceLanguage(serviceSpec?.language as string | undefined)) continue;
+    if (!packageEntry) continue;
+    const [, packageSpec] = packageEntry;
+    if (!isTypeScriptServiceLanguage((packageSpec as any)?.language as string | undefined))
+      continue;
 
-    const port = getPrimaryServicePort(serviceSpec, 3000);
+    const port = getPrimaryServicePort(packageSpec, 3000);
     proxies[prefix] = {
       target: `http://127.0.0.1:${port}`,
       changeOrigin: true,
@@ -571,7 +573,7 @@ async function processService(
 }
 
 /**
- * Generate service structures from app specification.
+ * Generate service structures from app specification packages.
  */
 export async function generateServiceStructures(
   appSpec: AppSpec,
@@ -581,7 +583,9 @@ export async function generateServiceStructures(
   cliConfig: CLIConfig,
   packageManager: PackageManagerCommandSet,
 ): Promise<string[]> {
-  if (!appSpec.services || Object.keys(appSpec.services).length === 0) {
+  const hasPackages = appSpec.packages && Object.keys(appSpec.packages).length > 0;
+
+  if (!hasPackages) {
     return [];
   }
 
@@ -590,12 +594,12 @@ export async function generateServiceStructures(
   const files: string[] = [];
   const pathOwnership = determinePathOwnership(appSpec);
 
-  for (const [serviceName, serviceConfig] of Object.entries(appSpec.services)) {
-    if (!serviceConfig || typeof serviceConfig !== "object") continue;
+  for (const [packageName, packageConfig] of Object.entries(appSpec.packages!)) {
+    if (!packageConfig || typeof packageConfig !== "object") continue;
 
-    const serviceFiles = await processService(
-      serviceName,
-      serviceConfig,
+    const packageFiles = await processService(
+      packageName,
+      packageConfig,
       appSpec,
       outputDir,
       options,
@@ -604,7 +608,7 @@ export async function generateServiceStructures(
       packageManager,
       pathOwnership,
     );
-    files.push(...serviceFiles);
+    files.push(...packageFiles);
   }
 
   return files;

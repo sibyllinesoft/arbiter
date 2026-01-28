@@ -20,7 +20,7 @@ import type {
 } from "@/services/generate/io/contexts.js";
 import { joinRelativePath, slugify, toPathSegments } from "@/services/generate/util/shared.js";
 import type { ProjectStructureConfig } from "@/types.js";
-import type { AppSpec, ClientConfig, GroupSpec, PackageConfig, ToolConfig } from "@arbiter/shared";
+import type { AppSpec, GroupSpec, PackageConfig } from "@arbiter/shared";
 
 const PACKAGE_RELATIVE_KEYS = ["docsDirectory", "testsDirectory", "infraDirectory"] as const;
 type PackageRelativeKey = (typeof PACKAGE_RELATIVE_KEYS)[number];
@@ -60,18 +60,32 @@ export function collectClientTargets(
   outputDir: string,
   options?: TargetCreationOptions,
 ): ClientGenerationTarget[] {
-  const entries = Object.entries(appSpec.clients ?? {});
-  if (entries.length === 0) {
-    const fallback = appSpec.product?.name || "app";
-    return [createClientTarget(fallback, undefined, structure, outputDir, options)];
-  }
-  return entries.map(([key, config]) =>
-    createClientTarget(key, config as ClientConfig, structure, outputDir, options),
+  // Find packages with subtype="frontend"
+  const frontendPackages = Object.entries(appSpec.packages ?? {}).filter(
+    ([, config]) => (config as any)?.subtype === "frontend",
   );
+
+  if (frontendPackages.length > 0) {
+    return frontendPackages.map(([key, config]) =>
+      createClientTarget(key, config as PackageConfig, structure, outputDir, options),
+    );
+  }
+
+  // Fallback: Prefer product.name, fall back to metadata.name, then "app"
+  // Skip "Unknown App" as it's a placeholder default
+  const productName = appSpec.product?.name;
+  const metadataName = appSpec.metadata?.name;
+  const fallback =
+    productName && productName !== "Unknown App"
+      ? productName
+      : typeof metadataName === "string"
+        ? metadataName
+        : "app";
+  return [createClientTarget(fallback, undefined, structure, outputDir, options)];
 }
 
 /**
- * Collect service generation targets from an app spec.
+ * Collect service generation targets from packages with service/worker subtype.
  */
 export function collectServiceTargets(
   appSpec: AppSpec,
@@ -79,8 +93,12 @@ export function collectServiceTargets(
   outputDir: string,
   options?: TargetCreationOptions,
 ): ServiceGenerationTarget[] {
-  const entries = Object.entries(appSpec.services ?? {});
-  return entries.map(([key, config]) =>
+  // Find packages with subtype="service" or subtype="worker"
+  const servicePackages = Object.entries(appSpec.packages ?? {}).filter(([, config]) => {
+    const subtype = (config as any)?.subtype;
+    return subtype === "service" || subtype === "worker" || (config as any)?.port;
+  });
+  return servicePackages.map(([key, config]) =>
     createServiceTarget(key, config, structure, outputDir, options),
   );
 }
@@ -111,12 +129,12 @@ export function collectToolTargets(
 ): ToolGenerationTarget[] {
   const entries = Object.entries((appSpec as any).tools ?? {});
   return entries.map(([key, config]) =>
-    createToolTarget(key, config as ToolConfig, structure, outputDir, options),
+    createToolTarget(key, config as PackageConfig, structure, outputDir, options),
   );
 }
 
 function resolveLegacyClientRoot(
-  clientConfig: ClientConfig | undefined,
+  clientConfig: PackageConfig | undefined,
   structure: ProjectStructureConfig,
   outputDir: string,
   slug: string,
@@ -152,7 +170,7 @@ function buildClientContext(
  */
 export function createClientTarget(
   identifier: string,
-  clientConfig: ClientConfig | undefined,
+  clientConfig: PackageConfig | undefined,
   structure: ProjectStructureConfig,
   outputDir: string,
   options?: TargetCreationOptions,
@@ -309,7 +327,7 @@ export function createPackageTarget(
  */
 export function createToolTarget(
   toolName: string,
-  toolConfig: ToolConfig | undefined,
+  toolConfig: PackageConfig | undefined,
   structure: ProjectStructureConfig,
   outputDir: string,
   options?: TargetCreationOptions,
@@ -353,7 +371,7 @@ export function createToolTarget(
     slug,
     relativeRoot,
     language,
-    config: toolConfig ?? ({} as ToolConfig),
+    config: toolConfig ?? ({} as PackageConfig),
     context,
   };
 }

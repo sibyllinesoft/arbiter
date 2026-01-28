@@ -4,8 +4,8 @@
       "list"
     )
 
-    // Top-level “AppSpec” schema. All fragments unify into this shape under /spec/app.
-  #AppSpec: {
+    // Top-level "AppSpec" schema. All fragments unify into this shape under /spec/app.
+    #AppSpec: {
       product: {
         name:   #Human
         goals?: [...#Human]
@@ -20,17 +20,34 @@
         }
       }
 
+      // Arbitrary config section
+      config?: { [string]: _ }
+
       // Capability definitions with behavioural specifications
       capabilities?: { [#Slug]: #CapabilitySpec }
-
-      // Generic resources (supersedes components/paths/ui)
-      resources?: { [#Slug]: _ }
 
       // Operations (formerly contracts.workflows.<name>.operations.*)
       operations?: { [#Slug]: #Operation }
 
       // Behaviors & oracles (formerly flows)
       behaviors: [...#Flow] & list.MinItems(1)
+
+      // ---------- Artifact definitions ----------
+      // Code artifacts (services, frontends, tools, libraries) - unified Package type
+      packages?: { [#Slug]: #PackageConfig }
+      // Infrastructure resources (databases, caches, containers)
+      resources?: { [#Slug]: #ResourceConfig }
+      // Artifact groups for organizing related artifacts
+      groups?: { [#Slug]: #GroupSpec }
+      // Work items tracking spec changes
+      issues?: { [#Slug]: #IssueConfig }
+      // Comments attached to entities (discussions, agent guidance, memory)
+      comments?: { [#Slug]: #CommentConfig }
+      // Explicit relationships between entities (complements implicit deps)
+      relationships?: { [#Slug]: #RelationshipSpec }
+
+      // ---------- Environment & deployment ----------
+      environments?: { [#Slug]: _ }
 
       // Determinism hooks for tests
       testability?: {
@@ -52,6 +69,16 @@
 
       // Optional per-view processes (formerly state machines)
       processes?: { [#Slug]: #FSM }
+
+      // ---------- Extended sections (optional) ----------
+      tests?: _
+      epics?: _
+      docs?: _
+      security?: _
+      performance?: _
+      observability?: _
+      data?: _
+      metadata?: { [string]: _ }
     }
 
     // ---------- Flow grammar ----------

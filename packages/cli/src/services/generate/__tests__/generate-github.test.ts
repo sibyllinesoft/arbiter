@@ -21,7 +21,7 @@ mock.module("@/utils/github/sharded-storage.js", () => ({
   }),
 }));
 
-mock.module("@/utils/github/github-sync.js", () => ({
+mock.module("@/utils/github/sync/github-sync.js", () => ({
   GitHubSyncClient: mock(() => {
     const client = {
       generateSyncPreview: mock(() =>
@@ -90,34 +90,35 @@ describe("handleGitHubSync", () => {
     });
 
     // configure GitHub preview output with data to hit loops
-    spyOn(await import("@/utils/github/github-sync.js"), "GitHubSyncClient").mockImplementation(
-      () => {
-        const client = {
-          generateSyncPreview: mock(() =>
-            Promise.resolve({
-              groups: {
-                create: [{ name: "New Group" }],
-                update: [{ group: { name: "Group A" } }],
-                close: [{ group: { name: "Group B", status: "done" } }],
-              },
-              tasks: {
-                create: [{ name: "Task X", type: "bug" }],
-                update: [{ task: { name: "Task Y", type: "feature" } }],
-                close: [{ task: { name: "Task Z", status: "done", type: "bug" } }],
-              },
-              milestones: {
-                create: [{ name: "MS1" }],
-                update: [{ group: { name: "Group B" } }],
-                close: [{ group: { name: "Group A", status: "done" } }],
-              },
-            }),
-          ),
-          syncToGitHub: mock(() => Promise.resolve()),
-        };
-        githubClients.push(client);
-        return client as any;
-      },
-    );
+    spyOn(
+      await import("@/utils/github/sync/github-sync.js"),
+      "GitHubSyncClient",
+    ).mockImplementation(() => {
+      const client = {
+        generateSyncPreview: mock(() =>
+          Promise.resolve({
+            groups: {
+              create: [{ name: "New Group" }],
+              update: [{ group: { name: "Group A" } }],
+              close: [{ group: { name: "Group B", status: "done" } }],
+            },
+            tasks: {
+              create: [{ name: "Task X", type: "bug" }],
+              update: [{ task: { name: "Task Y", type: "feature" } }],
+              close: [{ task: { name: "Task Z", status: "done", type: "bug" } }],
+            },
+            milestones: {
+              create: [{ name: "MS1" }],
+              update: [{ group: { name: "Group B" } }],
+              close: [{ group: { name: "Group A", status: "done" } }],
+            },
+          }),
+        ),
+        syncToGitHub: mock(() => Promise.resolve()),
+      };
+      githubClients.push(client);
+      return client as any;
+    });
 
     await __generateTesting.handleGitHubSync({ githubDryRun: true } as any, { github: {} } as any);
 

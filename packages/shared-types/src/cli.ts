@@ -8,20 +8,20 @@
  * @public
  */
 export interface ProjectStructureConfig {
-  /** Primary location for client-facing applications */
-  clientsDirectory: string;
+  /** Primary location for client-facing applications (frontends) */
+  clientsDirectory?: string;
   /** Primary location for backend and API services */
-  servicesDirectory: string;
+  servicesDirectory?: string;
   /** Shared packages and domain libraries */
-  packagesDirectory: string;
+  packagesDirectory?: string;
   /** Developer tooling, CLIs, and automation scripts */
-  toolsDirectory: string;
+  toolsDirectory?: string;
   /** Project documentation output */
-  docsDirectory: string;
+  docsDirectory?: string;
   /** Shared test suites and golden fixtures */
-  testsDirectory: string;
+  testsDirectory?: string;
   /** Infrastructure as code and deployment assets */
-  infraDirectory: string;
+  infraDirectory?: string;
   /** Flags that force certain artifact directories to live inside their owning package */
   packageRelative?: {
     docsDirectory?: boolean;
@@ -81,10 +81,8 @@ export interface EntityMeta {
  * @public
  */
 export type TrackedEntityType =
-  | "service"
-  | "client"
   | "package"
-  | "tool"
+  | "resource"
   | "group"
   | "endpoint"
   | "view"
@@ -94,10 +92,10 @@ export type TrackedEntityType =
   | "flow"
   | "route"
   | "schema"
-  | "database"
   | "issue"
   | "process"
-  | "comment";
+  | "comment"
+  | "relationship";
 
 export interface TemplateInfo {
   name: string;
@@ -219,95 +217,21 @@ export interface ExternalResourceSpec {
   notes?: string;
 }
 
-export interface ServiceConfig extends EntityMeta {
-  name: string;
-  /** Whether this is an external/third-party service */
-  external?: boolean;
-  /** C4/grouping kind - defaults to "service", can be "container", "component", etc. */
-  kind?: string;
-  /** Arbitrary metadata for context-specific properties */
-  metadata?: Record<string, unknown>;
-  source?: ServiceSourceConfig;
-  workload?: ServiceWorkload;
-  language: string;
-  // Platform compatibility: optional platform-specific identifiers (e.g., cloudflare_worker)
-  serviceType?: string;
-  // Image and build configuration
-  image?: string;
-  sourceDirectory?: string;
-  buildContext?: {
-    dockerfile?: string;
-    buildArgs?: Record<string, string>;
-    target?: string;
-  };
-
-  // Runtime configuration
+export interface ServiceDeploymentOverride {
   replicas?: number;
-  ports?: Array<{
-    name: string;
-    port: number;
-    targetPort?: number;
-    protocol?: string;
-  }>;
+  image?: string;
   env?: Record<string, string>;
+  config?: PackageConfig["metadata"];
+  resources?: PackageConfig["metadata"];
   volumes?: Array<{
     name: string;
     path: string;
     size?: string;
     type?: "emptyDir" | "persistentVolumeClaim" | "configMap" | "secret";
   }>;
-  resources?: {
-    requests?: { cpu?: string; memory?: string };
-    limits?: { cpu?: string; memory?: string };
-  };
-  healthCheck?: {
-    path?: string;
-    port?: number;
-    protocol?: string;
-    interval?: string;
-    timeout?: string;
-    initialDelay?: number;
-    periodSeconds?: number;
-  };
-
-  // Enhanced configuration management
-  config?: {
-    files?: Array<{
-      name: string;
-      path: string;
-      content: string | Record<string, any>;
-      configMap?: boolean;
-    }>;
-    secrets?: Array<{
-      name: string;
-      key: string;
-      value?: string;
-      external?: string;
-    }>;
-  };
-
-  labels?: Record<string, string>;
-  annotations?: Record<string, string>;
-  endpoints?: Record<Slug, ServiceEndpointSpec>;
-  resource?: ExternalResourceSpec;
-  /**
-   * Grouped dependencies by type/bucket (preferred). Legacy shapes are still accepted for backwards compatibility.
-   */
-  dependencies?: DependencyGroups | Record<string, ServiceDependencySpec> | string[];
-  /** Group this service belongs to */
-  memberOf?: string;
-}
-
-export interface ServiceDeploymentOverride {
-  replicas?: number;
-  image?: string;
-  env?: Record<string, string>;
-  config?: ServiceConfig["config"];
-  resources?: ServiceConfig["resources"];
-  volumes?: ServiceConfig["volumes"];
   annotations?: Record<string, string>;
   labels?: Record<string, string>;
-  healthCheck?: ServiceConfig["healthCheck"];
+  healthCheck?: PackageConfig["healthCheck"];
   dependsOn?: string[];
   extensions?: Record<string, unknown>;
 }
@@ -392,11 +316,10 @@ export interface AssemblyConfig {
     version: string;
   };
   environments?: Record<string, DeploymentConfig>;
-  /**
-   * @deprecated use environments
-   */
-  deployments?: Record<string, DeploymentConfig>;
-  services: Record<string, ServiceConfig>;
+  /** Code artifacts */
+  packages?: Record<string, PackageConfig>;
+  /** Infrastructure resources */
+  resources?: Record<string, ResourceConfig>;
 }
 
 // Test composition types
@@ -893,57 +816,27 @@ export interface AppSpec {
     [key: string]: any;
   };
   capabilities?: Record<Slug, CapabilitySpec>;
-  resources?: Record<string, any> | any[];
   operations?: Record<string, OperationSpec>;
   behaviors: FlowSpec[];
-  services?: Record<string, ServiceConfig>;
-  clients?: Record<string, ClientConfig>;
-  /** Reusable packages/libraries */
+
+  /** Code artifacts (services, frontends, tools, libraries) - unified Package type */
   packages?: Record<string, PackageConfig>;
-  /** Developer tooling and automation */
-  tools?: Record<string, ToolConfig>;
+  /** Infrastructure resources (databases, caches, containers) */
+  resources?: Record<string, ResourceConfig>;
   /** Artifact groups for organizing related artifacts */
   groups?: Record<string, GroupSpec>;
+  /** Work items tracking spec changes */
+  issues?: Record<Slug, IssueConfig>;
+  /** Comments attached to entities (discussions, agent guidance, memory) */
+  comments?: Record<Slug, CommentConfig>;
+  /** Explicit relationships between entities (complements implicit deps) */
+  relationships?: Record<Slug, RelationshipSpec>;
+
   environments?: Record<string, DeploymentConfig>;
   testability?: TestabilitySpec;
   ops?: OpsSpec;
   processes?: Record<Slug, FSMSpec>;
-  /**
-   * @deprecated use processes
-   */
-  stateModels?: Record<Slug, FSMSpec>;
-  /**
-   * @deprecated use environments
-   */
-  deployments?: Record<string, DeploymentConfig>;
-  /**
-   * @deprecated use environments
-   */
-  deployment?: DeploymentConfig;
-  /**
-   * @deprecated use resources
-   */
-  components?: ComponentsSpec;
-  /**
-   * @deprecated use resources
-   */
-  paths?: Record<string, Record<URLPath, PathSpec>>;
-  /**
-   * @deprecated use resources
-   */
-  ui?: UISpec;
-  /**
-   * @deprecated use resources
-   */
-  locators?: Record<LocatorToken, CssSelector>;
-  /**
-   * @deprecated use resources
-   */
-  enums?: Record<Slug, Slug[]>;
-  /**
-   * @deprecated use resources
-   */
-  permissions?: Record<Cap, Role[]>;
+
   tests?: any[];
   epics?: any[];
   docs?: any;
@@ -952,12 +845,6 @@ export interface AppSpec {
   observability?: any;
   data?: any;
   metadata?: Record<string, unknown>;
-  /** Explicit relationships between entities (complements implicit deps) */
-  relationships?: Record<Slug, RelationshipSpec>;
-  /** Work items tracking spec changes */
-  issues?: Record<Slug, IssueConfig>;
-  /** Comments attached to entities (discussions, agent guidance, memory) */
-  comments?: Record<Slug, CommentConfig>;
 }
 
 export interface OperationSpec extends EntityMeta {
@@ -984,11 +871,11 @@ export interface ConfigWithVersion {
 }
 
 /**
- * View/route specification within a client application (component level).
+ * View/route specification within a frontend package (component level).
  *
  * @public
  */
-export interface ClientViewSpec extends EntityMeta {
+export interface ViewSpec extends EntityMeta {
   /** Human-readable description */
   description?: string;
   /** Route path pattern (e.g., "/users/:id") */
@@ -1003,63 +890,146 @@ export interface ClientViewSpec extends EntityMeta {
   tags?: string[];
 }
 
-export interface ClientConfig extends EntityMeta {
-  language: string;
-  template?: string;
-  framework?: string;
-  sourceDirectory?: string;
+/**
+ * Command specification within a tool package.
+ *
+ * @public
+ */
+export interface CommandSpec {
+  name: string;
   description?: string;
-  /** C4/grouping kind - defaults to "client", can be "container", "component", etc. */
-  kind?: string;
-  /** Arbitrary metadata for context-specific properties */
-  metadata?: Record<string, unknown>;
-  tags?: string[];
-  port?: number;
-  env?: Record<string, string>;
-  hooks?: string[];
-  /** Component-level children (views/routes) */
-  views?: Record<Slug, ClientViewSpec>;
-  /** Group this client belongs to */
-  memberOf?: string;
+  entrypoint?: string;
+  arguments?: Array<{
+    name: string;
+    description?: string;
+    required?: boolean;
+  }>;
 }
 
 /**
- * Configuration for a reusable package/library.
+ * Package subtype - determines polymorphic behavior.
+ * Agents set this after import to unlock subtype-specific fields.
+ *
+ * @public
+ */
+export type PackageSubtype = "service" | "frontend" | "tool" | "library" | "worker";
+
+/**
+ * PackageConfig is the master type for any code artifact with a manifest.
+ * All code artifacts (services, frontends, tools, libraries) are packages.
+ * The `subtype` field enables polymorphism - unlocking subtype-specific fields.
  *
  * @public
  */
 export interface PackageConfig extends EntityMeta {
   name?: string;
   description?: string;
-  /** C4/grouping kind - defaults to "package", can be "component", "library", etc. */
-  kind?: string;
+
+  /** Language is required - detected from manifest */
+  language: string;
+
+  /** Path to package.json, Cargo.toml, go.mod, etc. */
+  manifest?: string;
+  sourceDirectory?: string;
+
+  /** Subtype for polymorphism - optional, agent decides after import */
+  subtype?: PackageSubtype;
+
+  /** Common optional fields */
+  framework?: string;
+  template?: string;
+  tags?: string[];
+  memberOf?: string;
+
   /** Arbitrary metadata for context-specific properties */
   metadata?: Record<string, unknown>;
-  language?: string;
-  template?: string;
-  sourceDirectory?: string;
-  tags?: string[];
-  /** Group this package belongs to */
-  memberOf?: string;
+
+  // ---------- Service/Worker fields (when subtype is "service" or "worker") ----------
+  port?: number;
+  healthCheck?: {
+    path?: string;
+    port?: number;
+    protocol?: string;
+    interval?: string;
+    timeout?: string;
+  };
+  endpoints?: Record<Slug, ServiceEndpointSpec>;
+  env?: Record<string, string>;
+  workload?: ServiceWorkload;
+  replicas?: number;
+
+  // ---------- Frontend fields (when subtype is "frontend") ----------
+  views?: Record<Slug, ViewSpec>;
+
+  // ---------- Tool fields (when subtype is "tool") ----------
+  commands?: CommandSpec[];
+  bin?: Record<string, string>;
 }
 
 /**
- * Configuration for developer tooling and automation.
+ * Resource kind - infrastructure type.
  *
  * @public
  */
-export interface ToolConfig extends EntityMeta {
+export type ResourceKind =
+  | "database"
+  | "cache"
+  | "queue"
+  | "storage"
+  | "container"
+  | "gateway"
+  | "external";
+
+/**
+ * ResourceConfig is for infrastructure - things referenced in Docker/K8s/Terraform
+ * that don't have their own code manifest. When a Resource corresponds to a Package,
+ * they are linked via a "deployed_as" relationship.
+ *
+ * @public
+ */
+export interface ResourceConfig extends EntityMeta {
   name?: string;
   description?: string;
-  /** C4/grouping kind - defaults to "tool" */
-  kind?: string;
-  /** Arbitrary metadata for context-specific properties */
+
+  /** Resource kind - required */
+  kind: ResourceKind;
+
+  /** Container/image details (from Docker/K8s) */
+  image?: string;
+  ports?: Array<{
+    name: string;
+    port: number;
+    targetPort?: number;
+    protocol?: string;
+  }>;
+
+  /** Provider details (for managed services from Terraform) */
+  provider?: string; // aws, gcp, azure, etc.
+  engine?: string; // postgres, mysql, redis, etc.
+  version?: string;
+
+  /** Environment variables */
+  env?: Record<string, string>;
+
+  /** Resource specs */
+  resources?: {
+    requests?: { cpu?: string; memory?: string };
+    limits?: { cpu?: string; memory?: string };
+  };
+
+  /** Health check (from K8s probes) */
+  healthCheck?: {
+    path?: string;
+    port?: number;
+    protocol?: string;
+    interval?: string;
+    timeout?: string;
+  };
+
+  /** Arbitrary metadata */
   metadata?: Record<string, unknown>;
-  language?: string;
-  template?: string;
-  sourceDirectory?: string;
+
   tags?: string[];
-  /** Group this tool belongs to */
   memberOf?: string;
 }
 

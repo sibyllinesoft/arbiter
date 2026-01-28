@@ -28,9 +28,9 @@ describe("generate helper utilities", () => {
           ],
         },
       ],
-      services: {
-        Orders: { language: "typescript" },
-        Payments: { language: "python" },
+      packages: {
+        Orders: { subtype: "service", language: "typescript" },
+        Payments: { subtype: "service", language: "python" },
       },
       paths: {
         Orders: {
@@ -52,9 +52,9 @@ describe("generate helper utilities", () => {
       ui: { routes: [] },
       locators: {},
       behaviors: [],
-      services: {
-        Orders: { language: "typescript", ports: [{ port: 4000 }] },
-        Payments: { language: "python", ports: [{ port: 5001 }] },
+      packages: {
+        Orders: { subtype: "service", language: "typescript", ports: [{ port: 4000 }] },
+        Payments: { subtype: "service", language: "python", ports: [{ port: 5001 }] },
       },
     } as unknown as AppSpec;
 
@@ -100,7 +100,7 @@ describe("generate helper utilities", () => {
           ],
         },
       ],
-      services: {},
+      packages: {},
     } as unknown as AppSpec;
 
     const metadata = __generateTesting.deriveFlowRouteMetadata(appSpec);

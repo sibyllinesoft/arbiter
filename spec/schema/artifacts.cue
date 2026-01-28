@@ -54,7 +54,7 @@
     // Complements implicit relationships derived from dependencies and handler refs.
     #RelationshipSpec: {
       #EntityMeta
-      // Source entity slug (service, client, package, actor, group)
+      // Source entity slug (package, resource, group)
       from: #Slug
       // Target entity slug
       to: #Slug
@@ -63,7 +63,7 @@
       // Detailed description
       description?: string
       // Relationship semantics - open-ended to support various contexts
-      // Common: uses, depends_on, calls, reads, writes, authenticates, notifies
+      // Common: uses, depends_on, calls, reads, writes, deployed_as, authenticates, notifies
       type?: #Slug | *"uses"
       // Technology or protocol (e.g., "HTTPS/JSON", "gRPC", "PostgreSQL", "AMQP")
       technology?: string
@@ -74,14 +74,24 @@
     }
 
     // ProjectStructureConfig defines directory layout hints
+    // Note: Uses subtype-based directories (services, clients, tools) for backward compatibility
+    // with existing projects. Future versions may consolidate to a single packagesDirectory.
     #ProjectStructureConfig: {
+      // Primary location for client-facing applications (frontends)
       clientsDirectory?:  string & !=""
+      // Primary location for backend and API services
       servicesDirectory?: string & !=""
+      // Shared packages and domain libraries
       packagesDirectory?: string & !=""
+      // Developer tooling, CLIs, and automation scripts
       toolsDirectory?:    string & !=""
+      // Project documentation output
       docsDirectory?:     string & !=""
+      // Shared test suites and golden fixtures
       testsDirectory?:    string & !=""
+      // Infrastructure as code and deployment assets
       infraDirectory?:    string & !=""
+      // Flags that force certain artifact directories to live inside their owning package
       packageRelative?: {
         docsDirectory?:  bool
         testsDirectory?: bool
@@ -89,16 +99,20 @@
       }
     }
 
-    // ---------- Artifact Configurations ----------
+    // ---------- Package Configuration (Master Type for Code Artifacts) ----------
 
-    // Handler reference - points to code module or another service endpoint
+    // Package subtype - determines polymorphic behavior
+    // Agents set this after import to unlock subtype-specific fields
+    #PackageSubtype: "service" | "frontend" | "tool" | "library" | "worker"
+
+    // Handler reference - points to code module or another package's endpoint
     #HandlerReference: {
       // Module-based handler (local code)
       module?: string
       function?: string
     } | {
-      // Endpoint-based handler (proxy to another service)
-      service: #Slug
+      // Endpoint-based handler (proxy to another package)
+      package: #Slug
       endpoint: #Slug
     }
 
@@ -109,8 +123,8 @@
       config?: { [string]: _ }
     }
 
-    // ServiceEndpointSpec defines an API endpoint within a service (component level)
-    #ServiceEndpointSpec: {
+    // EndpointSpec defines an API endpoint within a service package (component level)
+    #EndpointSpec: {
       #EntityMeta
       // Human-readable description
       description?: string
@@ -128,56 +142,8 @@
       tags?: [...#Slug]
     }
 
-    // ServiceConfig defines a backend service (container level)
-    // Services are typed groups that can contain endpoints as components
-    #ServiceConfig: {
-      #EntityMeta
-      name?:        #Human
-      description?: string
-      // C4/grouping type - defaults to "service", can be "container", "component", etc.
-      kind?:        #GroupType | *"service"
-      // Whether this is an external/third-party service
-      external?:    bool | *false
-      // Arbitrary metadata for context-specific properties
-      metadata?:    { [string]: _ }
-
-      // Implementation details
-      language:     string & !=""
-      template?:    string
-      framework?:   string
-      sourceDirectory?: string
-      workload?:    "deployment" | "statefulset" | "daemonset" | "job" | "cronjob"
-      image?:       string
-      replicas?:    int & >0
-      ports?: [...{
-        name:       string
-        port:       int & >0
-        targetPort?: int & >0
-        protocol?:  string
-      }]
-      env?:         { [string]: string }
-      resources?: {
-        requests?: { cpu?: string, memory?: string }
-        limits?:   { cpu?: string, memory?: string }
-      }
-      healthCheck?: {
-        path?:     #URLPath
-        port?:     int & >0
-        protocol?: string
-        interval?: string
-        timeout?:  string
-      }
-
-      // Component-level children (endpoints)
-      endpoints?:   { [#Slug]: #ServiceEndpointSpec }
-
-      tags?:        [...#Slug]
-      // Parent group/system this service belongs to
-      memberOf?:    #Slug
-    }
-
-    // ClientViewSpec defines a view/route within a client application (component level)
-    #ClientViewSpec: {
+    // ViewSpec defines a view/route within a frontend package (component level)
+    #ViewSpec: {
       #EntityMeta
       // Human-readable description
       description?: string
@@ -193,69 +159,124 @@
       tags?: [...#Slug]
     }
 
-    // ClientConfig defines a frontend application (container level)
-    // Clients are typed groups that can contain views as components
-    #ClientConfig: {
-      #EntityMeta
-      name?:        #Human
+    // CommandSpec defines a CLI command within a tool package
+    #CommandSpec: {
+      name: string & !=""
       description?: string
-      // C4/grouping type - defaults to "client", can be "container", "component", etc.
-      kind?:        #GroupType | *"client"
-      // Arbitrary metadata for context-specific properties
-      metadata?:    { [string]: _ }
-
-      // Implementation details
-      language:     string & !=""
-      template?:    string
-      framework?:   string
-      sourceDirectory?: string
-      port?:        int & >0
-      env?:         { [string]: string }
-      hooks?:       [...string]
-
-      // Component-level children (views/routes)
-      views?:       { [#Slug]: #ClientViewSpec }
-
-      tags?:        [...#Slug]
-      // Parent group/system this client belongs to
-      memberOf?:    #Slug
+      entrypoint?: string
+      arguments?: [...{
+        name: string
+        description?: string
+        required?: bool
+      }]
     }
 
-    // PackageConfig defines a reusable package/library (component level)
+    // PackageConfig is the master type for any code artifact with a manifest.
+    // All code artifacts (services, frontends, tools, libraries) are packages.
+    // The `subtype` field enables polymorphism - unlocking subtype-specific fields.
     #PackageConfig: {
       #EntityMeta
       name?:        #Human
       description?: string
-      // C4/grouping type - defaults to "package", can be "component", "library", etc.
-      kind?:        #GroupType | *"package"
+
+      // Language is required - detected from manifest
+      language:     string & !=""
+
+      // Source details
+      manifest?:        string  // path to package.json, Cargo.toml, go.mod, etc.
+      sourceDirectory?: string
+
+      // Subtype for polymorphism - optional, agent decides after import
+      subtype?:     #PackageSubtype
+
+      // Common optional fields
+      framework?:   string
+      template?:    string
+      tags?:        [...#Slug]
+      memberOf?:    #Slug
+
       // Arbitrary metadata for context-specific properties
+      // Unknown CLI flags become metadata entries
       metadata?:    { [string]: _ }
 
-      language?:    string
-      template?:    string
-      sourceDirectory?: string
-      tags?:        [...#Slug]
-      // Parent group/container this package belongs to
-      memberOf?:    #Slug
+      // ---------- Service/Worker fields (when subtype is "service" or "worker") ----------
+      port?:        int & >0
+      healthCheck?: {
+        path?:     #URLPath
+        port?:     int & >0
+        protocol?: string
+        interval?: string
+        timeout?:  string
+      }
+      endpoints?:   { [#Slug]: #EndpointSpec }
+      env?:         { [string]: string }
+      workload?:    "deployment" | "statefulset" | "daemonset" | "job" | "cronjob"
+      replicas?:    int & >0
+
+      // ---------- Frontend fields (when subtype is "frontend") ----------
+      views?:       { [#Slug]: #ViewSpec }
+
+      // ---------- Tool fields (when subtype is "tool") ----------
+      commands?:    [...#CommandSpec]
+      bin?:         { [string]: string }
     }
 
-    // ToolConfig defines developer tooling and automation
-    #ToolConfig: {
+    // ---------- Resource Configuration (Infrastructure without Code) ----------
+
+    // Resource kind - infrastructure type
+    #ResourceKind: "database" | "cache" | "queue" | "storage" | "container" | "gateway" | "external"
+
+    // ResourceConfig is for infrastructure - things referenced in Docker/K8s/Terraform
+    // that don't have their own code manifest. When a Resource corresponds to a Package,
+    // they are linked via a "deployed_as" relationship.
+    #ResourceConfig: {
       #EntityMeta
       name?:        #Human
       description?: string
-      // C4/grouping type - defaults to "tool"
-      kind?:        #GroupType | *"tool"
-      // Arbitrary metadata for context-specific properties
+
+      // Resource kind - required
+      kind:         #ResourceKind
+
+      // Container/image details (from Docker/K8s)
+      image?:       string
+      ports?: [...{
+        name:       string
+        port:       int & >0
+        targetPort?: int & >0
+        protocol?:  string
+      }]
+
+      // Provider details (for managed services from Terraform)
+      provider?:    string  // aws, gcp, azure, etc.
+      engine?:      string  // postgres, mysql, redis, etc.
+      version?:     string
+
+      // Environment variables
+      env?:         { [string]: string }
+
+      // Resource specs
+      resources?: {
+        requests?: { cpu?: string, memory?: string }
+        limits?:   { cpu?: string, memory?: string }
+      }
+
+      // Health check (from K8s probes)
+      healthCheck?: {
+        path?:     #URLPath
+        port?:     int & >0
+        protocol?: string
+        interval?: string
+        timeout?:  string
+      }
+
+      // Arbitrary metadata
       metadata?:    { [string]: _ }
 
-      language?:    string
-      template?:    string
-      sourceDirectory?: string
       tags?:        [...#Slug]
-      // Parent group this tool belongs to
       memberOf?:    #Slug
     }
+
+    // ---------- Issue Tracking ----------
 
     // Issue type for categorization (compatible with GitHub/GitLab/Jira)
     #IssueType: "issue" | "bug" | "feature" | "task" | "epic" | "milestone" | "story" | "spike"
@@ -329,7 +350,7 @@
       content:      string & !=""
       // Entity this comment is attached to (entity UUID or slug)
       target:       string & !=""
-      // Type of target entity (e.g., "issue", "service", "endpoint")
+      // Type of target entity (e.g., "issue", "package", "endpoint")
       targetType?:  string
       // Author of the comment
       author?:      #Human
@@ -361,20 +382,16 @@
 
     // ArtifactsSpec extends the app specification with artifact definitions
     #ArtifactsSpec: {
-      // Backend services
-      services?: { [#Slug]: #ServiceConfig }
-      // Frontend applications
-      clients?: { [#Slug]: #ClientConfig }
-      // Reusable packages/libraries
+      // Code artifacts (services, frontends, tools, libraries)
       packages?: { [#Slug]: #PackageConfig }
-      // Developer tooling
-      tools?: { [#Slug]: #ToolConfig }
+      // Infrastructure resources (databases, caches, containers)
+      resources?: { [#Slug]: #ResourceConfig }
       // Artifact groups for organization
       groups?: { [#Slug]: #GroupSpec }
       // Work items tracking spec changes
       issues?: { [#Slug]: #IssueConfig }
       // Comments attached to entities (discussions, agent guidance, memory)
       comments?: { [#Slug]: #CommentConfig }
-      // Explicit relationships between entities (complements implicit deps)
+      // Explicit relationships between entities (uses, deployed_as, etc.)
       relationships?: { [#Slug]: #RelationshipSpec }
     }

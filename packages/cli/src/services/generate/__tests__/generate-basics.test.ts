@@ -37,7 +37,7 @@ describe("generate basic helpers", () => {
   it("collects client targets with fallback and explicit config", () => {
     const appSpec: any = {
       product: { name: "Demo" },
-      clients: { web: { sourceDirectory: "apps/web" } },
+      packages: { web: { subtype: "frontend", sourceDirectory: "apps/web" } },
     };
     const targets = collectClientTargets(appSpec, baseStructure as any, "/tmp/out");
 

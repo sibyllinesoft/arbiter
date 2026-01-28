@@ -141,8 +141,8 @@ export function pathBelongsToService(
  */
 export function determinePathOwnership(appSpec: AppSpec): Map<string, string> {
   const ownership = new Map<string, string>();
-  if (appSpec.paths) {
-    for (const [serviceName, pathSpec] of Object.entries(appSpec.paths)) {
+  if ((appSpec as any).paths) {
+    for (const [serviceName, pathSpec] of Object.entries((appSpec as any).paths)) {
       if (!pathSpec || typeof pathSpec !== "object") continue;
       const slug = slugify(serviceName, serviceName);
       for (const pathKey of Object.keys(pathSpec as Record<string, unknown>)) {
@@ -150,8 +150,10 @@ export function determinePathOwnership(appSpec: AppSpec): Map<string, string> {
       }
     }
   }
-  const services = Object.entries(appSpec.services ?? {}).filter(([, svc]) =>
-    isTypeScriptServiceLanguage(svc?.language as string | undefined),
+
+  // Collect packages for path ownership
+  const allServices = Object.entries(appSpec.packages ?? {}).filter(([, pkg]) =>
+    isTypeScriptServiceLanguage((pkg as any)?.language as string | undefined),
   );
 
   for (const flow of appSpec.behaviors ?? []) {
@@ -161,7 +163,7 @@ export function determinePathOwnership(appSpec: AppSpec): Map<string, string> {
         continue;
       }
 
-      for (const [serviceName, serviceSpec] of services) {
+      for (const [serviceName, serviceSpec] of allServices) {
         if (pathBelongsToService(api.path, serviceName, serviceSpec)) {
           ownership.set(api.path, slugify(serviceName, serviceName));
           break;
@@ -334,14 +336,14 @@ export function deriveServiceEndpointsFromPaths(
   serviceSpec: any,
   pathOwnership?: Map<string, string>,
 ): RouteBindingInput[] {
-  if (!appSpec?.paths) {
+  if (!(appSpec as any)?.paths) {
     return [];
   }
 
   const results: RouteBindingInput[] = [];
   const normalizedOriginal = slugify(serviceName, serviceName);
 
-  for (const [pathServiceName, pathSpec] of Object.entries(appSpec.paths)) {
+  for (const [pathServiceName, pathSpec] of Object.entries((appSpec as any).paths)) {
     if (!pathSpec || typeof pathSpec !== "object") {
       continue;
     }

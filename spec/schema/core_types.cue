@@ -43,11 +43,11 @@
 
     // ---------- Issue tracking ----------
     // Entity types that can be referenced by issues
-    // Container level: service, client, package, tool, group
+    // Container level: package (code artifacts), resource (infrastructure), group
     // Component level: endpoint, view
-    #EntityType: "service" | "client" | "package" | "tool" | "group" |
+    #EntityType: "package" | "resource" | "group" |
                  "endpoint" | "view" |
-                 "capability" | "operation" | "behavior" | "issue" | "actor"
+                 "capability" | "operation" | "behavior" | "issue" | "actor" | "relationship"
 
     // Structured reference to another entity
     #EntityRef: {
@@ -58,7 +58,7 @@
     }
 
     // Issue workflow states
-    #IssueStatus: "open" | "in-progress" | "resolved" | "closed" | "wont-fix"
+    #IssueStatus: "open" | "in_progress" | "blocked" | "review" | "done" | "closed" | "wontfix"
 
     // Issue priority levels
     #IssuePriority: "critical" | "high" | "medium" | "low"

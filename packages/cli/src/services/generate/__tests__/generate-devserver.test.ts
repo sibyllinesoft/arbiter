@@ -30,8 +30,8 @@ describe("enhanceClientDevServer", () => {
       ui: { routes: [] },
       locators: {},
       flows: [],
-      services: {
-        Orders: { language: "typescript", ports: [{ port: 4100 }] },
+      packages: {
+        Orders: { subtype: "service", language: "typescript", ports: [{ port: 4100 }] },
       },
       paths: {
         Orders: {
