@@ -25,11 +25,15 @@ import {
   type GridSizeContext,
   MAX_COLS,
   MIN_CONTAINER_WIDTH,
+  TOP_LEVEL_CELL_HEIGHT,
+  TOP_LEVEL_CELL_WIDTH,
+  TOP_LEVEL_GAP,
+  TOP_LEVEL_MAX_COLS,
   buildArchitectureFlowGraph,
   calculateGridLayout,
   calculateParentDimensions,
+  calculateTopLevelGridLayout,
 } from "@/utils/diagramTransformers";
-import { layoutReactFlow } from "@/utils/reactFlowLayout";
 import { clsx } from "clsx";
 import {
   ArrowLeft,
@@ -1599,43 +1603,31 @@ const ArchitectureFlowDiagram: React.FC<ArchitectureFlowDiagramProps> = ({
       }
     });
 
-    // Layout top-level nodes (with adjusted sizes for expanded ones)
-    // Only layout nodes that don't have saved positions
-    const topLevelWithSizes = topLevelNodes.map((n) => {
+    // Layout top-level nodes using grid-based bin-packing
+    // This properly handles expanded nodes that span multiple grid cells
+    const gridLayoutResult = calculateTopLevelGridLayout(
+      topLevelNodes as Node[],
+      expandedNodes,
+      parentDimensions,
+      savedPositions,
+      TOP_LEVEL_MAX_COLS,
+    );
+
+    // Apply grid layout positions and dimensions to nodes
+    const layoutedTopLevel: DependencyNode[] = topLevelNodes.map((n) => {
       const dims = parentDimensions.get(n.id);
+      const gridPos = gridLayoutResult.nodePositions.get(n.id);
       const savedPos = savedPositions.get(n.id);
+      // Prefer saved position, fall back to grid layout
+      const position = savedPos ?? gridPos ?? { x: 0, y: 0 };
       return {
         ...n,
+        position,
         ...(dims ? { width: dims.width, height: dims.height } : {}),
-        ...(savedPos ? { position: savedPos } : {}),
       };
     });
 
-    // Check if we need to run layout (only for nodes without saved positions)
-    const nodesNeedingLayout = topLevelWithSizes.filter((n) => !savedPositions.has(n.id));
-    const needsLayout = nodesNeedingLayout.length > 0;
-
-    let layoutedTopLevel: DependencyNode[];
-    let allEdges: DependencyEdge[];
-
-    if (needsLayout) {
-      // Run layout but preserve existing positions
-      const result = layoutReactFlow(topLevelWithSizes, filteredData.edges, {
-        layout: "flow",
-        defaultSize: { width: NODE_WIDTH, height: NODE_HEIGHT },
-        direction: "TB",
-      });
-      // Merge: use saved positions where available, layout positions for new nodes
-      layoutedTopLevel = result.nodes.map((n) => {
-        const savedPos = savedPositions.get(n.id);
-        return savedPos ? { ...n, position: savedPos } : n;
-      });
-      allEdges = result.edges;
-    } else {
-      // All nodes have saved positions, skip layout entirely
-      layoutedTopLevel = topLevelWithSizes as DependencyNode[];
-      allEdges = filteredData.edges;
-    }
+    const allEdges = filteredData.edges;
 
     // Augment top-level nodes with callbacks and expanded state
     const augmentNode = (n: DependencyNode, isChild: boolean): DependencyNode => {

@@ -17,12 +17,15 @@ export type {
   GridSizeContext,
   GridLayout,
   GridPlacement,
+  TopLevelGridLayout,
 } from "./architectureFlow";
 export {
   buildArchitectureFlowGraph,
   calculateGridLayout,
   calculateParentDimensions,
+  calculateTopLevelGridLayout,
   getChildGridSize,
+  getTopLevelNodeGridSize,
   CELL_WIDTH,
   CELL_HEIGHT,
   MAX_COLS,
@@ -30,6 +33,10 @@ export {
   PARENT_PADDING,
   MIN_CONTAINER_WIDTH,
   MIN_CONTAINER_HEIGHT,
+  TOP_LEVEL_CELL_WIDTH,
+  TOP_LEVEL_CELL_HEIGHT,
+  TOP_LEVEL_MAX_COLS,
+  TOP_LEVEL_GAP,
 } from "./architectureFlow";
 
 /** Result of parsing CUE data into diagram model */

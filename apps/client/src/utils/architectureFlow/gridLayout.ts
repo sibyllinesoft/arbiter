@@ -300,3 +300,108 @@ export function calculateParentDimensions(
   const layout = calculateGridLayout(children, ctx);
   return layout.dimensions;
 }
+
+// Top-level layout constants (larger cells for top-level containers)
+export const TOP_LEVEL_CELL_WIDTH = 180;
+export const TOP_LEVEL_CELL_HEIGHT = 200;
+export const TOP_LEVEL_MAX_COLS = 6;
+export const TOP_LEVEL_GAP = 24;
+
+/** Result of top-level grid layout */
+export type TopLevelGridLayout = {
+  nodePositions: Map<string, { x: number; y: number }>;
+  gridSize: { cols: number; rows: number };
+};
+
+/**
+ * Calculate how many grid cells a top-level node occupies
+ * - Collapsed: 1x1
+ * - Expanded: calculated from actual container dimensions
+ */
+export function getTopLevelNodeGridSize(
+  node: Node,
+  expandedNodes: Set<string>,
+  parentDimensions: Map<string, { width: number; height: number }>,
+): { cols: number; rows: number } {
+  const isExpanded = expandedNodes.has(node.id);
+
+  if (!isExpanded) {
+    return { cols: 1, rows: 1 };
+  }
+
+  // Get the actual dimensions of the expanded container
+  const dims = parentDimensions.get(node.id);
+  if (!dims) {
+    return { cols: 2, rows: 2 }; // Default expanded size
+  }
+
+  // Calculate how many grid cells this container needs
+  // Add gap to account for spacing between cells
+  const cellWithGap = TOP_LEVEL_CELL_WIDTH + TOP_LEVEL_GAP;
+  const cellHeightWithGap = TOP_LEVEL_CELL_HEIGHT + TOP_LEVEL_GAP;
+
+  const cols = Math.max(1, Math.ceil(dims.width / cellWithGap));
+  const rows = Math.max(1, Math.ceil(dims.height / cellHeightWithGap));
+
+  return { cols, rows };
+}
+
+/**
+ * Calculate grid layout for top-level nodes using masonry bin-packing
+ *
+ * This replaces the dagre-based layoutReactFlow for top-level nodes,
+ * providing proper handling of expanded containers that span multiple cells.
+ */
+export function calculateTopLevelGridLayout(
+  nodes: Node[],
+  expandedNodes: Set<string>,
+  parentDimensions: Map<string, { width: number; height: number }>,
+  savedPositions?: Map<string, { x: number; y: number }>,
+  maxCols: number = TOP_LEVEL_MAX_COLS,
+): TopLevelGridLayout {
+  const nodePositions = new Map<string, { x: number; y: number }>();
+  const occupancy = new OccupancyGrid();
+
+  // Sort nodes: prefer to keep existing positions stable
+  // Nodes with saved positions should try to maintain relative order
+  const sortedNodes = [...nodes];
+
+  for (const node of sortedNodes) {
+    // If node has a saved position, use it
+    const savedPos = savedPositions?.get(node.id);
+    if (savedPos) {
+      nodePositions.set(node.id, savedPos);
+      // Mark the grid cells as occupied based on node size
+      const size = getTopLevelNodeGridSize(node, expandedNodes, parentDimensions);
+      const cellWithGap = TOP_LEVEL_CELL_WIDTH + TOP_LEVEL_GAP;
+      const cellHeightWithGap = TOP_LEVEL_CELL_HEIGHT + TOP_LEVEL_GAP;
+      const col = Math.round(savedPos.x / cellWithGap);
+      const row = Math.round(savedPos.y / cellHeightWithGap);
+      // Only mark as occupied if within reasonable bounds
+      if (col >= 0 && row >= 0) {
+        occupancy.place(col, row, size.cols, size.rows);
+      }
+      continue;
+    }
+
+    // Calculate grid size for this node
+    const size = getTopLevelNodeGridSize(node, expandedNodes, parentDimensions);
+
+    // Find first available position using bin-packing
+    const position = findFirstFit(occupancy, size.cols, size.rows, maxCols);
+    occupancy.place(position.col, position.row, size.cols, size.rows);
+
+    // Convert grid position to pixel position
+    const cellWithGap = TOP_LEVEL_CELL_WIDTH + TOP_LEVEL_GAP;
+    const cellHeightWithGap = TOP_LEVEL_CELL_HEIGHT + TOP_LEVEL_GAP;
+    const x = position.col * cellWithGap;
+    const y = position.row * cellHeightWithGap;
+
+    nodePositions.set(node.id, { x, y });
+  }
+
+  return {
+    nodePositions,
+    gridSize: occupancy.getBounds(),
+  };
+}

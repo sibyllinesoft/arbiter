@@ -78,7 +78,6 @@ export async function loadDiagramState(projectId: string): Promise<DiagramState>
 
       request.onsuccess = () => {
         const data = request.result as DiagramPositions | undefined;
-        console.log("[IndexedDB] Load result for", projectId, ":", data);
         const positions = data?.positions
           ? new Map(Object.entries(data.positions))
           : new Map<string, NodePosition>();
@@ -120,8 +119,6 @@ export async function saveDiagramState(
         expandedNodes: Array.from(expandedNodes),
         updatedAt: Date.now(),
       };
-
-      console.log("[IndexedDB] Saving state for", projectId, ":", data);
       const request = store.put(data);
 
       request.onerror = () => {
@@ -130,7 +127,6 @@ export async function saveDiagramState(
       };
 
       request.onsuccess = () => {
-        console.log("[IndexedDB] Save successful for", projectId);
         resolve();
       };
     });

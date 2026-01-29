@@ -53,14 +53,6 @@ export function useDiagramPositions(projectId: string, debounceMs = 500): UseDia
 
   // Save function that saves both positions and expanded nodes
   const doSave = useCallback((projId: string) => {
-    console.log(
-      "[DiagramState] Saving state for project:",
-      projId,
-      "positions:",
-      positionsRef.current.size,
-      "expanded:",
-      expandedNodesRef.current.size,
-    );
     saveDiagramState(projId, positionsRef.current, expandedNodesRef.current);
   }, []);
 
@@ -89,14 +81,6 @@ export function useDiagramPositions(projectId: string, debounceMs = 500): UseDia
 
     loadDiagramState(projectId).then((state) => {
       if (cancelled) return;
-      console.log(
-        "[DiagramState] Loaded state for project:",
-        projectId,
-        "positions:",
-        state.positions.size,
-        "expanded:",
-        state.expandedNodes.size,
-      );
       positionsRef.current = state.positions;
       expandedNodesRef.current = state.expandedNodes;
       setPositions(new Map(state.positions));
