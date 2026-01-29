@@ -11,7 +11,7 @@ describe("extractArtifactsFromResolved frameworks", () => {
 
   it("uses framework from metadata when provided", () => {
     const resolved = {
-      services: {
+      packages: {
         api: {
           ...baseService,
           metadata: {
@@ -29,7 +29,7 @@ describe("extractArtifactsFromResolved frameworks", () => {
 
   it("prefers runtime framework hints", () => {
     const resolved = {
-      services: {
+      packages: {
         worker: {
           ...baseService,
           runtime: {
@@ -45,7 +45,7 @@ describe("extractArtifactsFromResolved frameworks", () => {
 
   it("falls back to capability adapter names", () => {
     const resolved = {
-      services: {
+      packages: {
         queue: {
           ...baseService,
           capabilities: [
@@ -66,7 +66,7 @@ describe("extractArtifactsFromResolved frameworks", () => {
 
   it("does not treat workload type as framework when no hints exist", () => {
     const resolved = {
-      services: {
+      packages: {
         stats: {
           ...baseService,
           workload: "deployment",

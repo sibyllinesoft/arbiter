@@ -22,6 +22,11 @@ export async function handleGetProject(c: Context, deps: Dependencies) {
 
   try {
     const data = await controller.getProjectWithArtifacts(projectId);
+    console.log(
+      `[getProject] Artifacts for ${projectId}:`,
+      data.artifacts.length,
+      data.artifacts.map((a: any) => ({ id: a.id, type: a.type, name: a.name })),
+    );
     const resolvedSpec = buildResolvedSpec(
       data.project as unknown as Record<string, unknown>,
       data.artifacts,

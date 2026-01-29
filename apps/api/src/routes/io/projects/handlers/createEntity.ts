@@ -52,6 +52,10 @@ export async function handleCreateEntity(c: Context, deps: Dependencies) {
     const metadata = normalizeMetadata(payload.metadata);
     if (metadata?.environment === null) delete metadata.environment;
 
+    console.log(
+      `[createEntity] Creating artifact: type=${type}, name=${payload.name}, projectId=${projectId}`,
+    );
+
     const artifact = await dbInstance.createArtifact(
       artifactId,
       projectId,
@@ -64,6 +68,8 @@ export async function handleCreateEntity(c: Context, deps: Dependencies) {
       payload.filePath,
       0.95,
     );
+
+    console.log(`[createEntity] Created artifact:`, artifact);
 
     await broadcastEvent(deps, projectId, "entity_created", {
       action: "entity_created",

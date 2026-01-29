@@ -1,9 +1,7 @@
 /** Entity types that can be tracked in the system */
 type TrackedEntityType =
-  | "service"
-  | "client"
   | "package"
-  | "tool"
+  | "resource"
   | "group"
   | "endpoint"
   | "view"
@@ -13,11 +11,11 @@ type TrackedEntityType =
   | "flow"
   | "task"
   | "schema"
-  | "database"
   | "process"
   | "issue"
   | "comment"
-  | "route";
+  | "route"
+  | "relationship";
 
 /**
  * Extracted entity data ready for database sync
@@ -43,10 +41,8 @@ export interface ExtractedEntity {
  * Map of spec paths to entity types
  */
 const ENTITY_COLLECTION_MAP: Record<string, TrackedEntityType> = {
-  services: "service",
-  clients: "client",
   packages: "package",
-  tools: "tool",
+  resources: "resource",
   groups: "group",
   capabilities: "capability",
   operations: "operation",
@@ -54,6 +50,7 @@ const ENTITY_COLLECTION_MAP: Record<string, TrackedEntityType> = {
   processes: "process",
   issues: "issue",
   comments: "comment",
+  relationships: "relationship",
 };
 
 /**
@@ -87,17 +84,17 @@ function extractEntity(
 }
 
 /**
- * Extract nested endpoints from services
+ * Extract nested endpoints from packages
  * Only extracts endpoints that have an entityId
  */
-function extractEndpointsFromServices(
-  services: Record<string, unknown>,
+function extractEndpointsFromPackages(
+  packages: Record<string, unknown>,
   entities: ExtractedEntity[],
 ): void {
-  for (const [serviceSlug, service] of Object.entries(services)) {
-    if (!service || typeof service !== "object") continue;
-    const svc = service as Record<string, unknown>;
-    const endpoints = svc.endpoints as Record<string, unknown> | undefined;
+  for (const [packageSlug, pkg] of Object.entries(packages)) {
+    if (!pkg || typeof pkg !== "object") continue;
+    const pkgData = pkg as Record<string, unknown>;
+    const endpoints = pkgData.endpoints as Record<string, unknown> | undefined;
     if (!endpoints) continue;
 
     for (const [endpointSlug, endpoint] of Object.entries(endpoints)) {
@@ -109,11 +106,11 @@ function extractEndpointsFromServices(
       entities.push({
         id: entityId,
         type: "endpoint",
-        slug: `${serviceSlug}.${endpointSlug}`,
-        path: `services.${serviceSlug}.endpoints.${endpointSlug}`,
+        slug: `${packageSlug}.${endpointSlug}`,
+        path: `packages.${packageSlug}.endpoints.${endpointSlug}`,
         name: (ep.name as string) || endpointSlug,
         description: (ep.description as string) ?? null,
-        data: { ...ep, _parentService: serviceSlug },
+        data: { ...ep, _parentPackage: packageSlug },
       });
     }
   }
@@ -213,10 +210,10 @@ export function extractEntitiesFromSpec(resolved: Record<string, unknown>): Extr
     }
   }
 
-  // Extract nested entities
-  const services = resolved.services as Record<string, unknown> | undefined;
-  if (services) {
-    extractEndpointsFromServices(services, entities);
+  // Extract nested entities from packages
+  const packages = resolved.packages as Record<string, unknown> | undefined;
+  if (packages) {
+    extractEndpointsFromPackages(packages, entities);
   }
 
   const ui = resolved.ui as Record<string, unknown> | undefined;

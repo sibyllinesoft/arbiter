@@ -69,3 +69,29 @@ export function buildFlowPayload(
     },
   };
 }
+
+/**
+ * Build relationship artifact payload for edges/connections between entities.
+ */
+export function buildRelationshipPayload(
+  values: Record<string, any>,
+  _slug: string,
+  name: string,
+  description: string | null,
+): ManualArtifactPayload {
+  const source = typeof values.source === "string" ? values.source.trim() : "";
+  const target = typeof values.target === "string" ? values.target.trim() : "";
+  const label = typeof values.label === "string" ? values.label.trim() : "";
+  return {
+    name: name || label || `${source} → ${target}`,
+    description: description || label,
+    artifactType: "relationship",
+    metadata: {
+      source,
+      target,
+      label,
+      description,
+      classification: { detectedType: "relationship", reason: "manual-entry", source: "user" },
+    },
+  };
+}

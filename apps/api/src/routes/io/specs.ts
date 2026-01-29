@@ -69,6 +69,7 @@ function buildResolvedSpec(
       detectedDatabases: Object.keys(databases).length,
       totalArtifacts: artifacts.length,
     },
+    artifacts,
     groups,
     tasks,
     spec: {
@@ -83,6 +84,7 @@ function buildResolvedSpec(
       },
       groups,
       tasks,
+      artifacts,
     },
   };
 }
@@ -162,6 +164,10 @@ async function handleGetResolved(c: Context, deps: Dependencies) {
   }
 
   const artifacts = await db.getArtifacts(projectId);
+  console.log(
+    `[/resolved] Found ${artifacts.length} artifacts for project ${projectId}:`,
+    artifacts.map((a: any) => ({ id: a.id, type: a.type, name: a.name })),
+  );
 
   const services = buildServicesFromArtifacts(artifacts);
   const databases = buildDatabasesFromArtifacts(artifacts);

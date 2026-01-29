@@ -66,9 +66,12 @@ describe("SpecEngine", () => {
     }
   });
 
-  // NOTE: Fragment Formatting tests are skipped due to a known limitation in cuelang-js WASM.
-  // The cue fmt command panics when trying to write back to the file system in the WASM environment.
-  // These tests work correctly with the native cue binary but fail in the WASM-based implementation.
+  // NOTE: Fragment Formatting tests are skipped when running with Bun.
+  // The cuelang-js WASM module's filesystem syscalls are incompatible with Bun's WASM runtime.
+  // These tests pass with Node.js but fail with Bun due to a Go WASM panic in syscall.Open:
+  //   "The value of 'flags' is out of range. It must be an integer. Received 577"
+  // Verified working with Node.js - see /tmp/test_format_node.mjs for standalone test.
+  // This is a Bun bug: https://github.com/oven-sh/bun/issues - WASM fs syscall flags handling
   describe("Fragment Formatting", () => {
     it.skip("should format valid CUE content", async () => {
       const unformattedContent = `package test

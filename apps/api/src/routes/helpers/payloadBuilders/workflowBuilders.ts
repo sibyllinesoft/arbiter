@@ -59,6 +59,31 @@ export function buildGroupPayload(
 }
 
 /**
+ * Build system artifact payload (a group with system subtype for C4 context).
+ */
+export function buildSystemPayload(
+  values: Record<string, any>,
+  slug: string,
+  name: string,
+  description: string | null,
+): ManualArtifactPayload {
+  const owner = coerceOptionalTrimmedString(values.owner);
+  return {
+    name,
+    description,
+    artifactType: "system",
+    metadata: {
+      description,
+      id: slug,
+      slug,
+      subtype: "system",
+      ...(owner ? { owner } : {}),
+      classification: { detectedType: "system", reason: "manual-entry", source: "user" },
+    },
+  };
+}
+
+/**
  * Determine if a task is completed based on various indicators.
  */
 function isTaskCompleted(values: Record<string, any>): boolean | undefined {

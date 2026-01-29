@@ -41,28 +41,28 @@ function extractFramework(svc: Record<string, unknown>): string | null {
 }
 
 /**
- * Extract artifacts from resolved specification data.
+ * Extract artifacts from resolved specification data packages.
  */
 export function extractArtifactsFromResolved(resolved: Record<string, unknown>) {
-  const servicesSource = (resolved as any)?.services ?? {};
   const services: Array<Record<string, unknown>> = [];
 
-  const entries: Array<[string, any]> = Array.isArray(servicesSource)
-    ? servicesSource.map((svc, idx) => [`service-${idx + 1}`, svc])
-    : servicesSource && typeof servicesSource === "object"
-      ? Object.entries(servicesSource as Record<string, unknown>)
+  const packagesSource = (resolved as any)?.packages ?? {};
+  const entries: Array<[string, any]> = Array.isArray(packagesSource)
+    ? packagesSource.map((pkg, idx) => [`package-${idx + 1}`, pkg])
+    : packagesSource && typeof packagesSource === "object"
+      ? Object.entries(packagesSource as Record<string, unknown>)
       : [];
 
   for (const [key, value] of entries) {
-    const svc = (value as Record<string, unknown>) ?? {};
-    const framework = extractFramework(svc);
+    const pkg = (value as Record<string, unknown>) ?? {};
+    const framework = extractFramework(pkg);
 
     services.push({
-      id: svc.id ?? key,
-      name: (svc as any).name ?? key,
+      id: pkg.id ?? key,
+      name: (pkg as any).name ?? key,
       framework,
-      ...svc,
-      metadata: (svc as any).metadata ?? (framework ? { framework } : undefined),
+      ...pkg,
+      metadata: (pkg as any).metadata ?? (framework ? { framework } : undefined),
     });
   }
 
