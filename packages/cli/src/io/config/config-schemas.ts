@@ -40,7 +40,7 @@ export const gitHubFieldValidationSchema = z.object({
 });
 
 export const gitHubTemplateSectionsSchema = z.object({
-  description: z.string(),
+  description: z.string().optional(),
   details: z.array(gitHubTemplateFieldSchema).optional(),
   acceptanceCriteria: z.string().optional(),
   dependencies: z.string().optional(),
@@ -53,9 +53,9 @@ export const gitHubTemplateValidationSchema = z.object({
 });
 
 export const gitHubTemplateSetSchema = z.object({
-  name: z.string(),
+  name: z.string().optional(),
   description: z.string().optional(),
-  sections: gitHubTemplateSectionsSchema,
+  sections: gitHubTemplateSectionsSchema.optional(),
   labels: z.array(z.string()).optional(),
   validation: gitHubTemplateValidationSchema.optional(),
 });
@@ -106,14 +106,16 @@ export const gitHubRepoConfigSchema = z.object({
   pullRequestTemplate: z.string().optional(),
 });
 
-export const gitHubTemplatesConfigSchema = z.object({
-  base: gitHubTemplateSetSchema.optional(),
-  group: gitHubTemplateConfigSchema.optional(),
-  issue: gitHubTemplateConfigSchema.optional(),
-  bugReport: gitHubTemplateConfigSchema.optional(),
-  featureRequest: gitHubTemplateConfigSchema.optional(),
-  repositoryConfig: gitHubRepoConfigSchema.optional(),
-});
+export const gitHubTemplatesConfigSchema = z
+  .object({
+    base: gitHubTemplateSetSchema.optional(),
+    group: gitHubTemplateConfigSchema.optional(),
+    issue: gitHubTemplateConfigSchema.optional(),
+    bugReport: gitHubTemplateConfigSchema.optional(),
+    featureRequest: gitHubTemplateConfigSchema.optional(),
+    repositoryConfig: gitHubRepoConfigSchema.optional(),
+  })
+  .optional();
 
 export const gitHubPrefixesSchema = z
   .object({
@@ -140,7 +142,7 @@ export const gitHubAutomationSchema = z
   .optional();
 
 export const gitHubSyncSchema = z.object({
-  repository: gitHubRepoSchema,
+  repository: gitHubRepoSchema.optional(),
   prefixes: gitHubPrefixesSchema,
   labels: gitHubLabelsSchema,
   automation: gitHubAutomationSchema,

@@ -10,20 +10,62 @@ import {
   resolveServiceArtifactType,
   resolveServiceWorkload,
 } from "@/utils/api/service-metadata.js";
-import type { ServiceConfig } from "@arbiter/shared";
+import type { PackageConfig } from "@arbiter/shared";
 
-/** Base configuration type for deployment services */
-type DeploymentServiceConfigBase = Partial<ServiceConfig>;
+/** Port configuration for compose services */
+interface ComposePort {
+  name?: string;
+  port: number;
+  targetPort?: number;
+  protocol?: string;
+}
 
-export type ComposeServiceConfig = DeploymentServiceConfigBase & {
+/** Volume configuration for compose services */
+interface ComposeVolume {
+  name: string;
+  path: string;
+  size?: string;
+  type?: string;
+}
+
+/** Build context configuration */
+interface ComposeBuildContext {
+  dockerfile?: string;
+  target?: string;
+  buildArgs?: Record<string, string>;
+}
+
+/** Compose service configuration with extended deployment fields */
+export type ComposeServiceConfig = Partial<Omit<PackageConfig, "healthCheck">> & {
+  /** Service name for display and referencing */
+  name?: string;
+  /** Container image name */
+  image?: string;
+  /** Whether this is an external service */
+  external?: boolean;
   /** Artifact type for deployment classification */
   artifactType?: "internal" | "external";
+  /** Build context configuration for Docker builds */
+  buildContext?: ComposeBuildContext;
   resolvedBuildContext?: string;
   resolvedSourceDirectory?: string;
+  /** Container labels */
+  labels?: Record<string, string>;
+  /** Service dependencies */
   dependencies?: string[];
   profiles?: string[];
+  /** Port mappings (array form for compose) */
+  ports?: ComposePort[];
+  /** Volume mounts */
+  volumes?: ComposeVolume[];
+  /** Resource limits and requests */
+  resources?: {
+    limits?: { memory?: string; cpu?: string };
+    requests?: { memory?: string; cpu?: string };
+  };
   healthCheck?: {
     path?: string;
+    port?: number;
     interval?: string;
     timeout?: string;
   };
@@ -49,7 +91,6 @@ export type ComposeServiceConfig = DeploymentServiceConfigBase & {
     }>;
   };
   scaling?: Record<string, unknown>;
-  workload?: string;
 };
 
 export const CLIENT_COMPONENT_LABEL = "arbiter.io/component";

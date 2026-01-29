@@ -204,7 +204,7 @@ export async function generateCIWorkbehaviors(
     return [];
   }
 
-  const workflowDir = path.join(outputDir, ".github", "workbehaviors");
+  const workflowDir = path.join(outputDir, ".github", "workflows");
   await ensureDirectory(workflowDir, options);
 
   const workflowPath = path.join(workflowDir, "ci.yml");
@@ -235,7 +235,7 @@ export async function generateCIWorkbehaviors(
   }
 
   await writeFileWithHooks(workflowPath, serializedWorkflow, options);
-  return [".github/workbehaviors/ci.yml"];
+  return [".github/workflows/ci.yml"];
 }
 
 function buildServiceSummary(
@@ -267,20 +267,20 @@ function buildServiceSummary(
 
 export function extractServiceSummaries(configWithVersion: ConfigWithVersion): ServiceSummary[] {
   const cueData = (configWithVersion as any)._fullCueData || {};
-  const servicesInput =
-    cueData.services && typeof cueData.services === "object" ? cueData.services : {};
-
   const defaultLanguage = configWithVersion.app.config?.language || "typescript";
   const defaultBuildTool = configWithVersion.app.config?.buildTool;
 
   const summaries: ServiceSummary[] = [];
-  for (const [serviceName, rawConfig] of Object.entries(servicesInput)) {
-    const parsed = parseDeploymentServiceConfig(serviceName, rawConfig);
+
+  const packagesInput =
+    cueData.packages && typeof cueData.packages === "object" ? cueData.packages : {};
+  for (const [packageName, rawConfig] of Object.entries(packagesInput)) {
+    const parsed = parseDeploymentServiceConfig(packageName, rawConfig);
     if (!parsed) {
       continue;
     }
     summaries.push(
-      buildServiceSummary(serviceName, rawConfig, parsed, defaultLanguage, defaultBuildTool),
+      buildServiceSummary(packageName, rawConfig, parsed, defaultLanguage, defaultBuildTool),
     );
   }
 

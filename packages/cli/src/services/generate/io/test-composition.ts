@@ -9,13 +9,21 @@ import { writeFileWithHooks } from "@/services/generate/util/hook-executor.js";
 import { joinRelativePath, toPathSegments } from "@/services/generate/util/shared.js";
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { ProjectStructureConfig } from "@/types.js";
-import type { ServiceConfig, TestCase, TestCompositionResult, TestSuite } from "@arbiter/shared";
+import type { PackageConfig, TestCase, TestCompositionResult, TestSuite } from "@arbiter/shared";
 import fs from "fs-extra";
 
 /** Type alias for deployment service configuration */
-type DeploymentServiceConfig = Partial<ServiceConfig> & {
+type DeploymentServiceConfig = Partial<PackageConfig> & {
   /** Artifact type for deployment classification */
   artifactType?: "internal" | "external";
+  /** Service name */
+  name?: string;
+  /** Image for deployment */
+  image?: string;
+  /** Ports configuration */
+  ports?: Array<{ name: string; port: number; targetPort?: number; protocol?: string }>;
+  /** Volumes configuration */
+  volumes?: Array<{ name: string; path: string; size?: string }>;
 };
 
 const DEFAULT_PROJECT_STRUCTURE: ProjectStructureConfig = {

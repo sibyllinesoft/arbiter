@@ -254,7 +254,7 @@ const componentMappers: Partial<Record<ValidType, ComponentMapper>> = {
     })),
 
   schema: (spec, type) =>
-    mapEntries(spec.schemas, (name, schema) => ({
+    mapEntries(spec.schemas ?? (spec.components as SpecRecord)?.schemas, (name, schema) => ({
       name,
       type,
       references: Object.keys((schema.references as SpecRecord) ?? {}),

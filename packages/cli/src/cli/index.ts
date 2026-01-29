@@ -16,6 +16,7 @@ import { createIntegrationCommands } from "@/cli/commands/integration.js";
 import { createPlanCommand } from "@/cli/commands/plan.js";
 import { createProjectCommands } from "@/cli/commands/project.js";
 import { createRemoveCommands } from "@/cli/commands/remove.js";
+import { createUpdateCommands } from "@/cli/commands/update.js";
 import { createUtilitiesCommands } from "@/cli/commands/utilities.js";
 import { hydrateCliContext } from "@/cli/context.js";
 import chalk from "chalk";
@@ -51,6 +52,7 @@ program
 // Create and configure all command modules
 createProjectCommands(program);
 createAddCommands(program);
+program.addCommand(createUpdateCommands());
 createRemoveCommands(program);
 createGenerationCommands(program);
 createIntegrationCommands(program);

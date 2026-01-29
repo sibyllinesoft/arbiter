@@ -202,6 +202,11 @@ function generateHandlerFunctionName(method: string, endpoint: string, service: 
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
     .join("");
   const suffix = sanitized || "Root";
-  const prefix = service.replace(/[^a-zA-Z0-9]/g, "");
-  return `${method.toLowerCase()}${prefix ? prefix[0].toUpperCase() + prefix.slice(1) : ""}${suffix}`;
+  // Convert service name to PascalCase (task-api -> TaskApi)
+  const prefix = service
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .join("");
+  return `${method.toLowerCase()}${prefix}${suffix}`;
 }

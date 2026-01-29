@@ -6,7 +6,7 @@
  * artifact types from service configuration.
  */
 
-import type { ServiceConfig } from "@arbiter/shared-types/cli";
+import type { PackageConfig } from "@arbiter/shared-types/cli";
 
 /** Service artifact type indicating internal or external origin. */
 type ArtifactType = "internal" | "external";
@@ -63,7 +63,7 @@ function findWorkloadFromCandidates(service: ServiceRecord): string | undefined 
  * @returns Workload type or undefined
  */
 export function resolveServiceWorkload(
-  service: Partial<ServiceConfig> | undefined,
+  service: Partial<PackageConfig> | undefined,
 ): string | undefined {
   if (!service) return undefined;
   return findWorkloadFromCandidates(service as ServiceRecord);
@@ -121,7 +121,7 @@ function resolveFromFields(service: ServiceRecord): ArtifactType {
  * @returns Artifact type (internal or external)
  */
 export function resolveServiceArtifactType(
-  service: Partial<ServiceConfig> | undefined,
+  service: Partial<PackageConfig> | undefined,
 ): ArtifactType {
   if (!service) return "internal";
 
@@ -139,10 +139,10 @@ export function resolveServiceArtifactType(
  * @param service - Service configuration
  * @returns True if service is internal
  */
-export function isInternalService(service: Partial<ServiceConfig> | undefined): boolean {
+export function isInternalService(service: Partial<PackageConfig> | undefined): boolean {
   if (!service) return true;
-  if (typeof service.external === "boolean") {
-    return !service.external;
+  if (typeof (service as any).external === "boolean") {
+    return !(service as any).external;
   }
   return resolveServiceArtifactType(service) === "internal";
 }
@@ -153,6 +153,6 @@ export function isInternalService(service: Partial<ServiceConfig> | undefined): 
  * @param fallback - Fallback workload type
  * @returns Resolved or fallback workload type
  */
-export function ensureWorkload(service: Partial<ServiceConfig>, fallback: string): string {
+export function ensureWorkload(service: Partial<PackageConfig>, fallback: string): string {
   return resolveServiceWorkload(service) ?? fallback;
 }

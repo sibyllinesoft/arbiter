@@ -88,7 +88,7 @@ async function generateOpenApiFile(
   structure: ProjectStructureConfig,
   options: GenerateOptions,
 ): Promise<string | null> {
-  if (!appSpec.paths) return null;
+  if (!(appSpec as any).paths) return null;
 
   const openApiSpec = buildOpenApiSpec(appSpec);
   const specPath = path.join(apiDir, "openapi.json");
@@ -161,7 +161,7 @@ function buildComponentSchemas(appSpec: AppSpec): Record<string, any> {
 
 function flattenPathSpecs(appSpec: AppSpec): Record<string, PathSpec> {
   const flattenedPaths: Record<string, PathSpec> = {};
-  for (const pathMap of Object.values(appSpec.paths ?? {})) {
+  for (const pathMap of Object.values((appSpec as any).paths ?? {})) {
     if (!pathMap || typeof pathMap !== "object") {
       continue;
     }

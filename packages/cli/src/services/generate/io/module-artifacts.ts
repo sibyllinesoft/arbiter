@@ -26,7 +26,7 @@ export async function generateModuleArtifacts(
 ): Promise<string[]> {
   const files: string[] = [];
 
-  if (!appSpec.resources && !appSpec.processes && !appSpec.stateModels) {
+  if (!appSpec.resources && !appSpec.processes) {
     return files;
   }
 
@@ -42,7 +42,7 @@ export async function generateModuleArtifacts(
     }
   }
 
-  const processes = appSpec.processes ?? appSpec.stateModels;
+  const processes = appSpec.processes;
   if (processes) {
     const processesPath = path.join(packagesRoot, "processes.json");
     await writeFileWithHooks(processesPath, JSON.stringify(processes, null, 2), options);

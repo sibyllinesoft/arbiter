@@ -348,9 +348,22 @@ async function writeTsConfigFiles(
 }
 
 /**
+ * Convert OpenAPI path parameter syntax {param} to Fastify syntax :param
+ */
+function convertPathParamsToFastify(url: string): string {
+  return url.replace(/\{([^}]+)\}/g, ":$1");
+}
+
+/**
  * Generate Fastify routes index.ts content
  */
 function generateFastifyRoutesContent(serviceName: string, routes: any[]): string {
+  // Convert OpenAPI path params to Fastify format
+  const convertedRoutes = routes.map((route) => ({
+    ...route,
+    url: convertPathParamsToFastify(route.url),
+  }));
+
   return `import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 interface RouteBinding {
@@ -361,7 +374,7 @@ interface RouteBinding {
   statusCode?: number;
 }
 
-const routeDefinitions: RouteBinding[] = ${JSON.stringify(routes, null, 2)};
+const routeDefinitions: RouteBinding[] = ${JSON.stringify(convertedRoutes, null, 2)};
 const SERVICE_NAME = "${serviceName}";
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {

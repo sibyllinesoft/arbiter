@@ -145,17 +145,17 @@ function extractClusterConfig(
 }
 
 /**
- * Parse services from CUE data
+ * Parse services from CUE data (supports both legacy services and new packages)
  */
 function parseServicesFromCueData(cueData: any): TerraformServiceMetadata[] {
   const services: TerraformServiceMetadata[] = [];
 
-  if (!cueData?.services) {
+  if (!cueData?.packages) {
     return services;
   }
 
-  for (const [serviceName, serviceConfig] of Object.entries(cueData.services)) {
-    const service = parseDeploymentServiceConfig(serviceName, serviceConfig as any);
+  for (const [packageName, packageConfig] of Object.entries(cueData.packages)) {
+    const service = parseDeploymentServiceConfig(packageName, packageConfig as any);
     if (service) {
       services.push(service);
     }

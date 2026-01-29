@@ -443,6 +443,48 @@ export class CUEManipulator {
   }
 
   /**
+   * Update an existing key in a specific section with partial updates.
+   * Merges the updates into the existing value.
+   */
+  async updateInSection(
+    content: string,
+    section: string,
+    key: string,
+    updates: Record<string, unknown>,
+  ): Promise<string> {
+    try {
+      const ast = await this.parse(content);
+      const target = this.navigateToSection(ast, section);
+
+      if (!target[key]) {
+        throw new Error(`Key "${key}" not found in section "${section}"`);
+      }
+
+      // Merge updates into existing value
+      const existing = target[key];
+      if (typeof existing === "object" && existing !== null) {
+        // Deep merge for nested objects like metadata
+        for (const [updateKey, updateValue] of Object.entries(updates)) {
+          if (updateKey === "metadata" && typeof updateValue === "object" && updateValue !== null) {
+            // Merge metadata instead of replacing
+            existing.metadata = { ...existing.metadata, ...updateValue };
+          } else {
+            existing[updateKey] = updateValue;
+          }
+        }
+      } else {
+        target[key] = updates;
+      }
+
+      return await this.serialize(ast, content);
+    } catch (error) {
+      throw new Error(
+        `Failed to update key "${key}" in section "${section}": ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
    * Build append-only service removal marker.
    */
   private buildServiceRemovalMarker(serviceName: string): string {

@@ -8,12 +8,7 @@
  * - Package generation context
  */
 
-import type {
-  ClientConfig,
-  PackageConfig,
-  ServiceConfig,
-  ToolConfig,
-} from "@arbiter/shared-types/cli";
+import type { PackageConfig } from "@arbiter/shared-types/cli";
 
 export interface ClientGenerationContext {
   root: string;
@@ -43,7 +38,7 @@ export interface ClientGenerationTarget {
   key: string;
   slug: string;
   relativeRoot: string;
-  config?: ClientConfig;
+  config?: PackageConfig;
   context: ClientGenerationContext;
   reporter?: import("../util/types.js").GenerationReporter;
 }
@@ -53,7 +48,7 @@ export interface ServiceGenerationTarget {
   slug: string;
   relativeRoot: string;
   language: string;
-  config: ServiceConfig | Record<string, unknown>;
+  config: PackageConfig | Record<string, unknown>;
   context: ServiceGenerationContext;
   reporter?: import("../util/types.js").GenerationReporter;
 }
@@ -73,7 +68,7 @@ export interface ToolGenerationTarget {
   slug: string;
   relativeRoot: string;
   language: string;
-  config: ToolConfig;
+  config: PackageConfig;
   context: ToolGenerationContext;
   reporter?: import("../util/types.js").GenerationReporter;
 }

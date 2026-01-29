@@ -50,8 +50,9 @@ export class ClientArtifactsGenerator implements ArtifactGenerator {
     const routeFiles = await this.deps.generateUIComponents(appSpec, target, options);
     files.push(...routeFiles);
 
-    // Generate locator definitions if any exist
-    const locatorCount = appSpec.locators ? Object.keys(appSpec.locators).length : 0;
+    // Generate locator definitions if any exist (legacy feature)
+    const locators = (appSpec as any).locators;
+    const locatorCount = locators ? Object.keys(locators).length : 0;
     if (locatorCount > 0) {
       const locatorFiles = await this.deps.generateLocatorDefinitions(appSpec, target, options);
       files.push(...locatorFiles);
@@ -133,7 +134,7 @@ export class ApiSpecGenerator implements ArtifactGenerator {
   constructor(private readonly fn: ApiSpecFn) {}
 
   async generate(context: ArtifactGeneratorContext): Promise<string[]> {
-    if (!context.appSpec.resources && !context.appSpec.paths) return [];
+    if (!context.appSpec.resources && !context.appSpec.operations) return [];
     return this.fn(context.appSpec, context.outputDir, context.options, context.structure);
   }
 }
@@ -144,8 +145,11 @@ export class ServiceArtifactsGenerator implements ArtifactGenerator {
   constructor(private readonly fn: ServiceArtifactsFn) {}
 
   async generate(context: ArtifactGeneratorContext): Promise<string[]> {
-    const services = context.appSpec.services;
-    if (!services || Object.keys(services).length === 0) return [];
+    const hasPackages =
+      context.appSpec.packages && Object.keys(context.appSpec.packages).length > 0;
+
+    if (!hasPackages) return [];
+
     return this.fn(
       context.appSpec,
       context.outputDir,

@@ -60,7 +60,7 @@ ${appSpec.product.constraints.map((constraint) => `- ${constraint}`).join("\n")}
 
 ## Routes
 
-${appSpec.ui.routes.map((route) => `- **${route.path}** (${route.id}): ${route.capabilities.join(", ")}`).join("\n")}
+${((appSpec as any).ui?.routes ?? []).map((route: any) => `- **${route.path}** (${route.id}): ${(route.capabilities ?? []).join(", ")}`).join("\n") || "No routes defined"}
 
 ## Flows
 
@@ -144,7 +144,8 @@ export async function writeServiceReadme(
   const readmeContent = readmeLines.join("\n");
   const readmePath = path.join(serviceTarget.context.root, "README.md");
   await writeFileWithHooks(readmePath, readmeContent, options);
-  return joinRelativePath("services", serviceSlug, "README.md");
+  // Return just the filename - caller adds the service prefix
+  return "README.md";
 }
 
 export function collectServiceEnvironmentVariables(serviceSpec: any): Record<string, string> {

@@ -399,11 +399,12 @@ export async function generateUIComponents(
   files.push(joinRelativePath(relativeRoot, "src", "routes", "types.ts"));
 
   // Process all routes
-  const locatorMap = appSpec.locators || {};
+  const locatorMap = (appSpec as any).locators || {};
   const flowRoutes = deriveFlowRouteMetadata(appSpec);
   const routeDefinitions: Array<{ importName: string }> = [];
 
-  for (const route of appSpec.ui.routes) {
+  const uiRoutes = (appSpec as any).ui?.routes || [];
+  for (const route of uiRoutes) {
     const result = await processRouteComponent(
       route,
       context.routesDir,
@@ -445,7 +446,7 @@ export async function generateLocatorDefinitions(
 // These locators provide a stable contract between tests and UI implementation
 
 export const locators = {
-${Object.entries(appSpec.locators)
+${Object.entries((appSpec as any).locators || {})
   .map(([token, selector]) => `  '${token}': '${selector}',`)
   .join("\n")}
 } as const;

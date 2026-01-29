@@ -98,14 +98,14 @@ export function detectSchemaVersion(cueData: any): SchemaVersion {
  * Parse App Specification schema.
  */
 export function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): ConfigWithVersion {
-  const appSpec: AppSpec = {
+  const appSpec = {
     product: cueData.product || {
       name: "Unknown App",
     },
     config: cueData.config,
     resources: cueData.resources ?? cueData.components ?? [],
     behaviors: cueData.behaviors || [],
-    services: cueData.services,
+    packages: cueData.packages ?? cueData.services,
     capabilities: normalizeCapabilities(cueData.capabilities),
     tests: cueData.tests,
     groups: cueData.groups,
@@ -119,13 +119,13 @@ export function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): Conf
     testability: cueData.testability,
     ops: cueData.ops,
     processes: cueData.processes ?? cueData.stateModels,
-    // UI-related fields
+    // UI-related fields (deprecated, accessed via type assertion in consumers)
     ui: cueData.ui,
     locators: cueData.locators,
     deployment: cueData.deployment,
-    // API paths for OpenAPI generation
+    // API paths for OpenAPI generation (deprecated, accessed via type assertion)
     paths: cueData.paths,
-  };
+  } as AppSpec;
 
   const config: ConfigWithVersion = {
     schema: schemaVersion,
@@ -160,7 +160,7 @@ export async function fallbackParseAssembly(
   const appSpec: AppSpec = {
     product: { name: productName },
     config: { language },
-    resources: [],
+    resources: {},
     behaviors: [],
     capabilities: {},
   };

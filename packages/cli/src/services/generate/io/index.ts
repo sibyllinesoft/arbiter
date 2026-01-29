@@ -245,22 +245,19 @@ import { formatWarnings, validateSpecification } from "@/validation/warnings.js"
 import type {
   AppSpec,
   AssemblyConfig,
-  ClientConfig,
   ConfigWithVersion,
   CueAssertion,
   CueAssertionBlock,
-  ServiceConfig as DeploymentServiceConfig,
+  PackageConfig as DeploymentServiceConfig,
   DeploymentTarget,
   EnhancedGenerateOptions,
   GroupSpec,
   PackageConfig,
-  PathSpec,
   SchemaVersion,
   ServiceArtifactType,
   TestCase,
   TestCompositionResult,
   TestSuite,
-  ToolConfig,
 } from "@arbiter/shared";
 import fs from "fs-extra";
 import * as YAML from "yaml";

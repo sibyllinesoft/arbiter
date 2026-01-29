@@ -224,9 +224,11 @@ function buildInternalServiceConfig(
  * @param options - Service configuration options
  * @returns True if UI components should be added
  */
-function shouldAddUIComponentsForStandardService(options: ServiceTemplateOptions): boolean {
-  const language = options.language || "typescript";
-  return !options.image && (language === "typescript" || language === "javascript");
+function shouldAddUIComponentsForStandardService(_options: ServiceTemplateOptions): boolean {
+  // Services added via "arbiter add service" are backend services
+  // They should not get UI routes/locators by default
+  // Use "arbiter add client" for frontend applications that need UI components
+  return false;
 }
 
 /**
@@ -734,8 +736,10 @@ function createTemplateServiceConfig(
  * @param options - Service configuration options
  * @returns True if UI components should be added
  */
-function shouldAddUIComponents(options: ServiceTemplateOptions): boolean {
-  return !options.image && (options.language === "typescript" || options.language === "javascript");
+function shouldAddUIComponents(_options: ServiceTemplateOptions): boolean {
+  // Services added via "arbiter add service" are backend services
+  // They should not get UI routes/locators by default
+  return false;
 }
 
 /**

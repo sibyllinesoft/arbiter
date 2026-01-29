@@ -14,62 +14,211 @@ import { ApiClient } from "@/io/api/api-client.js";
 import type { CLIConfig, InitOptions } from "@/types.js";
 import { withProgress } from "@/utils/api/progress.js";
 import chalk from "chalk";
+import fs from "fs-extra";
 
 /**
- * Available presets (require API server connection)
+ * Available presets with local template support
  */
 const PRESETS = [
   {
     id: "web-app",
     name: "Web Application",
     description: "Full-stack web application with React frontend and Node.js backend",
+    supportsLocal: true,
   },
   {
     id: "mobile-app",
     name: "Mobile Application",
     description: "Cross-platform mobile app with React Native",
+    supportsLocal: false,
   },
   {
     id: "api-service",
     name: "API Service",
     description: "RESTful API service with database integration",
+    supportsLocal: true,
   },
   {
     id: "microservice",
     name: "Microservice",
     description: "Containerized microservice with monitoring",
+    supportsLocal: true,
   },
 ];
 
 /**
- * Validate init command requirements
+ * Generate local preset CUE content based on preset type
  */
-function validateInitRequirements(
-  options: InitOptions,
-  config?: CLIConfig,
-): { valid: false; exitCode: number } | { valid: true; preset: (typeof PRESETS)[number] } {
-  if (!options.preset) {
-    console.error(chalk.red("Please choose an init preset using --preset <id>."));
-    printPresetList();
-    return { valid: false, exitCode: 1 };
-  }
+function generatePresetContent(projectName: string, presetId: string): string {
+  const packageName = projectName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const slug = projectName
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
 
-  if (!config) {
-    console.error(
-      chalk.red("Config is required when using presets. Please run from a configured project."),
-    );
-    return { valid: false, exitCode: 2 };
-  }
+  const baseSpec = `package ${packageName}
 
-  const preset = PRESETS.find((p) => p.id === options.preset);
-  if (!preset) {
-    console.error(chalk.red(`Unknown preset: ${options.preset}`));
-    printPresetList();
-    return { valid: false, exitCode: 1 };
-  }
-
-  return { valid: true, preset };
+product: {
+	name: "${projectName}"
+	goals: [
+		"Application goals will be defined here"
+	]
 }
+
+metadata: {
+	name: "${slug}"
+	version: "1.0.0"
+}
+
+config: {
+	language: "typescript"
+	kind: "${presetId === "web-app" ? "fullstack" : "service"}"
+}
+
+deployment: {
+	target: "kubernetes"
+}
+`;
+
+  switch (presetId) {
+    case "web-app":
+      return `${baseSpec}
+services: {
+	api: {
+		type: "internal"
+		language: "typescript"
+		workload: "deployment"
+		sourceDirectory: "./src/api"
+		ports: [{
+			name: "http"
+			port: 3001
+			targetPort: 3001
+		}]
+	}
+}
+
+clients: {
+	web: {
+		subtype: "frontend"
+		framework: "react"
+		language: "typescript"
+		sourceDirectory: "./src/web"
+	}
+}
+
+ui: {
+	routes: [{
+		id: "app:home"
+		path: "/"
+		capabilities: ["view"]
+		components: ["HomePage"]
+	}]
+}
+
+locators: {
+	"page:home": "[data-testid=\\"home-page\\"]"
+	"btn:start": "[data-testid=\\"start-button\\"]"
+}
+`;
+
+    case "api-service":
+      return `${baseSpec}
+services: {
+	api: {
+		type: "internal"
+		language: "typescript"
+		workload: "deployment"
+		sourceDirectory: "./src/api"
+		ports: [{
+			name: "http"
+			port: 3000
+			targetPort: 3000
+		}]
+	}
+}
+
+paths: {
+	api: {
+		"/health": {
+			get: {
+				summary: "Health check endpoint"
+			}
+		}
+	}
+}
+`;
+
+    case "microservice":
+      return `${baseSpec}
+services: {
+	service: {
+		type: "internal"
+		language: "typescript"
+		workload: "deployment"
+		sourceDirectory: "./src/service"
+		ports: [{
+			name: "http"
+			port: 8080
+			targetPort: 8080
+		}]
+		resources: {
+			limits: {
+				cpu: "500m"
+				memory: "512Mi"
+			}
+			requests: {
+				cpu: "100m"
+				memory: "128Mi"
+			}
+		}
+	}
+}
+
+observability: {
+	logging: {
+		level: "info"
+		format: "json"
+	}
+	monitoring: {
+		enabled: true
+		metricsPath: "/metrics"
+	}
+}
+`;
+
+    default:
+      return baseSpec;
+  }
+}
+
+/**
+ * Create project locally without API server
+ */
+async function createProjectLocally(
+  projectName: string,
+  preset: (typeof PRESETS)[number],
+): Promise<number> {
+  const arbiterDir = path.join(process.cwd(), ".arbiter");
+  const assemblyPath = path.join(arbiterDir, "assembly.cue");
+
+  // Check if .arbiter directory already exists
+  if (await fs.pathExists(assemblyPath)) {
+    console.error(chalk.red("Project already initialized. Found existing .arbiter/assembly.cue"));
+    return 1;
+  }
+
+  // Create .arbiter directory
+  await fs.ensureDir(arbiterDir);
+
+  // Generate and write the preset content
+  const content = generatePresetContent(projectName, preset.id);
+  await fs.writeFile(assemblyPath, content, "utf-8");
+
+  showProjectCreatedMessage(projectName, preset.name);
+  return 0;
+}
+
+// validateInitRequirements removed - validation moved inline to initCommand
 
 /**
  * Display project creation success message
@@ -118,19 +267,49 @@ export async function initCommand(
       return 0;
     }
 
-    const validation = validateInitRequirements(options, config);
-    if (!validation.valid) {
-      return (validation as { valid: false; exitCode: number }).exitCode;
+    // Validate preset selection
+    if (!options.preset) {
+      console.error(chalk.red("Please choose an init preset using --preset <id>."));
+      printPresetList();
+      return 1;
+    }
+
+    const preset = PRESETS.find((p) => p.id === options.preset);
+    if (!preset) {
+      console.error(chalk.red(`Unknown preset: ${options.preset}`));
+      printPresetList();
+      return 1;
     }
 
     const projectName = displayName || options.name || path.basename(process.cwd());
 
+    // Default to local mode - only use API if explicitly configured and preset doesn't support local
+    const useLocalMode = config?.localMode !== false && preset.supportsLocal;
+
+    if (useLocalMode) {
+      return await withProgress(
+        {
+          text: `Creating project "${projectName}" from ${preset.name} preset...`,
+          color: "green",
+        },
+        () => createProjectLocally(projectName, preset),
+      );
+    }
+
+    // Fall back to API mode
+    if (!config) {
+      console.error(
+        chalk.red("Config is required when using API mode. Run with --local or configure API."),
+      );
+      return 2;
+    }
+
     return await withProgress(
       {
-        text: `Creating project "${projectName}" from ${validation.preset.name} preset...`,
+        text: `Creating project "${projectName}" from ${preset.name} preset...`,
         color: "green",
       },
-      () => createProjectWithApi(config!, projectName, validation.preset),
+      () => createProjectWithApi(config, projectName, preset),
     );
   } catch (error) {
     console.error(
@@ -152,10 +331,11 @@ export function listPresets(): void {
 }
 
 function printPresetList(): void {
-  console.log(chalk.cyan("Available presets (require API server):"));
+  console.log(chalk.cyan("Available presets:"));
   console.log();
 
   PRESETS.forEach((preset) => {
-    console.log(`${chalk.green(preset.id.padEnd(15))} ${preset.description}`);
+    const localBadge = preset.supportsLocal ? chalk.dim(" [local]") : chalk.dim(" [api-only]");
+    console.log(`${chalk.green(preset.id.padEnd(15))} ${preset.description}${localBadge}`);
   });
 }

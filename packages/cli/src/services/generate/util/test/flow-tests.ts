@@ -67,8 +67,9 @@ function generateE2eTsconfig(): object {
  * Generate locators support file content
  */
 function generateLocatorsContent(appSpec: AppSpec): string {
-  const locatorEntries = Object.entries(appSpec.locators || {}).length
-    ? Object.entries(appSpec.locators)
+  const locators = (appSpec as any).locators || {};
+  const locatorEntries = Object.entries(locators).length
+    ? Object.entries(locators)
     : [["page:root", '[data-testid="app-root"]']];
 
   return `export const locators = {
@@ -165,23 +166,49 @@ main().catch((err) => {
 `;
 }
 
+/**
+ * Extract test ID from a CSS selector like [data-testid="foo"] -> foo
+ * If not a data-testid selector, returns the original value
+ */
+function extractTestId(selector: string): string {
+  const match = selector.match(/\[data-testid=["']([^"']+)["']\]/);
+  return match ? match[1] : selector;
+}
+
+/**
+ * Resolve a locator key to a test ID value
+ */
+function resolveLocatorToTestId(key: string, locatorMap: Record<string, string>): string {
+  const selector = locatorMap[key];
+  if (selector) {
+    return extractTestId(selector);
+  }
+  // If key isn't in map, treat it as the test ID directly
+  return key;
+}
+
 function generateDefaultFlowTest(flow: any, locatorMap: Record<string, string> = {}): string {
   const steps = (flow.steps || [])
     .map((step: any, index: number) => {
+      if (step.visit) {
+        return `  await page.goto('${step.visit}'); // step ${index}`;
+      }
       if (step.click) {
-        return `  await page.getByTestId('${step.click}').click(); // step ${index}`;
+        const testId = resolveLocatorToTestId(step.click, locatorMap);
+        return `  await page.getByTestId('${testId}').click(); // step ${index}`;
       }
       if (step.fill?.locator) {
-        return `  await page.getByTestId('${step.fill.locator}').fill('test'); // step ${index}`;
+        const testId = resolveLocatorToTestId(step.fill.locator, locatorMap);
+        return `  await page.getByTestId('${testId}').fill('test'); // step ${index}`;
       }
       if (step.expect_api?.path) {
-        return `  await page.waitForResponse((resp) => resp.url().includes('${step.expect_api.path}'));`;
+        return `  await page.waitForResponse((resp) => resp.url().includes('${step.expect_api.path}')); // step ${index}`;
       }
       if (step.expect?.locator) {
-        const testId = locatorMap[step.expect.locator] || step.expect.locator;
+        const testId = resolveLocatorToTestId(step.expect.locator, locatorMap);
         return `  await page.getByTestId('${testId}').waitFor(); // step ${index}`;
       }
-      return "// unsupported step";
+      return `  // unsupported step type at index ${index}`;
     })
     .join("\n");
 
@@ -315,7 +342,7 @@ export async function generateFlowBasedTests(
   }
 
   for (const flow of appSpec.behaviors) {
-    const testContent = generateDefaultFlowTest(flow, appSpec.locators);
+    const testContent = generateDefaultFlowTest(flow, (appSpec as any).locators);
 
     const testFileName = `${flow.id.replace(/:/g, "_")}.test.ts`;
     const testPath = path.join(flowsDir, testFileName);
@@ -346,8 +373,10 @@ function buildPlaywrightConfig(
   const clientBase =
     clientTarget?.relativeRoot ?? joinRelativePath(structure.clientsDirectory, slug);
   const clientDirRelative = path.posix.join("..", "..", clientBase);
-  const tsServices = Object.entries(appSpec.services ?? {}).filter(([, svc]) =>
-    isTypeScriptServiceLanguage((svc as any)?.language as string | undefined),
+
+  // Collect packages with TypeScript language
+  const tsServices = Object.entries(appSpec.packages ?? {}).filter(([, pkg]) =>
+    isTypeScriptServiceLanguage((pkg as any)?.language as string | undefined),
   );
 
   const webPortInit = "Number(process.env.E2E_WEB_PORT ?? 5173)";

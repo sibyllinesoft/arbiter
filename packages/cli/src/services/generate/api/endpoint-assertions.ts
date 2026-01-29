@@ -152,7 +152,7 @@ function processOperation(
  */
 export function collectEndpointAssertionCases(appSpec: AppSpec): EndpointTestCaseDefinition[] {
   const cases: EndpointTestCaseDefinition[] = [];
-  const pathGroups = appSpec.paths ?? {};
+  const pathGroups = (appSpec as any).paths ?? {};
 
   for (const pathSpec of Object.values(pathGroups)) {
     if (!pathSpec || typeof pathSpec !== "object") {

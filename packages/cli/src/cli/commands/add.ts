@@ -135,6 +135,16 @@ function createActionHandler(
     try {
       const config = requireCommandConfig(command);
 
+      // Parse unknown arguments as metadata
+      const unknownArgs = command.args.slice(1); // Skip the name argument
+      const extraMetadata = parseUnknownFlags(unknownArgs);
+
+      // Merge extra metadata into options
+      if (Object.keys(extraMetadata).length > 0) {
+        const existingMetadata = (options.metadata ?? {}) as Record<string, unknown>;
+        options.metadata = { ...existingMetadata, ...extraMetadata };
+      }
+
       if (transformOptions) {
         const transformed = transformOptions(options, name);
         name = transformed.name;
@@ -554,14 +564,64 @@ const ADD_SUBCOMMANDS: AddSubcommandConfig[] = [
  * @param program - The Commander program instance
  * @returns The add command with all subcommands registered
  */
+/**
+ * Parse unknown flags into a metadata object.
+ * Unknown flags like --foo bar become { foo: "bar" }
+ */
+function parseUnknownFlags(args: string[]): Record<string, unknown> {
+  const metadata: Record<string, unknown> = {};
+  let i = 0;
+
+  while (i < args.length) {
+    const arg = args[i];
+
+    if (arg?.startsWith("--")) {
+      const key = arg.slice(2);
+      const nextArg = args[i + 1];
+
+      // Check if next arg is a value (not another flag)
+      if (nextArg && !nextArg.startsWith("--")) {
+        // Try to parse as number or boolean
+        if (nextArg === "true") {
+          metadata[key] = true;
+        } else if (nextArg === "false") {
+          metadata[key] = false;
+        } else if (!isNaN(Number(nextArg))) {
+          metadata[key] = Number(nextArg);
+        } else {
+          metadata[key] = nextArg;
+        }
+        i += 2;
+      } else {
+        // Flag without value is a boolean true
+        metadata[key] = true;
+        i += 1;
+      }
+    } else {
+      i += 1;
+    }
+  }
+
+  return metadata;
+}
+
 export function createAddCommands(program: Command): Command {
   const addCmd = program
     .command("add")
-    .description("incrementally build CUE specifications with modular generators");
+    .description("incrementally build CUE specifications with modular generators")
+    .addHelpText(
+      "after",
+      `
+${chalk.dim("Tip: You can attach arbitrary metadata using unknown flags:")}
+  ${chalk.cyan("arbiter add package my-lib --custom-field value --another-field 123")}
+`,
+    );
 
   for (const config of ADD_SUBCOMMANDS) {
     let subCmd = addCmd.command(config.name).description(config.description);
     subCmd = addOptions(subCmd, [...config.options, ...COMMON_OPTIONS]);
+    // Allow unknown options to be captured as metadata
+    subCmd.allowUnknownOption(true);
     subCmd.action(createActionHandler(config.entityType, config.transformOptions));
   }
 

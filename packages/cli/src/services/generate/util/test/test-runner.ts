@@ -110,8 +110,9 @@ export async function buildEndpointAssertionTask(
   generatorConfig: GeneratorConfig | undefined,
   packageManager: PackageManagerCommandSet,
 ): Promise<TestTask | null> {
-  const tsServices = Object.entries(appSpec.services ?? {}).filter(
-    ([, svc]) => (svc?.language as string | undefined)?.toLowerCase() === "typescript",
+  // Collect TypeScript packages
+  const tsServices = Object.entries(appSpec.packages ?? {}).filter(
+    ([, pkg]) => ((pkg as any)?.language as string | undefined)?.toLowerCase() === "typescript",
   );
 
   if (tsServices.length === 0) {
@@ -191,7 +192,7 @@ export function createNodeRunnerScript(tasks: TestTask[]): string {
 }
 
 /**
- * Build test tasks for all services in the app spec.
+ * Build test tasks for all packages in the app spec.
  */
 export function buildServiceTestTasks(
   appSpec: AppSpec,
@@ -200,22 +201,23 @@ export function buildServiceTestTasks(
   defaultTestCommands: Record<string, string>,
 ): TestTask[] {
   const tasks: TestTask[] = [];
-  const serviceEntries = Object.entries(appSpec.services ?? {});
 
-  for (const [serviceName, serviceConfig] of serviceEntries) {
-    if (!serviceConfig || typeof serviceConfig !== "object") continue;
+  const packageEntries = Object.entries(appSpec.packages ?? {});
+  for (const [packageName, packageConfig] of packageEntries) {
+    if (!packageConfig || typeof packageConfig !== "object") continue;
 
-    const slug = slugify(serviceName, serviceName);
-    const language = (serviceConfig.language as string | undefined)?.toLowerCase() ?? "typescript";
+    const slug = slugify(packageName, packageName);
+    const language =
+      ((packageConfig as any).language as string | undefined)?.toLowerCase() ?? "typescript";
     const languageConfig = getPluginTestingConfig(generatorConfig, language);
     const testCommand = resolveTestingCommand(language, languageConfig, defaultTestCommands);
 
     if (!testCommand) continue;
 
     tasks.push({
-      name: `test-service-${slug}`,
+      name: `test-package-${slug}`,
       command: testCommand,
-      cwd: joinRelativePath(structure.servicesDirectory, slug),
+      cwd: joinRelativePath(structure.packagesDirectory, slug),
     });
   }
 
@@ -385,11 +387,13 @@ function collectWorkspaces(
     addUnitWorkspace(target.relativeRoot);
   }
 
-  if (appSpec.services) {
-    for (const [serviceName, serviceSpec] of Object.entries(appSpec.services)) {
-      if (!isWorkspaceFriendlyLanguage(serviceSpec?.language as string | undefined)) continue;
-      const slug = slugify(serviceName, serviceName);
-      addUnitWorkspace(joinRelativePath(structure.servicesDirectory, slug));
+  // Collect packages
+  if (appSpec.packages) {
+    for (const [packageName, packageSpec] of Object.entries(appSpec.packages)) {
+      if (!isWorkspaceFriendlyLanguage((packageSpec as any)?.language as string | undefined))
+        continue;
+      const slug = slugify(packageName, packageName);
+      addUnitWorkspace(joinRelativePath(structure.packagesDirectory, slug));
     }
   }
 

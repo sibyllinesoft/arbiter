@@ -245,7 +245,7 @@ function buildResolvedDeployment(deployment: DeploymentConfig): DeploymentConfig
 }
 
 /**
- * Parse all services from CUE data with overrides applied
+ * Parse all services from CUE data packages with overrides applied.
  */
 function parseServicesFromCueData(
   cueData: any,
@@ -253,22 +253,63 @@ function parseServicesFromCueData(
 ): ComposeServiceConfig[] {
   const services: ComposeServiceConfig[] = [];
 
-  if (!cueData?.services) {
-    return services;
+  // Handle packages structure (packages with subtype service/worker)
+  if (cueData?.packages) {
+    for (const [packageName, packageConfig] of Object.entries(cueData.packages)) {
+      const config = packageConfig as Record<string, unknown>;
+      const subtype = config.subtype as string | undefined;
+
+      // Only include packages that are services or workers for compose generation
+      if (subtype === "service" || subtype === "worker" || config.port) {
+        const merged = applyComposeOverrides(config, overrides?.[packageName]);
+        const service = parseServiceForCompose(packageName, merged as any);
+        if (service) {
+          services.push(service);
+        }
+      }
+    }
   }
 
-  for (const [serviceName, serviceConfig] of Object.entries(cueData.services)) {
-    const merged = applyComposeOverrides(
-      serviceConfig as Record<string, unknown>,
-      overrides?.[serviceName],
-    );
-    const service = parseServiceForCompose(serviceName, merged as any);
-    if (service) {
-      services.push(service);
+  // Handle resources structure (infrastructure like databases, caches)
+  if (cueData?.resources) {
+    for (const [resourceName, resourceConfig] of Object.entries(cueData.resources)) {
+      const config = resourceConfig as Record<string, unknown>;
+      const merged = applyComposeOverrides(config, overrides?.[resourceName]);
+      const service = parseResourceForCompose(resourceName, merged as any);
+      if (service) {
+        services.push(service);
+      }
     }
   }
 
   return services;
+}
+
+/**
+ * Parse a resource configuration for Docker Compose.
+ * Resources are infrastructure like databases, caches, queues.
+ */
+function parseResourceForCompose(name: string, config: any): ComposeServiceConfig | null {
+  if (!config.kind) {
+    return null;
+  }
+
+  const service: ComposeServiceConfig = {
+    name: name,
+    artifactType: config.kind, // database, cache, queue, etc.
+    language: "container",
+    workload: "deployment",
+    replicas: 1,
+    image: config.image,
+    ports: config.ports,
+    env: config.env || {},
+    volumes: [],
+    healthCheck: config.healthCheck,
+    labels: {},
+    resources: config.resources,
+  };
+
+  return service;
 }
 
 /**

@@ -30,9 +30,10 @@ import { glob } from "glob";
 
 /**
  * Get file patterns, using default if none provided.
+ * Includes .arbiter directory by default since it contains the main spec.
  */
 function getFilePatterns(patterns: string[]): string[] {
-  return patterns.length > 0 ? patterns : ["**/*.cue"];
+  return patterns.length > 0 ? patterns : [".arbiter/**/*.cue", "**/*.cue"];
 }
 
 /**
@@ -123,6 +124,7 @@ export async function findCueFiles(
     const files = await glob(pattern, {
       cwd: options.cwd,
       absolute: true,
+      dot: true, // Include hidden directories like .arbiter
       ignore: ["**/node_modules/**", "**/.git/**", "**/dist/**", "**/build/**"],
     });
 

@@ -95,10 +95,13 @@ export function validateSpecification(spec: any): ValidationResult {
 function normalizeSpec(spec: any): NormalizedSpec {
   if (!spec) return {};
 
+  // Handle services being stored as either 'services' or 'packages' due to schema mapping
+  const services = spec.services ?? spec.packages;
+
   return {
     product: spec.product,
     metadata: spec.metadata,
-    services: spec.services,
+    services,
     clients: spec.clients,
     paths: spec.paths,
     contracts: spec.contracts,

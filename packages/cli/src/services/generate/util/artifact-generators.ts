@@ -37,15 +37,18 @@ function buildRoutesSection(routes: any[] | undefined): string {
 }
 
 /**
- * Build services markdown section
+ * Build packages markdown section.
  */
-function buildServicesSection(services: Record<string, any> | undefined): string {
-  if (!services || Object.keys(services).length === 0) return "";
-  const serviceLines = Object.entries(services).map(
-    ([name, svc]) =>
-      `- **${name}**: ${svc?.description || svc?.technology || "Service definition"}`,
-  );
-  return `## Services\n\n${serviceLines.join("\n")}\n`;
+function buildPackagesSection(packages: Record<string, any> | undefined): string {
+  if (!packages || Object.keys(packages).length === 0) return "";
+
+  const lines: string[] = [];
+  for (const [name, pkg] of Object.entries(packages)) {
+    const subtype = pkg?.subtype ? ` (${pkg.subtype})` : "";
+    lines.push(`- **${name}**${subtype}: ${pkg?.description || pkg?.framework || "Package"}`);
+  }
+
+  return `## Packages\n\n${lines.join("\n")}\n`;
 }
 
 /**
@@ -56,8 +59,8 @@ function buildOverviewContent(appSpec: AppSpec): string {
   return [
     header,
     buildGoalsSection(appSpec.product.goals),
-    buildRoutesSection(appSpec.ui?.routes),
-    buildServicesSection(appSpec.services),
+    buildRoutesSection((appSpec as any).ui?.routes),
+    buildPackagesSection(appSpec.packages),
   ]
     .filter(Boolean)
     .join("\n");

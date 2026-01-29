@@ -120,8 +120,8 @@ function resolveRootTestId(
  */
 export function deriveFlowRouteMetadata(appSpec: AppSpec): Map<string, FlowRouteMetadata> {
   const metadata = new Map<string, FlowRouteMetadata>();
-  const locatorMap = appSpec.locators || {};
-  const routes = Array.isArray(appSpec.ui?.routes) ? appSpec.ui.routes : [];
+  const locatorMap = (appSpec as any).locators || {};
+  const routes = Array.isArray((appSpec as any).ui?.routes) ? (appSpec as any).ui.routes : [];
   const resolveRouteId = createRouteIdResolver(routes);
 
   for (const flow of appSpec.behaviors || []) {

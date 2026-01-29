@@ -1,4 +1,12 @@
-import cue from "cuelang-js";
+import cueModule from "cuelang-js";
+
+// Handle ESM/CJS interop - cue function may be at default.default
+const cue =
+  typeof cueModule === "function"
+    ? cueModule
+    : typeof (cueModule as any).default === "function"
+      ? (cueModule as any).default
+      : (cueModule as any).default?.default;
 
 export interface ExternalToolResult {
   success: boolean;
