@@ -1641,6 +1641,8 @@ const ArchitectureFlowDiagram: React.FC<ArchitectureFlowDiagramProps> = ({
         ...n,
         // Set dimensions for expanded nodes (ReactFlow needs both direct props and style)
         ...(expandedDims ? { width: expandedDims.width, height: expandedDims.height } : {}),
+        // Child nodes are fixed to grid and not draggable
+        draggable: !isChild,
         style: {
           ...(n.style ?? {}),
           zIndex: isChild ? 2 : 1,
@@ -2458,8 +2460,10 @@ const ArchitectureFlowDiagram: React.FC<ArchitectureFlowDiagramProps> = ({
               onRename: (newName: string) => nodeRenameRef.current(newId, newName),
             },
             style: { zIndex: parentSystemId ? 1000 : 100 },
-            // If child of a parent, set parentNode and extent
-            ...(parentSystemId ? { parentNode: parentSystemId, extent: "parent" as const } : {}),
+            // If child of a parent, set parentNode and extent, and disable dragging
+            ...(parentSystemId
+              ? { parentNode: parentSystemId, extent: "parent" as const, draggable: false }
+              : {}),
           };
 
           // If adding to a parent, update parent dimensions using grid calculation
