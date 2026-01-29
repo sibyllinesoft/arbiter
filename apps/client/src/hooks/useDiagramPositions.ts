@@ -1,50 +1,70 @@
 /**
- * Hook for persisting diagram node positions to IndexedDB.
+ * Hook for persisting diagram state (positions and expanded nodes) to IndexedDB.
  * Provides debounced saving to avoid excessive writes during drag operations.
  */
 
 import {
   type NodePosition,
   clearDiagramPositions,
-  loadDiagramPositions,
-  saveDiagramPositions,
+  loadDiagramState,
+  saveDiagramState,
 } from "@/utils/storage/diagramPositions";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-interface UseDiagramPositionsReturn {
+interface UseDiagramStateReturn {
   /** Current loaded positions (updates when projectId changes) */
   positions: Map<string, NodePosition>;
-  /** Whether positions have been loaded */
+  /** Current expanded node IDs */
+  expandedNodes: Set<string>;
+  /** Whether state has been loaded */
   isLoaded: boolean;
   /** Update a single node's position */
   updatePosition: (nodeId: string, position: NodePosition) => void;
   /** Update multiple positions at once */
   updatePositions: (updates: Map<string, NodePosition>) => void;
-  /** Clear all saved positions for this project */
-  clearPositions: () => Promise<void>;
+  /** Set a node's expanded state */
+  setNodeExpanded: (nodeId: string, expanded: boolean) => void;
+  /** Toggle a node's expanded state */
+  toggleNodeExpanded: (nodeId: string) => void;
+  /** Collapse all expanded nodes */
+  collapseAllNodes: () => void;
+  /** Clear all saved state for this project */
+  clearState: () => Promise<void>;
   /** Force an immediate save */
   flushSave: () => void;
 }
 
 /**
- * Hook for managing diagram node position persistence.
+ * Hook for managing diagram state persistence (positions and expanded nodes).
  *
- * @param projectId - Project ID to scope positions to
+ * @param projectId - Project ID to scope state to
  * @param debounceMs - Debounce delay in ms (default: 500)
  */
-export function useDiagramPositions(
-  projectId: string,
-  debounceMs = 500,
-): UseDiagramPositionsReturn {
+export function useDiagramPositions(projectId: string, debounceMs = 500): UseDiagramStateReturn {
   const [positions, setPositions] = useState<Map<string, NodePosition>>(new Map());
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [isLoaded, setIsLoaded] = useState(false);
 
   const positionsRef = useRef<Map<string, NodePosition>>(new Map());
+  const expandedNodesRef = useRef<Set<string>>(new Set());
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef(false);
   const currentProjectIdRef = useRef(projectId);
 
-  // Load positions when projectId changes
+  // Save function that saves both positions and expanded nodes
+  const doSave = useCallback((projId: string) => {
+    console.log(
+      "[DiagramState] Saving state for project:",
+      projId,
+      "positions:",
+      positionsRef.current.size,
+      "expanded:",
+      expandedNodesRef.current.size,
+    );
+    saveDiagramState(projId, positionsRef.current, expandedNodesRef.current);
+  }, []);
+
+  // Load state when projectId changes
   useEffect(() => {
     let cancelled = false;
 
@@ -54,35 +74,40 @@ export function useDiagramPositions(
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
     }
-    if (pendingSaveRef.current && positionsRef.current.size > 0) {
-      saveDiagramPositions(currentProjectIdRef.current, positionsRef.current);
+    if (pendingSaveRef.current) {
+      doSave(currentProjectIdRef.current);
       pendingSaveRef.current = false;
     }
 
     // Now clear state and switch to new project
     setIsLoaded(false);
     positionsRef.current = new Map();
+    expandedNodesRef.current = new Set();
     setPositions(new Map());
+    setExpandedNodes(new Set());
     currentProjectIdRef.current = projectId;
 
-    loadDiagramPositions(projectId).then((loadedPositions) => {
+    loadDiagramState(projectId).then((state) => {
       if (cancelled) return;
       console.log(
-        "[DiagramPositions] Loaded positions for project:",
+        "[DiagramState] Loaded state for project:",
         projectId,
-        "count:",
-        loadedPositions.size,
-        loadedPositions,
+        "positions:",
+        state.positions.size,
+        "expanded:",
+        state.expandedNodes.size,
       );
-      positionsRef.current = loadedPositions;
-      setPositions(new Map(loadedPositions));
+      positionsRef.current = state.positions;
+      expandedNodesRef.current = state.expandedNodes;
+      setPositions(new Map(state.positions));
+      setExpandedNodes(new Set(state.expandedNodes));
       setIsLoaded(true);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [projectId, doSave]);
 
   // Cleanup on unmount - flush pending saves
   useEffect(() => {
@@ -90,11 +115,11 @@ export function useDiagramPositions(
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      if (pendingSaveRef.current && positionsRef.current.size > 0) {
-        saveDiagramPositions(currentProjectIdRef.current, positionsRef.current);
+      if (pendingSaveRef.current) {
+        doSave(currentProjectIdRef.current);
       }
     };
-  }, []);
+  }, [doSave]);
 
   // Debounced save function
   const scheduleSave = useCallback(() => {
@@ -105,22 +130,15 @@ export function useDiagramPositions(
     }
 
     saveTimeoutRef.current = setTimeout(() => {
-      console.log(
-        "[DiagramPositions] Saving positions for project:",
-        currentProjectIdRef.current,
-        "count:",
-        positionsRef.current.size,
-      );
-      saveDiagramPositions(currentProjectIdRef.current, positionsRef.current);
+      doSave(currentProjectIdRef.current);
       pendingSaveRef.current = false;
       saveTimeoutRef.current = null;
     }, debounceMs);
-  }, [debounceMs]);
+  }, [debounceMs, doSave]);
 
   // Update a single position
   const updatePosition = useCallback(
     (nodeId: string, position: NodePosition) => {
-      console.log("[DiagramPositions] updatePosition:", nodeId, position);
       positionsRef.current.set(nodeId, position);
       // Also update state so savedPositions stays in sync for layout decisions
       setPositions((prev) => {
@@ -152,10 +170,47 @@ export function useDiagramPositions(
     [scheduleSave],
   );
 
-  // Clear all positions
-  const clearPositions = useCallback(async () => {
+  // Set a node's expanded state
+  const setNodeExpanded = useCallback(
+    (nodeId: string, expanded: boolean) => {
+      if (expanded) {
+        expandedNodesRef.current.add(nodeId);
+      } else {
+        expandedNodesRef.current.delete(nodeId);
+      }
+      setExpandedNodes(new Set(expandedNodesRef.current));
+      scheduleSave();
+    },
+    [scheduleSave],
+  );
+
+  // Toggle a node's expanded state
+  const toggleNodeExpanded = useCallback(
+    (nodeId: string) => {
+      if (expandedNodesRef.current.has(nodeId)) {
+        expandedNodesRef.current.delete(nodeId);
+      } else {
+        expandedNodesRef.current.add(nodeId);
+      }
+      setExpandedNodes(new Set(expandedNodesRef.current));
+      scheduleSave();
+    },
+    [scheduleSave],
+  );
+
+  // Collapse all expanded nodes
+  const collapseAllNodes = useCallback(() => {
+    expandedNodesRef.current.clear();
+    setExpandedNodes(new Set());
+    scheduleSave();
+  }, [scheduleSave]);
+
+  // Clear all state
+  const clearState = useCallback(async () => {
     positionsRef.current.clear();
+    expandedNodesRef.current.clear();
     setPositions(new Map());
+    setExpandedNodes(new Set());
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
@@ -170,18 +225,20 @@ export function useDiagramPositions(
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
     }
-    if (positionsRef.current.size > 0) {
-      saveDiagramPositions(currentProjectIdRef.current, positionsRef.current);
-      pendingSaveRef.current = false;
-    }
-  }, []);
+    doSave(currentProjectIdRef.current);
+    pendingSaveRef.current = false;
+  }, [doSave]);
 
   return {
     positions,
+    expandedNodes,
     isLoaded,
     updatePosition,
     updatePositions,
-    clearPositions,
+    setNodeExpanded,
+    toggleNodeExpanded,
+    collapseAllNodes,
+    clearState,
     flushSave,
   };
 }

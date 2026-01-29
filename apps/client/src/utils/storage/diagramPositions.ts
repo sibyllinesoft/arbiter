@@ -17,6 +17,8 @@ export interface DiagramPositions {
   projectId: string;
   /** Map of node ID to position */
   positions: Record<string, NodePosition>;
+  /** Set of expanded node IDs */
+  expandedNodes: string[];
   /** Last updated timestamp */
   updatedAt: number;
 }
@@ -53,10 +55,15 @@ function openDatabase(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
+export interface DiagramState {
+  positions: Map<string, NodePosition>;
+  expandedNodes: Set<string>;
+}
+
 /**
- * Load saved node positions for a project.
+ * Load saved diagram state for a project.
  */
-export async function loadDiagramPositions(projectId: string): Promise<Map<string, NodePosition>> {
+export async function loadDiagramState(projectId: string): Promise<DiagramState> {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
@@ -65,32 +72,41 @@ export async function loadDiagramPositions(projectId: string): Promise<Map<strin
       const request = store.get(projectId);
 
       request.onerror = () => {
-        console.error("Failed to load diagram positions:", request.error);
+        console.error("Failed to load diagram state:", request.error);
         reject(request.error);
       };
 
       request.onsuccess = () => {
         const data = request.result as DiagramPositions | undefined;
         console.log("[IndexedDB] Load result for", projectId, ":", data);
-        if (data?.positions) {
-          resolve(new Map(Object.entries(data.positions)));
-        } else {
-          resolve(new Map());
-        }
+        const positions = data?.positions
+          ? new Map(Object.entries(data.positions))
+          : new Map<string, NodePosition>();
+        const expandedNodes = data?.expandedNodes ? new Set(data.expandedNodes) : new Set<string>();
+        resolve({ positions, expandedNodes });
       };
     });
   } catch (error) {
-    console.error("Error loading diagram positions:", error);
-    return new Map();
+    console.error("Error loading diagram state:", error);
+    return { positions: new Map(), expandedNodes: new Set() };
   }
 }
 
 /**
- * Save node positions for a project.
+ * @deprecated Use loadDiagramState instead
  */
-export async function saveDiagramPositions(
+export async function loadDiagramPositions(projectId: string): Promise<Map<string, NodePosition>> {
+  const state = await loadDiagramState(projectId);
+  return state.positions;
+}
+
+/**
+ * Save diagram state for a project.
+ */
+export async function saveDiagramState(
   projectId: string,
   positions: Map<string, NodePosition>,
+  expandedNodes: Set<string>,
 ): Promise<void> {
   try {
     const db = await openDatabase();
@@ -101,14 +117,15 @@ export async function saveDiagramPositions(
       const data: DiagramPositions = {
         projectId,
         positions: Object.fromEntries(positions),
+        expandedNodes: Array.from(expandedNodes),
         updatedAt: Date.now(),
       };
 
-      console.log("[IndexedDB] Saving positions for", projectId, ":", data);
+      console.log("[IndexedDB] Saving state for", projectId, ":", data);
       const request = store.put(data);
 
       request.onerror = () => {
-        console.error("Failed to save diagram positions:", request.error);
+        console.error("Failed to save diagram state:", request.error);
         reject(request.error);
       };
 
@@ -118,8 +135,18 @@ export async function saveDiagramPositions(
       };
     });
   } catch (error) {
-    console.error("Error saving diagram positions:", error);
+    console.error("Error saving diagram state:", error);
   }
+}
+
+/**
+ * @deprecated Use saveDiagramState instead
+ */
+export async function saveDiagramPositions(
+  projectId: string,
+  positions: Map<string, NodePosition>,
+): Promise<void> {
+  return saveDiagramState(projectId, positions, new Set());
 }
 
 /**

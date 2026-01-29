@@ -5,6 +5,9 @@
 export {
   type NodePosition,
   type DiagramPositions,
+  type DiagramState,
+  loadDiagramState,
+  saveDiagramState,
   loadDiagramPositions,
   saveDiagramPositions,
   clearDiagramPositions,

@@ -1373,7 +1373,7 @@ const ArchitectureFlowDiagram: React.FC<ArchitectureFlowDiagramProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   // Desktop metaphor state - track which nodes are expanded as windows
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  // expandedNodes now comes from useDiagramPositions hook
   const [selectedEntity, setSelectedEntity] = useState<SelectedEntity | null>(null);
 
   // Legacy state for compatibility during refactor (will be removed)
@@ -1393,8 +1393,11 @@ const ArchitectureFlowDiagram: React.FC<ArchitectureFlowDiagramProps> = ({
   // Persist node positions to IndexedDB
   const {
     positions: savedPositions,
+    expandedNodes,
     isLoaded: positionsLoaded,
     updatePosition: persistPosition,
+    setNodeExpanded,
+    collapseAllNodes,
   } = useDiagramPositions(projectId, 500);
 
   // Sync saved positions to nodePositionsRef when loaded or projectId changes
@@ -1421,10 +1424,10 @@ const ArchitectureFlowDiagram: React.FC<ArchitectureFlowDiagramProps> = ({
   const [uiChildrenCount, setUiChildrenCount] = useState<Map<string, number>>(new Map());
 
   // Reset state when projectId changes
+  // Note: expandedNodes is reset by useDiagramPositions hook
   useEffect(() => {
     setResolved(null);
     setError(null);
-    setExpandedNodes(new Set());
     setSelectedEntity(null);
     setUiChildrenCount(new Map());
   }, [projectId]);
@@ -2094,15 +2097,18 @@ const ArchitectureFlowDiagram: React.FC<ArchitectureFlowDiagramProps> = ({
   // Navigation handlers (simplified for desktop metaphor - no level navigation)
   const handleNavigateBack = useCallback(() => {
     // Collapse all expanded nodes
-    setExpandedNodes(new Set());
+    collapseAllNodes();
     setSelectedEntity(null);
-  }, []);
+  }, [collapseAllNodes]);
 
-  const handleBreadcrumbClick = useCallback((_index: number) => {
-    // Reset to top level (collapse all)
-    setExpandedNodes(new Set());
-    setSelectedEntity(null);
-  }, []);
+  const handleBreadcrumbClick = useCallback(
+    (_index: number) => {
+      // Reset to top level (collapse all)
+      collapseAllNodes();
+      setSelectedEntity(null);
+    },
+    [collapseAllNodes],
+  );
 
   // Check if an artifact is drillable (container or system level)
   const isDrillable = useCallback((artifactType: string): boolean => {
@@ -2135,22 +2141,20 @@ const ArchitectureFlowDiagram: React.FC<ArchitectureFlowDiagramProps> = ({
   );
 
   // Expand a node (open as window to show children)
-  const handleNodeExpand = useCallback((nodeId: string) => {
-    setExpandedNodes((prev) => {
-      const next = new Set(prev);
-      next.add(nodeId);
-      return next;
-    });
-  }, []);
+  const handleNodeExpand = useCallback(
+    (nodeId: string) => {
+      setNodeExpanded(nodeId, true);
+    },
+    [setNodeExpanded],
+  );
 
   // Collapse a node (close window back to icon)
-  const handleNodeCollapse = useCallback((nodeId: string) => {
-    setExpandedNodes((prev) => {
-      const next = new Set(prev);
-      next.delete(nodeId);
-      return next;
-    });
-  }, []);
+  const handleNodeCollapse = useCallback(
+    (nodeId: string) => {
+      setNodeExpanded(nodeId, false);
+    },
+    [setNodeExpanded],
+  );
 
   // Keep refs in sync
   useEffect(() => {
@@ -2346,14 +2350,10 @@ const ArchitectureFlowDiagram: React.FC<ArchitectureFlowDiagramProps> = ({
           ) {
             parentSystemId = selectedEntity.id;
             // Set skip count EARLY, before any state updates, to prevent sync effect
-            // from running during setExpandedNodes/setUiChildrenCount and overwriting dimensions
+            // from running during setNodeExpanded/setUiChildrenCount and overwriting dimensions
             skipSyncEffectCountRef.current = 5;
             // Auto-expand the parent when adding a child
-            setExpandedNodes((prev) => {
-              const next = new Set(prev);
-              next.add(selectedEntity.id);
-              return next;
-            });
+            setNodeExpanded(selectedEntity.id, true);
             // Track UI-added children for sizing
             setUiChildrenCount((prev) => {
               const next = new Map(prev);
