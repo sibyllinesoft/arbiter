@@ -347,7 +347,7 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
   const { internalServices, externalCards } = useMemo(() => {
     const resolved = (data?.resolved as Record<string, unknown> | undefined) ?? {};
     const spec = ((resolved as any).spec ?? resolved) as Record<string, unknown>;
-    const servicesSource = (spec as any).services ?? {};
+    const servicesSource = (spec as any).packages ?? {};
     const containers = (spec as any).infrastructure?.containers ?? [];
 
     const normalizedServices = extractNormalizedServices(servicesSource);

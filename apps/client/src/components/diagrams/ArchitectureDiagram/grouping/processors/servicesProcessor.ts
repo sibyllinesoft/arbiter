@@ -7,12 +7,12 @@ import { enrichDataForGrouping, getComponentType, shouldExcludeFromDiagram } fro
 import type { Processor, ProcessorContext } from "./types";
 
 /**
- * Processes services from project data.
+ * Processes packages from project data.
  */
 export const processServices: Processor = (projectData, ctx) => {
-  const services = projectData?.spec?.services || projectData?.services || {};
+  const packages = projectData?.spec?.packages || projectData?.packages || {};
 
-  Object.entries(services).forEach(([name, data]) => {
+  Object.entries(packages).forEach(([name, data]) => {
     if (!data) return;
     if (shouldExcludeFromDiagram(data, ctx.isRemovedItem)) return;
     const type = getComponentType(data, name);

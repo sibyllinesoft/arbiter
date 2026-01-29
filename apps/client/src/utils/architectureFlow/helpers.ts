@@ -43,12 +43,23 @@ export const pickArray = (source: unknown, keys: string[]): unknown[] => {
 /** Resolve artifact type from raw type string */
 export const resolveArtifactType = (rawType: string): string => {
   const type = String(rawType || "").toLowerCase();
+  // C4 System level types
+  if (type === "actor") return "actor";
+  if (type === "system") return "system";
+  if (type.includes("cloud")) return type; // preserve cloud-aws, cloud-gcp, etc.
+  // C4 Container level types
   if (type.includes("frontend") || type === "ui" || type === "client") return "frontend";
   if (type.includes("service") || type === "api" || type === "job") return "service";
   if (type.includes("db") || type.includes("database") || type.includes("datastore"))
     return "database";
+  if (type === "cache" || type === "queue" || type === "storage") return type;
+  if (type === "mobile" || type === "cli" || type === "worker" || type === "kubernetes")
+    return type;
   if (type.includes("infra") || type.includes("infrastructure")) return "infrastructure";
   if (type.includes("package") || type === "module") return "package";
+  // C4 Module level types
+  if (type === "endpoint" || type === "route" || type === "view" || type === "component")
+    return type;
   return "external";
 };
 

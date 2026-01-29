@@ -8,9 +8,28 @@ export type DependencyNode = Node<{
   artifact: Record<string, unknown> | undefined;
   artifactType: string;
   description?: string | null;
+  /** Whether this node is expanded (desktop metaphor) */
+  isExpanded?: boolean | undefined;
+  /** Callback to expand this node */
+  onExpand?: (() => void) | undefined;
+  /** Callback to collapse this node */
+  onCollapse?: (() => void) | undefined;
+  /** Callback to delete this node */
+  onDelete?: (() => void) | undefined;
+  /** Callback to rename this node */
+  onRename?: ((newName: string) => void) | undefined;
 }>;
 
-export type DependencyEdge = Edge<{ label?: string }>;
+export type DependencyEdge = Edge<{
+  /** Display label for the edge */
+  label?: string | undefined;
+  /** Optional description/details for the relationship */
+  description?: string | undefined;
+  /** Callback to update the edge label */
+  onLabelChange?: ((newLabel: string) => void) | undefined;
+  /** Backend relationship entity ID for persistence */
+  relationshipId?: string | undefined;
+}>;
 
 export type DeploymentGroup = {
   key: string;

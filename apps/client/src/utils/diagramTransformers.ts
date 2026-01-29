@@ -14,8 +14,23 @@ export type {
   DependencyEdge,
   DeploymentGroup,
   ArchitectureFlowGraph,
+  GridSizeContext,
+  GridLayout,
+  GridPlacement,
 } from "./architectureFlow";
-export { buildArchitectureFlowGraph } from "./architectureFlow";
+export {
+  buildArchitectureFlowGraph,
+  calculateGridLayout,
+  calculateParentDimensions,
+  getChildGridSize,
+  CELL_WIDTH,
+  CELL_HEIGHT,
+  MAX_COLS,
+  PARENT_HEADER_HEIGHT,
+  PARENT_PADDING,
+  MIN_CONTAINER_WIDTH,
+  MIN_CONTAINER_HEIGHT,
+} from "./architectureFlow";
 
 /** Result of parsing CUE data into diagram model */
 type CueParseResult = {

@@ -16,7 +16,7 @@ describe("computeGroupedComponents", () => {
   it("processes services from spec", () => {
     const projectData = {
       spec: {
-        services: {
+        packages: {
           "api-service": { type: "service", name: "API Service" },
         },
       },
@@ -137,7 +137,7 @@ describe("computeGroupedComponents", () => {
   it("filters out removed artifacts", () => {
     const projectData = {
       spec: {
-        services: {
+        packages: {
           "service-1": { type: "service", artifactId: "art-1", name: "Service One" },
           "service-2": { type: "service", artifactId: "art-2", name: "Service Two" },
         },
@@ -175,7 +175,7 @@ describe("computeGroupedComponents", () => {
   it("sorts groups by item count descending", () => {
     const projectData = {
       spec: {
-        services: {
+        packages: {
           s1: { type: "service", name: "S1" },
           s2: { type: "service", name: "S2" },
           s3: { type: "service", name: "S3" },

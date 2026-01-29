@@ -29,7 +29,8 @@ export function normalizeServices(cueData: CueArchitectureData): NormalizedServi
     }
   };
 
-  collect(cueData.services, "service", "service");
+  // Collect packages
+  collect((cueData as any).packages, "package", "package");
 
   // Common service-like collections collapsed into services
   const infra = (cueData.infrastructure ?? {}) as Record<string, unknown>;

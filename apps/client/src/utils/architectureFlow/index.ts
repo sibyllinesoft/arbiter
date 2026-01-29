@@ -12,6 +12,7 @@ import type { ArchitectureFlowGraph, BuilderHelpers, DependencyEdge } from "./ty
 
 export * from "./types";
 export * from "./helpers";
+export * from "./gridLayout";
 
 /** Build an architecture flow graph from resolved spec data */
 export function buildArchitectureFlowGraph(
@@ -54,15 +55,18 @@ export function buildArchitectureFlowGraph(
     registerNode(key, (c?.name as string) ?? key, resolvedType, c);
   });
 
-  // Register artifacts
+  // Register artifacts (skip relationships - they become edges, not nodes)
   artifacts.forEach((artifact, index) => {
     const a = artifact as Record<string, unknown>;
+    const rawType = extractRawType(a);
+    // Skip relationship artifacts - they're processed separately as edges
+    if (rawType.toLowerCase() === "relationship") return;
+
     const id = (a?.id ||
       a?.artifactId ||
       a?.artifact_id ||
       a?.name ||
       `artifact-${index}`) as string;
-    const rawType = extractRawType(a);
     const resolvedType = resolveArtifactType(rawType);
     registerNode(id, (a?.name as string) ?? id, resolvedType, a);
   });
@@ -103,6 +107,54 @@ export function buildArchitectureFlowGraph(
     const nodeId = state.idMap[key];
     if (!nodeId) return;
     addEdges(edgeCtx, nodeId, c?.depends_on ?? c?.dependencies, "uses");
+  });
+
+  // Add edges from relationship artifacts (manually created edges with labels)
+  artifacts.forEach((artifact) => {
+    const a = artifact as Record<string, unknown>;
+    const artifactType = (a?.type ?? a?.artifactType ?? "").toString().toLowerCase();
+    if (artifactType !== "relationship") return;
+
+    const meta = a?.metadata as Record<string, unknown> | undefined;
+    const source = (meta?.source ?? a?.source) as string | undefined;
+    const target = (meta?.target ?? a?.target) as string | undefined;
+    const label = (meta?.label ?? a?.label ?? a?.name) as string | undefined;
+    const relationshipId = (a?.id ?? a?.artifactId) as string | undefined;
+
+    if (!source || !target) return;
+
+    // Resolve source and target to node IDs
+    const sourceNodeId = state.idMap[source] ?? source;
+    const targetNodeId = state.idMap[target] ?? target;
+
+    // Check if both nodes exist
+    if (
+      !state.nodes.some((n) => n.id === sourceNodeId) ||
+      !state.nodes.some((n) => n.id === targetNodeId)
+    ) {
+      return;
+    }
+
+    // Check if edge already exists
+    const edgeId = `${sourceNodeId}->${targetNodeId}`;
+    if (edges.some((e) => e.id === edgeId)) {
+      // Update existing edge with label if it doesn't have one
+      const existingEdge = edges.find((e) => e.id === edgeId);
+      if (existingEdge && !existingEdge.data?.label && label) {
+        existingEdge.data = { ...existingEdge.data, label, relationshipId };
+      }
+      return;
+    }
+
+    // Create edge from relationship
+    edges.push({
+      id: edgeId,
+      source: sourceNodeId,
+      target: targetNodeId,
+      type: "smoothstep",
+      animated: true,
+      data: { label: label ?? "", relationshipId },
+    });
   });
 
   // Match nodes to compose groups

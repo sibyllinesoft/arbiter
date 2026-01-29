@@ -112,9 +112,9 @@ function orderGroups(dedupedGroups: GroupedComponentGroup[]): GroupedComponentGr
 
 export { getComponentType };
 
-/** Extract services data from project structure */
+/** Extract packages data from project structure */
 const extractServices = (projectData: any): Record<string, unknown> =>
-  projectData?.spec?.services || projectData?.services || {};
+  projectData?.spec?.packages || projectData?.packages || {};
 
 /** Extract databases data from project structure */
 const extractDatabases = (projectData: any): Record<string, unknown> =>
