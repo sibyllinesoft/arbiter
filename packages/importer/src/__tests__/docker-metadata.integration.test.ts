@@ -49,31 +49,36 @@ describe("scanner docker metadata integration", () => {
     await fs.remove(tempDir);
   });
 
-  it("adds compose service and dockerfile metadata to service artifacts", async () => {
+  it("creates separate package and infrastructure artifacts with appropriate metadata", async () => {
     const scanner = new ScannerRunner({
       projectRoot: tempDir,
       plugins: [new DockerPlugin(), new NodeJSPlugin()],
     });
 
     const manifest = await scanner.scan();
-    const serviceArtifact = manifest.artifacts.find(
-      (artifact) => artifact.artifact.id === "test-service",
+
+    // NodeJSPlugin creates a package artifact
+    const packageArtifact = manifest.artifacts.find(
+      (artifact) => artifact.artifact.id === "test-service" && artifact.artifact.type === "package",
     );
+    expect(packageArtifact).toBeDefined();
+    const packageMetadata = packageArtifact!.artifact.metadata as Record<string, unknown>;
+    expect(packageMetadata.language).toBe("javascript");
+    expect(packageMetadata.framework).toBe("express");
 
-    expect(serviceArtifact).toBeDefined();
-    const metadata = serviceArtifact!.artifact.metadata as Record<string, unknown>;
-    const dockerMetadata = metadata.docker as Record<string, unknown>;
+    // DockerPlugin creates infrastructure artifacts for compose services
+    const infraArtifacts = manifest.artifacts.filter(
+      (artifact) => artifact.artifact.type === "infrastructure",
+    );
+    // Should have 2: one for Dockerfile, one for compose service
+    expect(infraArtifacts.length).toBeGreaterThanOrEqual(1);
 
-    expect(dockerMetadata).toBeDefined();
-    expect(dockerMetadata.composeServiceName).toBe("test-service");
-    expect(typeof dockerMetadata.composeServiceYaml).toBe("string");
-    expect(dockerMetadata.composeServiceYaml as string).toContain("test-service:");
-    expect(dockerMetadata.composeFile).toBe("docker-compose.yml");
-    expect(dockerMetadata.buildContext).toBe("");
-    expect(dockerMetadata.dockerfilePath).toBe("Dockerfile");
-    expect(dockerMetadata.dockerfile).toBe(dockerfileContent);
-
-    expect(metadata.dockerfileContent).toBe(dockerfileContent);
-    expect(metadata.containerImage).toBe("test-service:latest");
+    // Find the compose service infrastructure artifact
+    const composeInfra = infraArtifacts.find((a) => a.artifact.name === "test-service");
+    expect(composeInfra).toBeDefined();
+    const dockerMetadata = composeInfra!.artifact.metadata as Record<string, unknown>;
+    expect(dockerMetadata.configType).toBe("docker-compose");
+    expect(dockerMetadata.image).toBe("test-service:latest");
+    expect(dockerMetadata.buildContext).toBe(".");
   });
 });

@@ -1,6 +1,5 @@
 import * as path from "path";
 import {
-  type ArtifactType,
   type Evidence,
   type ImporterPlugin,
   type InferenceContext,
@@ -14,16 +13,13 @@ interface PythonPackageData extends Record<string, unknown> {
   version?: string;
   description?: string;
   dependencies: string[];
-  devDependencies: string[];
-  scripts: Record<string, string>;
-  entryPoints?: Record<string, string>;
 }
 
-const PYTHON_WEB_FRAMEWORKS = ["django", "flask", "fastapi", "tornado", "sanic", "starlette"];
-const PYTHON_FRONTEND_FILES = ["streamlit_app.py", "app.py", "dash_app.py", "gradio_app.py"];
-const PYTHON_CLI_LIBRARIES = ["click", "typer", "argparse", "fire", "docopt"];
-
-/** Importer plugin for Python projects. Parses pyproject.toml, setup.py, and requirements.txt. */
+/**
+ * Simplified importer plugin for Python projects.
+ * Parses pyproject.toml, setup.py, and requirements.txt.
+ * Outputs Package artifacts. Does NOT try to classify - that's for agents.
+ */
 export class PythonPlugin implements ImporterPlugin {
   name(): string {
     return "python";
@@ -31,16 +27,7 @@ export class PythonPlugin implements ImporterPlugin {
 
   supports(filePath: string): boolean {
     const fileName = path.basename(filePath);
-    return [
-      "setup.py",
-      "pyproject.toml",
-      "requirements.txt",
-      "Pipfile",
-      "poetry.lock",
-      "setup.cfg",
-      "environment.yml",
-      "conda.yml",
-    ].includes(fileName);
+    return ["setup.py", "pyproject.toml", "requirements.txt", "Pipfile"].includes(fileName);
   }
 
   async parse(filePath: string, fileContent?: string, context?: ParseContext): Promise<Evidence[]> {
@@ -69,112 +56,94 @@ export class PythonPlugin implements ImporterPlugin {
     return [];
   }
 
+  async infer(evidence: Evidence[], context: InferenceContext): Promise<InferredArtifact[]> {
+    const pythonEvidence = evidence.filter((e) => e.source === this.name() && e.type === "config");
+    if (!pythonEvidence.length) return [];
+
+    const artifacts: InferredArtifact[] = [];
+
+    for (const ev of pythonEvidence) {
+      const artifact = this.inferFromPythonEvidence(ev, context);
+      if (artifact) {
+        artifacts.push(artifact);
+      }
+    }
+
+    return artifacts;
+  }
+
   /**
-   * Build inference context data for a single evidence item
+   * Infer a Package artifact from Python evidence.
+   * Always outputs "package" - agents determine subtype later.
    */
-  private buildInferenceData(ev: Evidence, context: InferenceContext) {
+  private inferFromPythonEvidence(
+    ev: Evidence,
+    context: InferenceContext,
+  ): InferredArtifact | null {
     const pkg = ev.data as PythonPackageData;
     const projectRoot = context.projectRoot ?? context.fileIndex.root ?? "";
     const pkgDir = path.dirname(ev.filePath);
     const relativeDir = this.normalize(path.relative(projectRoot, pkgDir)) || ".";
-    const dirCtx =
-      context.directoryContexts.get(relativeDir) || context.directoryContexts.get(".") || undefined;
 
-    const dependencies = [
-      ...this.collectNormalizedDependencies(pkg.dependencies),
-      ...this.collectNormalizedDependencies(pkg.devDependencies),
-    ];
+    const artifactName = pkg.name || path.basename(pkgDir);
+    const framework = this.detectFramework(pkg.dependencies);
 
-    return {
-      pkg,
-      projectRoot,
-      pkgDir,
-      relativeDir,
-      dirCtx,
-      dependencies,
-      filePatterns: dirCtx?.filePatterns ?? [],
-      hasDocker: Boolean(dirCtx?.hasDockerfile || dirCtx?.hasComposeService),
-      dockerBuild: dirCtx?.dockerBuild,
-    };
-  }
-
-  /**
-   * Build metadata for the artifact
-   */
-  private buildPythonMetadata(
-    ev: Evidence,
-    data: ReturnType<typeof this.buildInferenceData>,
-    classification: { type: ArtifactType; tags: string[] },
-    framework: string | undefined,
-  ): Record<string, unknown> {
     const metadata: Record<string, unknown> = {
-      sourceFile: data.projectRoot ? path.relative(data.projectRoot, ev.filePath) : ev.filePath,
-      root: data.relativeDir === "." ? "" : data.relativeDir,
-      manifest: data.pkg.configType,
+      sourceFile: projectRoot ? path.relative(projectRoot, ev.filePath) : ev.filePath,
+      root: relativeDir === "." ? "" : relativeDir,
+      manifest: pkg.configType,
       language: "python",
-      classification,
     };
 
-    if (data.hasDocker) {
-      metadata.dockerContext = data.relativeDir;
-    }
     if (framework) {
       metadata.framework = framework;
     }
-    if (data.dockerBuild) {
-      metadata.buildContext = this.toRelative(data.projectRoot, data.dockerBuild.buildContext);
-      metadata.dockerfilePath = this.toRelative(data.projectRoot, data.dockerBuild.dockerfile);
-    }
-
-    return metadata;
-  }
-
-  /**
-   * Infer a single artifact from Python package evidence
-   */
-  private inferFromPythonEvidence(ev: Evidence, context: InferenceContext): InferredArtifact {
-    const data = this.buildInferenceData(ev, context);
-    const structuralSignals = this.detectStructuralSignals(data.filePatterns);
-
-    const classification = context.classifier.classify({
-      dependencies: data.dependencies,
-      filePatterns: data.filePatterns,
-      scripts: data.pkg.scripts ?? {},
-      language: "python",
-      hasDocker: data.hasDocker,
-      hasBinaryEntry: this.hasConsoleEntry(data.pkg),
-    });
-
-    const artifactType = this.applyHeuristics(classification.type, structuralSignals);
-    const framework = this.detectFramework(data.dependencies) ?? structuralSignals.framework;
-    const metadata = this.buildPythonMetadata(ev, data, classification, framework);
-    const artifactName = data.pkg.name || path.basename(data.pkgDir);
 
     return {
       artifact: {
         id: artifactName,
-        type: artifactType,
+        type: "package",
         name: artifactName,
-        description: data.pkg.description || `Python ${artifactType}`,
-        tags: Array.from(new Set<string>([...classification.tags, "python", artifactType])),
+        description: pkg.description || "Python package",
+        tags: ["python"],
         metadata,
       },
       provenance: {
         evidence: [ev.id],
         plugins: [this.name()],
-        rules: ["manifest-classifier"],
+        rules: ["manifest-parser"],
         timestamp: Date.now(),
-        pipelineVersion: "1.1.0",
+        pipelineVersion: "2.0.0",
       },
       relationships: [],
     };
   }
 
-  async infer(evidence: Evidence[], context: InferenceContext): Promise<InferredArtifact[]> {
-    const pythonEvidence = evidence.filter((e) => e.source === this.name() && e.type === "config");
-    if (!pythonEvidence.length) return [];
+  /**
+   * Detect framework from dependencies (informational only)
+   */
+  private detectFramework(dependencies: string[]): string | undefined {
+    const depsLower = dependencies.map((d) => this.extractPackageName(d).toLowerCase());
 
-    return pythonEvidence.map((ev) => this.inferFromPythonEvidence(ev, context));
+    const frameworkMap: [string[], string][] = [
+      [["django"], "django"],
+      [["fastapi"], "fastapi"],
+      [["flask"], "flask"],
+      [["tornado"], "tornado"],
+      [["sanic"], "sanic"],
+      [["starlette"], "starlette"],
+      [["streamlit"], "streamlit"],
+      [["gradio"], "gradio"],
+      [["click", "typer"], "cli"],
+    ];
+
+    for (const [signals, framework] of frameworkMap) {
+      if (signals.some((s) => depsLower.includes(s))) {
+        return framework;
+      }
+    }
+
+    return undefined;
   }
 
   // ---------- Parsing helpers ----------
@@ -184,22 +153,6 @@ export class PythonPlugin implements ImporterPlugin {
       this.extractPythonStringField(content, "name") || path.basename(path.dirname(filePath));
     const description = this.extractPythonStringField(content, "description");
     const dependencies = this.extractPythonListField(content, "install_requires");
-    const extraRequires = this.extractPythonDictField(content, "extras_require");
-    const devDependencies = Object.values(extraRequires)
-      .flat()
-      .filter((dep): dep is string => typeof dep === "string");
-    const entryPoints = this.extractPythonDictField(content, "entry_points");
-    const scripts = this.convertToScripts(entryPoints as any, []);
-
-    const packageData: PythonPackageData = {
-      configType: "setup.py",
-      name,
-      description,
-      dependencies,
-      devDependencies,
-      scripts,
-      entryPoints: entryPoints as any,
-    };
 
     return [
       {
@@ -207,45 +160,29 @@ export class PythonPlugin implements ImporterPlugin {
         source: this.name(),
         type: "config",
         filePath,
-        data: packageData,
-        metadata: { timestamp: Date.now(), fileSize: content.length },
+        data: {
+          configType: "setup.py",
+          name,
+          description,
+          dependencies,
+        } as PythonPackageData,
+        metadata: {
+          timestamp: Date.now(),
+          fileSize: content.length,
+        },
       },
     ];
   }
 
   private parsePyprojectToml(filePath: string, content: string, evidenceId: string): Evidence[] {
-    const projectMatch = content.match(/\[project\]([\s\S]*?)(?=\n\[|\n$)/);
-    const poetryMatch = content.match(/\[tool\.poetry\]([\s\S]*?)(?=\n\[|\n$)/);
+    // Simple TOML parsing
+    const nameMatch = content.match(/name\s*=\s*["']([^"']+)["']/);
+    const descMatch = content.match(/description\s*=\s*["']([^"']+)["']/);
+    const name = nameMatch?.[1] || path.basename(path.dirname(filePath));
+    const description = descMatch?.[1];
 
-    const projectSection = projectMatch?.[1];
-    const poetrySection = poetryMatch?.[1];
-
-    const name =
-      this.extractTomlField(projectSection, "name") ||
-      this.extractTomlField(poetrySection, "name") ||
-      path.basename(path.dirname(filePath));
-
-    const description =
-      this.extractTomlField(projectSection, "description") ||
-      this.extractTomlField(poetrySection, "description");
-
-    const dependencies =
-      this.extractTomlArray(projectSection, "dependencies") ||
-      this.extractTomlDependencies(poetrySection);
-    const devDependencies = this.extractTomlDevDependencies(content);
-    const scripts =
-      this.extractTomlTable(projectSection, "scripts") ||
-      this.extractTomlTable(poetrySection, "scripts") ||
-      {};
-
-    const packageData: PythonPackageData = {
-      configType: "pyproject.toml",
-      name,
-      description,
-      dependencies,
-      devDependencies,
-      scripts,
-    };
+    // Extract dependencies from [project.dependencies] or [tool.poetry.dependencies]
+    const dependencies = this.extractTomlDependencies(content);
 
     return [
       {
@@ -253,8 +190,16 @@ export class PythonPlugin implements ImporterPlugin {
         source: this.name(),
         type: "config",
         filePath,
-        data: packageData,
-        metadata: { timestamp: Date.now(), fileSize: content.length },
+        data: {
+          configType: "pyproject.toml",
+          name,
+          description,
+          dependencies,
+        } as PythonPackageData,
+        metadata: {
+          timestamp: Date.now(),
+          fileSize: content.length,
+        },
       },
     ];
   }
@@ -263,16 +208,9 @@ export class PythonPlugin implements ImporterPlugin {
     const dependencies = content
       .split("\n")
       .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith("#") && !line.startsWith("-"))
-      .map((line) => line.split(/[>=<~!]/)[0].trim());
+      .filter((line) => line && !line.startsWith("#") && !line.startsWith("-"));
 
-    const packageData: PythonPackageData = {
-      configType: "requirements.txt",
-      name: path.basename(path.dirname(filePath)),
-      dependencies,
-      devDependencies: [],
-      scripts: {},
-    };
+    const name = path.basename(path.dirname(filePath));
 
     return [
       {
@@ -280,27 +218,44 @@ export class PythonPlugin implements ImporterPlugin {
         source: this.name(),
         type: "config",
         filePath,
-        data: packageData,
-        metadata: { timestamp: Date.now(), fileSize: content.length },
+        data: {
+          configType: "requirements.txt",
+          name,
+          dependencies,
+        } as PythonPackageData,
+        metadata: {
+          timestamp: Date.now(),
+          fileSize: content.length,
+        },
       },
     ];
   }
 
   private parsePipfile(filePath: string, content: string, evidenceId: string): Evidence[] {
-    const dependencies = this.extractTomlDependencies(
-      content.match(/\[packages\]([\s\S]*?)(?=\n\[|\n$)/)?.[1],
-    );
-    const devDependencies = this.extractTomlDependencies(
-      content.match(/\[dev-packages\]([\s\S]*?)(?=\n\[|\n$)/)?.[1],
-    );
+    // Simple Pipfile parsing - extract package names from [packages] section
+    const dependencies: string[] = [];
+    const lines = content.split("\n");
+    let inPackages = false;
 
-    const packageData: PythonPackageData = {
-      configType: "Pipfile",
-      name: path.basename(path.dirname(filePath)),
-      dependencies,
-      devDependencies,
-      scripts: {},
-    };
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed === "[packages]") {
+        inPackages = true;
+        continue;
+      }
+      if (trimmed.startsWith("[") && trimmed !== "[packages]") {
+        inPackages = false;
+        continue;
+      }
+      if (inPackages && trimmed && !trimmed.startsWith("#")) {
+        const match = trimmed.match(/^([a-zA-Z0-9_-]+)/);
+        if (match) {
+          dependencies.push(match[1]);
+        }
+      }
+    }
+
+    const name = path.basename(path.dirname(filePath));
 
     return [
       {
@@ -308,203 +263,72 @@ export class PythonPlugin implements ImporterPlugin {
         source: this.name(),
         type: "config",
         filePath,
-        data: packageData,
-        metadata: { timestamp: Date.now(), fileSize: content.length },
+        data: {
+          configType: "Pipfile",
+          name,
+          dependencies,
+        } as PythonPackageData,
+        metadata: {
+          timestamp: Date.now(),
+          fileSize: content.length,
+        },
       },
     ];
   }
 
-  // ---------- Classification helpers ----------
-
-  private collectNormalizedDependencies(values: string[] | undefined): string[] {
-    if (!values) return [];
-    return values
-      .map((value) => value?.toLowerCase?.() ?? value)
-      .map((value) =>
-        String(value)
-          .replace(/[^a-z0-9_.-].*$/i, "")
-          .replace(/_/g, "-"),
-      )
-      .filter(Boolean);
-  }
-
-  private detectFramework(dependencies: string[]): string | undefined {
-    const depSet = new Set(dependencies.map((d) => d.toLowerCase()));
-    const matched = PYTHON_WEB_FRAMEWORKS.find((fw) => depSet.has(fw));
-    return matched;
-  }
-
-  private detectStructuralSignals(filePatterns: string[]) {
-    const normalized = filePatterns.map((f) => f.toLowerCase());
-    const hasManage = normalized.some((f) => f.endsWith("manage.py"));
-    const hasWsgi = normalized.some((f) => f.endsWith("wsgi.py") || f.endsWith("asgi.py"));
-    const hasFrontend = normalized.some((f) =>
-      PYTHON_FRONTEND_FILES.some((needle) => f.endsWith(needle.toLowerCase())),
-    );
-    const hasCli = normalized.some((f) => f.endsWith("cli.py") || f.endsWith("main.py"));
-
-    const framework =
-      hasManage || hasWsgi ? "django-like" : hasFrontend ? "streamlit/dash" : undefined;
-
-    return {
-      framework,
-      hasServiceSignals: hasManage || hasWsgi,
-      hasFrontendSignals: hasFrontend,
-      hasCliSignals: hasCli,
-    };
-  }
-
-  private hasConsoleEntry(pkg: PythonPackageData): boolean {
-    const entryPoints = pkg.entryPoints || {};
-    const consoleScripts = (entryPoints as any)?.console_scripts;
-    if (!consoleScripts) return false;
-    if (Array.isArray(consoleScripts)) {
-      return consoleScripts.length > 0;
-    }
-    if (typeof consoleScripts === "object") {
-      return Object.keys(consoleScripts as Record<string, unknown>).length > 0;
-    }
-    return false;
-  }
-
-  private applyHeuristics(
-    baseType: ArtifactType,
-    signals: ReturnType<typeof this.detectStructuralSignals>,
-  ): ArtifactType {
-    if (signals.hasServiceSignals) return "service";
-    if (signals.hasFrontendSignals) return "frontend";
-    if (signals.hasCliSignals && baseType === "package") return "binary";
-    return baseType;
-  }
-
-  // ---------- lightweight field extraction utilities ----------
-
-  private extractPythonStringField(content: string, field: string): string | undefined {
-    const match = content.match(new RegExp(`${field}\\s*=\\s*['"]([^'"]+)['"]`));
+  private extractPythonStringField(content: string, fieldName: string): string | undefined {
+    const pattern = new RegExp(`${fieldName}\\s*=\\s*["']([^"']+)["']`);
+    const match = content.match(pattern);
     return match?.[1];
   }
 
-  private extractPythonListField(content: string, field: string): string[] {
-    const match = content.match(new RegExp(`${field}\\s*=\\s*\\[([^\\]]*)\\]`));
+  private extractPythonListField(content: string, fieldName: string): string[] {
+    const pattern = new RegExp(`${fieldName}\\s*=\\s*\\[([^\\]]+)\\]`, "s");
+    const match = content.match(pattern);
     if (!match) return [];
+
     return match[1]
       .split(",")
-      .map((item) => item.trim().replace(/^['"]|['"]$/g, ""))
+      .map((item) => item.trim().replace(/["']/g, ""))
       .filter(Boolean);
   }
 
-  private extractPythonDictField(content: string, field: string): Record<string, unknown> {
-    const match = content.match(new RegExp(`${field}\\s*=\\s*\\{([\\s\\S]*?)\\}`, "m"));
-    if (!match) return {};
-    const dictContent = match[1];
-    const pairs = dictContent.split(",").map((pair) => pair.trim());
-    const result: Record<string, unknown> = {};
-    for (const pair of pairs) {
-      const [key, value] = pair.split(":").map((item) => item?.trim());
-      if (key && value) {
-        result[key.replace(/^['"]|['"]$/g, "")] = value.replace(/^['"]|['"]$/g, "");
+  private extractTomlDependencies(content: string): string[] {
+    const dependencies: string[] = [];
+
+    // Extract from [project.dependencies] array
+    const projectDepsMatch = content.match(/\[project\][\s\S]*?dependencies\s*=\s*\[([\s\S]*?)\]/);
+    if (projectDepsMatch) {
+      const deps = projectDepsMatch[1]
+        .split(",")
+        .map((d) => d.trim().replace(/["']/g, ""))
+        .filter(Boolean);
+      dependencies.push(...deps);
+    }
+
+    // Extract from [tool.poetry.dependencies] section
+    const poetryMatch = content.match(/\[tool\.poetry\.dependencies\]([\s\S]*?)(?:\[|$)/);
+    if (poetryMatch) {
+      const lines = poetryMatch[1].split("\n");
+      for (const line of lines) {
+        const match = line.match(/^([a-zA-Z0-9_-]+)\s*=/);
+        if (match && match[1] !== "python") {
+          dependencies.push(match[1]);
+        }
       }
     }
-    return result;
+
+    return dependencies;
   }
 
-  private convertToScripts(
-    entryPoints?: Record<string, unknown>,
-    scripts?: string[],
-  ): Record<string, string> {
-    const entries =
-      typeof entryPoints === "object" && entryPoints
-        ? ((entryPoints as Record<string, Record<string, string>>).console_scripts ?? {})
-        : {};
-
-    const results: Record<string, string> = {};
-    for (const [key, value] of Object.entries(entries)) {
-      results[key] = String(value);
-    }
-
-    if (scripts) {
-      scripts.forEach((script, idx) => {
-        results[`script_${idx}`] = script;
-      });
-    }
-
-    return results;
-  }
-
-  private extractTomlField(section: string | undefined, field: string): string | undefined {
-    if (!section) return undefined;
-    const match = section.match(new RegExp(`${field}\\s*=\\s*["']([^"']+)["']`));
-    return match?.[1];
-  }
-
-  private extractTomlArray(section: string | undefined, field: string): string[] {
-    if (!section) return [];
-    const match = section.match(new RegExp(`${field}\\s*=\\s*\\[([^\\]]*)\\]`));
-    if (!match) return [];
-    return match[1]
-      .split(",")
-      .map((item) => item.trim().replace(/^['"]|['"]$/g, ""))
-      .filter(Boolean);
-  }
-
-  private extractTomlTable(
-    section: string | undefined,
-    field: string,
-  ): Record<string, string> | undefined {
-    if (!section) return undefined;
-    const match = section.match(
-      new RegExp(`\\[${field.replace(".", "\\.")}\\]([\\s\\S]*?)(?=\\n\\[|$)`),
-    );
-    if (!match) return undefined;
-    const tableContent = match[1];
-    const entries = tableContent
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.includes("="));
-
-    const table: Record<string, string> = {};
-    for (const line of entries) {
-      const [key, value] = line.split("=").map((part) => part.trim().replace(/^['"]|['"]$/g, ""));
-      if (key && value) {
-        table[key] = value;
-      }
-    }
-    return table;
-  }
-
-  private extractTomlDependencies(section?: string): string[] {
-    if (!section) return [];
-    return section
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith("[") && !line.startsWith("#"))
-      .map((line) =>
-        line
-          .split("=")[0]
-          .trim()
-          .replace(/^['"]|['"]$/g, ""),
-      )
-      .filter(Boolean);
-  }
-
-  private extractTomlDevDependencies(content: string): string[] {
-    const toolDeps = this.extractTomlDependencies(
-      content.match(/\[tool\.poetry\.dev-dependencies\]([\s\S]*?)(?=\n\[|\n$)/)?.[1],
-    );
-    const hatchDeps = this.extractTomlDependencies(
-      content.match(/\[tool\.hatch\.metadata\]([\s\S]*?)(?=\n\[|\n$)/)?.[1],
-    );
-    return [...toolDeps, ...hatchDeps];
+  private extractPackageName(dep: string): string {
+    // Extract package name from dependency spec like "django>=4.0" or "flask[async]"
+    const match = dep.match(/^([a-zA-Z0-9_-]+)/);
+    return match?.[1] || dep;
   }
 
   private normalize(value: string): string {
     return value.replace(/\\/g, "/").replace(/^\.\//, "");
-  }
-
-  private toRelative(projectRoot: string, abs?: string): string | undefined {
-    if (!abs) return undefined;
-    if (!projectRoot) return abs;
-    return this.normalize(path.relative(projectRoot, abs));
   }
 }
 

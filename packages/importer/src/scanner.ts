@@ -851,13 +851,11 @@ export class ScannerRunner {
 
     this.augmentArtifactsWithDockerMetadata(allArtifacts, evidence, inferenceContext.projectRoot);
 
-    // Consolidate duplicate services (e.g., Dockerfile + package.json representing same service)
-    const consolidated = this.consolidateDuplicateServices(allArtifacts);
+    // Link Package artifacts to Infrastructure artifacts via "deployed_as" relationships
+    this.linkPackagesToInfrastructure(allArtifacts);
 
-    this.debug(
-      `Inferred ${consolidated.length} artifacts from ${evidence.length} evidence items (${allArtifacts.length - consolidated.length} duplicates merged)`,
-    );
-    return consolidated;
+    this.debug(`Inferred ${allArtifacts.length} artifacts from ${evidence.length} evidence items`);
+    return allArtifacts;
   }
 
   /**
@@ -1259,203 +1257,66 @@ export class ScannerRunner {
 
   /**
    * Consolidates duplicate services that represent the same application.
-   * This happens when both a Dockerfile and a package file (package.json, go.mod, etc.)
-   * exist in the same directory and create separate service artifacts.
+   * This replaces the old consolidation logic. Now we keep both Package and
+   * Infrastructure artifacts separate and link them via relationships.
    */
   /**
-   * Check if an artifact is a Docker-based service.
+   * Link Package artifacts to Infrastructure artifacts in the same directory
+   * via "deployed_as" relationships. This replaces the old consolidation logic
+   * that merged artifacts together.
    */
-  private isDockerService(artifact: InferredArtifact): boolean {
-    const evidence = artifact.provenance?.evidence || [];
-    return evidence.some((e) => e.toLowerCase().includes("dockerfile"));
-  }
+  private linkPackagesToInfrastructure(artifacts: InferredArtifact[]): void {
+    const packageArtifacts = artifacts.filter((a) => a.artifact.type === "package");
+    const infraArtifacts = artifacts.filter((a) => a.artifact.type === "infrastructure");
 
-  /**
-   * Check if an artifact is a package-based service (nodejs, python, go, rust).
-   */
-  private isPackageService(artifact: InferredArtifact): boolean {
-    const plugins = artifact.provenance?.plugins || [];
-    const packagePlugins = ["nodejs", "python", "go", "rust"];
-    return packagePlugins.some((p) => plugins.includes(p));
-  }
-
-  /**
-   * Group services by their root directory.
-   */
-  private groupServicesByRoot(services: InferredArtifact[]): Map<string, InferredArtifact[]> {
-    const servicesByRoot = new Map<string, InferredArtifact[]>();
-
-    for (const artifact of services) {
-      const metadata = artifact.artifact.metadata as Record<string, unknown>;
-      const root = this.normalizeServiceRoot(metadata.root);
-
-      if (!servicesByRoot.has(root)) {
-        servicesByRoot.set(root, []);
-      }
-      servicesByRoot.get(root)!.push(artifact);
-    }
-
-    return servicesByRoot;
-  }
-
-  /**
-   * Consolidate services in a single root directory.
-   */
-  private consolidateServicesInRoot(
-    root: string,
-    services: InferredArtifact[],
-  ): InferredArtifact[] {
-    if (services.length === 1) {
-      return services;
-    }
-
-    const dockerService = services.find((s) => this.isDockerService(s));
-    const packageService = services.find((s) => this.isPackageService(s));
-
-    if (dockerService && packageService) {
-      const merged = this.mergeServices(packageService, dockerService);
-      this.debug(
-        `Consolidated services at root "${root}": ${packageService.artifact.name} + docker metadata`,
-      );
-      return [merged];
-    }
-
-    return services;
-  }
-
-  private consolidateDuplicateServices(artifacts: InferredArtifact[]): InferredArtifact[] {
-    const serviceArtifacts = artifacts.filter((a) => a.artifact.type === "service");
-    const nonServiceArtifacts = artifacts.filter((a) => a.artifact.type !== "service");
-
-    if (serviceArtifacts.length <= 1) {
-      return artifacts;
-    }
-
-    const servicesByRoot = this.groupServicesByRoot(serviceArtifacts);
-    const consolidated: InferredArtifact[] = [];
-
-    for (const [root, services] of servicesByRoot.entries()) {
-      consolidated.push(...this.consolidateServicesInRoot(root, services));
-    }
-
-    return [...consolidated, ...nonServiceArtifacts];
-  }
-
-  /**
-   * Merges two service artifacts, combining their metadata and provenance.
-   */
-  private mergeServices(primary: InferredArtifact, secondary: InferredArtifact): InferredArtifact {
-    const mergedMetadata = this.mergeServiceMetadata(
-      primary.artifact.metadata as Record<string, unknown>,
-      secondary.artifact.metadata as Record<string, unknown>,
-    );
-    const mergedTags = this.mergeServiceTags(primary.artifact.tags, secondary.artifact.tags);
-    const mergedProvenance = this.mergeServiceProvenance(primary.provenance, secondary.provenance);
-
-    return {
-      artifact: {
-        ...primary.artifact,
-        tags: mergedTags,
-        metadata: mergedMetadata,
-      },
-      provenance: mergedProvenance,
-      relationships: [...(primary.relationships || []), ...(secondary.relationships || [])],
-    };
-  }
-
-  /**
-   * Merges metadata from two service artifacts.
-   */
-  private mergeServiceMetadata(
-    primaryMeta: Record<string, unknown>,
-    secondaryMeta: Record<string, unknown>,
-  ): Record<string, unknown> {
-    const merged: Record<string, unknown> = { ...primaryMeta };
-
-    this.copyMissingStringField(merged, secondaryMeta, "dockerfileContent");
-    this.copyMissingStringField(merged, secondaryMeta, "dockerfile");
-    this.copyMissingStringField(merged, secondaryMeta, "buildContext");
-    this.copyMissingStringField(merged, secondaryMeta, "dockerfilePath");
-    this.mergeDockerMetadata(merged, secondaryMeta);
-
-    return merged;
-  }
-
-  /**
-   * Copy a field from secondary to merged if not already present.
-   */
-  private copyMissingStringField(
-    merged: Record<string, unknown>,
-    secondary: Record<string, unknown>,
-    field: string,
-  ): void {
-    if (secondary[field] && !merged[field]) {
-      merged[field] = secondary[field];
-    }
-  }
-
-  /**
-   * Merge the docker metadata object from secondary into merged.
-   */
-  private mergeDockerMetadata(
-    merged: Record<string, unknown>,
-    secondary: Record<string, unknown>,
-  ): void {
-    if (!secondary.docker || typeof secondary.docker !== "object") {
+    if (packageArtifacts.length === 0 || infraArtifacts.length === 0) {
       return;
     }
 
-    if (!merged.docker || typeof merged.docker !== "object") {
-      merged.docker = {};
-    }
+    // Group by root directory
+    const packagesByRoot = this.groupArtifactsByRoot(packageArtifacts);
+    const infraByRoot = this.groupArtifactsByRoot(infraArtifacts);
 
-    Object.assign(merged.docker as Record<string, unknown>, secondary.docker);
+    // For each package, find matching infrastructure in same directory
+    for (const [root, packages] of packagesByRoot.entries()) {
+      const matchingInfra = infraByRoot.get(root);
+      if (!matchingInfra || matchingInfra.length === 0) continue;
+
+      for (const pkg of packages) {
+        for (const infra of matchingInfra) {
+          // Create "deployed_as" relationship from package to infrastructure
+          pkg.relationships.push({
+            type: "deploys",
+            targetId: infra.artifact.id,
+            confidence: 0.9,
+            metadata: {
+              reason: "same_directory",
+              infraType: "container",
+            },
+          });
+
+          this.debug(
+            `Linked package "${pkg.artifact.name}" to infrastructure "${infra.artifact.name}" via deployed_as relationship`,
+          );
+        }
+      }
+    }
   }
 
   /**
-   * Merges tags from two service artifacts.
+   * Group artifacts by their root directory.
    */
-  private mergeServiceTags(
-    primaryTags: string[] | undefined,
-    secondaryTags: string[] | undefined,
-  ): string[] {
-    const tagSet = new Set(primaryTags || []);
-    for (const tag of secondaryTags || []) {
-      tagSet.add(tag);
-    }
-    return Array.from(tagSet);
-  }
+  private groupArtifactsByRoot(artifacts: InferredArtifact[]): Map<string, InferredArtifact[]> {
+    const byRoot = new Map<string, InferredArtifact[]>();
 
-  /**
-   * Merges provenance from two service artifacts.
-   */
-  private mergeServiceProvenance(
-    primary: InferredArtifact["provenance"],
-    secondary: InferredArtifact["provenance"],
-  ): InferredArtifact["provenance"] {
-    return {
-      evidence: [...(primary?.evidence || []), ...(secondary?.evidence || [])],
-      plugins: Array.from(new Set([...(primary?.plugins || []), ...(secondary?.plugins || [])])),
-      rules: Array.from(
-        new Set([...(primary?.rules || []), ...(secondary?.rules || []), "service-consolidation"]),
-      ),
-      timestamp: Date.now(),
-      pipelineVersion: primary?.pipelineVersion || "1.0.0",
-    };
-  }
+    for (const artifact of artifacts) {
+      const root = normalizeRelativePath(artifact.artifact.metadata.root as string);
+      const existing = byRoot.get(root) || [];
+      existing.push(artifact);
+      byRoot.set(root, existing);
+    }
 
-  /**
-   * Normalizes a service root path for comparison.
-   */
-  private normalizeServiceRoot(root: unknown): string {
-    if (typeof root !== "string") {
-      return "";
-    }
-    const normalized = root.replace(/\\/g, "/");
-    if (normalized === "." || normalized === "./") {
-      return "";
-    }
-    return normalized.replace(/^\.\//, "").replace(/\/$/, "");
+    return byRoot;
   }
 
   /**

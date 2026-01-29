@@ -20,7 +20,7 @@ describe("dockerfile naming and consolidation", () => {
     await fs.remove(tempDir);
   });
 
-  it("names service from package.json when Dockerfile is present", async () => {
+  it("creates separate package and infrastructure artifacts when Dockerfile is present", async () => {
     const projectDir = path.join(tempDir, "project-with-package");
     await fs.ensureDir(projectDir);
 
@@ -64,24 +64,22 @@ CMD ["node", "server.js"]
 
     const manifest = await scanner.scan();
 
-    // Should have only one service artifact (consolidated)
-    const serviceArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "service");
-    expect(serviceArtifacts).toHaveLength(1);
+    // NodeJSPlugin creates a package artifact
+    const packageArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "package");
+    expect(packageArtifacts).toHaveLength(1);
+    expect(packageArtifacts[0].artifact.name).toBe("mattermost-proxy");
 
-    const service = serviceArtifacts[0];
-    // Should use the package name, not "dockerfile-container" or directory name
-    expect(service.artifact.name).toBe("mattermost-proxy");
-
-    // Should have metadata from both sources
-    const metadata = service.artifact.metadata as Record<string, unknown>;
+    const metadata = packageArtifacts[0].artifact.metadata as Record<string, unknown>;
     expect(metadata.language).toBe("javascript");
-    // Should only include package-based plugin in provenance
-    const plugins = service.provenance?.plugins || [];
-    expect(plugins).toContain("nodejs");
-    expect(plugins).not.toContain("docker");
+    expect(packageArtifacts[0].provenance?.plugins).toContain("nodejs");
+
+    // DockerPlugin creates an infrastructure artifact
+    const infraArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "infrastructure");
+    expect(infraArtifacts).toHaveLength(1);
+    expect(infraArtifacts[0].provenance?.plugins).toContain("docker");
   });
 
-  it("names service from go.mod when Dockerfile is present", async () => {
+  it("creates separate package and infrastructure artifacts for Go project with Dockerfile", async () => {
     const projectDir = path.join(tempDir, "project-with-gomod");
     await fs.ensureDir(projectDir);
 
@@ -118,18 +116,19 @@ CMD ["./main"]
 
     const manifest = await scanner.scan();
 
-    // Find the docker service artifact
-    const services = manifest.artifacts.filter((a) => a.artifact.type === "service");
-    expect(services.length).toBe(1);
+    // GoPlugin creates a package artifact
+    const packageArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "package");
+    expect(packageArtifacts.length).toBe(1);
+    expect(packageArtifacts[0].artifact.name).toBe("go-service");
+    expect(packageArtifacts[0].provenance?.plugins).toContain("go");
 
-    const service = services[0];
-    // Should extract name from go.mod
-    expect(service.artifact.name).toBe("go-service");
-    expect(service.provenance?.plugins).toContain("go");
-    expect(service.provenance?.plugins).not.toContain("docker");
+    // DockerPlugin creates an infrastructure artifact
+    const infraArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "infrastructure");
+    expect(infraArtifacts.length).toBe(1);
+    expect(infraArtifacts[0].provenance?.plugins).toContain("docker");
   });
 
-  it("names service from Cargo.toml when Dockerfile is present", async () => {
+  it("creates separate package and infrastructure artifacts for Rust project with Dockerfile", async () => {
     const projectDir = path.join(tempDir, "project-with-cargo");
     await fs.ensureDir(projectDir);
 
@@ -166,17 +165,19 @@ CMD ["./target/release/rust-api"]
 
     const manifest = await scanner.scan();
 
-    const services = manifest.artifacts.filter((a) => a.artifact.type === "service");
-    expect(services.length).toBe(1);
+    // RustPlugin creates a package artifact
+    const packageArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "package");
+    expect(packageArtifacts.length).toBe(1);
+    expect(packageArtifacts[0].artifact.name).toBe("rust-api");
+    expect(packageArtifacts[0].provenance?.plugins).toContain("rust");
 
-    const service = services[0];
-    // Should extract name from Cargo.toml
-    expect(service.artifact.name).toBe("rust-api");
-    expect(service.provenance?.plugins).toContain("rust");
-    expect(service.provenance?.plugins).not.toContain("docker");
+    // DockerPlugin creates an infrastructure artifact
+    const infraArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "infrastructure");
+    expect(infraArtifacts.length).toBe(1);
+    expect(infraArtifacts[0].provenance?.plugins).toContain("docker");
   });
 
-  it("names service from pyproject.toml when Dockerfile is present", async () => {
+  it("creates separate package and infrastructure artifacts for Python project with Dockerfile", async () => {
     const projectDir = path.join(tempDir, "project-with-pyproject");
     await fs.ensureDir(projectDir);
 
@@ -210,17 +211,19 @@ CMD ["python", "main.py"]
 
     const manifest = await scanner.scan();
 
-    const services = manifest.artifacts.filter((a) => a.artifact.type === "service");
-    expect(services.length).toBe(1);
+    // PythonPlugin creates a package artifact
+    const packageArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "package");
+    expect(packageArtifacts.length).toBe(1);
+    expect(packageArtifacts[0].artifact.name).toBe("python-service");
+    expect(packageArtifacts[0].provenance?.plugins).toContain("python");
 
-    const service = services[0];
-    // Should extract name from pyproject.toml
-    expect(service.artifact.name).toBe("python-service");
-    expect(service.provenance?.plugins).toContain("python");
-    expect(service.provenance?.plugins).not.toContain("docker");
+    // DockerPlugin creates an infrastructure artifact
+    const infraArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "infrastructure");
+    expect(infraArtifacts.length).toBe(1);
+    expect(infraArtifacts[0].provenance?.plugins).toContain("docker");
   });
 
-  it("falls back to directory name when no package file exists", async () => {
+  it("creates infrastructure artifact for compose-only service", async () => {
     const projectDir = path.join(tempDir, "project-no-package");
     await fs.ensureDir(projectDir);
 
@@ -241,16 +244,15 @@ services:
 
     const manifest = await scanner.scan();
 
-    const services = manifest.artifacts.filter((a) => a.artifact.type === "service");
-    expect(services.length).toBe(1);
+    // DockerPlugin creates infrastructure artifacts for compose services
+    const infraArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "infrastructure");
+    expect(infraArtifacts.length).toBe(1);
 
-    const service = services[0];
-    expect(service.artifact.name).toBe("nginx-proxy");
-    expect(service.artifact.tags).toContain("external");
-    const metadata = service.artifact.metadata as Record<string, unknown>;
-    expect(metadata.external).toBe(true);
-    expect(metadata.composeOnly).toBe(true);
-    expect(metadata.docker).toBeDefined();
+    const infra = infraArtifacts[0];
+    expect(infra.artifact.name).toBe("nginx-proxy");
+    expect(infra.artifact.tags).toContain("docker");
+    const metadata = infra.artifact.metadata as Record<string, unknown>;
+    expect(metadata.image).toBe("nginx:alpine");
   });
 
   it("does not emit compose external when package exists without main", async () => {
@@ -326,17 +328,17 @@ CMD ["node", "index.js"]
 
     const manifest = await scanner.scan();
 
-    const serviceArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "service");
-    expect(serviceArtifacts).toHaveLength(1);
+    // NodeJSPlugin creates package artifact (not service)
+    const packageArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "package");
+    expect(packageArtifacts).toHaveLength(1);
 
-    const service = serviceArtifacts[0];
+    const pkg = packageArtifacts[0];
     // Should strip @mycompany/ prefix
-    expect(service.artifact.name).toBe("super-service");
-    expect(service.provenance?.plugins).toContain("nodejs");
-    expect(service.provenance?.plugins).not.toContain("docker");
+    expect(pkg.artifact.name).toBe("super-service");
+    expect(pkg.provenance?.plugins).toContain("nodejs");
   });
 
-  it("skips compose-only external when a package service with main exists", async () => {
+  it("creates both package and infrastructure artifacts when compose and package.json exist", async () => {
     const projectDir = path.join(tempDir, "project-compose-and-package");
     await fs.ensureDir(projectDir);
 
@@ -372,10 +374,15 @@ services:
 
     const manifest = await scanner.scan();
 
-    const services = manifest.artifacts.filter((a) => a.artifact.type === "service");
-    expect(services.length).toBe(1);
-    expect(services[0].artifact.name).toBe("compose-app");
-    expect(services[0].provenance?.plugins).toContain("nodejs");
-    expect(services[0].provenance?.plugins).not.toContain("docker");
+    // NodeJSPlugin creates a package artifact
+    const packageArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "package");
+    expect(packageArtifacts.length).toBe(1);
+    expect(packageArtifacts[0].artifact.name).toBe("compose-app");
+    expect(packageArtifacts[0].provenance?.plugins).toContain("nodejs");
+
+    // DockerPlugin creates an infrastructure artifact
+    const infraArtifacts = manifest.artifacts.filter((a) => a.artifact.type === "infrastructure");
+    expect(infraArtifacts.length).toBe(1);
+    expect(infraArtifacts[0].provenance?.plugins).toContain("docker");
   });
 });

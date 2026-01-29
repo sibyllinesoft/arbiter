@@ -37,13 +37,14 @@ const buildInferenceContext = (evidence: any[]): InferenceContext => {
 };
 
 describe("GoPlugin", () => {
-  it("supports go.mod and main.go", () => {
-    expect(goPlugin.supports("/project/go.mod", "module demo")).toBe(true);
-    expect(goPlugin.supports("/project/main.go", "package main")).toBe(true);
-    expect(goPlugin.supports("/project/pkg/util.go", "package util")).toBe(false);
+  it("supports go.mod only", () => {
+    expect(goPlugin.supports("/project/go.mod")).toBe(true);
+    // Simplified plugin only parses go.mod - main.go and other source files are not supported
+    expect(goPlugin.supports("/project/main.go")).toBe(false);
+    expect(goPlugin.supports("/project/pkg/util.go")).toBe(false);
   });
 
-  it("classifies web frameworks as service", async () => {
+  it("outputs package type for web frameworks (agents classify later)", async () => {
     const goMod = `module demo
 go 1.21
 
@@ -54,11 +55,12 @@ require (
       projectRoot: "/project",
     } as any);
     const artifacts = await goPlugin.infer(evidence, buildInferenceContext(evidence));
-    expect(artifacts[0].artifact.type).toBe("service");
+    // Importer outputs "package" - agents determine if it's a service based on dependencies
+    expect(artifacts[0].artifact.type).toBe("package");
     expect(artifacts[0].artifact.name).toBe("demo");
   });
 
-  it("classifies CLI frameworks as binary", async () => {
+  it("outputs package type for CLI frameworks (agents classify later)", async () => {
     const goMod = `module cliapp
 go 1.21
 require (
@@ -68,12 +70,11 @@ require (
       projectRoot: "/project",
     } as any);
     const artifacts = await goPlugin.infer(evidence, buildInferenceContext(evidence));
-    expect(
-      artifacts[0].artifact.type === "binary" || artifacts[0].artifact.type === "tool",
-    ).toBeTrue();
+    // Importer outputs "package" - agents determine if it's a tool based on dependencies
+    expect(artifacts[0].artifact.type).toBe("package");
   });
 
-  it("defaults to package when no signals", async () => {
+  it("outputs package type when no signals", async () => {
     const goMod = `module libapp
 go 1.21
 require ()`;

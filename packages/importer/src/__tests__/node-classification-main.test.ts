@@ -64,7 +64,7 @@ describe("node service classification respects main field", () => {
     expect(artifacts[0].artifact.type).toBe("package");
   });
 
-  it("treats package with main and server deps and server script as service", async () => {
+  it("treats package with main and server deps and server script as package (agents classify later)", async () => {
     const projectDir = path.join(os.tmpdir(), `arbiter-node-main-svc-${Date.now()}`);
     await fs.ensureDir(projectDir);
 
@@ -91,7 +91,11 @@ describe("node service classification respects main field", () => {
     const manifest = await scanner.scan();
     const artifacts = manifest.artifacts.filter((a) => a.artifact.id === "api-service");
     expect(artifacts).toHaveLength(1);
-    expect(artifacts[0].artifact.type).toBe("service");
+    // Importer outputs "package" - agents determine if it's a service based on metadata
+    expect(artifacts[0].artifact.type).toBe("package");
+    // Metadata includes framework info for agent classification
+    const metadata = artifacts[0].artifact.metadata as Record<string, unknown>;
+    expect(metadata.framework).toBe("express");
   });
 
   it("treats package with main and server deps but no server script as package", async () => {

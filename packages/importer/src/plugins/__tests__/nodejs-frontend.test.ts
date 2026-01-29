@@ -175,9 +175,11 @@ export function App() {
 
     expect(artifacts.length).toBeGreaterThan(0);
     const primaryArtifact = artifacts[0].artifact;
-    expect(primaryArtifact.type).toBe("frontend");
-    expect(primaryArtifact.tags).toContain("frontend");
-    expect((primaryArtifact.metadata as any)?.classification).toBeDefined();
+    // Importer outputs "package" - agents determine if it's a frontend based on framework metadata
+    expect(primaryArtifact.type).toBe("package");
+    expect(primaryArtifact.tags).toContain("nodejs");
+    // Framework metadata is available for agents to classify
+    expect((primaryArtifact.metadata as any)?.framework).toBe("react");
 
     await fs.remove(projectRoot);
   });
@@ -268,9 +270,11 @@ export default function BlogPost({ params }: Props) {
 
     expect(artifacts.length).toBeGreaterThan(0);
     const primaryArtifact = artifacts[0].artifact;
-    expect(primaryArtifact.type).toBe("frontend");
-    expect(primaryArtifact.tags).toContain("frontend");
-    expect((primaryArtifact.metadata as any)?.classification).toBeDefined();
+    // Importer outputs "package" - agents determine if it's a frontend based on framework metadata
+    expect(primaryArtifact.type).toBe("package");
+    expect(primaryArtifact.tags).toContain("nodejs");
+    // Framework metadata is available for agents to classify
+    expect((primaryArtifact.metadata as any)?.framework).toBe("next");
 
     await fs.remove(projectRoot);
   });
@@ -325,14 +329,16 @@ export default {
     const artifacts = await plugin.infer(evidence, inferenceContext);
 
     const primaryArtifact = artifacts[0].artifact;
-    expect(primaryArtifact.type).toBe("frontend");
-    expect(primaryArtifact.tags).toContain("frontend");
-    expect((primaryArtifact.metadata as any)?.classification).toBeDefined();
+    // Importer outputs "package" - agents determine if it's a frontend based on framework metadata
+    expect(primaryArtifact.type).toBe("package");
+    expect(primaryArtifact.tags).toContain("nodejs");
+    // Framework metadata is available for agents to classify
+    expect((primaryArtifact.metadata as any)?.framework).toBe("vue");
 
     await fs.remove(projectRoot);
   });
 
-  it("classifies CLI packages as tools when CLI dependencies are present", async () => {
+  it("includes hasBin metadata for CLI packages (agents classify later)", async () => {
     const projectRoot = await createTempDir("nodejs-cli-");
 
     const pkgJson = {
@@ -391,9 +397,10 @@ program.parse(process.argv);
 
     expect(artifacts.length).toBeGreaterThan(0);
     const cliArtifact = artifacts.find((artifact) => artifact.artifact.name === pkgJson.name);
-    expect(cliArtifact?.artifact.type).toBe("tool");
-    const classification = (cliArtifact?.artifact.metadata as any)?.classification;
-    expect(classification?.type ?? classification?.detectedCategory).toBeDefined();
+    // Importer outputs "package" - agents determine if it's a tool based on hasBin metadata
+    expect(cliArtifact?.artifact.type).toBe("package");
+    // hasBin metadata indicates this is a CLI tool
+    expect((cliArtifact?.artifact.metadata as any)?.hasBin).toBe(true);
 
     await fs.remove(projectRoot);
   });

@@ -51,20 +51,20 @@ describe("RustPlugin", () => {
       expect(plugin.supports("/path/to/Cargo.toml")).toBe(true);
     });
 
-    it("should support Cargo.lock files", () => {
-      expect(plugin.supports("/path/to/Cargo.lock")).toBe(true);
+    it("should not support Cargo.lock files (only Cargo.toml)", () => {
+      expect(plugin.supports("/path/to/Cargo.lock")).toBe(false);
     });
 
-    it("should support main.rs files", () => {
-      expect(plugin.supports("/path/to/src/main.rs")).toBe(true);
+    it("should not support main.rs files (only Cargo.toml)", () => {
+      expect(plugin.supports("/path/to/src/main.rs")).toBe(false);
     });
 
-    it("should support lib.rs files", () => {
-      expect(plugin.supports("/path/to/src/lib.rs")).toBe(true);
+    it("should not support lib.rs files (only Cargo.toml)", () => {
+      expect(plugin.supports("/path/to/src/lib.rs")).toBe(false);
     });
 
-    it("should support files in src directory", () => {
-      expect(plugin.supports("/path/to/src/module.rs")).toBe(true);
+    it("should not support other src files (only Cargo.toml)", () => {
+      expect(plugin.supports("/path/to/src/module.rs")).toBe(false);
     });
 
     it("should not support non-Rust files", () => {
@@ -113,21 +113,19 @@ path = "src/bin/server.rs"
 
       const evidence = await plugin.parse("/test/project/Cargo.toml", cargoToml, context);
 
-      expect(evidence.length).toBeGreaterThanOrEqual(4); // package + 3 dependencies, maybe binary
+      // Simplified plugin produces a single evidence item
+      expect(evidence.length).toBe(1);
 
-      // Check package evidence
-      const packageEvidence = evidence.find((e) => e.data.configType === "cargo-toml");
-      expect(packageEvidence).toBeDefined();
-      expect(packageEvidence?.data.package.name).toBe("my-rust-app");
-      expect(packageEvidence?.data.hasBinaries).toBe(true);
-
-      // Check binary evidence (might not be parsed due to [[bin]] array handling)
-      const binaryEvidence = evidence.find((e) => e.data.configType === "binary-definition");
-      expect(binaryEvidence).toBeDefined();
-      expect(binaryEvidence?.data.binaryName).toBe("server");
+      const packageEvidence = evidence[0];
+      expect(packageEvidence.data.configType).toBe("cargo-toml");
+      expect(packageEvidence.data.package.name).toBe("my-rust-app");
+      expect(packageEvidence.data.hasBinaries).toBe(true);
+      expect(packageEvidence.data.dependencies).toContain("axum");
+      expect(packageEvidence.data.dependencies).toContain("tokio");
+      expect(packageEvidence.data.dependencies).toContain("clap");
     });
 
-    it("should parse Rust source with main function", async () => {
+    it("should not parse Rust source files (only Cargo.toml)", async () => {
       const mainRs = `
 use axum::{Router, response::Html};
 use tokio::net::TcpListener;
@@ -140,22 +138,14 @@ async fn main() {
 }
 `;
 
+      // Plugin only supports Cargo.toml, so parsing main.rs returns empty
       const evidence = await plugin.parse("/test/project/src/main.rs", mainRs);
-
-      expect(evidence).toHaveLength(3); // main function + async main + HTTP framework detection
-
-      const mainEvidence = evidence.find((e) => e.data.functionType === "main");
-      expect(mainEvidence).toBeDefined();
-      expect(mainEvidence?.data.isEntryPoint).toBe(true);
-
-      const asyncMainEvidence = evidence.find((e) => e.data.functionType === "async-main");
-      expect(asyncMainEvidence).toBeDefined();
-      expect(asyncMainEvidence?.data.runtime).toBe("tokio");
+      expect(evidence).toHaveLength(0);
     });
   });
 
   describe("infer", () => {
-    it("should infer a web service from Cargo.toml with axum dependency", async () => {
+    it("should infer a package from Cargo.toml with axum dependency (agents classify later)", async () => {
       const cargoEvidence: Evidence = {
         id: "test-package",
         source: "rust",
@@ -165,41 +155,27 @@ async fn main() {
           configType: "cargo-toml",
           package: { name: "web-service", version: "0.1.0" },
           hasBinaries: true,
-          hasModule: false,
-          dependencies: { axum: "0.7", tokio: "1.0" },
-          devDependencies: {},
-          buildDependencies: {},
+          hasLibrary: false,
+          dependencies: ["axum", "tokio"],
         },
         confidence: 0.95,
         metadata: { timestamp: Date.now(), fileSize: 100 },
       };
 
-      const binaryEvidence: Evidence = {
-        id: "test-binary",
-        source: "rust",
-        type: "config",
-        filePath: "/test/Cargo.toml",
-        data: {
-          configType: "binary-definition",
-          binaryName: "server",
-          binaryPath: "src/bin/server.rs",
-        },
-        confidence: 0.9,
-        metadata: { timestamp: Date.now(), fileSize: 100 },
-      };
+      const context = buildInferenceContext([cargoEvidence]);
 
-      const context = buildInferenceContext([cargoEvidence, binaryEvidence]);
-
-      const artifacts = await plugin.infer([cargoEvidence, binaryEvidence], context);
+      const artifacts = await plugin.infer([cargoEvidence], context);
 
       expect(artifacts).toHaveLength(1);
-      expect(artifacts[0].artifact.type).toBe("service");
-      expect(artifacts[0].artifact.name).toBe("server");
+      // Importer outputs "package" - agents determine if it's a service based on framework metadata
+      expect(artifacts[0].artifact.type).toBe("package");
+      expect(artifacts[0].artifact.name).toBe("web-service");
       expect(artifacts[0].artifact.metadata.framework).toBe("axum");
       expect(artifacts[0].artifact.metadata.language).toBe("rust");
+      expect(artifacts[0].artifact.metadata.hasBinaries).toBe(true);
     });
 
-    it("should infer a CLI binary from Cargo.toml with clap dependency", async () => {
+    it("should infer a package from Cargo.toml with clap dependency (agents classify later)", async () => {
       const cargoEvidence: Evidence = {
         id: "test-package",
         source: "rust",
@@ -209,40 +185,27 @@ async fn main() {
           configType: "cargo-toml",
           package: { name: "cli-tool", version: "0.1.0" },
           hasBinaries: true,
-          hasModule: false,
-          dependencies: { clap: "4.0" },
-          devDependencies: {},
-          buildDependencies: {},
+          hasLibrary: false,
+          dependencies: ["clap"],
         },
         confidence: 0.95,
         metadata: { timestamp: Date.now(), fileSize: 100 },
       };
 
-      const mainEvidence: Evidence = {
-        id: "test-main",
-        source: "rust",
-        type: "function",
-        filePath: "/test/src/main.rs",
-        data: {
-          functionType: "main",
-          isEntryPoint: true,
-        },
-        confidence: 0.95,
-        metadata: { timestamp: Date.now(), fileSize: 100 },
-      };
+      const context = buildInferenceContext([cargoEvidence]);
 
-      const context = buildInferenceContext([cargoEvidence, mainEvidence]);
-
-      const artifacts = await plugin.infer([cargoEvidence, mainEvidence], context);
+      const artifacts = await plugin.infer([cargoEvidence], context);
 
       expect(artifacts).toHaveLength(1);
-      expect(artifacts[0].artifact.type).toBe("binary");
+      // Importer outputs "package" - agents determine if it's a tool based on framework/hasBinaries metadata
+      expect(artifacts[0].artifact.type).toBe("package");
       expect(artifacts[0].artifact.name).toBe("cli-tool");
-      expect(artifacts[0].artifact.tags).toContain("tool");
+      expect(artifacts[0].artifact.metadata.framework).toBe("cli");
       expect(artifacts[0].artifact.metadata.language).toBe("rust");
+      expect(artifacts[0].artifact.metadata.hasBinaries).toBe(true);
     });
 
-    it("should infer a module from Cargo.toml with lib section", async () => {
+    it("should infer a package from Cargo.toml with lib section", async () => {
       const cargoEvidence: Evidence = {
         id: "test-package",
         source: "rust",
@@ -252,10 +215,8 @@ async fn main() {
           configType: "cargo-toml",
           package: { name: "my-lib", version: "0.1.0", description: "A useful module" },
           hasBinaries: false,
-          hasModule: true,
-          dependencies: { serde: "1.0" },
-          devDependencies: {},
-          buildDependencies: {},
+          hasLibrary: true,
+          dependencies: ["serde"],
         },
         confidence: 0.95,
         metadata: { timestamp: Date.now(), fileSize: 100 },
@@ -270,10 +231,10 @@ async fn main() {
       expect(artifacts[0].artifact.name).toBe("my-lib");
       expect(artifacts[0].artifact.description).toBe("A useful module");
       expect(artifacts[0].artifact.metadata.language).toBe("rust");
-      expect(artifacts[0].artifact.metadata.packageManager).toBe("cargo");
+      expect(artifacts[0].artifact.metadata.hasLibrary).toBe(true);
     });
 
-    it("should treat library crates with CLI dependencies as modules when no binaries are present", async () => {
+    it("should output package type for library crates with CLI dependencies", async () => {
       const cargoEvidence: Evidence = {
         id: "test-package",
         source: "rust",
@@ -287,10 +248,8 @@ async fn main() {
             description: "Protocol definitions",
           },
           hasBinaries: false,
-          hasModule: false,
-          dependencies: { clap: "4.0", serde: "1.0" },
-          devDependencies: {},
-          buildDependencies: {},
+          hasLibrary: false,
+          dependencies: ["clap", "serde"],
         },
         confidence: 0.95,
         metadata: { timestamp: Date.now(), fileSize: 100 },

@@ -61,7 +61,7 @@ describe("PythonPlugin", () => {
     };
   };
 
-  it("classifies FastAPI pyproject as service", async () => {
+  it("outputs package type for FastAPI pyproject (agents classify later)", async () => {
     const pyproject = `
 [project]
 name = "smith-http"
@@ -80,13 +80,13 @@ dependencies = ["fastapi", "uvicorn"]
 
     expect(artifacts).toHaveLength(1);
     const artifact = artifacts[0].artifact;
-    expect(artifact.type).toBe("service");
+    // Importer outputs "package" - agents determine if it's a service based on framework metadata
+    expect(artifact.type).toBe("package");
     expect((artifact.metadata as any).framework).toBe("fastapi");
-    expect((artifact.metadata as any).classification).toBeDefined();
     expect(artifact.description).toBe("HTTP gateway");
   });
 
-  it("classifies setup.py with console scripts as binary tool", async () => {
+  it("outputs package type for setup.py with console scripts (agents classify later)", async () => {
     const setupPy = `
 from setuptools import setup
 
@@ -108,12 +108,12 @@ setup(
 
     expect(artifacts).toHaveLength(1);
     const artifact = artifacts[0].artifact;
-    expect(artifact.type).toBe("tool");
-    expect(artifact.tags).toContain("tool");
-    expect((artifact.metadata as any).classification).toBeDefined();
+    // Importer outputs "package" - agents determine if it's a tool based on hasConsoleScripts metadata
+    expect(artifact.type).toBe("package");
+    expect(artifact.tags).toContain("python");
   });
 
-  it("defaults to module when no web or cli signals present", async () => {
+  it("outputs package type when no web or cli signals present", async () => {
     const pyproject = `
 [project]
 name = "smith-library"
@@ -133,7 +133,6 @@ dependencies = ["pydantic"]
     expect(artifacts).toHaveLength(1);
     const artifact = artifacts[0].artifact;
     expect(artifact.type).toBe("package");
-    expect((artifact.metadata as any).classification).toBeDefined();
     expect(artifact.description).toBe("Shared utilities");
   });
 });
