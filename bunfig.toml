@@ -3,6 +3,9 @@
 memfs = "./packages/cli/src/shims/memfs.ts"
 
 [test]
+# apps/client uses vitest with path aliases that bun test doesn't resolve
+# Run client tests separately with: bun run --cwd apps/client test
+
 # Exclude compiled / generated output from coverage
 coveragePathIgnorePatterns = [
   "dist/**",
@@ -12,7 +15,8 @@ coveragePathIgnorePatterns = [
   "packages/cli/dist/**",
   "packages/shared-types/src/**",
   "**/*.generated.*",
-  "**/coverage/**"
+  "**/coverage/**",
+  "apps/client/**"
 ]
 
 # Optionally skip counting test files themselves
