@@ -1,5 +1,23 @@
     package schema
 
+    // ---------- Markdown Storage Support ----------
+
+    // Relationship kinds for markdown frontmatter relationships.
+    // These define the semantic meaning of connections between entities.
+    // Open-ended: any slug is valid, but these are the common/known kinds.
+    #RelationshipKind: "depends_on" | "implements" | "calls" | "reads" | "writes" |
+                       "blocks" | "blocked_by" | "duplicates" | "related_to" |
+                       "deployed_as" | "authenticates" | "notifies" | #Slug
+
+    // Markdown link format for relationships: [Label](path/to/entity.md)
+    // Used in YAML frontmatter to define relationships between entities.
+    #MarkdownLink: =~"^\\[.+\\]\\(.+\\.md\\)$"
+
+    // Relationships map in frontmatter: relationship_kind -> [markdown_links]
+    #RelationshipsMap: {
+      [#RelationshipKind]: [...#MarkdownLink]
+    }
+
     // ---------- Artifact Groups ----------
 
     // Group type - open-ended to support context-specific groupings
