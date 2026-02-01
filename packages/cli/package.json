@@ -1,7 +1,7 @@
 {
-  "name": "@sibyllinesoft/arbiter-cli",
-  "version": "1.0.0",
-  "description": "CUE-based specification validation and management CLI with agent-first automation",
+  "name": "@sibyllinesoft/arbiter",
+  "version": "0.1.0",
+  "description": "Spec-driven development CLI. Track work with tasks, persist context with notes, define architecture with CUE specs.",
   "type": "module",
   "bin": {
     "arbiter": "dist/cli.js"
@@ -15,14 +15,14 @@
     "arbiter",
     "cli",
     "cue",
-    "validation",
-    "schema",
-    "config",
-    "typescript",
+    "spec-driven",
+    "tasks",
+    "notes",
     "agent-friendly",
-    "automation",
+    "ai-agents",
     "specification",
-    "code-generation"
+    "markdown",
+    "obsidian"
   ],
   "author": "Nathan Rice",
   "license": "LicenseRef-SPL-1.0",
@@ -42,7 +42,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "mkdir -p dist && bun build src/cli.ts --outfile dist/cli.js --target=node --format=esm --bundle --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid --external inquirer --external cli-spinners --external cli-table3 --external ora --external cuelang-js && rm -rf dist/templates && cp -R templates dist/templates",
+    "build": "mkdir -p dist && bun build src/cli.ts --outfile dist/cli.js --target=node --format=esm --bundle --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid --external inquirer --external cli-spinners --external cli-table3 --external ora --external cuelang-js --external node-plop --external plop --external handlebars && rm -rf dist/templates && cp -R templates dist/templates && cp -R src/templates/plopfiles dist/templates/plopfiles",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build && npm test",
     "lint": "bunx @biomejs/biome check src",
@@ -60,8 +60,11 @@
     "diff": "^7.0.0",
     "fs-extra": "^11.1.1",
     "glob": "^11.0.3",
+    "handlebars": "^4.7.8",
     "inquirer": "^9.3.7",
+    "node-plop": "^0.32.3",
     "ora": "^8.0.1",
+    "plop": "^4.0.5",
     "uuid": "^11.0.4",
     "yaml": "^2.4.2",
     "zod": "^3.23.8"
