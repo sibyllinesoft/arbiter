@@ -4,14 +4,14 @@ import os from "node:os";
 import path from "node:path";
 
 import * as constraints from "@/constraints/index.js";
+import { detectManifestFiles } from "@/services/sync/index.js";
 import {
   calculateChecksum,
   deepMerge,
-  detectManifestFiles,
   generateChangeSet,
   validateIdempotency,
   writeFileSafely,
-} from "@/services/sync/index.js";
+} from "@/services/sync/manifest-sync.js";
 
 describe("sync helpers", () => {
   it("detects manifest files that exist", async () => {

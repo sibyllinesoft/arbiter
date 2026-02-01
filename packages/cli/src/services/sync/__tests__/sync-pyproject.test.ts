@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import * as constraints from "@/constraints/index.js";
-import { syncPyprojectToml } from "@/services/sync/index.js";
+import { syncPyprojectToml } from "@/services/sync/manifest-sync.js";
 
 describe("sync pyproject", () => {
   it("preserves existing tool.arbiter unless forced", async () => {

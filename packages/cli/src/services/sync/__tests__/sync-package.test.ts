@@ -6,22 +6,25 @@ import * as constraints from "@/constraints/index.js";
 import {
   applyArbiterUpdates,
   applyPackageChanges,
+  createBackup,
+  getArbiterPackageUpdates,
   reportPotentialChanges,
   syncPackageJson,
-} from "@/services/sync/index.js";
-import * as syncHelpers from "@/services/sync/index.js";
+  validateIdempotency,
+} from "@/services/sync/manifest-sync.js";
+import * as syncHelpers from "@/services/sync/manifest-sync.js";
 
 describe("sync package.json flow", () => {
   it("applies arbiter updates and records conflicts when not forced", () => {
     const pkg = { scripts: { test: "jest" }, devDependencies: { jest: "^1.0.0" } };
-    const updates = syncHelpers.getArbiterPackageUpdates();
+    const updates = getArbiterPackageUpdates();
 
     const conflicts = applyArbiterUpdates(pkg, updates, false);
 
     const scriptConflict = conflicts.find((c) => c.path.startsWith("scripts."));
     // existing script stays; other arbiter scripts are added
     expect(conflicts.length).toBeGreaterThanOrEqual(0);
-    expect(pkg.scripts["arbiter:check"]).toBeDefined();
+    expect(pkg.scripts["arbiter:status"]).toBeDefined();
     expect(pkg.devDependencies["@arbiter/cli"]).toBeDefined();
   });
 
