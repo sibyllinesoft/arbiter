@@ -1,0 +1,37 @@
+plugins {
+    kotlin("jvm") version "1.9.22"
+    kotlin("plugin.serialization") version "1.9.22"
+    id("io.ktor.plugin") version "2.3.7"
+}
+
+group = "com.{{snakeCase name}}"
+version = "0.1.0"
+
+application {
+    mainClass.set("com.{{snakeCase name}}.ApplicationKt")
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Ktor server
+    implementation("io.ktor:ktor-server-core-jvm")
+    implementation("io.ktor:ktor-server-netty-jvm")
+    implementation("io.ktor:ktor-server-content-negotiation-jvm")
+    implementation("io.ktor:ktor-serialization-kotlinx-json-jvm")
+    implementation("io.ktor:ktor-server-cors-jvm")
+    implementation("io.ktor:ktor-server-call-logging-jvm")
+    implementation("io.ktor:ktor-server-status-pages-jvm")
+
+    // Logging
+    implementation("ch.qos.logback:logback-classic:1.4.14")
+
+    // Config
+    implementation("io.github.cdimascio:dotenv-kotlin:6.4.1")
+
+    // Testing
+    testImplementation("io.ktor:ktor-server-tests-jvm")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.22")
+}

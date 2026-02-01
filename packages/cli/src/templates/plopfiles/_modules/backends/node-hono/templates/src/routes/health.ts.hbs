@@ -1,0 +1,64 @@
+/**
+ * @module routes/health
+ * @description Health check endpoints for monitoring and orchestration.
+ *
+ * Provides Kubernetes-compatible health probes:
+ * - `/health` - General health status
+ * - `/health/ready` - Readiness probe (dependencies ready)
+ * - `/health/live` - Liveness probe (process alive)
+ */
+
+import { Hono } from "hono";
+
+/**
+ * Health check router.
+ */
+export const health = new Hono();
+
+/**
+ * General health status endpoint.
+ *
+ * @description Returns the overall health of the service including
+ * service name and current timestamp.
+ *
+ * @returns Health status object.
+ *
+ * @example
+ * ```bash
+ * curl http://localhost:3000/health
+ * # { "status": "ok", "service": "my-app", "timestamp": "2024-..." }
+ * ```
+ */
+health.get("/", (c) => {
+  return c.json({
+    status: "ok",
+    service: "{{kebabCase name}}",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+/**
+ * Kubernetes readiness probe.
+ *
+ * @description Indicates whether the service is ready to accept traffic.
+ * Returns `ready: true` when all dependencies (database, cache, etc.)
+ * are available and the service can handle requests.
+ *
+ * @returns Readiness status.
+ */
+health.get("/ready", (c) => {
+  // TODO: Add actual readiness checks (db, cache, external services)
+  return c.json({ ready: true });
+});
+
+/**
+ * Kubernetes liveness probe.
+ *
+ * @description Indicates whether the service process is running.
+ * If this fails, the container should be restarted.
+ *
+ * @returns Liveness status.
+ */
+health.get("/live", (c) => {
+  return c.json({ live: true });
+});

@@ -1,0 +1,15 @@
+/**
+ * Service Configuration
+ */
+
+export const config = {
+  port: parseInt(process.env.PORT ?? "3000", 10),
+  env: process.env.NODE_ENV ?? "development",
+{{#if includeDb}}
+  database: {
+    url: process.env.DATABASE_URL ?? "postgres://localhost:5432/{{snakeCase name}}",
+  },
+{{/if}}
+};
+
+export type Config = typeof config;

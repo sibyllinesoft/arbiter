@@ -1,0 +1,66 @@
+import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../src/lib/api";
+
+export default function HomeScreen() {
+  const { data: health, isLoading, error } = useQuery({
+    queryKey: ["health"],
+    queryFn: () => api.get("/health"),
+    retry: false,
+  });
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>{{titleCase name}}</Text>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>API Status</Text>
+        {isLoading && <ActivityIndicator />}
+        {error && (
+          <Text style={styles.error}>
+            API not reachable. Make sure the backend is running.
+          </Text>
+        )}
+        {health && (
+          <Text style={styles.success}>
+            API is healthy: {JSON.stringify(health)}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: "#f5f5f5",
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: "bold",
+    marginBottom: 24,
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  error: {
+    color: "#ef4444",
+  },
+  success: {
+    color: "#22c55e",
+  },
+});

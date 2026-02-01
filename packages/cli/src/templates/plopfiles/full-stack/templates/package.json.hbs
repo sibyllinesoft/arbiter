@@ -1,0 +1,21 @@
+{
+  "name": "{{kebabCase name}}",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    {{#each manifest.scripts}}
+    "{{@key}}": "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  },
+  "dependencies": {
+    {{#each manifest.dependencies}}
+    "{{@key}}": "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  },
+  "devDependencies": {
+    {{#each manifest.devDependencies}}
+    "{{@key}}": "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  }
+}

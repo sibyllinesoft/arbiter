@@ -1,0 +1,58 @@
+import Foundation
+
+struct HealthResponse: Codable {
+    let status: String
+    let timestamp: String?
+}
+
+actor APIClient {
+    static let shared = APIClient()
+
+    private let baseURL: URL
+    private let session: URLSession
+    private let decoder: JSONDecoder
+
+    private init() {
+        #if DEBUG
+        self.baseURL = URL(string: "http://localhost:3000")!
+        #else
+        self.baseURL = URL(string: "https://api.example.com")!
+        #endif
+
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        self.session = URLSession(configuration: config)
+
+        self.decoder = JSONDecoder()
+        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
+    }
+
+    func checkHealth() async throws -> HealthResponse {
+        let url = baseURL.appendingPathComponent("health/live")
+        let (data, response) = try await session.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        return try decoder.decode(HealthResponse.self, from: data)
+    }
+}
+
+enum APIError: LocalizedError {
+    case invalidResponse
+    case networkError(Error)
+    case decodingError(Error)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return "Invalid response from server"
+        case .networkError(let error):
+            return "Network error: \(error.localizedDescription)"
+        case .decodingError(let error):
+            return "Failed to decode response: \(error.localizedDescription)"
+        }
+    }
+}

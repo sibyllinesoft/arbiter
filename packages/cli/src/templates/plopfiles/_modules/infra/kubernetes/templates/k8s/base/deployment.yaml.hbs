@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{kebabCase name}}
+  labels:
+    app: {{kebabCase name}}
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: {{kebabCase name}}
+  template:
+    metadata:
+      labels:
+        app: {{kebabCase name}}
+    spec:
+      containers:
+        - name: {{kebabCase name}}
+          image: {{kebabCase name}}:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "3000"
+          envFrom:
+            - secretRef:
+                name: {{kebabCase name}}-secrets
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5

@@ -1,0 +1,32 @@
+FROM oven/bun:1 as base
+WORKDIR /app
+
+# Install dependencies
+COPY package.json bun.lockb* ./
+RUN bun install --frozen-lockfile
+
+# Copy source
+COPY . .
+
+# Development target
+FROM base as development
+ENV NODE_ENV=development
+EXPOSE 3000
+CMD ["bun", "run", "dev"]
+
+# Production build
+FROM base as builder
+RUN bun run build
+
+# Production target
+FROM oven/bun:1-slim as production
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./
+
+RUN bun install --production --frozen-lockfile
+
+EXPOSE 3000
+CMD ["bun", "run", "start"]

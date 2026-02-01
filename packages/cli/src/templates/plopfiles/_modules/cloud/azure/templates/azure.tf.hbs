@@ -1,0 +1,54 @@
+# Azure Provider Configuration
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.0"
+    }
+  }
+}
+
+provider "azurerm" {
+  features {}
+}
+
+variable "azure_region" {
+  description = "Azure region"
+  type        = string
+  default     = "eastus"
+}
+
+variable "environment" {
+  description = "Environment name (e.g., dev, staging, prod)"
+  type        = string
+  default     = "dev"
+}
+
+variable "app_port" {
+  description = "Application port"
+  type        = number
+  default     = 3000
+}
+
+variable "container_image" {
+  description = "Container image to deploy"
+  type        = string
+  default     = ""
+}
+
+locals {
+  project_name = "{{kebabCase name}}"
+  common_tags = {
+    Project     = local.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+
+# Resource Group
+resource "azurerm_resource_group" "main" {
+  name     = "${local.project_name}-${var.environment}-rg"
+  location = var.azure_region
+
+  tags = local.common_tags
+}

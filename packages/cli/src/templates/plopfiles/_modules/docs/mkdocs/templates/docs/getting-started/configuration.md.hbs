@@ -1,0 +1,37 @@
+# Configuration
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+{{#each envVars}}
+| `{{@key}}` | Configuration value | `{{this}}` |
+{{/each}}
+{{#unless envVars}}
+| `NODE_ENV` | Environment mode | `development` |
+| `PORT` | Server port | `3000` |
+{{/unless}}
+
+## Configuration File
+
+Create a `{{name}}.config.js` file in your project root:
+
+```javascript
+export default {
+  // Your configuration here
+};
+```
+
+## TypeScript Support
+
+For TypeScript projects, use `{{name}}.config.ts`:
+
+```typescript
+import type { Config } from '{{name}}';
+
+const config: Config = {
+  // Type-safe configuration
+};
+
+export default config;
+```

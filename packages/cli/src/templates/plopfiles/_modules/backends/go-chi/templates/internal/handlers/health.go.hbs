@@ -1,0 +1,51 @@
+package handlers
+
+import (
+	"encoding/json"
+	"net/http"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+)
+
+type HealthResponse struct {
+	Status    string `json:"status"`
+	Timestamp string `json:"timestamp"`
+	Service   string `json:"service"`
+}
+
+type ReadyResponse struct {
+	Ready bool `json:"ready"`
+}
+
+type LiveResponse struct {
+	Alive bool `json:"alive"`
+}
+
+func HealthRouter() chi.Router {
+	r := chi.NewRouter()
+	r.Get("/", healthCheck)
+	r.Get("/ready", readinessCheck)
+	r.Get("/live", livenessCheck)
+	return r
+}
+
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(HealthResponse{
+		Status:    "ok",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Service:   "{{kebabCase name}}-backend",
+	})
+}
+
+func readinessCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	// Add database/service checks here
+	json.NewEncoder(w).Encode(ReadyResponse{Ready: true})
+}
+
+func livenessCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(LiveResponse{Alive: true})
+}

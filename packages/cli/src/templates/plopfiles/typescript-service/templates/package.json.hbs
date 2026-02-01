@@ -1,0 +1,36 @@
+{
+  "name": "{{kebabCase name}}",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target node",
+    "start": "bun run dist/index.js",
+    "test": "bun test",
+    "lint": "biome check .",
+    "format": "biome format --write ."
+  },
+  "dependencies": {
+{{#if (eq framework "hono")}}
+    "hono": "^4.0.0",
+    "@hono/node-server": "^1.8.0"
+{{else if (eq framework "express")}}
+    "express": "^4.18.0",
+    "@types/express": "^4.17.0"
+{{else}}
+    "fastify": "^4.25.0"
+{{/if}}
+{{#if includeDb}}
+    ,"drizzle-orm": "^0.29.0",
+    "postgres": "^3.4.0"
+{{/if}}
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.3.0",
+    "@biomejs/biome": "^1.5.0"
+{{#if includeDb}}
+    ,"drizzle-kit": "^0.20.0"
+{{/if}}
+  }
+}

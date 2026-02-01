@@ -1,0 +1,34 @@
+import { createQuery } from "@tanstack/solid-query";
+import { Show } from "solid-js";
+import { api } from "../lib/api";
+
+export function Home() {
+  const healthQuery = createQuery(() => ({
+    queryKey: ["health"],
+    queryFn: () => api.get("/health").then((res) => res.json()),
+    retry: false,
+  }));
+
+  return (
+    <div class="container mx-auto px-4 py-8">
+      <h1 class="text-4xl font-bold mb-6">{{titleCase name}}</h1>
+
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold mb-4">API Status</h2>
+        <Show when={healthQuery.isLoading}>
+          <p class="text-gray-500">Checking API...</p>
+        </Show>
+        <Show when={healthQuery.error}>
+          <p class="text-red-500">
+            API not reachable. Make sure the backend is running.
+          </p>
+        </Show>
+        <Show when={healthQuery.data}>
+          <p class="text-green-500">
+            API is healthy: {JSON.stringify(healthQuery.data)}
+          </p>
+        </Show>
+      </div>
+    </div>
+  );
+}

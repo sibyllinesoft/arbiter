@@ -1,0 +1,21 @@
+import { Router } from "express";
+
+export const healthRouter = Router();
+
+healthRouter.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    service: "{{kebabCase name}}-backend",
+    uptime: process.uptime(),
+  });
+});
+
+healthRouter.get("/ready", (req, res) => {
+  // Add readiness checks here (database, external services, etc.)
+  res.json({ ready: true });
+});
+
+healthRouter.get("/live", (req, res) => {
+  res.json({ alive: true });
+});

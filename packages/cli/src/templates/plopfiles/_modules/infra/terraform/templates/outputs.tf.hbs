@@ -1,0 +1,15 @@
+output "project_name" {
+  description = "Project name"
+  value       = local.project_name
+}
+
+output "environment" {
+  description = "Current environment"
+  value       = var.environment
+}
+
+# Add more outputs as you create resources
+# output "app_url" {
+#   description = "Application URL"
+#   value       = aws_lb.main.dns_name
+# }

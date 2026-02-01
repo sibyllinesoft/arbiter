@@ -1,0 +1,41 @@
+use axum::{routing::get, Json, Router};
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct HealthResponse {
+    status: String,
+    service: String,
+}
+
+#[derive(Serialize)]
+struct ReadyResponse {
+    ready: bool,
+}
+
+#[derive(Serialize)]
+struct LiveResponse {
+    alive: bool,
+}
+
+pub fn router() -> Router {
+    Router::new()
+        .route("/", get(health_check))
+        .route("/ready", get(readiness_check))
+        .route("/live", get(liveness_check))
+}
+
+async fn health_check() -> Json<HealthResponse> {
+    Json(HealthResponse {
+        status: "ok".to_string(),
+        service: "{{kebabCase name}}-backend".to_string(),
+    })
+}
+
+async fn readiness_check() -> Json<ReadyResponse> {
+    // Add database/service checks here
+    Json(ReadyResponse { ready: true })
+}
+
+async fn liveness_check() -> Json<LiveResponse> {
+    Json(LiveResponse { alive: true })
+}

@@ -1,0 +1,61 @@
+/**
+ * Health check routes
+ */
+
+{{#if (eq framework "hono")}}
+import { Hono } from "hono";
+
+export const healthRoutes = new Hono();
+
+healthRoutes.get("/", (c) => {
+  return c.json({
+    status: "ok",
+    service: "{{kebabCase name}}",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+healthRoutes.get("/ready", (c) => {
+  // Add readiness checks here (db connection, etc.)
+  return c.json({ ready: true });
+});
+
+healthRoutes.get("/live", (c) => {
+  return c.json({ live: true });
+});
+{{else if (eq framework "express")}}
+import { Router } from "express";
+
+export const healthRoutes = Router();
+
+healthRoutes.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "{{kebabCase name}}",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+healthRoutes.get("/ready", (req, res) => {
+  // Add readiness checks here (db connection, etc.)
+  res.json({ ready: true });
+});
+
+healthRoutes.get("/live", (req, res) => {
+  res.json({ live: true });
+});
+{{else}}
+import type { FastifyInstance } from "fastify";
+
+export async function healthRoutes(app: FastifyInstance) {
+  app.get("/", async () => ({
+    status: "ok",
+    service: "{{kebabCase name}}",
+    timestamp: new Date().toISOString(),
+  }));
+
+  app.get("/ready", async () => ({ ready: true }));
+
+  app.get("/live", async () => ({ live: true }));
+}
+{{/if}}

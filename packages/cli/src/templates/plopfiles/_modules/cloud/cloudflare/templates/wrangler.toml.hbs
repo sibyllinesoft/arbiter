@@ -1,0 +1,36 @@
+name = "{{kebabCase name}}"
+main = "src/worker.ts"
+compatibility_date = "2024-01-01"
+
+# Workers configuration
+[vars]
+ENVIRONMENT = "development"
+
+# KV Namespaces (uncomment to use)
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "your-kv-namespace-id"
+
+# D1 Databases (uncomment to use)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "{{kebabCase name}}"
+# database_id = "your-d1-database-id"
+
+# R2 Buckets (uncomment to use)
+# [[r2_buckets]]
+# binding = "BUCKET"
+# bucket_name = "{{kebabCase name}}-bucket"
+
+# Durable Objects (uncomment to use)
+# [durable_objects]
+# bindings = [
+#   { name = "COUNTER", class_name = "Counter" }
+# ]
+
+# Environment-specific config
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+[env.staging]
+vars = { ENVIRONMENT = "staging" }

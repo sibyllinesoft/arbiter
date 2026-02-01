@@ -1,0 +1,37 @@
+# Components
+
+## Overview
+
+This document describes the key components of {{titleCase name}}.
+
+{{#if modules}}
+{{#each modules}}
+## {{titleCase this}}
+
+The {{this}} component provides core functionality.
+
+### Responsibilities
+
+- Primary feature implementation
+- Integration with other components
+
+### Usage
+
+```typescript
+import { {{camelCase this}} } from '{{../name}}/{{this}}';
+```
+
+{{/each}}
+{{else}}
+## Core
+
+The main application component.
+
+## API
+
+REST API endpoints and handlers.
+
+## Data
+
+Database models and repositories.
+{{/if}}

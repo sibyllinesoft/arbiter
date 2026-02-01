@@ -1,0 +1,61 @@
+import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+
+class ApiService {
+  final String baseUrl;
+
+  ApiService() : baseUrl = dotenv.env['FLUTTER_API_URL'] ?? 'http://localhost:3000';
+
+  Future<Map<String, dynamic>> get(String path) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl$path'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('API error: ${response.statusCode} ${response.reasonPhrase}');
+    }
+
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> post(String path, Map<String, dynamic>? data) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl$path'),
+      headers: {'Content-Type': 'application/json'},
+      body: data != null ? jsonEncode(data) : null,
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('API error: ${response.statusCode} ${response.reasonPhrase}');
+    }
+
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> put(String path, Map<String, dynamic>? data) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl$path'),
+      headers: {'Content-Type': 'application/json'},
+      body: data != null ? jsonEncode(data) : null,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('API error: ${response.statusCode} ${response.reasonPhrase}');
+    }
+
+    return jsonDecode(response.body);
+  }
+
+  Future<void> delete(String path) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl$path'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('API error: ${response.statusCode} ${response.reasonPhrase}');
+    }
+  }
+}

@@ -1,0 +1,89 @@
+# Cloud Run Service
+resource "google_cloud_run_v2_service" "app" {
+  name     = local.project_name
+  location = var.gcp_region
+
+  template {
+    containers {
+      image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project}/${google_artifact_registry_repository.app.name}/${local.project_name}:latest"
+
+      ports {
+        container_port = var.app_port
+      }
+
+      env {
+        name  = "NODE_ENV"
+        value = var.environment
+      }
+
+      env {
+        name  = "PORT"
+        value = tostring(var.app_port)
+      }
+
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "512Mi"
+        }
+      }
+
+      startup_probe {
+        http_get {
+          path = "/health"
+          port = var.app_port
+        }
+        initial_delay_seconds = 5
+        period_seconds        = 10
+      }
+
+      liveness_probe {
+        http_get {
+          path = "/health/live"
+          port = var.app_port
+        }
+        period_seconds = 10
+      }
+    }
+
+    scaling {
+      min_instance_count = var.environment == "prod" ? 1 : 0
+      max_instance_count = var.environment == "prod" ? 10 : 2
+    }
+  }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+# Allow public access
+resource "google_cloud_run_service_iam_member" "public" {
+  location = google_cloud_run_v2_service.app.location
+  service  = google_cloud_run_v2_service.app.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+# Artifact Registry
+resource "google_artifact_registry_repository" "app" {
+  location      = var.gcp_region
+  repository_id = local.project_name
+  format        = "DOCKER"
+
+  depends_on = [google_project_service.apis]
+}
+
+# Outputs
+output "cloud_run_url" {
+  description = "Cloud Run service URL"
+  value       = google_cloud_run_v2_service.app.uri
+}
+
+output "artifact_registry" {
+  description = "Artifact Registry URL"
+  value       = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project}/${google_artifact_registry_repository.app.name}"
+}

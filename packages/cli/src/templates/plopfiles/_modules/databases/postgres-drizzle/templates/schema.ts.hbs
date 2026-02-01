@@ -1,0 +1,21 @@
+import { pgTable, serial, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+
+// Example: Users table
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Add your schema definitions here
+// Example:
+// export const posts = pgTable("posts", {
+//   id: serial("id").primaryKey(),
+//   title: text("title").notNull(),
+//   content: text("content"),
+//   authorId: integer("author_id").references(() => users.id),
+//   published: boolean("published").default(false),
+//   createdAt: timestamp("created_at").defaultNow().notNull(),
+// });

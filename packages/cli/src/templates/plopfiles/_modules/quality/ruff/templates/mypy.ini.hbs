@@ -1,0 +1,48 @@
+[mypy]
+# Python version
+python_version = 3.12
+
+# Strict mode
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+
+# Disallow dynamic typing
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+
+# None/Optional handling
+strict_optional = true
+no_implicit_optional = true
+
+# Import discovery
+namespace_packages = true
+explicit_package_bases = true
+
+# Error output
+show_error_codes = true
+show_column_numbers = true
+show_error_context = true
+pretty = true
+
+# Plugins
+plugins = []
+
+# Ignore missing imports for third-party packages
+ignore_missing_imports = false
+
+# Per-module configuration
+[mypy-tests.*]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[mypy-conftest]
+disallow_untyped_defs = false

@@ -1,0 +1,53 @@
+# Installation
+
+## Prerequisites
+
+- Node.js 18+ (or Bun 1.0+)
+- Git
+
+## Quick Install
+
+=== "npm"
+
+    ```bash
+    npm install {{name}}
+    ```
+
+=== "pnpm"
+
+    ```bash
+    pnpm add {{name}}
+    ```
+
+=== "bun"
+
+    ```bash
+    bun add {{name}}
+    ```
+
+## From Source
+
+```bash
+git clone https://github.com/{{author}}/{{name}}.git
+cd {{name}}
+{{#if useBun}}
+bun install
+{{else}}
+npm install
+{{/if}}
+```
+
+## Verify Installation
+
+```bash
+{{#if useBun}}
+bun run --version
+{{else}}
+npm run --version
+{{/if}}
+```
+
+## Next Steps
+
+- [Quick Start Guide](quickstart.md)
+- [Configuration](configuration.md)

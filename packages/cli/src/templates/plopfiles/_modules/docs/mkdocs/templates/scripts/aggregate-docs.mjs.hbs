@@ -1,0 +1,188 @@
+#!/usr/bin/env node
+/**
+ * Documentation Aggregator
+ *
+ * Collects documentation from all subprojects and builds a unified docs site.
+ * Supports TSDoc/JSDoc extraction for TypeScript/JavaScript projects.
+ */
+
+import { existsSync, mkdirSync, cpSync, readdirSync, statSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, dirname, basename, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const projectRoot = join(__dirname, '..');
+const docsDir = join(projectRoot, 'docs');
+
+// Subproject directories to scan for docs
+const subprojectDirs = [
+{{#each modules}}
+  '{{this}}',
+{{/each}}
+];
+
+// File patterns to look for documentation
+const docPatterns = [
+  'README.md',
+  'CHANGELOG.md',
+  'docs/**/*.md',
+  'api-docs/**/*.md',
+];
+
+/**
+ * Copy documentation files from subproject to main docs
+ */
+function aggregateSubprojectDocs(subproject) {
+  const subprojectPath = join(projectRoot, subproject);
+  const targetPath = join(docsDir, 'reference', subproject);
+
+  if (!existsSync(subprojectPath)) {
+    console.warn(`Subproject not found: ${subproject}`);
+    return;
+  }
+
+  // Create target directory
+  mkdirSync(targetPath, { recursive: true });
+
+  // Copy README as index
+  const readmePath = join(subprojectPath, 'README.md');
+  if (existsSync(readmePath)) {
+    cpSync(readmePath, join(targetPath, 'index.md'));
+    console.log(`  Copied README from ${subproject}`);
+  }
+
+  // Copy docs folder if exists
+  const subDocsPath = join(subprojectPath, 'docs');
+  if (existsSync(subDocsPath) && statSync(subDocsPath).isDirectory()) {
+    cpSync(subDocsPath, targetPath, { recursive: true });
+    console.log(`  Copied docs/ from ${subproject}`);
+  }
+
+  // Generate API reference from TypeScript/JavaScript
+  const srcPath = join(subprojectPath, 'src');
+  if (existsSync(srcPath)) {
+    generateApiReference(srcPath, join(targetPath, 'api'));
+  }
+}
+
+/**
+ * Generate API reference from source files
+ */
+function generateApiReference(srcPath, outputPath) {
+  mkdirSync(outputPath, { recursive: true });
+
+  const files = findSourceFiles(srcPath);
+  const apiIndex = [];
+
+  for (const file of files) {
+    const relativePath = relative(srcPath, file);
+    const docs = extractDocs(file);
+
+    if (docs.length > 0) {
+      const mdContent = generateMarkdown(relativePath, docs);
+      const outputFile = join(outputPath, relativePath.replace(/\.[jt]sx?$/, '.md'));
+
+      mkdirSync(dirname(outputFile), { recursive: true });
+      writeFileSync(outputFile, mdContent);
+
+      apiIndex.push({ path: relativePath, exports: docs.map(d => d.name) });
+    }
+  }
+
+  // Generate API index
+  if (apiIndex.length > 0) {
+    const indexContent = generateApiIndex(apiIndex);
+    writeFileSync(join(outputPath, 'index.md'), indexContent);
+  }
+}
+
+/**
+ * Find all TypeScript/JavaScript source files
+ */
+function findSourceFiles(dir, files = []) {
+  const entries = readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+
+    if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
+      findSourceFiles(fullPath, files);
+    } else if (entry.isFile() && /\.[jt]sx?$/.test(entry.name) && !entry.name.includes('.test.') && !entry.name.includes('.spec.')) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+/**
+ * Extract documentation from source file (basic TSDoc/JSDoc parser)
+ */
+function extractDocs(filePath) {
+  const content = readFileSync(filePath, 'utf-8');
+  const docs = [];
+
+  // Match JSDoc/TSDoc comments followed by exports
+  const docPattern = /\/\*\*\s*([\s\S]*?)\s*\*\/\s*(?:export\s+(?:async\s+)?(?:function|const|class|interface|type)\s+(\w+))/g;
+
+  let match;
+  while ((match = docPattern.exec(content)) !== null) {
+    const [, docContent, name] = match;
+    docs.push({
+      name,
+      description: parseDocComment(docContent),
+    });
+  }
+
+  return docs;
+}
+
+/**
+ * Parse JSDoc comment into structured data
+ */
+function parseDocComment(comment) {
+  const lines = comment.split('\n').map(l => l.replace(/^\s*\*\s?/, '').trim());
+  return lines.filter(l => !l.startsWith('@')).join('\n').trim();
+}
+
+/**
+ * Generate Markdown from documentation
+ */
+function generateMarkdown(path, docs) {
+  let content = `# ${basename(path, '.ts')}\n\n`;
+  content += `Source: \`${path}\`\n\n`;
+
+  for (const doc of docs) {
+    content += `## ${doc.name}\n\n`;
+    content += `${doc.description || 'No description available.'}\n\n`;
+  }
+
+  return content;
+}
+
+/**
+ * Generate API index page
+ */
+function generateApiIndex(apiIndex) {
+  let content = '# API Reference\n\n';
+  content += 'Auto-generated API documentation.\n\n';
+
+  for (const { path, exports } of apiIndex) {
+    const mdPath = path.replace(/\.[jt]sx?$/, '.md');
+    content += `## [${basename(path)}](${mdPath})\n\n`;
+    content += exports.map(e => `- \`${e}\``).join('\n') + '\n\n';
+  }
+
+  return content;
+}
+
+// Main execution
+console.log('Aggregating documentation from subprojects...\n');
+
+for (const subproject of subprojectDirs) {
+  console.log(`Processing: ${subproject}`);
+  aggregateSubprojectDocs(subproject);
+}
+
+console.log('\nDocumentation aggregation complete!');
+console.log('Run "mkdocs serve" to preview the docs.');

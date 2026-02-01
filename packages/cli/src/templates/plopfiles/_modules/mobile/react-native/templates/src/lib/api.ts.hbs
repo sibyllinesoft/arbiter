@@ -1,0 +1,52 @@
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+
+class ApiClient {
+  private baseUrl: string;
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
+  }
+
+  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const url = `${this.baseUrl}${path}`;
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  get<T>(path: string, options?: RequestInit): Promise<T> {
+    return this.request<T>(path, { ...options, method: "GET" });
+  }
+
+  post<T>(path: string, data?: unknown, options?: RequestInit): Promise<T> {
+    return this.request<T>(path, {
+      ...options,
+      method: "POST",
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  put<T>(path: string, data?: unknown, options?: RequestInit): Promise<T> {
+    return this.request<T>(path, {
+      ...options,
+      method: "PUT",
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  delete<T>(path: string, options?: RequestInit): Promise<T> {
+    return this.request<T>(path, { ...options, method: "DELETE" });
+  }
+}
+
+export const api = new ApiClient(API_URL);

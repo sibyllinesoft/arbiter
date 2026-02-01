@@ -1,0 +1,30 @@
+variable "environment" {
+  description = "Deployment environment (dev, staging, prod)"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be one of: dev, staging, prod."
+  }
+}
+
+variable "region" {
+  description = "Cloud provider region"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "app_port" {
+  description = "Application port"
+  type        = number
+  default     = 3000
+}
+
+variable "instance_count" {
+  description = "Number of application instances"
+  type        = number
+  default     = 1
+}
+
+# Add more variables as needed for your infrastructure

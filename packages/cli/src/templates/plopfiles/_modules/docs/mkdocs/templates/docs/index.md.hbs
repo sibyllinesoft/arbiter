@@ -1,0 +1,44 @@
+# {{titleCase name}}
+
+Welcome to the {{titleCase name}} documentation.
+
+## Overview
+
+{{description}}
+
+## Quick Links
+
+- [Getting Started](getting-started/installation.md) - Install and configure {{titleCase name}}
+- [Architecture](architecture/overview.md) - Understand the system design
+- [API Reference](reference/) - Detailed API documentation
+- [Contributing](contributing/guidelines.md) - Help improve {{titleCase name}}
+
+## Features
+
+{{#if capabilities}}
+{{#each capabilities}}
+- **{{titleCase this}}** - Core capability
+{{/each}}
+{{else}}
+- Feature-rich and extensible
+- Well-documented API
+- Easy to configure
+{{/if}}
+
+## Project Structure
+
+```
+{{name}}/
+{{#if modules}}
+{{#each modules}}
+├── {{this}}/          # {{titleCase this}} module
+{{/each}}
+{{/if}}
+├── docs/              # Documentation
+└── README.md
+```
+
+## Getting Help
+
+- [GitHub Issues](https://github.com/{{author}}/{{name}}/issues) - Report bugs or request features
+- [Discussions](https://github.com/{{author}}/{{name}}/discussions) - Ask questions and share ideas

@@ -1,0 +1,26 @@
+import * as pulumi from "@pulumi/pulumi";
+
+// Configuration
+const config = new pulumi.Config();
+const environment = config.get("environment") || "dev";
+const appPort = config.getNumber("appPort") || 3000;
+
+// Common tags for all resources
+const commonTags = {
+  Project: "{{kebabCase name}}",
+  Environment: environment,
+  ManagedBy: "pulumi",
+};
+
+// Export stack outputs
+export const projectName = "{{kebabCase name}}";
+export const env = environment;
+
+// Example: Create resources based on your cloud provider
+// import * as aws from "@pulumi/aws";
+//
+// const bucket = new aws.s3.Bucket("{{kebabCase name}}-bucket", {
+//   tags: commonTags,
+// });
+//
+// export const bucketName = bucket.bucket;

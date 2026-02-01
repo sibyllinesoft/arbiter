@@ -1,0 +1,48 @@
+import { app, BrowserWindow, ipcMain } from "electron";
+import path from "path";
+
+const isDev = process.env.ELECTRON_IS_DEV === "1";
+
+function createWindow() {
+  const mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  if (isDev) {
+    // Load from Vite dev server
+    mainWindow.loadURL("http://localhost:5173");
+    mainWindow.webContents.openDevTools();
+  } else {
+    // Load built frontend
+    mainWindow.loadFile(path.join(__dirname, "../frontend/dist/index.html"));
+  }
+
+  return mainWindow;
+}
+
+app.whenReady().then(() => {
+  createWindow();
+
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
+
+// IPC handlers
+ipcMain.handle("app:version", () => {
+  return app.getVersion();
+});

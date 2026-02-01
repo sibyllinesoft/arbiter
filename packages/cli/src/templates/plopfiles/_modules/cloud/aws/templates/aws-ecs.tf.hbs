@@ -1,0 +1,84 @@
+# ECS Cluster for containerized applications
+resource "aws_ecs_cluster" "main" {
+  name = "${local.project_name}-${var.environment}"
+
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+}
+
+# ECS Task Definition
+resource "aws_ecs_task_definition" "app" {
+  family                   = "${local.project_name}-${var.environment}"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.ecs_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = local.project_name
+      image = "${aws_ecr_repository.app.repository_url}:latest"
+      portMappings = [
+        {
+          containerPort = var.app_port
+          protocol      = "tcp"
+        }
+      ]
+      environment = [
+        { name = "NODE_ENV", value = var.environment },
+        { name = "PORT", value = tostring(var.app_port) }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.app.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
+        }
+      }
+    }
+  ])
+}
+
+# ECS Service
+resource "aws_ecs_service" "app" {
+  name            = local.project_name
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = var.instance_count
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = aws_subnet.private[*].id
+    security_groups  = [aws_security_group.app.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.app.arn
+    container_name   = local.project_name
+    container_port   = var.app_port
+  }
+
+  depends_on = [aws_lb_listener.app]
+}
+
+# ECR Repository
+resource "aws_ecr_repository" "app" {
+  name                 = local.project_name
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/ecs/${local.project_name}-${var.environment}"
+  retention_in_days = 30
+}

@@ -1,0 +1,38 @@
+/**
+ * @module routes
+ * @description API route definitions for {{pascalCase name}} backend.
+ *
+ * All routes are organized under this module and mounted on the main app.
+ */
+
+import { Hono } from "hono";
+import { health } from "./health.js";
+
+/**
+ * Main router instance.
+ *
+ * Aggregates all sub-routes and provides the base routing structure.
+ *
+ * @example
+ * ```typescript
+ * import { routes } from "./routes/index.js";
+ * app.route("/", routes);
+ * ```
+ */
+export const routes = new Hono();
+
+// Health check endpoints
+routes.route("/health", health);
+
+/**
+ * Root endpoint.
+ *
+ * @returns Welcome message with API version.
+ */
+routes.get("/", (c) => {
+  return c.json({
+    name: "{{pascalCase name}} API",
+    version: "1.0.0",
+    docs: "/docs",
+  });
+});

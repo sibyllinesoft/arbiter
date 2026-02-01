@@ -1,0 +1,28 @@
+/**
+ * Shared types for {{pascalCase name}}
+ */
+
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface HealthStatus {
+  status: "ok" | "degraded" | "unhealthy";
+  service: string;
+  timestamp: string;
+  checks?: Record<string, boolean>;
+}

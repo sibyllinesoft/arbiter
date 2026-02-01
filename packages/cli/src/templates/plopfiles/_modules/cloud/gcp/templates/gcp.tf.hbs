@@ -1,0 +1,62 @@
+# GCP Provider Configuration
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "google" {
+  project = var.gcp_project
+  region  = var.gcp_region
+}
+
+variable "gcp_project" {
+  description = "GCP Project ID"
+  type        = string
+}
+
+variable "gcp_region" {
+  description = "GCP region"
+  type        = string
+  default     = "us-central1"
+}
+
+variable "environment" {
+  description = "Environment name (e.g., dev, staging, prod)"
+  type        = string
+  default     = "dev"
+}
+
+variable "app_port" {
+  description = "Application port"
+  type        = number
+  default     = 3000
+}
+
+locals {
+  project_name = "{{kebabCase name}}"
+  common_tags = {
+    Project     = local.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+
+# Enable required APIs
+resource "google_project_service" "apis" {
+  for_each = toset([
+    "run.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "secretmanager.googleapis.com",
+  ])
+
+  project = var.gcp_project
+  service = each.key
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}

@@ -1,0 +1,43 @@
+# Architecture Overview
+
+## System Design
+
+{{titleCase name}} follows a modular architecture designed for scalability and maintainability.
+
+```mermaid
+graph TB
+    A[Client] --> B[API Gateway]
+    B --> C[Services]
+    C --> D[Database]
+    C --> E[Cache]
+```
+
+## Components
+
+{{#if modules}}
+{{#each modules}}
+### {{titleCase this}}
+
+Module responsible for {{this}} functionality.
+
+{{/each}}
+{{else}}
+### Core Module
+
+The main application logic.
+
+### API Layer
+
+RESTful API endpoints.
+
+### Data Layer
+
+Database and caching.
+{{/if}}
+
+## Design Principles
+
+1. **Modularity** - Each component is self-contained
+2. **Testability** - All components are unit testable
+3. **Scalability** - Horizontal scaling support
+4. **Observability** - Built-in metrics and logging

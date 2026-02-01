@@ -1,0 +1,22 @@
+import SwiftUI
+
+struct DetailsView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Details Screen")
+                .font(.title2)
+
+            Text("Add your content here")
+                .foregroundColor(.secondary)
+        }
+        .padding()
+        .navigationTitle("Details")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+#Preview {
+    NavigationStack {
+        DetailsView()
+    }
+}

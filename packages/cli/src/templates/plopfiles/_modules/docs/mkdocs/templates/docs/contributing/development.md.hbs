@@ -1,0 +1,164 @@
+# Development Setup
+
+## Prerequisites
+
+- Node.js 18+ or Bun 1.0+
+- Git
+- Python 3.10+ (for docs)
+{{#if useDocker}}
+- Docker & Docker Compose
+{{/if}}
+
+## Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/{{author}}/{{name}}.git
+cd {{name}}
+```
+
+### 2. Install Dependencies
+
+```bash
+{{#if useBun}}
+bun install
+{{else}}
+npm install
+{{/if}}
+```
+
+### 3. Set Up Environment
+
+```bash
+cp .env.example .env
+# Edit .env with your values
+```
+
+### 4. Start Development Server
+
+```bash
+{{#if useBun}}
+bun run dev
+{{else}}
+npm run dev
+{{/if}}
+```
+
+## Code Quality
+
+### Linting
+
+```bash
+# Check for issues
+{{#if useBun}}
+bun run lint
+{{else}}
+npm run lint
+{{/if}}
+
+# Auto-fix issues
+{{#if useBun}}
+bun run lint:fix
+{{else}}
+npm run lint:fix
+{{/if}}
+```
+
+### Formatting
+
+```bash
+{{#if useBun}}
+bun run format
+{{else}}
+npm run format
+{{/if}}
+```
+
+### Type Checking
+
+```bash
+{{#if useBun}}
+bun run typecheck
+{{else}}
+npm run typecheck
+{{/if}}
+```
+
+## Testing
+
+```bash
+# Run all tests
+{{#if useBun}}
+bun test
+{{else}}
+npm test
+{{/if}}
+
+# Run with coverage
+{{#if useBun}}
+bun test --coverage
+{{else}}
+npm run test:coverage
+{{/if}}
+```
+
+## Documentation
+
+### Build Docs
+
+```bash
+# Install Python dependencies
+pip install -r requirements-docs.txt
+
+# Serve locally
+mkdocs serve
+
+# Build for production
+mkdocs build
+```
+
+### API Documentation
+
+API documentation is auto-generated from source code comments.
+
+```bash
+{{#if useBun}}
+bun run docs:backend
+{{else}}
+npm run docs:backend
+{{/if}}
+```
+
+## Project Structure
+
+```
+{{name}}/
+├── .arbiter/          # Arbiter spec files
+├── backend/           # Backend service
+├── frontend/          # Frontend app
+├── docs/              # Documentation
+├── scripts/           # Build scripts
+└── tests/             # Integration tests
+```
+
+## IDE Setup
+
+### VS Code
+
+Recommended extensions:
+
+- Biome (for JS/TS)
+- Tailwind CSS IntelliSense
+- TypeScript Vue Plugin (if using Vue)
+
+### Settings
+
+Add to `.vscode/settings.json`:
+
+```json
+{
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.formatOnSave": true
+}
+```

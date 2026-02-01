@@ -1,0 +1,205 @@
+# {{titleCase name}} - Project Commands
+# Run `just` to see available recipes
+
+set dotenv-load
+
+# Default recipe: show help
+default:
+    @just --list
+
+# Development
+# -----------
+
+# Start development server
+dev:
+{{#if (eq backend "node-hono")}}
+    bun run --watch {{backendDir}}/src/index.ts
+{{else if (eq backend "node-express")}}
+    bun run --watch {{backendDir}}/src/index.ts
+{{else if (eq backend "python-fastapi")}}
+    cd {{backendDir}} && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+{{else if (eq backend "rust-axum")}}
+    cd {{backendDir}} && cargo watch -x run
+{{else if (eq backend "go-chi")}}
+    cd {{backendDir}} && air
+{{else if (eq backend "kotlin-ktor")}}
+    cd {{backendDir}} && ./gradlew run --continuous
+{{else}}
+    @echo "Starting development server..."
+    bun run dev
+{{/if}}
+
+# Run tests
+test *args:
+{{#if (eq backend "python-fastapi")}}
+    cd {{backendDir}} && pytest {{{{raw}}}}{{args}}{{{{/raw}}}}
+{{else if (eq backend "rust-axum")}}
+    cd {{backendDir}} && cargo test {{{{raw}}}}{{args}}{{{{/raw}}}}
+{{else if (eq backend "go-chi")}}
+    cd {{backendDir}} && go test ./... {{{{raw}}}}{{args}}{{{{/raw}}}}
+{{else if (eq backend "kotlin-ktor")}}
+    cd {{backendDir}} && ./gradlew test {{{{raw}}}}{{args}}{{{{/raw}}}}
+{{else}}
+    bun test {{{{raw}}}}{{args}}{{{{/raw}}}}
+{{/if}}
+
+# Run linter
+lint:
+{{#if (eq backend "python-fastapi")}}
+    cd {{backendDir}} && ruff check . && ruff format --check .
+{{else if (eq backend "rust-axum")}}
+    cd {{backendDir}} && cargo clippy -- -D warnings
+{{else if (eq backend "go-chi")}}
+    cd {{backendDir}} && golangci-lint run
+{{else}}
+    bun run lint
+{{/if}}
+
+# Format code
+fmt:
+{{#if (eq backend "python-fastapi")}}
+    cd {{backendDir}} && ruff format .
+{{else if (eq backend "rust-axum")}}
+    cd {{backendDir}} && cargo fmt
+{{else if (eq backend "go-chi")}}
+    cd {{backendDir}} && gofmt -w .
+{{else}}
+    bun run format
+{{/if}}
+
+# Build
+# -----
+
+# Build for production
+build:
+{{#if (eq backend "rust-axum")}}
+    cd {{backendDir}} && cargo build --release
+{{else if (eq backend "go-chi")}}
+    cd {{backendDir}} && go build -o bin/server ./cmd/server
+{{else if (eq backend "kotlin-ktor")}}
+    cd {{backendDir}} && ./gradlew build
+{{else}}
+    bun run build
+{{/if}}
+
+# Clean build artifacts
+clean:
+{{#if (eq backend "rust-axum")}}
+    cd {{backendDir}} && cargo clean
+{{else if (eq backend "go-chi")}}
+    rm -rf {{backendDir}}/bin
+{{else if (eq backend "kotlin-ktor")}}
+    cd {{backendDir}} && ./gradlew clean
+{{else}}
+    rm -rf dist node_modules/.cache
+{{/if}}
+
+# Docker
+# ------
+
+# Start all services with docker-compose
+up *args:
+    docker compose up -d {{{{raw}}}}{{args}}{{{{/raw}}}}
+
+# Stop all services
+down:
+    docker compose down
+
+# View logs
+logs *service:
+    docker compose logs -f {{{{raw}}}}{{service}}{{{{/raw}}}}
+
+# Rebuild and restart containers
+rebuild *service:
+    docker compose up -d --build {{{{raw}}}}{{service}}{{{{/raw}}}}
+
+{{#if database}}
+# Database
+# --------
+
+# Run database migrations
+db-migrate:
+{{#if (eq database "postgres-drizzle")}}
+    bun run drizzle-kit push
+{{else}}
+    @echo "Run database migrations"
+{{/if}}
+
+# Generate migration from schema changes
+db-generate:
+{{#if (eq database "postgres-drizzle")}}
+    bun run drizzle-kit generate
+{{else}}
+    @echo "Generate database migration"
+{{/if}}
+
+# Open database studio/UI
+db-studio:
+{{#if (eq database "postgres-drizzle")}}
+    bun run drizzle-kit studio
+{{else}}
+    @echo "Open database UI"
+{{/if}}
+
+# Reset database (drop and recreate)
+db-reset:
+    docker compose down -v
+    docker compose up -d db
+    @echo "Waiting for database to be ready..."
+    sleep 3
+    just db-migrate
+{{/if}}
+
+{{#if (has infra "kubernetes")}}
+# Kubernetes
+# ----------
+
+# Apply kubernetes manifests (dev)
+k8s-apply:
+    kubectl apply -k k8s/overlays/dev
+
+# Delete kubernetes resources (dev)
+k8s-delete:
+    kubectl delete -k k8s/overlays/dev
+
+# View pod logs
+k8s-logs:
+    kubectl logs -l app={{kebabCase name}} -f
+
+# Get pod status
+k8s-status:
+    kubectl get pods -l app={{kebabCase name}}
+{{/if}}
+
+# Utilities
+# ---------
+
+# Install dependencies
+install:
+{{#if (eq backend "python-fastapi")}}
+    cd {{backendDir}} && pip install -r requirements.txt -r requirements-dev.txt
+{{else if (eq backend "rust-axum")}}
+    cd {{backendDir}} && cargo fetch
+{{else if (eq backend "go-chi")}}
+    cd {{backendDir}} && go mod download
+{{else if (eq backend "kotlin-ktor")}}
+    cd {{backendDir}} && ./gradlew dependencies
+{{else}}
+    bun install
+{{/if}}
+
+# Check for outdated dependencies
+outdated:
+{{#if (eq backend "python-fastapi")}}
+    cd {{backendDir}} && pip list --outdated
+{{else if (eq backend "rust-axum")}}
+    cd {{backendDir}} && cargo outdated
+{{else if (eq backend "go-chi")}}
+    cd {{backendDir}} && go list -u -m all
+{{else}}
+    bun outdated
+{{/if}}
+
+# Run a shell in the backend container
+shell:
+    docker compose exec backend sh

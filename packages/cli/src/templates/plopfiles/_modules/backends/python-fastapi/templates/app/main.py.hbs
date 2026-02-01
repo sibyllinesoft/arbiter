@@ -1,0 +1,40 @@
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.routers import health
+from app.config import settings
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    print(f"Starting {{titleCase name}} API...")
+    yield
+    # Shutdown
+    print("Shutting down...")
+
+
+app = FastAPI(
+    title="{{titleCase name}} API",
+    description="{{titleCase name}} backend service",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(health.router, prefix="/health", tags=["health"])
+
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to {{titleCase name}} API"}

@@ -1,0 +1,51 @@
+/* Custom styles for {{name}} documentation */
+
+:root {
+  --md-primary-fg-color: #5c6bc0;
+  --md-primary-fg-color--light: #8e99a4;
+  --md-primary-fg-color--dark: #3949ab;
+  --md-accent-fg-color: #7c4dff;
+}
+
+/* Code block improvements */
+.highlight code {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+}
+
+/* Better inline code */
+code {
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+/* Table improvements */
+.md-typeset table:not([class]) {
+  display: table;
+  width: 100%;
+}
+
+/* Admonition icons */
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-color: #00bfa5;
+}
+
+/* Better heading spacing */
+.md-typeset h2 {
+  margin-top: 1.5em;
+}
+
+.md-typeset h3 {
+  margin-top: 1.25em;
+}
+
+/* API reference styling */
+.doc-heading {
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* Mermaid diagram styling */
+.mermaid {
+  text-align: center;
+  margin: 2em 0;
+}

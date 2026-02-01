@@ -1,0 +1,97 @@
+version: "3.8"
+
+services:
+{{#if backend}}
+{{#unless (eq backend "none")}}
+  {{kebabCase name}}-backend:
+    build:
+      context: ./{{backendDir}}
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+{{#if database}}
+{{#unless (eq database "none")}}
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/{{snakeCase name}}
+{{/unless}}
+{{/if}}
+    volumes:
+      - ./{{backendDir}}:/app
+      - /app/node_modules
+{{#if database}}
+{{#unless (eq database "none")}}
+    depends_on:
+      - db
+{{/unless}}
+{{/if}}
+{{/unless}}
+{{/if}}
+
+{{#if frontend}}
+{{#unless (eq frontend "none")}}
+  {{kebabCase name}}-frontend:
+    build:
+      context: ./{{frontendDir}}
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    volumes:
+      - ./{{frontendDir}}:/app
+      - /app/node_modules
+{{/unless}}
+{{/if}}
+
+{{#if database}}
+{{#unless (eq database "none")}}
+  db:
+{{#if (eq database "postgres-drizzle")}}
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: {{snakeCase name}}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+{{/if}}
+{{#if (eq database "mysql-prisma")}}
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: {{snakeCase name}}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+{{/if}}
+{{#if (eq database "mongodb")}}
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+      MONGO_INITDB_DATABASE: {{snakeCase name}}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+{{/if}}
+{{/unless}}
+{{/if}}
+
+{{#if database}}
+{{#unless (eq database "none")}}
+volumes:
+{{#if (eq database "postgres-drizzle")}}
+  postgres_data:
+{{/if}}
+{{#if (eq database "mysql-prisma")}}
+  mysql_data:
+{{/if}}
+{{#if (eq database "mongodb")}}
+  mongo_data:
+{{/if}}
+{{/unless}}
+{{/if}}

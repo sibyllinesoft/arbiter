@@ -1,0 +1,35 @@
+/**
+ * Route definitions for {{pascalCase name}}
+ */
+
+{{#if (eq framework "hono")}}
+import { Hono } from "hono";
+import { healthRoutes } from "./health.js";
+
+export const routes = new Hono();
+
+routes.route("/health", healthRoutes);
+
+// Add more routes here
+// routes.route("/api/v1", apiRoutes);
+{{else if (eq framework "express")}}
+import { Router } from "express";
+import { healthRoutes } from "./health.js";
+
+export const routes = Router();
+
+routes.use("/health", healthRoutes);
+
+// Add more routes here
+// routes.use("/api/v1", apiRoutes);
+{{else}}
+import type { FastifyInstance } from "fastify";
+import { healthRoutes } from "./health.js";
+
+export async function routes(app: FastifyInstance) {
+  app.register(healthRoutes, { prefix: "/health" });
+
+  // Add more routes here
+  // app.register(apiRoutes, { prefix: "/api/v1" });
+}
+{{/if}}

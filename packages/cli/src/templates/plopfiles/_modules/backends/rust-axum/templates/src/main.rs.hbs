@@ -1,0 +1,57 @@
+use axum::{
+    routing::get,
+    Router,
+    Json,
+};
+use serde::Serialize;
+use std::net::SocketAddr;
+use tower_http::cors::{CorsLayer, Any};
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+mod health;
+
+#[derive(Serialize)]
+struct Message {
+    message: String,
+}
+
+#[tokio::main]
+async fn main() {
+    // Load .env file
+    dotenvy::dotenv().ok();
+
+    // Initialize tracing
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "info,{{snakeCase name}}=debug".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    // Build router
+    let app = Router::new()
+        .route("/", get(root))
+        .nest("/health", health::router())
+        .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any))
+        .layer(TraceLayer::new_for_http());
+
+    // Get port from environment
+    let port: u16 = std::env::var("PORT")
+        .unwrap_or_else(|_| "3000".to_string())
+        .parse()
+        .expect("PORT must be a number");
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    tracing::info!("{{titleCase name}} listening on {}", addr);
+
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
+
+async fn root() -> Json<Message> {
+    Json(Message {
+        message: "Welcome to {{titleCase name}} API".to_string(),
+    })
+}

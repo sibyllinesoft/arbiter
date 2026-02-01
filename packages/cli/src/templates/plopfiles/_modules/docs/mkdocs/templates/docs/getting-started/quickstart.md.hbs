@@ -1,0 +1,39 @@
+# Quick Start
+
+Get up and running with {{titleCase name}} in minutes.
+
+## Basic Usage
+
+```bash
+# Start development server
+{{#if useBun}}
+bun run dev
+{{else}}
+npm run dev
+{{/if}}
+```
+
+## Example
+
+```typescript
+// Example usage
+import { {{camelCase name}} } from '{{name}}';
+
+const app = {{camelCase name}}();
+app.start();
+```
+
+## Configuration
+
+Create a configuration file:
+
+```yaml
+# config.yaml
+name: {{name}}
+environment: development
+```
+
+## What's Next?
+
+- [Configuration Guide](configuration.md) - Customize your setup
+- [Architecture Overview](../architecture/overview.md) - Understand how it works

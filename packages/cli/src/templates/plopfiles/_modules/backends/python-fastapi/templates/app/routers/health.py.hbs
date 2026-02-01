@@ -1,0 +1,24 @@
+from datetime import datetime
+from fastapi import APIRouter
+
+router = APIRouter()
+
+
+@router.get("/")
+async def health_check():
+    return {
+        "status": "ok",
+        "timestamp": datetime.utcnow().isoformat(),
+        "service": "{{kebabCase name}}-backend",
+    }
+
+
+@router.get("/ready")
+async def readiness_check():
+    # Add database/service checks here
+    return {"ready": True}
+
+
+@router.get("/live")
+async def liveness_check():
+    return {"alive": True}

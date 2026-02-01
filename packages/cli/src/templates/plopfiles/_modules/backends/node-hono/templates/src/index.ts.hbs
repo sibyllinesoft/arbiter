@@ -1,0 +1,30 @@
+/**
+ * {{pascalCase name}} Backend
+ */
+
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+import { logger } from "hono/logger";
+import { cors } from "hono/cors";
+import { routes } from "./routes/index.js";
+{{#if database}}
+import { db } from "./db/index.js";
+{{/if}}
+
+const app = new Hono();
+
+// Middleware
+app.use("*", logger());
+app.use("*", cors());
+
+// Routes
+app.route("/", routes);
+
+// Start server
+const port = parseInt(process.env.PORT ?? "3000", 10);
+
+serve({ fetch: app.fetch, port }, (info) => {
+  console.log(`🚀 {{pascalCase name}} backend running on http://localhost:${info.port}`);
+});
+
+export default app;

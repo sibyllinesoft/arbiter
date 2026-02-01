@@ -1,0 +1,23 @@
+// Custom JavaScript for {{name}} documentation
+
+// Add copy button feedback
+document.addEventListener("DOMContentLoaded", () => {
+  // Enhanced code copy functionality
+  document.querySelectorAll(".highlight button.md-clipboard").forEach((button) => {
+    button.addEventListener("click", () => {
+      const tooltip = button.querySelector(".md-clipboard__message");
+      if (tooltip) {
+        tooltip.textContent = "Copied!";
+        setTimeout(() => {
+          tooltip.textContent = "";
+        }, 2000);
+      }
+    });
+  });
+
+  // Add external link icons
+  document.querySelectorAll('a[href^="http"]:not([href*="{{name}}"])').forEach((link) => {
+    link.setAttribute("target", "_blank");
+    link.setAttribute("rel", "noopener noreferrer");
+  });
+});

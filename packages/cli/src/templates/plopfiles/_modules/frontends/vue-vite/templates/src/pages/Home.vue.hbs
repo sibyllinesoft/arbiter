@@ -1,0 +1,27 @@
+<script setup lang="ts">
+import { useQuery } from "@tanstack/vue-query";
+import { api } from "../lib/api";
+
+const { data: health, isLoading, error } = useQuery({
+  queryKey: ["health"],
+  queryFn: () => api.get("/health").then((res) => res.json()),
+  retry: false,
+});
+</script>
+
+<template>
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-4xl font-bold mb-6">{{titleCase name}}</h1>
+
+    <div class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-semibold mb-4">API Status</h2>
+      <p v-if="isLoading" class="text-gray-500">Checking API...</p>
+      <p v-else-if="error" class="text-red-500">
+        API not reachable. Make sure the backend is running.
+      </p>
+      <p v-else-if="health" class="text-green-500">
+        API is healthy: \{{ JSON.stringify(health) }}
+      </p>
+    </div>
+  </div>
+</template>

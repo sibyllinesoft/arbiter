@@ -1,0 +1,29 @@
+# Clippy configuration
+# https://doc.rust-lang.org/clippy/configuration.html
+
+# Cognitive complexity threshold
+cognitive-complexity-threshold = 25
+
+# Maximum number of lines in a function
+too-many-lines-threshold = 100
+
+# Allowed wildcard imports
+allowed-wildcard-imports = []
+
+# Minimum amount of lines to match for "large types"
+large-error-threshold = 128
+
+# Maximum bytes for small values (stack)
+trivial-copy-size-limit = 16
+
+# Upper bound for large arrays
+array-size-threshold = 512000
+
+# Allowed duplicate modules (none by default)
+allowed-duplicate-crates = []
+
+# Third-party crates organization names
+third-party = ["{{snakeCase name}}"]
+
+# Standard library configuration
+msrv = "1.75"

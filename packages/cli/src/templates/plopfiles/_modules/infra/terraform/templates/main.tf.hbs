@@ -1,0 +1,34 @@
+terraform {
+  required_version = ">= 1.0"
+
+  required_providers {
+    # Add your cloud provider here
+    # aws = {
+    #   source  = "hashicorp/aws"
+    #   version = "~> 5.0"
+    # }
+  }
+
+  # Backend configuration - uncomment and configure for remote state
+  # backend "s3" {
+  #   bucket = "{{kebabCase name}}-terraform-state"
+  #   key    = "state/terraform.tfstate"
+  #   region = "us-east-1"
+  # }
+}
+
+# Provider configuration
+# provider "aws" {
+#   region = var.region
+# }
+
+# Local variables
+locals {
+  project_name = "{{kebabCase name}}"
+  environment  = var.environment
+  common_tags = {
+    Project     = local.project_name
+    Environment = local.environment
+    ManagedBy   = "terraform"
+  }
+}

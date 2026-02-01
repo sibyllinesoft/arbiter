@@ -1,0 +1,158 @@
+import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "@storybook/test";
+import { Button } from "../components/Button";
+
+/**
+ * Primary UI component for user interaction.
+ *
+ * ## Usage
+ *
+ * ```tsx
+ * import { Button } from "./components/Button";
+ *
+ * <Button variant="primary" onClick={() => {}}>
+ *   Click me
+ * </Button>
+ * ```
+ */
+const meta = {
+  title: "Components/Button",
+  component: Button,
+  parameters: {
+    layout: "centered",
+    docs: {
+      description: {
+        component: "A versatile button component with multiple variants and sizes.",
+      },
+    },
+  },
+  tags: ["autodocs"],
+  argTypes: {
+    variant: {
+      control: "select",
+      options: ["primary", "secondary", "outline", "ghost", "destructive"],
+      description: "The visual style of the button",
+      table: {
+        type: { summary: "string" },
+        defaultValue: { summary: "primary" },
+      },
+    },
+    size: {
+      control: "select",
+      options: ["sm", "md", "lg"],
+      description: "The size of the button",
+      table: {
+        type: { summary: "string" },
+        defaultValue: { summary: "md" },
+      },
+    },
+    disabled: {
+      control: "boolean",
+      description: "Whether the button is disabled",
+    },
+    loading: {
+      control: "boolean",
+      description: "Whether to show a loading spinner",
+    },
+    onClick: {
+      action: "clicked",
+      description: "Click handler",
+    },
+  },
+  args: {
+    onClick: fn(),
+  },
+} satisfies Meta<typeof Button>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+/**
+ * The default button style.
+ */
+export const Primary: Story = {
+  args: {
+    variant: "primary",
+    children: "Primary Button",
+  },
+};
+
+/**
+ * Secondary buttons are used for less prominent actions.
+ */
+export const Secondary: Story = {
+  args: {
+    variant: "secondary",
+    children: "Secondary Button",
+  },
+};
+
+/**
+ * Outline buttons have a transparent background.
+ */
+export const Outline: Story = {
+  args: {
+    variant: "outline",
+    children: "Outline Button",
+  },
+};
+
+/**
+ * Ghost buttons are minimal and blend with the background.
+ */
+export const Ghost: Story = {
+  args: {
+    variant: "ghost",
+    children: "Ghost Button",
+  },
+};
+
+/**
+ * Destructive buttons indicate dangerous actions.
+ */
+export const Destructive: Story = {
+  args: {
+    variant: "destructive",
+    children: "Delete",
+  },
+};
+
+/**
+ * Small buttons for compact UIs.
+ */
+export const Small: Story = {
+  args: {
+    size: "sm",
+    children: "Small",
+  },
+};
+
+/**
+ * Large buttons for prominent CTAs.
+ */
+export const Large: Story = {
+  args: {
+    size: "lg",
+    children: "Large Button",
+  },
+};
+
+/**
+ * Disabled state prevents interaction.
+ */
+export const Disabled: Story = {
+  args: {
+    disabled: true,
+    children: "Disabled",
+  },
+};
+
+/**
+ * Loading state shows a spinner.
+ */
+export const Loading: Story = {
+  args: {
+    loading: true,
+    children: "Loading...",
+  },
+};

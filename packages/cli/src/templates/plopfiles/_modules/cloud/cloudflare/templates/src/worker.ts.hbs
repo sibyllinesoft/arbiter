@@ -1,0 +1,51 @@
+/**
+ * {{titleCase name}} Cloudflare Worker
+ */
+
+export interface Env {
+  ENVIRONMENT: string;
+  // KV: KVNamespace;
+  // DB: D1Database;
+  // BUCKET: R2Bucket;
+}
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+
+    // Router
+    switch (url.pathname) {
+      case "/":
+        return new Response(JSON.stringify({
+          message: "Welcome to {{titleCase name}} API",
+          environment: env.ENVIRONMENT,
+        }), {
+          headers: { "Content-Type": "application/json" },
+        });
+
+      case "/health":
+        return new Response(JSON.stringify({
+          status: "ok",
+          timestamp: new Date().toISOString(),
+          service: "{{kebabCase name}}-worker",
+        }), {
+          headers: { "Content-Type": "application/json" },
+        });
+
+      default:
+        return new Response("Not Found", { status: 404 });
+    }
+  },
+
+  // Scheduled handler (cron triggers)
+  // async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+  //   ctx.waitUntil(doSomeTask());
+  // },
+
+  // Queue handler
+  // async queue(batch: MessageBatch<any>, env: Env) {
+  //   for (const message of batch.messages) {
+  //     console.log(message.body);
+  //   }
+  // },
+};

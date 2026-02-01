@@ -1,0 +1,50 @@
+package main
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+	"github.com/joho/godotenv"
+
+	"{{kebabCase name}}/internal/handlers"
+)
+
+func main() {
+	// Load .env file
+	godotenv.Load()
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	r := chi.NewRouter()
+
+	// Middleware
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.RequestID)
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowCredentials: true,
+	}))
+
+	// Routes
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "Welcome to {{titleCase name}} API",
+		})
+	})
+
+	r.Mount("/health", handlers.HealthRouter())
+
+	log.Printf("{{titleCase name}} listening on port %s", port)
+	http.ListenAndServe(":"+port, r)
+}
