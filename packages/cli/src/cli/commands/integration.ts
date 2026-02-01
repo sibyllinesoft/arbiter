@@ -24,6 +24,7 @@ export function createIntegrationCommands(program: Command): void {
     .option("--dry-run", "preview changes without applying them")
     .option("--force", "overwrite existing manifest entries")
     .option("--backup", "create backup files before modification")
+    .option("--github", "sync tasks/groups with GitHub issues (requires GITHUB_TOKEN)")
     .action(async (options: SyncOptions, command) => {
       try {
         const config = requireCommandConfig(command);

@@ -262,6 +262,8 @@ export interface SyncOptions {
   force?: boolean;
   /** Verbose logging */
   verbose?: boolean;
+  /** Enable GitHub issue sync (syncs tasks to GitHub issues) */
+  github?: boolean;
 }
 
 /**
