@@ -11,13 +11,22 @@
 import path from "node:path";
 import { getCueManipulator } from "@/constraints/cli-integration.js";
 import { ApiClient } from "@/io/api/api-client.js";
+import { isMarkdownStorage } from "@/services/add/markdown-handlers.js";
 import type { CLIConfig } from "@/types.js";
 import { withProgress } from "@/utils/api/progress.js";
+import { Storage } from "@/utils/storage/index.js";
+import { MarkdownStorage } from "@/utils/storage/markdown-storage.js";
+import { EntitySchemas, filterEntities } from "@/utils/storage/schema.js";
+import type { EntityNode, EntityType } from "@/utils/storage/types.js";
 import { formatComponentTable, formatJson, formatYaml } from "@/utils/util/output/formatting.js";
 import chalk from "chalk";
 import fs from "fs-extra";
 
-export interface ListOptions {
+/**
+ * List options - format/verbose are explicit, all other properties
+ * are dynamic filter fields from entity schemas
+ */
+export interface ListOptions extends Record<string, unknown> {
   format?: "table" | "json" | "yaml";
   verbose?: boolean;
 }
@@ -46,6 +55,7 @@ const VALID_TYPES = [
   "infrastructure",
   "group",
   "task",
+  "note",
   "contract",
   "capability",
 ] as const;
@@ -87,13 +97,15 @@ function outputComponents(components: any[], format: string | undefined): void {
 
 /**
  * List components from remote API
+ * @param injectedClient - Optional pre-created ApiClient (for testing)
  */
 async function listComponentsRemotely(
   type: ValidType,
   options: ListOptions,
   config: CLIConfig,
+  injectedClient?: ApiClient,
 ): Promise<number> {
-  const client = new ApiClient(config);
+  const client = injectedClient ?? new ApiClient(config);
   const result = await withProgress({ text: `Listing ${type}s...` }, () =>
     client.listComponents(type),
   );
@@ -118,10 +130,15 @@ async function listComponentsRemotely(
   return 0;
 }
 
+/**
+ * List command entry point
+ * @param injectedClient - Optional pre-created ApiClient (for testing)
+ */
 export async function listCommand(
   type: string,
   options: ListOptions,
   config: CLIConfig,
+  injectedClient?: ApiClient,
 ): Promise<number> {
   try {
     if (!isValidType(type)) {
@@ -133,7 +150,7 @@ export async function listCommand(
       return await listComponentsLocally(type, options, config);
     }
 
-    return await listComponentsRemotely(type, options, config);
+    return await listComponentsRemotely(type, options, config, injectedClient);
   } catch (error) {
     console.error(chalk.red("List command failed:"), (error as Error).message);
     return 2;
@@ -142,10 +159,24 @@ export async function listCommand(
 
 async function listComponentsLocally(
   type: ValidType,
-  _options: ListOptions,
+  options: ListOptions,
   config: CLIConfig,
 ): Promise<number> {
   try {
+    const projectDir = config.projectDir ?? process.cwd();
+
+    // Check if project uses markdown-first storage
+    const useMarkdown = await isMarkdownStorage(projectDir);
+
+    if (useMarkdown) {
+      return await listFromMarkdownStorage(type, options, projectDir);
+    }
+
+    // Handle task and note types separately (they use dedicated storage files)
+    if (type === "task" || type === "note") {
+      return await listStorageItems(type, options, config);
+    }
+
     const spec = await loadLocalAssemblySpec(config);
 
     if (!spec) {
@@ -173,6 +204,236 @@ async function listComponentsLocally(
     );
     return 2;
   }
+}
+
+/**
+ * Map ValidType to EntityType for markdown storage queries
+ */
+function mapTypeToEntityType(type: ValidType): EntityType | EntityType[] | null {
+  const typeMap: Partial<Record<ValidType, EntityType | EntityType[]>> = {
+    service: "service",
+    client: "client",
+    endpoint: "endpoint",
+    route: "route",
+    database: "resource",
+    cache: "resource",
+    infrastructure: "resource",
+    group: "group",
+    task: "task",
+    note: "note",
+    schema: "schema",
+    contract: "contract",
+    flow: "flow",
+    locator: "locator",
+  };
+  return typeMap[type] ?? null;
+}
+
+/**
+ * List entities from markdown storage
+ */
+async function listFromMarkdownStorage(
+  type: ValidType,
+  options: ListOptions,
+  projectDir: string,
+): Promise<number> {
+  const storage = new MarkdownStorage(path.join(projectDir, ".arbiter"));
+
+  // Map CLI type to entity type(s)
+  const entityType = mapTypeToEntityType(type);
+
+  if (!entityType) {
+    console.log(chalk.yellow(`Type "${type}" is not supported with markdown storage yet`));
+    return 0;
+  }
+
+  // Load entities
+  const entityTypes = Array.isArray(entityType) ? entityType : [entityType];
+  const entities = await storage.list(entityTypes);
+
+  // Additional filtering for resource subtypes
+  let filteredEntities = entities;
+  if (type === "database") {
+    filteredEntities = entities.filter((e) => e.frontmatter.kind === "database");
+  } else if (type === "cache") {
+    filteredEntities = entities.filter((e) => e.frontmatter.kind === "cache");
+  } else if (type === "infrastructure") {
+    // Show all resources
+  }
+
+  if (filteredEntities.length === 0) {
+    console.log(chalk.yellow(`No ${type}s found`));
+    return 0;
+  }
+
+  // Format for output
+  const components = filteredEntities.map((entity) => formatEntityForOutput(entity, type));
+
+  const format = options.format || "table";
+  if (format === "json") {
+    console.log(formatJson(components));
+  } else if (format === "yaml") {
+    console.log(formatYaml(components));
+  } else {
+    console.log(formatComponentTable(components));
+  }
+
+  if (options.verbose) {
+    console.log(chalk.gray(`\nFound ${components.length} ${type}(s)`));
+  }
+
+  return 0;
+}
+
+/**
+ * Format an EntityNode for CLI output
+ */
+function formatEntityForOutput(entity: EntityNode, type: ValidType): Record<string, unknown> {
+  const base = {
+    name: entity.name,
+    type,
+    id: entity.entityId,
+    path: entity.filePath,
+  };
+
+  switch (type) {
+    case "service":
+      return {
+        ...base,
+        language: entity.frontmatter.language ?? "unknown",
+        port: entity.frontmatter.port,
+        subtype: entity.frontmatter.subtype,
+        endpoints: entity.childIds.length,
+      };
+
+    case "client":
+      return {
+        ...base,
+        language: entity.frontmatter.language ?? "unknown",
+        framework: entity.frontmatter.framework,
+        subtype: entity.frontmatter.subtype ?? "frontend",
+      };
+
+    case "endpoint":
+      return {
+        ...base,
+        path: entity.frontmatter.path,
+        methods: entity.frontmatter.methods ?? [],
+      };
+
+    case "database":
+    case "cache":
+    case "infrastructure":
+      return {
+        ...base,
+        kind: entity.frontmatter.kind,
+        engine: entity.frontmatter.engine,
+        provider: entity.frontmatter.provider,
+      };
+
+    case "group":
+      return {
+        ...base,
+        kind: entity.frontmatter.kind ?? "group",
+        status: entity.frontmatter.status ?? "open",
+        due: entity.frontmatter.due,
+        tasks: entity.childIds.length,
+      };
+
+    case "task":
+      return {
+        ...base,
+        status: entity.frontmatter.status ?? "open",
+        priority: entity.frontmatter.priority,
+        assignees: entity.frontmatter.assignees ?? [],
+      };
+
+    case "note":
+      return {
+        ...base,
+        kind: entity.frontmatter.kind ?? "note",
+        target: entity.frontmatter.target,
+        resolved: entity.frontmatter.resolved ?? false,
+      };
+
+    default:
+      return base;
+  }
+}
+
+/**
+ * List tasks or notes from dedicated markdown storage
+ */
+async function listStorageItems(
+  type: "task" | "note",
+  options: ListOptions,
+  _config: CLIConfig,
+): Promise<number> {
+  const projectDir = _config.projectDir ?? process.cwd();
+  const storage = new Storage({
+    baseDir: path.join(projectDir, ".arbiter"),
+    notesDir: path.join(projectDir, ".arbiter", "notes"),
+    tasksDir: path.join(projectDir, ".arbiter", "tasks"),
+  });
+
+  await storage.initialize();
+
+  // Get schema for this entity type
+  const schema = EntitySchemas[type];
+
+  if (type === "task") {
+    const allTasks = await storage.listIssues();
+
+    // Apply schema-based filters
+    const tasks = schema
+      ? (filterEntities(
+          allTasks as unknown as Record<string, unknown>[],
+          schema,
+          options as Record<string, unknown>,
+        ) as unknown as typeof allTasks)
+      : allTasks;
+
+    if (tasks.length === 0) {
+      console.log(chalk.yellow("No tasks found"));
+      return 0;
+    }
+
+    const format = options.format || "table";
+    if (format === "json") {
+      console.log(formatJson(tasks as unknown as Record<string, unknown>[]));
+    } else if (format === "yaml") {
+      console.log(formatYaml(tasks as unknown as Record<string, unknown>[]));
+    } else {
+      console.log(storage.formatIssues(tasks, "table"));
+    }
+  } else {
+    const allNotes = await storage.listComments();
+
+    // Apply schema-based filters
+    const notes = schema
+      ? (filterEntities(
+          allNotes as unknown as Record<string, unknown>[],
+          schema,
+          options as Record<string, unknown>,
+        ) as unknown as typeof allNotes)
+      : allNotes;
+
+    if (notes.length === 0) {
+      console.log(chalk.yellow("No notes found"));
+      return 0;
+    }
+
+    const format = options.format || "table";
+    if (format === "json") {
+      console.log(formatJson(notes as unknown as Record<string, unknown>[]));
+    } else if (format === "yaml") {
+      console.log(formatYaml(notes as unknown as Record<string, unknown>[]));
+    } else {
+      console.log(storage.formatComments(notes, "table"));
+    }
+  }
+
+  return 0;
 }
 
 async function loadLocalAssemblySpec(_config: CLIConfig): Promise<any | null> {

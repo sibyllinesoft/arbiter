@@ -162,9 +162,7 @@ export function deepMerge(
 export function getArbiterPackageUpdates() {
   return {
     scripts: {
-      "arbiter:check": "arbiter check",
-      "arbiter:watch": "arbiter watch",
-      "arbiter:surface": "arbiter surface typescript --output surface.json",
+      "arbiter:status": "arbiter status",
       "arbiter:test:scaffold": "arbiter tests scaffold --language typescript",
       "arbiter:test:cover": "arbiter tests cover --threshold 0.8",
       "arbiter:version:plan": "arbiter version plan --strict",
@@ -177,10 +175,6 @@ export function getArbiterPackageUpdates() {
       profiles: ["library"],
       coverage: {
         threshold: 0.8,
-      },
-      surface: {
-        language: "typescript",
-        output: "surface.json",
       },
     },
   };
@@ -363,16 +357,12 @@ export function generateChangeSet(original: any, modified: any) {
 const PYPROJECT_ARBITER_CONFIG = `
 [tool.arbiter]
 profiles = ["library"]
-surface_language = "python"
-surface_output = "surface.json"
 
 [tool.arbiter.coverage]
 threshold = 0.8
 
 [tool.arbiter.scripts]
-check = "arbiter check"
-watch = "arbiter watch"
-surface = "arbiter surface python --output surface.json"
+check = "arbiter status"
 test_scaffold = "arbiter tests scaffold --language python"
 test_cover = "arbiter tests cover --threshold 0.8"
 version_plan = "arbiter version plan --strict"
@@ -569,14 +559,10 @@ export async function syncPyprojectToml(
 const CARGO_ARBITER_CONFIG = `
 [package.metadata.arbiter]
 profiles = ["library"]
-surface_language = "rust"
-surface_output = "surface.json"
 coverage_threshold = 0.8
 
 [package.metadata.arbiter.scripts]
-check = "arbiter check"
-watch = "arbiter watch"
-surface = "arbiter surface rust --output surface.json"
+check = "arbiter status"
 test_scaffold = "arbiter tests scaffold --language rust"
 test_cover = "arbiter tests cover --threshold 0.8"
 version_plan = "arbiter version plan --strict"
@@ -668,16 +654,10 @@ export async function syncCargoToml(
  */
 const MAKEFILE_ARBITER_TARGETS = `
 # Arbiter targets
-.PHONY: arbiter-check arbiter-watch arbiter-surface arbiter-test-scaffold arbiter-test-cover arbiter-version-plan arbiter-sync
+.PHONY: arbiter-status arbiter-test-scaffold arbiter-test-cover arbiter-version-plan arbiter-sync
 
-arbiter-check:
-	arbiter check
-
-arbiter-watch:
-	arbiter watch
-
-arbiter-surface:
-	arbiter surface bash --output surface.json
+arbiter-status:
+	arbiter status
 
 arbiter-test-scaffold:
 	arbiter tests scaffold --language bash

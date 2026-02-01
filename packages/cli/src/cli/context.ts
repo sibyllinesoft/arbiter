@@ -18,9 +18,34 @@ import {
   loadConfig,
 } from "@/io/config/config.js";
 import { ProjectRepository } from "@/repositories/project-repository.js";
-import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
+import type { AuthSession, CLIConfig, ProjectStructureConfig } from "@/types.js";
 import chalk from "chalk";
 import type { Command } from "commander";
+
+/**
+ * Check if an auth session has a valid (non-expired) token.
+ * Returns true if the token exists and is not expired.
+ */
+function isAuthSessionValid(session: AuthSession | null): boolean {
+  if (!session?.accessToken) {
+    return false;
+  }
+
+  // If no expiry is set, assume valid
+  if (!session.expiresAt) {
+    return true;
+  }
+
+  try {
+    const expiresAt = new Date(session.expiresAt);
+    const now = new Date();
+    // Add 30 second buffer to avoid edge cases
+    return expiresAt.getTime() > now.getTime() + 30000;
+  } catch {
+    // If we can't parse the date, assume invalid
+    return false;
+  }
+}
 
 /**
  * Container for resolved CLI context including configuration.
@@ -52,13 +77,21 @@ export async function resolveCliContext(
 
   const withEnvOverrides = applyEnvironmentOverrides(overridden);
 
-  // Derive localMode based on explicit configuration:
-  // - If API URL was explicitly configured (file, env, or --api-url), use API mode
-  // - If --local was explicitly passed, respect that
-  // - Otherwise, default to local/file-based mode
-  const finalConfig = deriveLocalMode(withEnvOverrides);
-
+  // Load auth session first to determine default mode
   const authSession = await loadAuthSession();
+  const hasValidAuth = isAuthSessionValid(authSession);
+
+  // Derive localMode based on auth status and explicit configuration:
+  // - If --local was explicitly passed, respect that
+  // - If auth is valid (token exists and not expired), default to remote mode
+  // - Otherwise, default to local/file-based mode
+  let finalConfig = deriveLocalMode(withEnvOverrides);
+
+  // If local mode wasn't explicitly set and we have valid auth, switch to remote
+  if (!finalConfig.localModeExplicitlySet && hasValidAuth) {
+    finalConfig = { ...finalConfig, localMode: false };
+  }
+
   if (authSession) {
     finalConfig.authSession = authSession;
   } else if (finalConfig.authSession) {

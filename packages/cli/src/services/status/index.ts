@@ -347,11 +347,16 @@ export function normalizeRemoteProjectStatus(data: any, projectId?: string): Pro
  * Execute the status command.
  * @param options - Status command options
  * @param config - CLI configuration
+ * @param injectedClient - Optional pre-created ApiClient (for testing)
  * @returns Exit code (0=healthy, 1=error, 2=command failure)
  */
-export async function statusCommand(options: StatusOptions, config: Config): Promise<number> {
+export async function statusCommand(
+  options: StatusOptions,
+  config: Config,
+  injectedClient?: ApiClient,
+): Promise<number> {
   try {
-    const status = await fetchProjectStatus(options, config);
+    const status = await fetchProjectStatus(options, config, injectedClient);
     outputStatus(status, config.format, options.detailed ?? false);
     return status.health === "error" ? 1 : 0;
   } catch (error) {
@@ -367,23 +372,32 @@ export async function statusCommand(options: StatusOptions, config: Config): Pro
  * Fetch project status from local or remote source.
  * @param options - Status command options
  * @param config - CLI configuration
+ * @param injectedClient - Optional pre-created ApiClient (for testing)
  * @returns Promise resolving to ProjectStatus
  */
-async function fetchProjectStatus(options: StatusOptions, config: Config): Promise<ProjectStatus> {
+async function fetchProjectStatus(
+  options: StatusOptions,
+  config: Config,
+  injectedClient?: ApiClient,
+): Promise<ProjectStatus> {
   if (config.localMode) {
     return await getLocalProjectStatus(config);
   }
-  return await fetchRemoteOrFallbackStatus(config);
+  return await fetchRemoteOrFallbackStatus(config, injectedClient);
 }
 
 /**
  * Fetch status from remote API with local fallback.
  * @param config - CLI configuration
+ * @param injectedClient - Optional pre-created ApiClient (for testing)
  * @returns Promise resolving to ProjectStatus
  */
-async function fetchRemoteOrFallbackStatus(config: Config): Promise<ProjectStatus> {
+async function fetchRemoteOrFallbackStatus(
+  config: Config,
+  injectedClient?: ApiClient,
+): Promise<ProjectStatus> {
   const structuredJson = config.format === "json";
-  const client = new ApiClient(config);
+  const client = injectedClient ?? new ApiClient(config);
 
   const result = structuredJson
     ? await client.getProjectStatus(config.projectId)

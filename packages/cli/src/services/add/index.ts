@@ -32,9 +32,29 @@ import { addFlow } from "@/services/add/subcommands/runtime/flow.js";
 import { addLocator } from "@/services/add/subcommands/runtime/locator.js";
 import { addService } from "@/services/add/subcommands/runtime/service.js";
 import type { CLIConfig } from "@/types.js";
+import {
+  type CommentKind,
+  type IssuePriority,
+  type IssueStatus,
+  type IssueType,
+  Storage,
+} from "@/utils/storage/index.js";
 import chalk from "chalk";
 import { diffLines } from "diff";
 import fs from "fs-extra";
+import {
+  type MarkdownClientOptions,
+  type MarkdownEndpointOptions,
+  type MarkdownGroupOptions,
+  type MarkdownResourceOptions,
+  type MarkdownServiceOptions,
+  addClientMarkdown,
+  addEndpointMarkdown,
+  addGroupMarkdown,
+  addResourceMarkdown,
+  addServiceMarkdown,
+  isMarkdownStorage,
+} from "./markdown-handlers.js";
 
 export interface AddOptions {
   verbose?: boolean;
@@ -287,6 +307,24 @@ export async function runAddCommand(
   options: AddOptions & Record<string, any>,
   config: CLIConfig,
 ): Promise<number> {
+  const projectDir = config.projectDir ?? process.cwd();
+
+  // Handle task and note separately (they use dedicated storage files)
+  if (subcommand === "task") {
+    return addTask(name, options, config);
+  }
+  if (subcommand === "note") {
+    return addNote(name, options, config);
+  }
+
+  // Check if project uses markdown-first storage
+  const useMarkdown = await isMarkdownStorage(projectDir);
+
+  if (useMarkdown) {
+    return runMarkdownAddCommand(subcommand, name, options, projectDir);
+  }
+
+  // Fall back to CUE-based add for legacy projects
   const manipulator = getCueManipulator();
 
   try {
@@ -324,6 +362,188 @@ export async function runAddCommand(
     return 1;
   } finally {
     await manipulator.cleanup();
+  }
+}
+
+/**
+ * Route add commands through markdown handlers for markdown-first projects.
+ */
+async function runMarkdownAddCommand(
+  subcommand: string,
+  name: string,
+  options: AddOptions & Record<string, any>,
+  projectDir: string,
+): Promise<number> {
+  console.log(chalk.blue(`🔧 Adding ${subcommand}: ${name}`));
+
+  switch (subcommand) {
+    case "service":
+      return addServiceMarkdown(name, options as MarkdownServiceOptions, projectDir);
+
+    case "endpoint":
+      return addEndpointMarkdown(name, options as MarkdownEndpointOptions, projectDir);
+
+    case "resource":
+      // Resource requires kind option
+      if (!options.kind) {
+        console.error(chalk.red("❌ --kind is required for resources"));
+        console.log(
+          chalk.dim("Usage: arbiter add resource <name> --kind <database|cache|queue|storage>"),
+        );
+        return 1;
+      }
+      return addResourceMarkdown(name, options as MarkdownResourceOptions, projectDir);
+
+    case "client":
+      return addClientMarkdown(name, options as MarkdownClientOptions, projectDir);
+
+    case "group":
+      return addGroupMarkdown(name, options as MarkdownGroupOptions, projectDir);
+
+    case "database":
+      // Alias: arbiter add database <name> -> arbiter add resource <name> --kind database
+      return addResourceMarkdown(
+        name,
+        { ...options, kind: "database" } as MarkdownResourceOptions,
+        projectDir,
+      );
+
+    case "cache":
+      return addResourceMarkdown(
+        name,
+        { ...options, kind: "cache" } as MarkdownResourceOptions,
+        projectDir,
+      );
+
+    case "queue":
+      return addResourceMarkdown(
+        name,
+        { ...options, kind: "queue" } as MarkdownResourceOptions,
+        projectDir,
+      );
+
+    default:
+      console.error(
+        chalk.red(`❌ Subcommand "${subcommand}" is not yet supported with markdown storage.`),
+      );
+      console.log(
+        chalk.dim("Supported: service, endpoint, resource, client, group, database, cache, queue"),
+      );
+      console.log(
+        chalk.dim("For other commands, use a CUE-based project (arbiter init with --legacy flag)."),
+      );
+      return 1;
+  }
+}
+
+/**
+ * Add a task to the dedicated tasks markdown storage
+ */
+async function addTask(
+  title: string,
+  options: AddOptions & {
+    type?: string;
+    status?: string;
+    priority?: string;
+    assignee?: string;
+    labels?: string;
+    refs?: string;
+    milestone?: string;
+    description?: string;
+  },
+  config: CLIConfig,
+): Promise<number> {
+  try {
+    const projectDir = config.projectDir ?? process.cwd();
+    const storage = new Storage({
+      baseDir: path.join(projectDir, ".arbiter"),
+      notesDir: path.join(projectDir, ".arbiter", "notes"),
+      tasksDir: path.join(projectDir, ".arbiter", "tasks"),
+    });
+    await storage.initialize();
+
+    // Parse entity references (format: type:slug,type:slug)
+    const references = options.refs
+      ? options.refs.split(",").map((ref) => {
+          const [type, slug] = ref.trim().split(":");
+          return { type: type || "package", slug: slug || type };
+        })
+      : undefined;
+
+    const task = await storage.saveIssue({
+      title,
+      type: (options.type as IssueType) || "task",
+      status: (options.status as IssueStatus) || "open",
+      priority: options.priority as IssuePriority,
+      assignees: options.assignee ? [options.assignee] : undefined,
+      labels: options.labels ? options.labels.split(",").map((l) => l.trim()) : undefined,
+      references,
+      milestone: options.milestone,
+      description: options.description,
+    });
+
+    console.log(chalk.green(`✅ Created task: ${task.id}`));
+    console.log(chalk.dim(`   Title: ${task.title}`));
+    console.log(chalk.dim(`   Status: ${task.status}`));
+    if (task.priority) console.log(chalk.dim(`   Priority: ${task.priority}`));
+    if (task.references?.length) {
+      console.log(
+        chalk.dim(`   References: ${task.references.map((r) => `${r.type}:${r.slug}`).join(", ")}`),
+      );
+    }
+
+    return 0;
+  } catch (error) {
+    console.error(chalk.red("❌ Failed to add task:"));
+    console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+    return 1;
+  }
+}
+
+/**
+ * Add a note/comment to the dedicated notes markdown storage
+ */
+async function addNote(
+  content: string,
+  options: AddOptions & {
+    target?: string;
+    kind?: string;
+    author?: string;
+    tags?: string;
+  },
+  config: CLIConfig,
+): Promise<number> {
+  try {
+    if (!options.target) {
+      console.error(chalk.red("❌ --target is required for notes"));
+      console.log(chalk.dim('Usage: arbiter add note "content" --target <entity-slug>'));
+      return 1;
+    }
+
+    const projectDir = config.projectDir ?? process.cwd();
+    const storage = new Storage({
+      baseDir: path.join(projectDir, ".arbiter"),
+      notesDir: path.join(projectDir, ".arbiter", "notes"),
+      tasksDir: path.join(projectDir, ".arbiter", "tasks"),
+    });
+    await storage.initialize();
+
+    const note = await storage.addComment(options.target, content, {
+      kind: (options.kind as CommentKind) || "note",
+      author: options.author,
+      tags: options.tags ? options.tags.split(",").map((t) => t.trim()) : undefined,
+    });
+
+    console.log(chalk.green(`✅ Created note: ${note.id}`));
+    console.log(chalk.dim(`   Target: ${note.target}`));
+    console.log(chalk.dim(`   Kind: ${note.kind || "note"}`));
+    if (note.author) console.log(chalk.dim(`   Author: ${note.author}`));
+
+    return 0;
+  } catch (error) {
+    console.error(chalk.red("❌ Failed to add note:"));
+    console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+    return 1;
   }
 }
 

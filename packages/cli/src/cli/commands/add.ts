@@ -33,7 +33,9 @@ type EntityType =
   | "schema"
   | "package"
   | "component"
-  | "module";
+  | "module"
+  | "task"
+  | "note";
 
 /**
  * Configuration for a CLI option.
@@ -553,6 +555,47 @@ const ADD_SUBCOMMANDS: AddSubcommandConfig[] = [
       { flags: "--directory <dir>", description: "source directory path" },
       { flags: "--functions <functions>", description: "comma-separated list of main functions" },
       { flags: "--types <types>", description: "comma-separated list of exported types" },
+    ],
+  },
+  {
+    name: "task <title>",
+    description: "add a task to track work on spec entities",
+    entityType: "task",
+    options: [
+      {
+        flags: "--type <type>",
+        description: "task type (task, bug, feature, epic, story, spike)",
+        defaultValue: "task",
+      },
+      {
+        flags: "--status <status>",
+        description: "task status (open, in_progress, blocked, review, done, closed)",
+        defaultValue: "open",
+      },
+      {
+        flags: "--priority <priority>",
+        description: "priority level (critical, high, medium, low)",
+      },
+      { flags: "--assignee <name>", description: "assign to a person" },
+      { flags: "--labels <labels>", description: "comma-separated labels" },
+      { flags: "--refs <refs>", description: "comma-separated entity references (type:slug)" },
+      { flags: "--milestone <milestone>", description: "milestone/group slug" },
+      { flags: "--description <text>", description: "detailed description" },
+    ],
+  },
+  {
+    name: "note <content>",
+    description: "add a note/comment attached to an entity",
+    entityType: "note",
+    options: [
+      { flags: "--target <entity>", description: "target entity slug (required)" },
+      {
+        flags: "--kind <kind>",
+        description: "note kind (discussion, guidance, memory, decision, note)",
+        defaultValue: "note",
+      },
+      { flags: "--author <name>", description: "author name" },
+      { flags: "--tags <tags>", description: "comma-separated tags" },
     ],
   },
 ];

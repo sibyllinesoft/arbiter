@@ -17,7 +17,7 @@ import { Command, Option } from "commander";
 /**
  * Supported entity types for the update command.
  */
-type UpdateableEntityType = "package" | "resource" | "group" | "issue";
+type UpdateableEntityType = "package" | "resource" | "group" | "task";
 
 /**
  * Handle command errors by logging and exiting with error code 2.
@@ -150,11 +150,11 @@ export function createUpdateCommands(): Command {
     .allowUnknownOption(true)
     .action(createUpdateHandler("group"));
 
-  // Update issue command
+  // Update task command
   updateCmd
-    .command("issue <slug>")
-    .description("Update an issue")
-    .option("--title <title>", "Set issue title")
+    .command("task <slug>")
+    .description("Update a task")
+    .option("--title <title>", "Set task title")
     .option("--description <text>", "Update description")
     .option("--status <status>", "Set status (open, in_progress, blocked, review, done, closed)")
     .option("--priority <priority>", "Set priority (critical, high, medium, low)")
@@ -166,7 +166,7 @@ export function createUpdateCommands(): Command {
     .option("-v, --verbose", "Show verbose output")
     .option("--dry-run", "Show changes without applying")
     .allowUnknownOption(true)
-    .action(createUpdateHandler("issue"));
+    .action(createUpdateHandler("task"));
 
   return updateCmd;
 }

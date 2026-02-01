@@ -1,19 +1,16 @@
 /**
  * @packageDocumentation
- * Generation commands module - Registers CLI commands for code generation,
- * documentation, and project explanation.
+ * Generation commands module - Registers CLI commands for code generation.
  *
  * This module provides:
  * - `generate` - Generate project files from CUE specifications
- * - `explain` - Generate human-readable summaries of project specs
  */
 
 import { requireCommandConfig } from "@/cli/context.js";
 import { loadConfigWithGitDetection } from "@/io/config/config.js";
-import { type ExplainOptions, explainCommand } from "@/services/explain/index.js";
 import { generateCommand as runGenerateCommand } from "@/services/generate/io/index.js";
 import type { GenerationReporter } from "@/services/generate/util/types.js";
-import type { CLIConfig, GenerateOptions } from "@/types.js";
+import type { GenerateOptions } from "@/types.js";
 import chalk from "chalk";
 import { Command } from "commander";
 
@@ -78,29 +75,6 @@ async function handleGenerateCommand(
 }
 
 /**
- * Handle the explain command execution.
- * @param options - Explain options (output file, format, verbose)
- * @param command - Commander command instance
- */
-async function handleExplainCommand(
-  options: { output?: string; format?: string; verbose?: boolean },
-  command: Command,
-): Promise<void> {
-  try {
-    const config = requireCommandConfig(command);
-    // Cast format to expected type - Commander provides string, but we validate it
-    const explainOptions: ExplainOptions = {
-      ...options,
-      format: options.format as "text" | "json" | undefined,
-    };
-    const exitCode = await explainCommand(explainOptions, config);
-    process.exit(exitCode);
-  } catch (error) {
-    handleCommandError(error);
-  }
-}
-
-/**
  * Register generation-related commands on the given program.
  * This is the main entry point for generation command setup.
  *
@@ -125,12 +99,4 @@ export function createGenerationCommands(program: Command): void {
     .option("--no-docs", "skip documentation generation")
     .option("--no-code", "skip code generation (services, clients, modules)")
     .action(handleGenerateCommand);
-
-  program
-    .command("explain")
-    .description("generate plain-English summary of project specifications")
-    .option("--output <file>", "output file path (default: stdout)")
-    .option("--format <format>", "output format (markdown, text)", "markdown")
-    .option("--verbose", "detailed explanation with all configuration details")
-    .action(handleExplainCommand);
 }

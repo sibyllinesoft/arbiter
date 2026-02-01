@@ -13,8 +13,10 @@ import path from "node:path";
 import { validateCUE } from "@/cue/index.js";
 import { ApiClient } from "@/io/api/api-client.js";
 import { SystemRepository } from "@/repositories/system-repository.js";
+import { isMarkdownStorage } from "@/services/add/markdown-handlers.js";
 import type { CLIConfig, CheckOptions, ValidationResult } from "@/types.js";
 import { withProgress } from "@/utils/api/progress.js";
+import { MarkdownStorage } from "@/utils/storage/markdown-storage.js";
 import {
   formatErrorDetails,
   formatFileSize,
@@ -67,15 +69,26 @@ function outputResults(
 /**
  * Check command implementation
  * Validates CUE files in the current directory with pretty output and proper exit codes
+ * @param injectedClient - Optional pre-created ApiClient (for testing)
  */
 export async function runCheckCommand(
   patterns: string[],
   options: CheckOptions,
   config: CLIConfig,
+  injectedClient?: ApiClient,
 ): Promise<number> {
   const structuredOutput = isJsonFormat(options);
+  const projectDir = config.projectDir ?? process.cwd();
 
   try {
+    // Check if project uses markdown-first storage
+    const useMarkdown = await isMarkdownStorage(projectDir);
+
+    if (useMarkdown) {
+      return await validateMarkdownStorage(projectDir, options, config);
+    }
+
+    // Legacy CUE-based validation
     const effectivePatterns = getFilePatterns(patterns);
     const files = await findCueFiles(effectivePatterns, {
       recursive: options.recursive ?? true,
@@ -90,7 +103,7 @@ export async function runCheckCommand(
       console.log(chalk.dim(`Found ${files.length} CUE files`));
     }
 
-    const results = await validateFiles(files, config, options, structuredOutput);
+    const results = await validateFiles(files, config, options, structuredOutput, injectedClient);
     outputResults(results, structuredOutput, options, config);
 
     const hasErrors = results.some((r) => r.status === "invalid" || r.status === "error");
@@ -100,6 +113,112 @@ export async function runCheckCommand(
       chalk.red("Check command failed:"),
       error instanceof Error ? error.message : String(error),
     );
+    return 2;
+  }
+}
+
+/**
+ * Validate markdown storage project by building CUE in-memory
+ */
+async function validateMarkdownStorage(
+  projectDir: string,
+  options: CheckOptions,
+  config: CLIConfig,
+): Promise<number> {
+  const structuredOutput = isJsonFormat(options);
+
+  if (!structuredOutput) {
+    console.log(chalk.dim("Validating markdown-first specification..."));
+  }
+
+  try {
+    const storage = new MarkdownStorage(path.join(projectDir, ".arbiter"));
+    const validationResult = await storage.validate();
+
+    if (validationResult.valid) {
+      if (!structuredOutput) {
+        console.log(chalk.green("✓ Specification is valid"));
+
+        // Show entity count
+        const graph = await storage.getGraph();
+        const nodeCount = graph.nodes.size;
+        const edgeCount = graph.edges.length;
+        console.log(chalk.dim(`  ${nodeCount} entities, ${edgeCount} relationships`));
+      } else {
+        console.log(
+          formatJson(
+            [
+              {
+                file: ".arbiter/",
+                status: "valid",
+                errors: [],
+                warnings: [],
+              },
+            ],
+            config.color,
+          ),
+        );
+      }
+      return 0;
+    }
+
+    // Report errors
+    if (!structuredOutput) {
+      console.log(chalk.red("✗ Specification has errors"));
+      for (const error of validationResult.errors) {
+        const location = error.filePath ? `.arbiter/${error.filePath}` : ".arbiter/";
+        console.log(chalk.red(`  ${location}: ${error.message}`));
+      }
+      for (const warning of validationResult.warnings) {
+        const location = warning.filePath ? `.arbiter/${warning.filePath}` : ".arbiter/";
+        console.log(chalk.yellow(`  ${location}: ${warning.message}`));
+      }
+    } else {
+      const results = validationResult.errors.map((err) => ({
+        file: err.filePath || ".arbiter/",
+        status: "invalid",
+        errors: [
+          {
+            line: err.line || 0,
+            column: err.column || 0,
+            message: err.message,
+            severity: "error" as const,
+            category: "validation",
+          },
+        ],
+        warnings: [],
+      }));
+      console.log(formatJson(results, config.color));
+    }
+
+    return 1;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!structuredOutput) {
+      console.error(chalk.red(`Validation failed: ${message}`));
+    } else {
+      console.log(
+        formatJson(
+          [
+            {
+              file: ".arbiter/",
+              status: "error",
+              errors: [
+                {
+                  line: 0,
+                  column: 0,
+                  message,
+                  severity: "error" as const,
+                  category: "system",
+                },
+              ],
+              warnings: [],
+            },
+          ],
+          config.color,
+        ),
+      );
+    }
     return 2;
   }
 }
@@ -137,18 +256,20 @@ export async function findCueFiles(
 
 /**
  * Validate multiple files with progress tracking
+ * @param injectedClient - Optional pre-created client (for testing)
  */
 async function validateFiles(
   files: string[],
   config: CLIConfig,
   options: CheckOptions,
   suppressInteractiveOutput = false,
+  injectedClient?: ApiClient,
 ): Promise<ValidationResult[]> {
   if (config.localMode) {
     return await validateFilesLocally(files, config, options, suppressInteractiveOutput);
   }
 
-  const apiClient = await initializeApiClient(config);
+  const apiClient = await initializeApiClient(config, injectedClient);
 
   return await executeValidationWithProgress(
     files,
@@ -161,9 +282,14 @@ async function validateFiles(
 
 /**
  * Initialize API client with health check
+ * @param config - CLI configuration
+ * @param injectedClient - Optional pre-created client (for testing)
  */
-async function initializeApiClient(config: CLIConfig): Promise<ApiClient> {
-  const apiClient = new ApiClient(config);
+async function initializeApiClient(
+  config: CLIConfig,
+  injectedClient?: ApiClient,
+): Promise<ApiClient> {
+  const apiClient = injectedClient ?? new ApiClient(config);
   const systemRepo = new SystemRepository(apiClient);
 
   const healthCheck = await systemRepo.health();

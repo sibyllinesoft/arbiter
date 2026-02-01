@@ -1,11 +1,11 @@
 /**
  * @packageDocumentation
- * Init command - Initialize new Arbiter projects from templates.
+ * Init command - Initialize new Arbiter projects with markdown-first storage.
  *
  * Provides functionality to:
  * - Initialize projects from predefined presets
+ * - Create markdown structure in .arbiter directory
  * - Support web-app, mobile-app, api-service, microservice templates
- * - Configure project structure and dependencies
  * - Handle both local and server-assisted initialization
  */
 
@@ -13,8 +13,11 @@ import path from "node:path";
 import { ApiClient } from "@/io/api/api-client.js";
 import type { CLIConfig, InitOptions } from "@/types.js";
 import { withProgress } from "@/utils/api/progress.js";
+import { MarkdownStorage } from "@/utils/storage/markdown-storage.js";
+import { createMarkdownFile } from "@/utils/storage/markdown.js";
 import chalk from "chalk";
 import fs from "fs-extra";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * Available presets with local template support
@@ -47,187 +50,266 @@ const PRESETS = [
 ];
 
 /**
- * Generate local preset CUE content based on preset type
+ * Preset configuration for markdown generation
  */
-function generatePresetContent(projectName: string, presetId: string): string {
-  const packageName = projectName.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const slug = projectName
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
-
-  const baseSpec = `package ${packageName}
-
-product: {
-	name: "${projectName}"
-	goals: [
-		"Application goals will be defined here"
-	]
+interface PresetConfig {
+  services?: Array<{
+    name: string;
+    language: string;
+    port?: number;
+    framework?: string;
+    subtype?: "service" | "frontend" | "worker";
+  }>;
+  resources?: Array<{
+    name: string;
+    kind: string;
+    engine?: string;
+  }>;
 }
 
-metadata: {
-	name: "${slug}"
-	version: "1.0.0"
-}
-
-config: {
-	language: "typescript"
-	kind: "${presetId === "web-app" ? "fullstack" : "service"}"
-}
-
-deployment: {
-	target: "kubernetes"
-}
-`;
-
+/**
+ * Get preset configuration based on preset ID
+ */
+function getPresetConfig(presetId: string): PresetConfig {
   switch (presetId) {
     case "web-app":
-      return `${baseSpec}
-services: {
-	api: {
-		type: "internal"
-		language: "typescript"
-		workload: "deployment"
-		sourceDirectory: "./src/api"
-		ports: [{
-			name: "http"
-			port: 3001
-			targetPort: 3001
-		}]
-	}
-}
-
-clients: {
-	web: {
-		subtype: "frontend"
-		framework: "react"
-		language: "typescript"
-		sourceDirectory: "./src/web"
-	}
-}
-
-ui: {
-	routes: [{
-		id: "app:home"
-		path: "/"
-		capabilities: ["view"]
-		components: ["HomePage"]
-	}]
-}
-
-locators: {
-	"page:home": "[data-testid=\\"home-page\\"]"
-	"btn:start": "[data-testid=\\"start-button\\"]"
-}
-`;
+      return {
+        services: [
+          {
+            name: "api",
+            language: "typescript",
+            port: 3001,
+            subtype: "service",
+          },
+          {
+            name: "web",
+            language: "typescript",
+            framework: "react",
+            subtype: "frontend",
+          },
+        ],
+      };
 
     case "api-service":
-      return `${baseSpec}
-services: {
-	api: {
-		type: "internal"
-		language: "typescript"
-		workload: "deployment"
-		sourceDirectory: "./src/api"
-		ports: [{
-			name: "http"
-			port: 3000
-			targetPort: 3000
-		}]
-	}
-}
-
-paths: {
-	api: {
-		"/health": {
-			get: {
-				summary: "Health check endpoint"
-			}
-		}
-	}
-}
-`;
+      return {
+        services: [
+          {
+            name: "api",
+            language: "typescript",
+            port: 3000,
+            subtype: "service",
+          },
+        ],
+      };
 
     case "microservice":
-      return `${baseSpec}
-services: {
-	service: {
-		type: "internal"
-		language: "typescript"
-		workload: "deployment"
-		sourceDirectory: "./src/service"
-		ports: [{
-			name: "http"
-			port: 8080
-			targetPort: 8080
-		}]
-		resources: {
-			limits: {
-				cpu: "500m"
-				memory: "512Mi"
-			}
-			requests: {
-				cpu: "100m"
-				memory: "128Mi"
-			}
-		}
-	}
-}
-
-observability: {
-	logging: {
-		level: "info"
-		format: "json"
-	}
-	monitoring: {
-		enabled: true
-		metricsPath: "/metrics"
-	}
-}
-`;
+      return {
+        services: [
+          {
+            name: "service",
+            language: "typescript",
+            port: 8080,
+            subtype: "service",
+          },
+        ],
+      };
 
     default:
-      return baseSpec;
+      return {};
   }
 }
 
 /**
- * Create project locally without API server
+ * Generate the root README.md content for the project
+ */
+function generateRootReadme(projectName: string, presetId: string): string {
+  const now = new Date().toISOString();
+
+  const frontmatter = {
+    type: "project",
+    entityId: uuidv4(),
+    createdAt: now,
+    updatedAt: now,
+    tags: [presetId],
+  };
+
+  const body = `# ${projectName}
+
+This is the specification for **${projectName}**, initialized from the \`${presetId}\` preset.
+
+## Directory Structure
+
+The \`.arbiter/\` directory contains your project specification as markdown files:
+
+- **README.md** - This file (project root entity)
+- **{service-name}/** - Service containers with their endpoints
+- **{name}.md** - Leaf entities (resources, tasks, notes)
+
+## Getting Started
+
+1. Add services: \`arbiter add service my-service --language typescript\`
+2. Add endpoints: \`arbiter add endpoint get-users --service my-service --path /users --methods GET\`
+3. Add resources: \`arbiter add resource postgres --kind database --engine postgres\`
+4. Add tasks: \`arbiter add task "Implement authentication"\`
+
+## Viewing Your Spec
+
+- **CLI**: \`arbiter list services\`, \`arbiter list endpoints\`
+- **Obsidian**: Open the \`.arbiter/\` folder as a vault
+- **Docsify**: Run \`arbiter view\` to start a local documentation server
+`;
+
+  return createMarkdownFile(frontmatter, body);
+}
+
+/**
+ * Generate a service directory with README.md
+ */
+function generateServiceReadme(
+  service: NonNullable<PresetConfig["services"]>[number],
+  parentDir: string,
+): { path: string; content: string } {
+  const now = new Date().toISOString();
+
+  const frontmatter: Record<string, unknown> = {
+    type: "service",
+    entityId: uuidv4(),
+    createdAt: now,
+    updatedAt: now,
+    language: service.language,
+    subtype: service.subtype || "service",
+  };
+
+  if (service.port) {
+    frontmatter.port = service.port;
+  }
+  if (service.framework) {
+    frontmatter.framework = service.framework;
+  }
+
+  const body = `# ${service.name}
+
+${service.subtype === "frontend" ? "Frontend application" : "Backend service"} for the project.
+
+## Configuration
+
+- **Language**: ${service.language}
+${service.port ? `- **Port**: ${service.port}` : ""}
+${service.framework ? `- **Framework**: ${service.framework}` : ""}
+
+## Endpoints
+
+Add endpoints to this service using:
+
+\`\`\`bash
+arbiter add endpoint my-endpoint --service ${service.name} --path /api/example --methods GET,POST
+\`\`\`
+`;
+
+  return {
+    path: path.join(parentDir, service.name, "README.md"),
+    content: createMarkdownFile(frontmatter, body),
+  };
+}
+
+/**
+ * Generate a resource markdown file
+ */
+function generateResourceMarkdown(
+  resource: NonNullable<PresetConfig["resources"]>[number],
+  parentDir: string,
+): { path: string; content: string } {
+  const now = new Date().toISOString();
+
+  const frontmatter: Record<string, unknown> = {
+    type: "resource",
+    entityId: uuidv4(),
+    createdAt: now,
+    updatedAt: now,
+    kind: resource.kind,
+  };
+
+  if (resource.engine) {
+    frontmatter.engine = resource.engine;
+  }
+
+  const body = `# ${resource.name}
+
+Infrastructure resource of type \`${resource.kind}\`.
+
+${resource.engine ? `**Engine**: ${resource.engine}` : ""}
+`;
+
+  return {
+    path: path.join(parentDir, `${resource.name}.md`),
+    content: createMarkdownFile(frontmatter, body),
+  };
+}
+
+/**
+ * Create project locally with markdown-first storage
  */
 async function createProjectLocally(
   projectName: string,
   preset: (typeof PRESETS)[number],
 ): Promise<number> {
   const arbiterDir = path.join(process.cwd(), ".arbiter");
-  const assemblyPath = path.join(arbiterDir, "assembly.cue");
+  const readmePath = path.join(arbiterDir, "README.md");
 
-  // Check if .arbiter directory already exists
+  // Check if .arbiter directory already exists with README.md
+  if (await fs.pathExists(readmePath)) {
+    console.error(chalk.red("Project already initialized. Found existing .arbiter/README.md"));
+    return 1;
+  }
+
+  // Also check for legacy assembly.cue
+  const assemblyPath = path.join(arbiterDir, "assembly.cue");
   if (await fs.pathExists(assemblyPath)) {
     console.error(chalk.red("Project already initialized. Found existing .arbiter/assembly.cue"));
+    console.log(chalk.dim("Run 'arbiter migrate --to-markdown' to migrate to the new format."));
     return 1;
   }
 
   // Create .arbiter directory
   await fs.ensureDir(arbiterDir);
 
-  // Generate and write the preset content
-  const content = generatePresetContent(projectName, preset.id);
-  await fs.writeFile(assemblyPath, content, "utf-8");
+  // Generate and write the root README.md
+  const rootContent = generateRootReadme(projectName, preset.id);
+  await fs.writeFile(readmePath, rootContent, "utf-8");
+
+  // Generate preset-specific entities
+  const presetConfig = getPresetConfig(preset.id);
+
+  // Create services
+  if (presetConfig.services) {
+    for (const service of presetConfig.services) {
+      const { path: servicePath, content } = generateServiceReadme(service, arbiterDir);
+      await fs.ensureDir(path.dirname(servicePath));
+      await fs.writeFile(servicePath, content, "utf-8");
+    }
+  }
+
+  // Create resources
+  if (presetConfig.resources) {
+    for (const resource of presetConfig.resources) {
+      const { path: resourcePath, content } = generateResourceMarkdown(resource, arbiterDir);
+      await fs.writeFile(resourcePath, content, "utf-8");
+    }
+  }
 
   showProjectCreatedMessage(projectName, preset.name);
   return 0;
 }
-
-// validateInitRequirements removed - validation moved inline to initCommand
 
 /**
  * Display project creation success message
  */
 function showProjectCreatedMessage(projectName: string, presetName: string): void {
   console.log(chalk.green(`\n✓ Created project "${projectName}" from ${presetName} preset`));
-  console.log(chalk.dim("\n💡 Your project has been created with a full specification"));
-  console.log(chalk.dim("   Use 'arbiter list <type>' to see what was generated"));
-  console.log(chalk.dim("   Use 'arbiter generate' to create code from the specification"));
+  console.log(chalk.dim("\n💡 Your project has been created with markdown-first storage"));
+  console.log(chalk.dim("   Use 'arbiter list services' to see what was generated"));
+  console.log(chalk.dim("   Use 'arbiter add <entity>' to add more components"));
+  console.log(chalk.dim("   Use 'arbiter view' to browse your spec in a web browser"));
 }
 
 /**
@@ -254,7 +336,7 @@ async function createProjectWithApi(
 }
 
 /**
- * Initialize a new CUE project from a preset
+ * Initialize a new project from a preset
  */
 export async function initCommand(
   displayName: string | undefined,

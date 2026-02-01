@@ -17,7 +17,7 @@ import { createPlanCommand } from "@/cli/commands/plan.js";
 import { createProjectCommands } from "@/cli/commands/project.js";
 import { createRemoveCommands } from "@/cli/commands/remove.js";
 import { createUpdateCommands } from "@/cli/commands/update.js";
-import { createUtilitiesCommands } from "@/cli/commands/utilities.js";
+import { createViewCommand } from "@/cli/commands/view.js";
 import { hydrateCliContext } from "@/cli/context.js";
 import chalk from "chalk";
 import { Command } from "commander";
@@ -28,13 +28,13 @@ const program = new Command();
 // Global options and configuration
 program
   .name("arbiter")
-  .description("Arbiter CLI for CUE validation and management")
+  .description(
+    "Spec-driven development CLI. Track work with tasks, persist context with notes, define architecture with specs.",
+  )
   .version("1.0.0")
   .addHelpCommand(false)
   .option("-c, --config <path>", "path to configuration file")
-  .option("--no-color", "disable colored output")
   .option("--api-url <url>", "Arbiter API server URL (overrides config)")
-  .option("--timeout <ms>", "request timeout in milliseconds")
   .option("--local", "operate in offline mode using local CUE files only")
   .option("-v, --verbose", "enable verbose logging globally")
   .hook("preAction", async (thisCommand, actionCommand) => {
@@ -56,10 +56,10 @@ program.addCommand(createUpdateCommands());
 createRemoveCommands(program);
 createGenerationCommands(program);
 createIntegrationCommands(program);
-createUtilitiesCommands(program);
 createAuthCommand(program);
 createPlanCommand(program);
 createDesignCommand(program);
+createViewCommand(program);
 
 // Handle unknown commands
 program.on("command:*", () => {
@@ -72,30 +72,51 @@ program.on("command:*", () => {
 program.addHelpText(
   "after",
   `
-${chalk.cyan("Arbiter CLI - Agent-Friendly Specification Management")}
+${chalk.cyan("━━━ SPEC-DRIVEN DEVELOPMENT ━━━")}
 
-${chalk.yellow("Core Workflows:")}
+Arbiter manages your project through ${chalk.bold("tasks")} (work items), ${chalk.bold("notes")} (persistent context),
+and ${chalk.bold("specs")} (architecture definitions). All data is stored as markdown in ${chalk.dim(".arbiter/")}.
 
-  ${chalk.green("1. FEATURE PLANNING (AI-Assisted):")}
-    arbiter plan                         # Interactive feature planning prompt
-    arbiter design                       # Detailed technical design (after plan)
+${chalk.yellow("AGENT WORKFLOW")}
 
-  ${chalk.green("2. SPEC FRAGMENT MANAGEMENT (Git-Style):")}
-    arbiter init my-app --preset web-app # Initialize from a hosted preset
-    arbiter add service billing          # Add service specification
-    arbiter add api/order                # Add API endpoint specification
-    arbiter add flow checkout            # Add user flow specification
-    arbiter generate                     # Generate code from specifications
+  ${chalk.green("1. Before starting work:")}
+     arbiter add task "Implement user auth"    # Create a task to track work
+     arbiter list task --status open           # See open tasks
 
-  ${chalk.green("3. VALIDATION & FEEDBACK:")}
-    arbiter check                        # Validate all specifications
+  ${chalk.green("2. While working:")}
+     arbiter add note "Chose JWT over sessions because..." --target auth-service
+     arbiter update task auth-task --status in_progress
 
-${chalk.yellow("Examples:")}
-  arbiter check **/*.cue --format=json  # Validate with JSON output
-  arbiter surface app.py --output=cue   # Extract API surface from code
-  arbiter health                        # Check server connectivity
+  ${chalk.green("3. Persist decisions & context:")}
+     arbiter add note "API uses snake_case" --kind guidance --target api
+     arbiter add note "User confirmed: no OAuth needed" --kind decision
 
-For detailed help: arbiter <command> --help
+  ${chalk.green("4. Track completion:")}
+     arbiter update task auth-task --status done
+     arbiter status                            # Validate and review
+
+${chalk.yellow("QUICK REFERENCE")}
+
+  ${chalk.bold("Tasks")} - Work items (bugs, features, stories)
+    arbiter add task "title"                   # Create task
+    arbiter list task                          # List all tasks
+    arbiter list task --status open --priority high
+    arbiter update task <slug> --status done
+
+  ${chalk.bold("Notes")} - Persistent context attached to entities
+    arbiter add note "content" --target <entity>
+    arbiter list note --target auth-service
+    arbiter list note --kind decision          # Find all decisions
+
+  ${chalk.bold("Specs")} - Architecture definitions (greenfield projects)
+    arbiter add service billing --port 3000
+    arbiter add package shared-utils --subtype library
+    arbiter list service
+
+${chalk.yellow("NOTE KINDS")}: discussion, guidance, memory, decision, note
+${chalk.yellow("TASK STATUS")}: open, in_progress, blocked, review, done, closed
+
+${chalk.dim("Data stored in .arbiter/tasks/*.md and .arbiter/notes/*.md (Obsidian-compatible)")}
 `,
 );
 
