@@ -1,0 +1,4 @@
+[test]
+# Run tests serially to reduce mock pollution issues
+# Bun's mock.module affects global module cache
+coverage = false

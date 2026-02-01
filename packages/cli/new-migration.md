@@ -1,5 +1,5 @@
 # Schema Migration Script
-# Generated: 2026-01-08T06:52:58.836Z
+# Generated: 2026-02-01T15:14:09.964Z
 
 # Breaking changes require manual review and data migration
 
