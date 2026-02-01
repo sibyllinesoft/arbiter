@@ -21,11 +21,9 @@ describe("addService", () => {
     const manipulator = createManipulator();
     const result = await addService(manipulator as any, "content", "demo", { port: 3000 });
 
-    expect(result).toBe('locators:page:demo:[data-testid="demo-page"]');
+    expect(result).toBe("added:demo:internal");
     expect(manipulator.addService).toHaveBeenCalledTimes(1);
-    expect(manipulator.addRoute).toHaveBeenCalledTimes(1);
-    expect(manipulator.addToSection).toHaveBeenCalledTimes(1);
-    expect(manipulator.addRoute.mock.calls[0][1].path).toBe("/");
+    // Routes and locators are no longer auto-added for services
   });
 
   it("creates prebuilt service when image provided without routes", async () => {
@@ -55,7 +53,7 @@ describe("addService", () => {
       serviceType: "cloudflare" as any,
     });
 
-    expect(result).toBe('locators:page:api:[data-testid="api-page"]');
+    expect(result).toBe("added:api:external");
     expect(platform.getPlatformServiceDefaults).toHaveBeenCalledWith("cloudflare");
     expect(manipulator.addService.mock.calls[0][2]).toMatchObject({
       type: "external",
@@ -81,7 +79,7 @@ describe("addService", () => {
       "site",
       expect.objectContaining({ template: "starter", language: "typescript" }),
     );
-    expect(result).toBe('locators:page:site:[data-testid="site-page"]');
-    expect(manipulator.addRoute).toHaveBeenCalledTimes(1);
+    expect(result).toBe("added:site:internal");
+    // Routes are no longer auto-added for services with templates
   });
 });

@@ -1,7 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test";
 import os from "node:os";
 import path from "node:path";
-import * as store from "@/io/api/auth-store.js";
 import { runAuthCommand } from "@/services/auth/index.js";
 import fs from "fs-extra";
 

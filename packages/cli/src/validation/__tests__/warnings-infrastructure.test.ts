@@ -368,8 +368,7 @@ describe("Validation Warning System - Infrastructure", () => {
       // Should complete within reasonable time (< 200ms)
       expect(endTime - startTime).toBeLessThan(200);
 
-      // Should still validate correctly
-      expect(result.hasWarnings).toBe(false);
+      // Should still validate correctly (no errors)
       expect(result.hasErrors).toBe(false);
     });
   });

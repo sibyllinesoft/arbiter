@@ -1,32 +1,31 @@
 /** @packageDocumentation Utility tests */
-import { afterAll, afterEach, describe, expect, it, mock } from "bun:test";
-
-const execMock = mock(() => {
-  throw new Error("no remote");
-});
-
-mock.module("node:child_process", () => ({
-  __esModule: true,
-  execSync: execMock,
-}));
-
-const gitModulePromise = import("@/utils/io/git-detection.js");
-
-afterEach(() => {
-  execMock.mockReset();
-  execMock.mockImplementation(() => {
-    throw new Error("no remote");
-  });
-});
-
-afterAll(() => {
-  mock.restore();
-});
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
 describe("git detection helpers", () => {
+  let execMock: any;
+  let gitModule: any;
+
+  beforeEach(async () => {
+    execMock = mock(() => {
+      throw new Error("no remote");
+    });
+
+    mock.module("node:child_process", () => ({
+      __esModule: true,
+      execSync: execMock,
+    }));
+
+    // Import with cache buster to get fresh module with mock
+    const timestamp = Date.now();
+    gitModule = await import(`@/utils/io/git-detection.js?t=${timestamp}`);
+  });
+
+  afterEach(() => {
+    mock.restore();
+  });
+
   it("parses https and ssh GitHub URLs", async () => {
-    const { parseGitHubUrl, detectRepositoryConflicts, resolveRepositorySelection } =
-      await gitModulePromise;
+    const { parseGitHubUrl, detectRepositoryConflicts, resolveRepositorySelection } = gitModule;
 
     const https = parseGitHubUrl("https://github.com/acme/api.git");
     expect(https).toMatchObject({ owner: "acme", repo: "api", type: "https" });
@@ -48,7 +47,7 @@ describe("git detection helpers", () => {
 
   it("detects GitHub repository from git remote", async () => {
     execMock.mockImplementation(() => "https://github.com/acme/repo.git\n");
-    const { detectGitHubRepository } = await gitModulePromise;
+    const { detectGitHubRepository } = gitModule;
     const result = detectGitHubRepository();
 
     expect(execMock).toHaveBeenCalled();
@@ -60,7 +59,7 @@ describe("git detection helpers", () => {
     execMock.mockImplementation(() => {
       throw new Error("fatal: not a git repo");
     });
-    const { detectGitHubRepository } = await gitModulePromise;
+    const { detectGitHubRepository } = gitModule;
     const result = detectGitHubRepository();
 
     expect(result.detected).toBe(false);
@@ -69,7 +68,7 @@ describe("git detection helpers", () => {
 
   it("marks detection as non-GitHub when remote URL is not GitHub", async () => {
     execMock.mockImplementation(() => "https://gitlab.com/foo/bar.git\n");
-    const { detectGitHubRepository } = await gitModulePromise;
+    const { detectGitHubRepository } = gitModule;
     const result = detectGitHubRepository();
 
     expect(result.detected).toBe(false);
@@ -77,7 +76,7 @@ describe("git detection helpers", () => {
   });
 
   it("merges config and detection to pick the right repo", async () => {
-    const { getSmartRepositoryConfig } = await gitModulePromise;
+    const { getSmartRepositoryConfig } = gitModule;
     execMock.mockImplementation(() => "https://github.com/foo/bar.git\n");
 
     const verboseCalls: any[] = [];
@@ -98,7 +97,7 @@ describe("git detection helpers", () => {
   });
 
   it("falls back to config or null when detection fails", async () => {
-    const { getSmartRepositoryConfig } = await gitModulePromise;
+    const { getSmartRepositoryConfig } = gitModule;
     execMock.mockImplementation(() => {
       throw new Error("no git");
     });
@@ -120,14 +119,14 @@ describe("git detection helpers", () => {
 
   it("validates and builds repository configs with suggestions", async () => {
     const { validateRepositoryConfig, createRepositoryConfig, displayConflictResolution } =
-      await gitModulePromise;
+      gitModule;
 
     const repo = createRepositoryConfig("me/you", "repo.git", { baseUrl: "http://bad" });
     const validation = validateRepositoryConfig(repo as any);
 
     expect(validation.valid).toBe(false);
-    expect(validation.errors.some((e) => e.includes("https"))).toBe(true);
-    expect(validation.suggestions.some((s) => s.includes("Did you mean"))).toBe(true);
+    expect(validation.errors.some((e: string) => e.includes("https"))).toBe(true);
+    expect(validation.suggestions.some((s: string) => s.includes("Did you mean"))).toBe(true);
 
     const conflict = {
       configRepo: { owner: "me", repo: "one", tokenEnv: "TOKEN" },
@@ -144,7 +143,7 @@ describe("git detection helpers", () => {
 
   it("findGitRoot returns git root path when in repo", async () => {
     execMock.mockImplementation(() => "/path/to/repo\n");
-    const { findGitRoot } = await gitModulePromise;
+    const { findGitRoot } = gitModule;
     const result = findGitRoot("/path/to/repo/subdir");
     expect(result).toBe("/path/to/repo");
   });
@@ -153,13 +152,13 @@ describe("git detection helpers", () => {
     execMock.mockImplementation(() => {
       throw new Error("fatal: not a git repository");
     });
-    const { findGitRoot } = await gitModulePromise;
+    const { findGitRoot } = gitModule;
     const result = findGitRoot("/not/a/repo");
     expect(result).toBeNull();
   });
 
   it("isInGitRepo returns true/false based on findGitRoot", async () => {
-    const { isInGitRepo } = await gitModulePromise;
+    const { isInGitRepo } = gitModule;
 
     execMock.mockImplementation(() => "/repo\n");
     expect(isInGitRepo("/repo/sub")).toBe(true);

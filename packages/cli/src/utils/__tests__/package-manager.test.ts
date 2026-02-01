@@ -1,32 +1,45 @@
 /** @packageDocumentation Utility tests */
-import { afterEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { detectPackageManager, getPackageManagerCommands } from "@/utils/io/package-manager.js";
-
 describe("package-manager utilities", () => {
+  let pkgModule: any;
+
+  beforeEach(async () => {
+    // Import with cache buster to ensure fresh module
+    const timestamp = Date.now();
+    pkgModule = await import(`@/utils/io/package-manager.js?t=${timestamp}`);
+  });
+
   afterEach(() => {
     mock.restore();
   });
 
   it("prefers lockfiles over user agent and path detection", async () => {
+    const { detectPackageManager } = pkgModule;
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "pkgm-"));
-    await fs.writeFile(path.join(tmp, "pnpm-lock.yaml"), "", "utf-8");
+    try {
+      await fs.writeFile(path.join(tmp, "pnpm-lock.yaml"), "", "utf-8");
 
-    const pm = detectPackageManager("yarn/4.0.0", tmp);
+      const pm = detectPackageManager("yarn/4.0.0", tmp);
 
-    expect(pm).toBe("pnpm"); // lockfile takes precedence
+      expect(pm).toBe("pnpm"); // lockfile takes precedence
+    } finally {
+      await fs.rm(tmp, { recursive: true }).catch(() => {});
+    }
   });
 
   it("detects from user agent when no locks exist", () => {
+    const { detectPackageManager } = pkgModule;
     expect(detectPackageManager("bun/1.1.0")).toBe("bun");
     expect(detectPackageManager("pnpm/9.0.0")).toBe("pnpm");
     expect(detectPackageManager("yarn/4.2.0")).toBe("yarn");
   });
 
   it("falls back to PATH detection when no hints are provided", () => {
+    const { detectPackageManager } = pkgModule;
     // Uses commandExists inside detectFromPath; Bun should be available in PATH in CI
     const pm = detectPackageManager(undefined, process.cwd());
     expect(pm).toBeDefined();
@@ -40,12 +53,22 @@ describe("package-manager utilities", () => {
       },
     }));
 
+    // Need fresh import after mocking
+    const timestamp = Date.now();
+    const { detectPackageManager } = await import(`@/utils/io/package-manager.js?npm=${timestamp}`);
+
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "pkgm-unknown-"));
-    const pm = detectPackageManager("unknown/1.0", tmp);
-    expect(pm).toBe("npm");
+    try {
+      const pm = detectPackageManager("unknown/1.0", tmp);
+      expect(pm).toBe("npm");
+    } finally {
+      await fs.rm(tmp, { recursive: true }).catch(() => {});
+    }
   });
 
   it("generates command set for bun and npm", () => {
+    const { getPackageManagerCommands } = pkgModule;
+
     const bun = getPackageManagerCommands("bun");
     expect(bun.exec("lint", "--fix")).toBe("bunx lint --fix");
     expect(bun.installGlobal("cue")).toBe("bun add --global cue");

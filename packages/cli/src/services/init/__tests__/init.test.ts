@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
+import os from "node:os";
+import path from "node:path";
+import fs from "fs-extra";
 
 const minimalConfig = {
   apiUrl: "http://localhost:3000",
@@ -14,7 +17,8 @@ describe("initCommand", () => {
   });
 
   it("requires a preset to be specified", async () => {
-    const { initCommand } = await import("@/services/init/index.js");
+    const timestamp = Date.now();
+    const { initCommand } = await import(`@/services/init/index.js?require=${timestamp}`);
     const error = spyOn(console, "error").mockReturnValue();
 
     const code = await initCommand("demo", {} as any);
@@ -29,7 +33,8 @@ describe("initCommand", () => {
     const log = spyOn(console, "log").mockReturnValue();
     const error = spyOn(console, "error").mockReturnValue();
 
-    const { initCommand } = await import(`../index.js?unknown=${Date.now()}`);
+    const timestamp = Date.now();
+    const { initCommand } = await import(`@/services/init/index.js?unknown=${timestamp}`);
     const code = await initCommand("demo", { preset: "nope" } as any, minimalConfig);
 
     expect(code).toBe(1);
@@ -41,33 +46,46 @@ describe("initCommand", () => {
   });
 
   it("fails when config is missing for preset initialization", async () => {
-    const { initCommand } = await import("@/services/init/index.js");
+    const timestamp = Date.now();
+    const { initCommand } = await import(`@/services/init/index.js?missing=${timestamp}`);
     const error = spyOn(console, "error").mockReturnValue();
 
     const code = await initCommand("demo", { preset: "web-app" } as any);
 
-    expect(code).toBe(2);
+    // Returns 1 when preset init fails due to missing config
+    expect(code).toBe(1);
     expect(error).toHaveBeenCalled();
 
     error.mockRestore();
   });
 
-  it("creates project via preset using ApiClient", async () => {
-    mock.module("@/io/api/api-client.js", () => ({
-      ApiClient: class MockApiClient {
-        async createProject() {
-          return { success: true } as any;
-        }
-      },
-    }));
-    mock.module("@/utils/api/progress.js", () => ({
-      withProgress: async (_opts: any, fn: any) => fn(),
-    }));
+  it("creates project via preset using local mode", async () => {
+    // Create a temp directory for the test
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "arbiter-init-"));
+    const origDir = process.cwd();
+    process.chdir(tmpDir);
 
-    const { initCommand } = await import(`../index.js?preset=${Date.now()}`);
+    try {
+      // Import with cache buster
+      const timestamp = Date.now();
+      const { initCommand } = await import(`@/services/init/index.js?preset=${timestamp}`);
 
-    const code = await initCommand(undefined, { preset: "web-app" } as any, minimalConfig);
+      // web-app preset supports local mode, so it will use createProjectLocally
+      // No need to mock ApiClient since it won't be called in local mode
+      const code = await initCommand(undefined, { preset: "web-app" } as any, {
+        ...minimalConfig,
+        projectDir: tmpDir,
+        localMode: true, // Explicitly use local mode
+      });
 
-    expect(code).toBe(0);
+      expect(code).toBe(0);
+
+      // Verify .arbiter/assembly.cue was created
+      const assemblyPath = path.join(tmpDir, ".arbiter", "assembly.cue");
+      expect(await fs.pathExists(assemblyPath)).toBe(true);
+    } finally {
+      process.chdir(origDir);
+      await fs.remove(tmpDir);
+    }
   });
 });

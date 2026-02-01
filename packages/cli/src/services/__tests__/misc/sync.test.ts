@@ -53,7 +53,8 @@ describe("syncProject service", () => {
 
     expect(exitCode).toBe(0);
     const updatedPkg = await fs.readJSON(pkgPath);
-    expect(updatedPkg.scripts["arbiter:check"]).toBe("arbiter check");
+    // Check for scripts that are actually added by getArbiterPackageUpdates
+    expect(updatedPkg.scripts["arbiter:status"]).toBe("arbiter status");
     expect(updatedPkg.devDependencies["@arbiter/cli"]).toMatch(/^\^/);
     expect(updatedPkg.arbiter?.coverage?.threshold).toBe(0.8);
   });

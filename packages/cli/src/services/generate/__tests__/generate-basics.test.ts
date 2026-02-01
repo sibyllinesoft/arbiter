@@ -1,3 +1,4 @@
+import { describe, expect, it } from "bun:test";
 import {
   collectClientTargets,
   createClientTarget,
@@ -6,7 +7,6 @@ import {
   toRelativePath,
 } from "@/services/generate/io/index.js";
 import { __generateTesting } from "@/services/generate/io/index.js";
-import { describe, expect, it } from "vitest";
 
 const baseStructure = {
   clientsDirectory: "clients",

@@ -1,9 +1,9 @@
+import { afterEach, describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
 import { __generateTesting } from "@/services/generate/io/index.js";
 import type { AppSpec } from "@arbiter/shared";
 import fs from "fs-extra";
-import { afterEach, describe, expect, it } from "vitest";
 
 describe("enhanceClientDevServer", () => {
   const originalCwd = process.cwd();

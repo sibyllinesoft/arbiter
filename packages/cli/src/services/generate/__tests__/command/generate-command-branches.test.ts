@@ -1,7 +1,7 @@
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const baseConfig = {
   localMode: true,
@@ -19,7 +19,7 @@ beforeEach(() => {
 afterEach(async () => {
   process.chdir(originalCwd);
   delete process.env.ARBITER_SKIP_CUE;
-  vi.clearAllMocks();
+  mock.restore();
 });
 
 describe("generateCommand early branches", () => {
@@ -38,7 +38,7 @@ describe("generateCommand early branches", () => {
       'product: { name: "Two" }\n',
     );
 
-    const reporter = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    const reporter = { info: mock(), warn: mock(), error: mock() };
     const { generateCommand } = await import("@/services/generate/io/index.js");
     const code = await generateCommand({ reporter }, { ...baseConfig, projectDir: tmp } as any);
 
@@ -54,13 +54,14 @@ describe("generateCommand early branches", () => {
       'product: { name: "WarnApp" }\nconfig: { language: "typescript" }\nui: { routes: [] }\nflows: []\n',
     );
 
-    vi.mock("@/services/validation/warnings.js", () => ({
-      validateSpecification: vi.fn().mockReturnValue({ hasErrors: false, hasWarnings: true }),
+    mock.module("@/services/validation/warnings.js", () => ({
+      validateSpecification: mock(() => ({ hasErrors: false, hasWarnings: true })),
       formatWarnings: () => "warn",
     }));
 
-    const reporter = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-    const { generateCommand } = await import(`../../io/index.js?warn=${Date.now()}`);
+    const reporter = { info: mock(), warn: mock(), error: mock() };
+    const timestamp = Date.now();
+    const { generateCommand } = await import(`../../io/index.js?warn=${timestamp}`);
     const code = await generateCommand({ reporter }, { ...baseConfig, projectDir: tmp } as any);
 
     expect(code).toBe(1);

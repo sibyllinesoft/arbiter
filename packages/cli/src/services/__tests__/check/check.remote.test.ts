@@ -1,11 +1,40 @@
-import { describe, expect, it, spyOn } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { ApiClient } from "@/io/api/api-client.js";
 import { runCheckCommand } from "@/services/check/index.js";
 
 const baseConfig = { projectDir: "", color: false, localMode: false, apiUrl: "https://api" } as any;
+
+/**
+ * Stub ApiClient for testing - no global mock pollution
+ */
+class StubApiClient {
+  private healthResponse = { success: true };
+  private validateResponse: any = {
+    success: true,
+    data: { success: true, errors: [], warnings: [] },
+  };
+
+  setHealthResponse(response: any) {
+    this.healthResponse = response;
+    return this;
+  }
+
+  setValidateResponse(response: any) {
+    this.validateResponse = response;
+    return this;
+  }
+
+  async health() {
+    return this.healthResponse;
+  }
+
+  async validate(_content: string) {
+    return this.validateResponse;
+  }
+}
 
 async function inTempCueProject(
   files: Record<string, string>,
@@ -28,33 +57,26 @@ async function inTempCueProject(
   }
 }
 
-import fs from "node:fs/promises";
-
 describe("runCheckCommand remote mode", () => {
   it("returns success when api validate succeeds", async () => {
     const stdout: string[] = [];
     const origLog = console.log;
     console.log = (msg?: any) => stdout.push(String(msg ?? ""));
 
-    const healthSpy = spyOn(ApiClient.prototype, "health").mockResolvedValue({
-      success: true,
-    } as any);
-    const validateSpy = spyOn(ApiClient.prototype, "validate").mockImplementation(
-      async () =>
-        ({
-          success: true,
-          data: { success: true, errors: [], warnings: [] },
-        }) as any,
-    );
+    // Create a stub client with success response
+    const stubClient = new StubApiClient();
 
     await inTempCueProject({ "ok.cue": "package demo\nx: 1\n" }, async () => {
-      const code = await runCheckCommand(["*.cue"], { recursive: true }, { ...baseConfig } as any);
+      const code = await runCheckCommand(
+        ["*.cue"],
+        { recursive: true },
+        { ...baseConfig } as any,
+        stubClient as any,
+      );
       expect(code).toBe(0);
       expect(stdout.join("\n")).toContain("ok.cue");
     });
 
-    healthSpy.mockRestore();
-    validateSpy.mockRestore();
     console.log = origLog;
   });
 
@@ -63,27 +85,23 @@ describe("runCheckCommand remote mode", () => {
     const origLog = console.log;
     console.log = (msg?: any) => stdout.push(String(msg ?? ""));
 
-    const healthSpy = spyOn(ApiClient.prototype, "health").mockResolvedValue({
-      success: true,
-    } as any);
-    const validateSpy = spyOn(ApiClient.prototype, "validate").mockImplementation(
-      async () =>
-        ({
-          success: false,
-          error: "validation failed",
-        }) as any,
-    );
+    // Create a stub client with failure response
+    const stubClient = new StubApiClient().setValidateResponse({
+      success: false,
+      error: "validation failed",
+    });
 
     await inTempCueProject({ "bad.cue": "package demo\nx: 1\n" }, async () => {
-      const code = await runCheckCommand(["*.cue"], { recursive: true, failFast: true }, {
-        ...baseConfig,
-      } as any);
+      const code = await runCheckCommand(
+        ["*.cue"],
+        { recursive: true, failFast: true },
+        { ...baseConfig } as any,
+        stubClient as any,
+      );
       expect(code).toBe(1);
       expect(stdout.join("\n")).toContain("bad.cue");
     });
 
-    healthSpy.mockRestore();
-    validateSpy.mockRestore();
     console.log = origLog;
   });
 });

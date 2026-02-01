@@ -1,5 +1,5 @@
-import { describe, expect, it, spyOn } from "bun:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -11,6 +11,10 @@ import { runAddCommand } from "@/services/add/index.js";
 import * as projectUtils from "@/utils/api/project.js";
 
 describe("runAddCommand service subcommand", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
   it("adds a service and stores remotely when validation passes", async () => {
     const tmp = await mkdtemp(path.join(os.tmpdir(), "arbiter-add-service-"));
     const prev = process.cwd();

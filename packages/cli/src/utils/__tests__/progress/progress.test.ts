@@ -1,41 +1,53 @@
-import { afterEach, describe, expect, it, mock } from "bun:test";
-import chalk from "chalk";
-
-// Mock ora so spinner output doesn't pollute test logs
-let lastSpinner: any;
-mock.module("ora", () => ({
-  __esModule: true,
-  default: () => {
-    lastSpinner = {
-      text: "",
-      start: () => {},
-      succeed: (...args: any[]) => {
-        (lastSpinner as any)._succeedCalls?.push(args);
-      },
-      fail: (...args: any[]) => {
-        (lastSpinner as any)._failCalls?.push(args);
-      },
-      warn: (...args: any[]) => {
-        (lastSpinner as any)._warnCalls?.push(args);
-      },
-      stop: () => {},
-      _succeedCalls: [] as any[],
-      _failCalls: [] as any[],
-      _warnCalls: [] as any[],
-    };
-    return lastSpinner;
-  },
-}));
-
-const progressModulePromise = import("@/utils/api/progress.js");
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
 describe("progress utilities", () => {
   const originalCI = process.env.CI;
   const originalNow = Date.now;
   const originalLog = console.log;
 
+  let lastSpinner: any;
+  let progressModule: any;
+
+  beforeEach(async () => {
+    // Mock ora inside beforeEach to avoid polluting other tests
+    mock.module("ora", () => ({
+      __esModule: true,
+      default: () => {
+        lastSpinner = {
+          text: "",
+          start: () => {},
+          succeed: (...args: any[]) => {
+            (lastSpinner as any)._succeedCalls?.push(args);
+          },
+          fail: (...args: any[]) => {
+            (lastSpinner as any)._failCalls?.push(args);
+          },
+          warn: (...args: any[]) => {
+            (lastSpinner as any)._warnCalls?.push(args);
+          },
+          stop: () => {},
+          _succeedCalls: [] as any[],
+          _failCalls: [] as any[],
+          _warnCalls: [] as any[],
+        };
+        return lastSpinner;
+      },
+    }));
+
+    // Import with cache buster to get fresh module with mock
+    const timestamp = Date.now();
+    progressModule = await import(`@/utils/api/progress.js?t=${timestamp}`);
+  });
+
+  afterEach(() => {
+    mock.restore();
+    Date.now = originalNow;
+    console.log = originalLog;
+    process.env.CI = originalCI;
+  });
+
   it("includes estimated time when steps have history", async () => {
-    const { Progress } = await progressModulePromise;
+    const { Progress } = progressModule;
     let now = 0;
     Date.now = () => now;
     const progress = new Progress({ text: "build" });
@@ -46,20 +58,19 @@ describe("progress utilities", () => {
 
     progress.updateWithEstimate("processing");
     expect(progress["spinner"].text).toContain("remaining");
-    Date.now = originalNow;
   });
 
   it("falls back to SimpleProgress when running in CI", async () => {
     process.env.CI = "1";
-    const { createProgress } = await progressModulePromise;
+    // Need fresh import after setting CI
+    const timestamp = Date.now();
+    const { createProgress } = await import(`@/utils/api/progress.js?ci=${timestamp}`);
     const progress = createProgress({ text: "ci run" });
     expect(progress.constructor.name).toBe("SimpleProgress");
-    process.env.CI = originalCI;
   });
 
   it("renders plain text progress when stdout is not a TTY", async () => {
     const originalStdout = process.stdout;
-    const originalNow = Date.now;
     let now = 0;
     Date.now = () => now;
     const fakeStdout: any = { isTTY: false, write: () => {}, columns: 80 };
@@ -69,15 +80,13 @@ describe("progress utilities", () => {
     console.log = logSpy as any;
 
     try {
-      const { createProgressBar } = await progressModulePromise;
+      const { createProgressBar } = progressModule;
       const bar = createProgressBar({ title: "Build", total: 10 });
       now = 150;
       bar.update(5, "halfway");
       expect(logCalls.join(" ")).toContain("Build: 50%");
     } finally {
-      console.log = originalLog;
       Object.defineProperty(process, "stdout", { value: originalStdout, configurable: true });
-      Date.now = originalNow;
     }
   });
 
@@ -93,7 +102,7 @@ describe("progress utilities", () => {
 
     try {
       Date.now = () => 0;
-      const { createProgressBar } = await progressModulePromise;
+      const { createProgressBar } = progressModule;
       const bar = createProgressBar({ title: "Deploy", total: 10 });
 
       bar.update(1);
@@ -111,7 +120,6 @@ describe("progress utilities", () => {
       bar.update(10, "done");
       expect(writeCalls.length).toBe(2);
     } finally {
-      Date.now = originalNow;
       Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
       (process.stdout as any).write = originalWrite;
       (process.stdout as any).columns = originalColumns;
@@ -119,7 +127,7 @@ describe("progress utilities", () => {
   });
 
   it("tracks step failures and forwards to spinner", async () => {
-    const { Progress } = await progressModulePromise;
+    const { Progress } = progressModule;
     const progress = new Progress({ text: "steps" });
     progress.addSteps(["one", "two"]);
     progress.nextStep();
@@ -131,7 +139,7 @@ describe("progress utilities", () => {
   });
 
   it("warns and stops progress indicators via utility methods", async () => {
-    const { Progress, MultiProgress } = await progressModulePromise;
+    const { Progress, MultiProgress } = progressModule;
     const progress = new Progress({ text: "warnable" });
     progress.warn("careful");
     expect((lastSpinner as any)._warnCalls.length).toBeGreaterThan(0);
@@ -150,7 +158,7 @@ describe("progress utilities", () => {
   });
 
   it("manages multiple progresses and clears map on succeedAll", async () => {
-    const { MultiProgress } = await progressModulePromise;
+    const { MultiProgress } = progressModule;
     const mp = new MultiProgress();
     const first = mp.add("first", { text: "one" });
     mp.add("second", { text: "two" });
@@ -167,7 +175,7 @@ describe("progress utilities", () => {
     console.log = ((...args: any[]) => logCalls.push(args)) as any;
     Date.now = () => 0;
 
-    const { SimpleProgress } = await progressModulePromise;
+    const { SimpleProgress } = progressModule;
     const progress = new SimpleProgress(100);
 
     Date.now = () => 50;
@@ -189,35 +197,30 @@ describe("progress utilities", () => {
     Date.now = () => 300;
     progress.warn("warn");
     expect(logCalls.at(-1)?.join(" ")).toContain("warn");
-
-    console.log = originalLog;
-    Date.now = originalNow;
   });
 
   it("wraps async operations with success and failure handling", async () => {
     process.env.CI = "1"; // ensure SimpleProgress branch
     const logCalls: any[] = [];
     console.log = ((...args: any[]) => logCalls.push(args)) as any;
-    const { withProgress } = await progressModulePromise;
 
-    try {
-      await withProgress({ text: "ok" }, async () => "result");
-      expect(logCalls.at(-1)?.join(" ")).toContain("ok");
+    // Need fresh import after setting CI
+    const timestamp = Date.now();
+    const { withProgress } = await import(`@/utils/api/progress.js?wrap=${timestamp}`);
 
-      await expect(
-        withProgress({ text: "bad" }, async () => {
-          throw new Error("boom");
-        }),
-      ).rejects.toThrow("boom");
-      expect(logCalls.at(-1)?.join(" ")).toContain("boom");
-    } finally {
-      console.log = originalLog;
-      process.env.CI = originalCI;
-    }
+    await withProgress({ text: "ok" }, async () => "result");
+    expect(logCalls.at(-1)?.join(" ")).toContain("ok");
+
+    await expect(
+      withProgress({ text: "bad" }, async () => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+    expect(logCalls.at(-1)?.join(" ")).toContain("boom");
   });
 
   it("handles withStepProgress success and failure paths", async () => {
-    const { withStepProgress } = await progressModulePromise;
+    const { withStepProgress } = progressModule;
     const result = await withStepProgress({ title: "plan", steps: ["a", "b"] }, async (p) => {
       if ("nextStep" in p) {
         p.nextStep("a");
@@ -239,28 +242,28 @@ describe("progress utilities", () => {
     const fakeStdout: any = { isTTY: false, write: () => {}, columns: 80 };
     Object.defineProperty(process, "stdout", { value: fakeStdout, configurable: true });
     const logs: string[] = [];
-    const originalConsoleLog = console.log;
     console.log = (...args: any[]) => logs.push(args.join(" "));
 
-    const { withProgressBar } = await progressModulePromise;
+    try {
+      const { withProgressBar } = progressModule;
 
-    await withProgressBar(
-      { title: "download", total: 2, completeMessage: "all done" },
-      async (bar) => {
-        bar.update(1);
-        bar.update(2);
-      },
-    );
-    expect(logs.some((l) => l.includes("all done"))).toBe(true);
+      await withProgressBar(
+        { title: "download", total: 2, completeMessage: "all done" },
+        async (bar) => {
+          bar.update(1);
+          bar.update(2);
+        },
+      );
+      expect(logs.some((l) => l.includes("all done"))).toBe(true);
 
-    await expect(
-      withProgressBar({ title: "explode", total: 1 }, async () => {
-        throw new Error("kaboom");
-      }),
-    ).rejects.toThrow("kaboom");
-    expect(logs.some((l) => l.includes("failed"))).toBe(true);
-
-    console.log = originalConsoleLog;
-    Object.defineProperty(process, "stdout", { value: originalStdout, configurable: true });
+      await expect(
+        withProgressBar({ title: "explode", total: 1 }, async () => {
+          throw new Error("kaboom");
+        }),
+      ).rejects.toThrow("kaboom");
+      expect(logs.some((l) => l.includes("failed"))).toBe(true);
+    } finally {
+      Object.defineProperty(process, "stdout", { value: originalStdout, configurable: true });
+    }
   });
 });

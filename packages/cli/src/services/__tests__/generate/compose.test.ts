@@ -26,21 +26,25 @@ describe("generateDockerComposeArtifacts", () => {
       infraDirectory: "infra",
     };
 
+    // Use packages (with subtype: service) instead of deprecated services key
     const assemblyConfig = {
       _fullCueData: {
-        services: {
+        packages: {
           api: {
+            subtype: "service",
             language: "typescript",
-            type: "deployment",
             sourceDirectory: "services/api",
+            port: 3000,
             ports: [{ name: "http", port: 3000 }],
             env: {
               NODE_ENV: "development",
             },
           },
+        },
+        resources: {
           cache: {
+            kind: "cache",
             image: "redis:7",
-            type: "statefulset",
             ports: [{ name: "tcp", port: 6379 }],
           },
         },

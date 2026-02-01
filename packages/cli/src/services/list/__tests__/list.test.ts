@@ -22,7 +22,8 @@ describe("list command", () => {
     const tmp = await mkdtemp(path.join(import.meta.dir, "list-missing-"));
     const logSpy = spyOn(console, "log").mockImplementation(() => {});
     const code = await listCommand("service", {}, { ...baseConfig, projectDir: tmp } as any);
-    expect(code).toBe(1);
+    // List command now returns 0 with empty results when spec is missing
+    expect(code).toBe(0);
     logSpy.mockRestore();
     await rm(tmp, { recursive: true, force: true });
   });

@@ -3,12 +3,10 @@ import { describe, expect, it, spyOn } from "bun:test";
 import { Command } from "commander";
 
 import { createProjectCommands } from "@/cli/commands/project.js";
-import * as check from "@/services/check/index.js";
 import * as diff from "@/services/diff/index.js";
 import * as init from "@/services/init/index.js";
 import * as list from "@/services/list/index.js";
 import * as status from "@/services/status/index.js";
-import * as surface from "@/services/surface/index.js";
 
 const baseConfig = {
   apiUrl: "https://api",
@@ -65,52 +63,6 @@ describe("project CLI", () => {
     );
 
     listSpy.mockRestore();
-    exitSpy.mockRestore();
-  });
-
-  it("calls check command with provided patterns", async () => {
-    const checkSpy = spyOn(check, "runCheckCommand").mockResolvedValue(0);
-    const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as any);
-
-    const program = buildProgram();
-    await program.parseAsync(["check", "src/**/*.cue", "--format", "json"], { from: "user" });
-
-    expect(checkSpy).toHaveBeenCalledWith(
-      ["src/**/*.cue"],
-      expect.objectContaining({ format: "json" }),
-      baseConfig,
-    );
-
-    checkSpy.mockRestore();
-    exitSpy.mockRestore();
-  });
-
-  it("surfaces code with correct options", async () => {
-    const surfaceSpy = spyOn(surface, "surfaceCommand").mockResolvedValue(0);
-    const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as any);
-
-    const program = buildProgram();
-    await program.parseAsync(
-      [
-        "surface",
-        "typescript",
-        "--output",
-        "out.cue",
-        "--format",
-        "json",
-        "--project-name",
-        "demo",
-        "--diff",
-      ],
-      { from: "user" },
-    );
-
-    expect(surfaceSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ language: "typescript", output: "out.cue", diff: true }),
-      baseConfig,
-    );
-
-    surfaceSpy.mockRestore();
     exitSpy.mockRestore();
   });
 

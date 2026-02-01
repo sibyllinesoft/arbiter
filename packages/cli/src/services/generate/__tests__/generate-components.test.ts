@@ -1,5 +1,5 @@
+import { describe, expect, it } from "bun:test";
 import { __generateTesting } from "@/services/generate/io/index.js";
-import { describe, expect, it } from "vitest";
 
 describe("build route components and docker artifacts", () => {
   it("renders non-interactive route with sanitized test id", () => {

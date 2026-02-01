@@ -1,5 +1,5 @@
+import { describe, expect, it } from "bun:test";
 import { __listTesting } from "@/services/list/index.js";
-import { describe, expect, it } from "vitest";
 
 const spec = {
   services: {

@@ -48,7 +48,7 @@ describe("Schema constraints", () => {
 
   it("decorator wraps method and enforces validation on write", async () => {
     class TestService {
-      @((await import("@/constraints/schema.js")).withSchemaValidation("write"))
+      @((await import("@/constraints/core/schema.js")).withSchemaValidation("write"))
       async send() {
         return baseEnvelope;
       }

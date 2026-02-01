@@ -1,26 +1,37 @@
 /** @packageDocumentation GitHub sync tests */
 import { describe, expect, it } from "bun:test";
-import { GitHubSyncClient } from "@/utils/github/sync/github-sync.js";
+import type { GitHubSyncConfig } from "@/types.js";
+import type { Group, Task } from "@/utils/github/sharded-storage.js";
+import { mapSemanticLabels } from "@/utils/github/sync/github-sync-helpers.js";
 
-describe("GitHubSyncClient mapSemanticLabels", () => {
+describe("mapSemanticLabels", () => {
   it("maps defaults, type-specific labels, prefixes, and context", () => {
-    process.env.GITHUB_TOKEN = "token";
-    const client = new GitHubSyncClient({
+    const config: GitHubSyncConfig = {
       repository: { owner: "me", repo: "demo" },
       templates: {},
       labels: {
         default: ["base"],
         groups: { "kind/group": ["E1", "common"] },
-        tasks: { "kind/task": ["T1"] },
+        issues: { "kind/task": ["T1"] },
       },
-      prefixes: { group: "pref-group", task: "pref-task" },
+      prefixes: { group: "pref-group", issue: "pref-task" },
       automation: {},
-    } as any);
+    };
 
-    const groupLabels = (client as any).mapSemanticLabels(["kind/group", "extra"], "group", {
+    const groupItem: Partial<Group> = {
+      id: "g-1",
+      name: "test-group",
       priority: "high",
       status: "active",
-    } as any);
+      tasks: [],
+    };
+
+    const groupLabels = mapSemanticLabels(
+      config,
+      ["kind/group", "extra"],
+      "group",
+      groupItem as Group,
+    );
 
     expect(groupLabels).toEqual(
       expect.arrayContaining([
@@ -35,11 +46,15 @@ describe("GitHubSyncClient mapSemanticLabels", () => {
       ]),
     );
 
-    const taskLabels = (client as any).mapSemanticLabels(["kind/task", "misc"], "task", {
+    const taskItem: Partial<Task> = {
+      id: "t-1",
+      title: "test-task",
       priority: "low",
       status: "todo",
       type: "feature",
-    } as any);
+    };
+
+    const taskLabels = mapSemanticLabels(config, ["kind/task", "misc"], "task", taskItem as Task);
 
     expect(taskLabels).toEqual(
       expect.arrayContaining([

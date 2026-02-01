@@ -1,13 +1,18 @@
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import os from "node:os";
 import path from "node:path";
-import { __generateTesting, parseAppSchema } from "@/services/generate/io/index.js";
 import fs from "fs-extra";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 let originalCwd: string;
+let generateModule: any;
 
-beforeEach(() => {
+beforeEach(async () => {
+  // Clear any lingering mocks from previous tests
+  mock.restore();
   originalCwd = process.cwd();
+  // Dynamic import to get fresh module after mock.restore()
+  const timestamp = Date.now();
+  generateModule = await import(`@/services/generate/io/index.js?t=${timestamp}`);
 });
 
 afterEach(async () => {
@@ -22,7 +27,7 @@ describe("spec discovery and parsing", () => {
     await fs.writeFile(path.join(specDir, "assembly.cue"), 'product: { name: "Demo" }\n');
 
     process.chdir(tmp);
-    const specs = __generateTesting.discoverSpecs();
+    const specs = generateModule.__generateTesting.discoverSpecs();
     expect(specs).toEqual([{ name: "demo", path: path.join(".arbiter", "demo", "assembly.cue") }]);
   });
 
@@ -38,7 +43,7 @@ describe("spec discovery and parsing", () => {
       success: () => {},
     };
 
-    const config = await __generateTesting.parseAssemblyFile(cuePath, mockReporter);
+    const config = await generateModule.__generateTesting.parseAssemblyFile(cuePath, mockReporter);
     expect(config.schema.version).toBe("app");
     expect(config.app.product?.name).toBe("Unknown App");
   });
@@ -52,14 +57,43 @@ describe("spec discovery and parsing", () => {
       locators: {},
     };
 
-    const config = parseAppSchema(cueData, { version: "app", detected_from: "metadata" });
+    const config = generateModule.parseAppSchema(cueData, {
+      version: "app",
+      detected_from: "metadata",
+    });
     expect(Object.keys(config.app.capabilities || {})).toEqual(["auth", "billing"]);
     expect(config.app.product?.name).toBe("Parsed");
   });
 
   it("parses assembly.cue via cue eval when available", async () => {
-    // ensure cue binary is on PATH for this test
-    process.env.PATH = `/tmp/cue-bin:${process.env.PATH}`;
+    // Mock spawn to return valid JSON for cue eval
+    const { EventEmitter } = await import("node:events");
+    const childProcess = await import("node:child_process");
+    mock.module("node:child_process", () => ({
+      ...childProcess,
+      spawn: () => {
+        const proc: any = new EventEmitter();
+        proc.stdout = new EventEmitter();
+        proc.stderr = new EventEmitter();
+        proc.kill = () => {};
+        setImmediate(() => {
+          proc.stdout.emit(
+            "data",
+            JSON.stringify({
+              product: { name: "CueApp" },
+              capabilities: ["search"],
+            }),
+          );
+          proc.emit("close", 0);
+        });
+        return proc;
+      },
+    }));
+
+    // Re-import to get fresh module with mocked child_process
+    const timestamp = Date.now();
+    const freshModule = await import(`@/services/generate/io/index.js?cue=${timestamp}`);
+
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "arbiter-cue-"));
     const cuePath = path.join(tmp, "assembly.cue");
     await fs.writeFile(cuePath, `product: { name: "CueApp" }\ncapabilities: ["search"]\n`);
@@ -71,7 +105,7 @@ describe("spec discovery and parsing", () => {
       success: () => {},
     };
 
-    const config = await __generateTesting.parseAssemblyFile(cuePath, mockReporter);
+    const config = await freshModule.__generateTesting.parseAssemblyFile(cuePath, mockReporter);
     expect(config.app.product?.name).toBe("CueApp");
     expect(Object.keys(config.app.capabilities || {})).toContain("search");
   });

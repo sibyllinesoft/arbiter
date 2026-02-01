@@ -1,18 +1,8 @@
-import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
-
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import * as authStore from "@/io/api/auth-store.js";
 import { DEFAULT_PROJECT_STRUCTURE } from "@/io/config/config.js";
 import { runAuthCommand } from "@/services/auth/index.js";
 import type { CLIConfig } from "@/types.js";
-
-const clearAuthSession = mock(async () => {});
-const saveAuthSession = mock(async () => {});
-const getAuthStorePath = mock(() => "/tmp/auth-store.json");
-
-mock.module("@/io/api/auth-store.js", () => ({
-  clearAuthSession,
-  saveAuthSession,
-  getAuthStorePath,
-}));
 
 function createConfig(): CLIConfig {
   return {
@@ -26,18 +16,32 @@ function createConfig(): CLIConfig {
   };
 }
 
-afterEach(() => {
-  mock.restore();
-});
-
 describe("runAuthCommand", () => {
+  let clearAuthSessionSpy: ReturnType<typeof spyOn>;
+  let getAuthStorePathSpy: ReturnType<typeof spyOn>;
+  let saveAuthSessionSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    clearAuthSessionSpy = spyOn(authStore, "clearAuthSession").mockResolvedValue(undefined);
+    getAuthStorePathSpy = spyOn(authStore, "getAuthStorePath").mockReturnValue(
+      "/tmp/auth-store.json",
+    );
+    saveAuthSessionSpy = spyOn(authStore, "saveAuthSession").mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    clearAuthSessionSpy?.mockRestore();
+    getAuthStorePathSpy?.mockRestore();
+    saveAuthSessionSpy?.mockRestore();
+  });
+
   it("logs out and clears stored credentials", async () => {
     const log = spyOn(console, "log").mockImplementation(() => {});
 
     await runAuthCommand({ logout: true }, createConfig());
 
-    expect(clearAuthSession).toHaveBeenCalled();
-    expect(getAuthStorePath).toHaveBeenCalled();
+    expect(clearAuthSessionSpy).toHaveBeenCalled();
+    expect(getAuthStorePathSpy).toHaveBeenCalled();
     log.mockRestore();
   });
 
@@ -65,7 +69,7 @@ describe("runAuthCommand", () => {
     await runAuthCommand({ outputUrl: true }, createConfig());
 
     expect(fetchSpy).toHaveBeenCalledTimes(1); // only metadata request
-    expect(saveAuthSession).not.toHaveBeenCalled();
+    expect(saveAuthSessionSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
     log.mockRestore();
   });

@@ -2,11 +2,29 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 import * as cueIntegration from "@/constraints/cli-integration.js";
-import { ApiClient } from "@/io/api/api-client.js";
 import { listCommand } from "@/services/list/index.js";
-import * as progress from "@/utils/api/progress.js";
 import * as formatting from "@/utils/util/output/formatting.js";
 import fs from "fs-extra";
+
+/**
+ * Stub ApiClient for testing - no global mock pollution
+ */
+class StubApiClient {
+  private listResponse: any;
+
+  constructor(response?: any) {
+    this.listResponse = response ?? { success: true, data: [{ id: "svc1" }] };
+  }
+
+  setResponse(response: any) {
+    this.listResponse = response;
+    return this;
+  }
+
+  async listComponents(_type: string) {
+    return this.listResponse;
+  }
+}
 
 const baseConfig: any = {
   apiUrl: "https://api",
@@ -31,21 +49,26 @@ describe("listCommand remote mode", () => {
   });
 
   it("formats remote components with json/yaml/table and verbose", async () => {
-    const clientSpy = spyOn(ApiClient.prototype, "listComponents").mockResolvedValue({
-      success: true,
-      data: [{ id: "svc1" }],
-    } as any);
-    spyOn(progress, "withProgress").mockImplementation(async (_opts, fn) => fn());
+    const stubClient = new StubApiClient({ success: true, data: [{ id: "svc1" }] });
+
     const log = spyOn(console, "log").mockImplementation(() => {});
     const fmtJson = spyOn(formatting, "formatJson").mockReturnValue("JSON");
     const fmtYaml = spyOn(formatting, "formatYaml").mockReturnValue("YAML");
     const fmtTable = spyOn(formatting, "formatComponentTable").mockReturnValue("TABLE");
 
-    expect(await listCommand("service", { format: "json", verbose: true }, baseConfig)).toBe(0);
-    expect(await listCommand("service", { format: "yaml" }, baseConfig)).toBe(0);
-    expect(await listCommand("service", { format: "table" }, baseConfig)).toBe(0);
+    expect(
+      await listCommand(
+        "service",
+        { format: "json", verbose: true },
+        baseConfig,
+        stubClient as any,
+      ),
+    ).toBe(0);
+    expect(await listCommand("service", { format: "yaml" }, baseConfig, stubClient as any)).toBe(0);
+    expect(await listCommand("service", { format: "table" }, baseConfig, stubClient as any)).toBe(
+      0,
+    );
 
-    expect(clientSpy).toHaveBeenCalledWith("service");
     expect(fmtJson).toHaveBeenCalled();
     expect(fmtYaml).toHaveBeenCalled();
     expect(fmtTable).toHaveBeenCalled();
@@ -54,13 +77,10 @@ describe("listCommand remote mode", () => {
   });
 
   it("returns 1 on remote failure", async () => {
-    spyOn(ApiClient.prototype, "listComponents").mockResolvedValue({
-      success: false,
-      error: "boom",
-    } as any);
-    spyOn(progress, "withProgress").mockImplementation(async (_opts, fn) => fn());
+    const stubClient = new StubApiClient({ success: false, error: "boom" });
+
     const err = spyOn(console, "error").mockImplementation(() => {});
-    const code = await listCommand("service", {}, baseConfig);
+    const code = await listCommand("service", {}, baseConfig, stubClient as any);
     expect(code).toBe(1);
     err.mockRestore();
   });

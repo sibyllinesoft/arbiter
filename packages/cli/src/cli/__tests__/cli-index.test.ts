@@ -15,7 +15,7 @@ describe("cli entry index", () => {
     const program = await loadProgram();
     const commandNames = program.commands.map((c: any) => c.name());
 
-    expect(commandNames).toEqual(expect.arrayContaining(["add", "generate", "check", "remove"]));
+    expect(commandNames).toEqual(expect.arrayContaining(["add", "generate", "status", "remove"]));
     expect(program.name()).toBe("arbiter");
     expect(program.options.some((opt: any) => opt.long === "--api-url")).toBe(true);
   });

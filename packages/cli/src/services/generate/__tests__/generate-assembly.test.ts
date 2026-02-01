@@ -1,16 +1,16 @@
+import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 import * as childProcess from "node:child_process";
 import { EventEmitter } from "node:events";
 import os from "node:os";
 import path from "node:path";
 import { __generateTesting } from "@/services/generate/io/index.js";
 import fs from "fs-extra";
-import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("parseAssemblyFile", () => {
   let tempDir: string;
 
   afterEach(async () => {
-    vi.restoreAllMocks();
+    mock.restore();
     if (tempDir) {
       await fs.remove(tempDir);
     }
@@ -20,7 +20,7 @@ describe("parseAssemblyFile", () => {
     const proc: any = new EventEmitter();
     proc.stdout = new EventEmitter();
     proc.stderr = new EventEmitter();
-    proc.kill = vi.fn();
+    proc.kill = mock();
     return proc;
   };
 
@@ -30,13 +30,13 @@ describe("parseAssemblyFile", () => {
     await fs.writeFile(assemblyPath, 'product: { name: "Fallback App" }\n');
 
     const proc = buildMockProc();
-    vi.spyOn(childProcess, "spawn").mockReturnValue(proc as any);
+    spyOn(childProcess, "spawn").mockReturnValue(proc as any);
 
     const mockReporter = {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      success: vi.fn(),
+      info: mock(),
+      warn: mock(),
+      error: mock(),
+      success: mock(),
     };
 
     const resultPromise = __generateTesting.parseAssemblyFile(assemblyPath, mockReporter);
@@ -55,13 +55,13 @@ describe("parseAssemblyFile", () => {
     await fs.writeFile(assemblyPath, "// cue placeholder\n");
 
     const proc = buildMockProc();
-    vi.spyOn(childProcess, "spawn").mockReturnValue(proc as any);
+    spyOn(childProcess, "spawn").mockReturnValue(proc as any);
 
     const mockReporter = {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      success: vi.fn(),
+      info: mock(),
+      warn: mock(),
+      error: mock(),
+      success: mock(),
     };
 
     const resultPromise = __generateTesting.parseAssemblyFile(assemblyPath, mockReporter);
