@@ -27,8 +27,7 @@ export function getCliPackageJson(): string {
     "build": "tsc",
     "test": "vitest",
     "dev": "tsx src/cli.ts",
-    "arbiter:check": "arbiter check",
-    "arbiter:surface": "arbiter surface typescript"
+    "arbiter:status": "arbiter status"
   },
   "dependencies": {
     "commander": "^11.0.0",
@@ -249,7 +248,7 @@ ${pm.run("dev")} hello Alice
 
 \`\`\`bash
 # Validate CLI contracts
-arbiter check
+arbiter status
 
 # Generate tests from command specifications
 arbiter tests scaffold --language typescript

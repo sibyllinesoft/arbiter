@@ -205,7 +205,7 @@ async function generateApiDocumentation(options: DocsOptions, _config: CLIConfig
     await fs.access(surfacePath);
   } catch {
     console.log(chalk.yellow("⚠️  No surface.json found"));
-    console.log(chalk.dim("Run: arbiter surface <language> to generate API surface"));
+    console.log(chalk.dim("Generate a surface.json file with your API surface data"));
     return 1;
   }
 
@@ -234,7 +234,6 @@ async function generateApiDocumentation(options: DocsOptions, _config: CLIConfig
   // Show next steps
   console.log(chalk.blue("\n🎯 Next steps:"));
   console.log(chalk.dim(`  📖 View API docs: ${outputPath}`));
-  console.log(chalk.dim("  🔄 Update surface: arbiter surface <language> --diff"));
 
   return 0;
 }

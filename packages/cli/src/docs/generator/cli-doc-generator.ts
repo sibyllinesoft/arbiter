@@ -206,7 +206,6 @@ export class CLIDocumentationGenerator {
       docs: "documentation",
       examples: "generation",
       execute: "execution",
-      explain: "documentation",
       rename: "management",
       version: "release",
       sync: "integration",

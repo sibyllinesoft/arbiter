@@ -35,11 +35,7 @@ export function createGitHubPullRequestWorkflow(
         steps: [
           { name: "Checkout code", uses: "actions/checkout@v4" },
           { name: "Setup Arbiter CLI", run: pm.installGlobal("@arbiter/cli") },
-          { name: "Validate CUE files", run: "arbiter check --format json" },
-          {
-            name: "Generate API surface",
-            run: `arbiter surface ${languages[0]?.name || "typescript"} --output surface.json`,
-          },
+          { name: "Validate CUE files", run: "arbiter status --format json" },
         ],
       },
     },

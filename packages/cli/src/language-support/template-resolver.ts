@@ -1,11 +1,14 @@
 import path from "node:path";
 import { TemplateOrchestrator, templateOrchestrator } from "@/templates/index.js";
+import { renderTemplate as renderHandlebars } from "@/templates/plop/handlebars-renderer.js";
 
 export interface TemplateResolverOptions {
   language: string;
   overrideDirectories?: string[];
   defaultDirectories?: string[];
   orchestrator?: TemplateOrchestrator;
+  /** Use legacy mustache-like rendering instead of Handlebars */
+  useLegacyRenderer?: boolean;
 }
 
 export class TemplateResolver {
@@ -13,10 +16,12 @@ export class TemplateResolver {
   private overrideDirectories: string[] = [];
   private defaultDirectories: string[] = [];
   private orchestrator: TemplateOrchestrator;
+  private useLegacyRenderer: boolean;
 
   constructor(options: TemplateResolverOptions) {
     this.language = options.language;
     this.orchestrator = options.orchestrator ?? templateOrchestrator;
+    this.useLegacyRenderer = options.useLegacyRenderer ?? false;
     if (options.overrideDirectories) {
       this.setOverrideDirectories(options.overrideDirectories);
     }
@@ -65,6 +70,17 @@ export class TemplateResolver {
   }
 
   private applyTemplate(content: string, context: Record<string, unknown>): string {
+    // Use Handlebars by default, with legacy fallback option
+    if (this.useLegacyRenderer) {
+      return this.applyLegacyTemplate(content, context);
+    }
+    return renderHandlebars(content, context);
+  }
+
+  /**
+   * Legacy mustache-like template rendering (for backwards compatibility)
+   */
+  private applyLegacyTemplate(content: string, context: Record<string, unknown>): string {
     const pattern = /{{{\s*([\w.]+)\s*}}}|{{\s*([\w.]+)\s*}}/g;
 
     return content.replace(pattern, (_match, tripleKey: string, doubleKey: string) => {

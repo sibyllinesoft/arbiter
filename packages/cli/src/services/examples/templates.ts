@@ -53,9 +53,7 @@ export function getTypescriptLibraryPackageJson(): string {
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "lint": "eslint src test --ext .ts",
-    "arbiter:surface": "arbiter surface typescript --output surface.json",
-    "arbiter:check": "arbiter check",
-    "arbiter:watch": "arbiter watch"
+    "arbiter:status": "arbiter status"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
@@ -446,13 +444,7 @@ ${pm.install}
 
 \`\`\`bash
 # Initialize Arbiter tracking
-arbiter check
-
-# Watch for changes during development
-arbiter watch
-
-# Extract API surface
-arbiter surface typescript --output surface.json
+arbiter status
 
 # Generate tests from contracts
 arbiter tests scaffold --language typescript
@@ -584,7 +576,7 @@ export function getMonorepoPackageJson(): string {
   "scripts": {
     "build": "npm run build --workspaces",
     "test": "npm run test --workspaces",
-    "arbiter:check": "arbiter check"
+    "arbiter:status": "arbiter status"
   },
   "devDependencies": {
     "typescript": "^5.0.0",

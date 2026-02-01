@@ -164,8 +164,7 @@ curl http://localhost:8000/health
 ## Arbiter Integration
 
 \`\`\`bash
-arbiter surface python --output surface.json
 arbiter tests scaffold --language python
-arbiter check
+arbiter status
 \`\`\``;
 }

@@ -11,6 +11,7 @@ import path from "node:path";
 import { CUEManipulator } from "@/cue/index.js";
 import chalk from "chalk";
 import fs from "fs-extra";
+import { PlopImplementor } from "./plop/index.js";
 
 /**
  * Helper function to replace execa with spawn
@@ -103,25 +104,105 @@ export interface TemplateContextSeed {
 }
 
 /**
+ * Get layered template directories (project -> home -> builtin)
+ * Similar to how .env files are resolved
+ */
+export function getTemplateSearchPaths(projectDir?: string): string[] {
+  const paths: string[] = [];
+
+  // 1. Project-level templates (highest priority)
+  const projectRoot = projectDir ?? process.cwd();
+  paths.push(path.join(projectRoot, ".arbiter", "templates"));
+
+  // 2. User-level templates
+  paths.push(path.join(os.homedir(), ".arbiter", "templates"));
+
+  // 3. Built-in templates (lowest priority)
+  const builtinPath = path.resolve(import.meta.dirname ?? __dirname, ".");
+  paths.push(builtinPath);
+
+  return paths;
+}
+
+export interface AvailableTemplate {
+  name: string;
+  path: string;
+  source: "project" | "user" | "builtin";
+  hasPlopfile: boolean;
+}
+
+/**
+ * List all available templates from all layers
+ */
+export async function listAvailableTemplates(projectDir?: string): Promise<AvailableTemplate[]> {
+  const templates: AvailableTemplate[] = [];
+  const seen = new Set<string>();
+
+  const projectRoot = projectDir ?? process.cwd();
+  const layers: Array<{ path: string; source: "project" | "user" | "builtin" }> = [
+    { path: path.join(projectRoot, ".arbiter", "templates", "plopfiles"), source: "project" },
+    { path: path.join(os.homedir(), ".arbiter", "templates", "plopfiles"), source: "user" },
+    { path: path.resolve(import.meta.dirname ?? __dirname, "plopfiles"), source: "builtin" },
+  ];
+
+  for (const layer of layers) {
+    try {
+      if (await fs.pathExists(layer.path)) {
+        const entries = await fs.readdir(layer.path, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isDirectory() && !seen.has(entry.name)) {
+            seen.add(entry.name);
+            const templatePath = path.join(layer.path, entry.name);
+            const hasPlopfile =
+              (await fs.pathExists(path.join(templatePath, "plopfile.js"))) ||
+              (await fs.pathExists(path.join(templatePath, "plopfile.mjs"))) ||
+              (await fs.pathExists(path.join(templatePath, "plopfile.cjs")));
+            templates.push({
+              name: entry.name,
+              path: templatePath,
+              source: layer.source,
+              hasPlopfile,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      // Ignore errors reading directories
+    }
+  }
+
+  return templates;
+}
+
+/**
  * Template orchestrator for handling aliases and execution
  */
 export class TemplateOrchestrator {
   private config: TemplateConfig | null = null;
   private implementors: Map<string, TemplateImplementor> = new Map();
+  private projectDir: string | undefined;
 
-  constructor() {
+  constructor(projectDir?: string) {
+    this.projectDir = projectDir;
     this.loadDefaultImplementors();
+  }
+
+  /**
+   * Set the project directory for template resolution
+   */
+  setProjectDir(dir: string): void {
+    this.projectDir = dir;
   }
 
   /**
    * Load default template implementors
    */
   private loadDefaultImplementors(): void {
-    // Cookiecutter implementor
-    this.implementors.set("cookiecutter", new CookiecutterImplementor());
+    // Plop implementor (default - Handlebars-based)
+    this.implementors.set("plop", new PlopImplementor());
 
-    // Yeoman implementor (future implementation)
-    // this.implementors.set('yeoman', new YeomanImplementor());
+    // Cookiecutter implementor (legacy)
+    this.implementors.set("cookiecutter", new CookiecutterImplementor());
 
     // Custom script implementor for simple templates
     this.implementors.set("script", new ScriptImplementor());
@@ -206,6 +287,11 @@ export class TemplateOrchestrator {
   private getDefaultConfig(): TemplateConfig {
     return {
       implementors: {
+        plop: {
+          command: "plop",
+          defaultArgs: ["--plopfile"],
+          timeout: 120000, // 2 minutes
+        },
         cookiecutter: {
           command: "cookiecutter",
           defaultArgs: ["--no-input"],
@@ -218,6 +304,33 @@ export class TemplateOrchestrator {
         },
       },
       aliases: {
+        // Plop-based templates - uses layered lookup (project -> user -> builtin)
+        "typescript-service": {
+          implementor: "plop",
+          source: "typescript-service",
+          description: "TypeScript service with Express/Hono",
+        },
+        "typescript-component": {
+          implementor: "plop",
+          source: "typescript-component",
+          description: "React component with tests",
+        },
+        "go-service": {
+          implementor: "plop",
+          source: "go-service",
+          description: "Go service with Chi/Echo",
+        },
+        "python-service": {
+          implementor: "plop",
+          source: "python-service",
+          description: "Python FastAPI service",
+        },
+        "rust-service": {
+          implementor: "plop",
+          source: "rust-service",
+          description: "Rust Axum service",
+        },
+        // Legacy cookiecutter templates
         "bun-hono": {
           implementor: "cookiecutter",
           source: "https://github.com/arbiter-templates/bun-hono.git",
@@ -240,7 +353,7 @@ export class TemplateOrchestrator {
         },
       },
       settings: {
-        defaultImplementor: "cookiecutter",
+        defaultImplementor: "plop",
         cacheDir: path.join(os.homedir(), ".arbiter", "template-cache"),
         timeout: 300000,
       },
@@ -311,12 +424,25 @@ export class TemplateOrchestrator {
 
   async resolveTemplateAsset(
     relativePath: string,
-    options: { overrideDirectories?: string[]; defaultDirectories?: string[] } = {},
+    options: {
+      overrideDirectories?: string[];
+      defaultDirectories?: string[];
+      useLayeredLookup?: boolean;
+    } = {},
   ): Promise<{ content: string; resolvedPath: string } | undefined> {
-    const searchPaths = [
-      ...this.normalizeAssetDirectories(options.overrideDirectories),
-      ...this.normalizeAssetDirectories(options.defaultDirectories),
-    ];
+    // Build search paths: overrides -> layered (project/home/builtin) -> explicit defaults
+    const searchPaths: string[] = [];
+
+    // 1. Explicit overrides (highest priority)
+    searchPaths.push(...this.normalizeAssetDirectories(options.overrideDirectories));
+
+    // 2. Layered lookup (project -> home -> builtin) if enabled (default: true)
+    if (options.useLayeredLookup !== false) {
+      searchPaths.push(...getTemplateSearchPaths(this.projectDir));
+    }
+
+    // 3. Explicit defaults (lowest priority)
+    searchPaths.push(...this.normalizeAssetDirectories(options.defaultDirectories));
 
     for (const baseDir of searchPaths) {
       const candidatePath = path.resolve(baseDir, relativePath);
@@ -571,3 +697,13 @@ function findArtifactByName(
  * Default template orchestrator instance
  */
 export const templateOrchestrator = new TemplateOrchestrator();
+
+// Re-export Plop utilities
+export { PlopImplementor, type PlopExecuteOptions } from "./plop/index.js";
+export {
+  renderTemplate,
+  compileTemplate,
+  registerPartial,
+  registerHelper,
+  Handlebars,
+} from "./plop/handlebars-renderer.js";

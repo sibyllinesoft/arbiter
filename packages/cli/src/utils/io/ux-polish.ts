@@ -84,19 +84,17 @@ function getNextSteps(command: string, context?: Record<string, any>): string[] 
   switch (command) {
     case "init":
       steps.push("Edit arbiter.assembly.cue to customize your project");
-      steps.push('Run "arbiter check" to validate configuration');
-      steps.push('Use "arbiter explain" to understand your setup');
+      steps.push('Run "arbiter status" to validate configuration');
+      steps.push('Use "arbiter list" to understand your setup');
       steps.push('Generate examples with "arbiter examples profile"');
       break;
 
     case "check":
       if (context?.success) {
-        steps.push('Generate API surface with "arbiter surface <language>"');
-        steps.push('Set up development workflow with "arbiter watch"');
         steps.push('Create tests with "arbiter tests scaffold"');
       } else {
         steps.push("Fix validation errors above");
-        steps.push('Use "arbiter explain" to understand configuration');
+        steps.push('Use "arbiter list" to understand configuration');
         steps.push('Check examples with "arbiter examples profile"');
       }
       break;
@@ -125,12 +123,6 @@ function getNextSteps(command: string, context?: Record<string, any>): string[] 
       steps.push('Run "arbiter init" in example directories to try them');
       break;
 
-    case "explain":
-      steps.push("Follow the recommendations above");
-      steps.push("Address any potential issues listed");
-      steps.push('Use "arbiter docs schema" for detailed documentation');
-      break;
-
     case "tests":
       steps.push("Run generated tests to verify they work");
       steps.push("Customize test cases for your specific needs");
@@ -157,8 +149,7 @@ function getNextSteps(command: string, context?: Record<string, any>): string[] 
 
     default:
       steps.push('Run "arbiter --help" for more commands');
-      steps.push('Use "arbiter explain" to understand your project');
-      steps.push('Check "arbiter health" if having issues');
+      steps.push('Use "arbiter list" to understand your project');
   }
 
   return steps;
@@ -178,7 +169,7 @@ function showFileNotFoundHelp(message: string): void {
   } else if (message.includes(".cue")) {
     console.log(chalk.dim("   • Check the file path is correct"));
     console.log(chalk.dim("   • Ensure CUE files have proper syntax"));
-    console.log(chalk.dim('   • Use "arbiter check" to validate all CUE files'));
+    console.log(chalk.dim('   • Use "arbiter status" to validate all CUE files'));
   } else {
     console.log(chalk.dim("   • Check the file or directory path"));
     console.log(chalk.dim("   • Ensure you have the right permissions"));
@@ -209,7 +200,7 @@ function showConnectionHelp(): void {
   );
   console.log(chalk.dim("   • If you use Docker, run 'docker compose up api' per docs/deploy."));
   console.log(chalk.dim("   • Ensure --api-url or config.apiUrl matches the server you started."));
-  console.log(chalk.dim("   • Once ready, test connectivity with 'arbiter health'."));
+  console.log(chalk.dim("   • Run 'arbiter auth login' to authenticate with the server."));
 }
 
 /**
@@ -219,7 +210,7 @@ function showAssemblyHelp(): void {
   console.log();
   console.log(chalk.yellow.bold("💡 Assembly configuration help:"));
   console.log(chalk.dim("   • Create assembly: arbiter init --preset <id>"));
-  console.log(chalk.dim("   • Understand config: arbiter explain"));
+  console.log(chalk.dim("   • Understand config: arbiter list"));
   console.log(chalk.dim("   • See examples: arbiter examples profile"));
   console.log(chalk.dim("   • Generate docs: arbiter docs schema"));
 }
@@ -231,9 +222,9 @@ function showValidationHelp(): void {
   console.log();
   console.log(chalk.yellow.bold("💡 Validation help:"));
   console.log(chalk.dim('   • Check CUE syntax with "cue fmt"'));
-  console.log(chalk.dim('   • Use "arbiter check --verbose" for details'));
+  console.log(chalk.dim('   • Use "arbiter status --verbose" for details'));
   console.log(chalk.dim('   • Compare with "arbiter examples profile"'));
-  console.log(chalk.dim('   • Get explanation: "arbiter explain"'));
+  console.log(chalk.dim('   • Get explanation: "arbiter list"'));
 }
 
 /**
@@ -373,11 +364,10 @@ export function showBanner(title: string, subtitle?: string): void {
  */
 export function showHints(): void {
   const hints = [
-    'Use "arbiter explain" to understand your project configuration',
+    'Use "arbiter list" to understand your project configuration',
     'Run "arbiter examples profile" to see working project templates',
     'Try "arbiter watch" for continuous validation during development',
     'Generate documentation with "arbiter docs schema --examples"',
-    'Check server health with "arbiter health" if having issues',
     'Use "arbiter --help" to see all available commands',
   ];
 

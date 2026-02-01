@@ -13,8 +13,16 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { safeFileOperation } from "@/constraints/index.js";
-import type { APISurface } from "@/services/surface/index.js";
 import type { CLIConfig } from "@/types.js";
+
+/**
+ * API surface representation for version comparison
+ */
+interface APISurface {
+  endpoints?: Array<{ method: string; path: string }>;
+  types?: Array<{ name: string; fields?: unknown[] }>;
+  [key: string]: unknown;
+}
 import { FILE_PATTERNS, resolveSmartNaming } from "@/utils/util/core/smart-naming.js";
 import chalk from "chalk";
 

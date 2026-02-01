@@ -78,6 +78,13 @@ function getExplicitType(service: ServiceRecord): string | undefined {
   if (typeof service.external === "boolean") {
     return service.external ? "external" : "internal";
   }
+  // Check explicit type/artifactType fields
+  if (service.type === "external" || service.type === "internal") {
+    return service.type;
+  }
+  if (service.artifactType === "external" || service.artifactType === "internal") {
+    return service.artifactType as string;
+  }
   return undefined;
 }
 
@@ -144,6 +151,9 @@ export function isInternalService(service: Partial<PackageConfig> | undefined): 
   if (typeof (service as any).external === "boolean") {
     return !(service as any).external;
   }
+  // Check explicit type field
+  if ((service as any).type === "external") return false;
+  if ((service as any).type === "internal") return true;
   return resolveServiceArtifactType(service) === "internal";
 }
 
