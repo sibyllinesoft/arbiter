@@ -37,6 +37,7 @@
     "arbiter:sync": "arbiter sync --language typescript"
   },
   "dependencies": {
+    "@iarna/toml": "^2.2.5",
     "fs-extra": "^11.2.0",
     "glob": "^10.3.10",
     "react-docgen-typescript": "^2.4.0"
