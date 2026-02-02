@@ -34,10 +34,10 @@ import { addService } from "@/services/add/subcommands/runtime/service.js";
 import type { CLIConfig } from "@/types.js";
 import {
   type CommentKind,
-  type IssuePriority,
-  type IssueStatus,
-  type IssueType,
   Storage,
+  type TaskPriority,
+  type TaskStatus,
+  type TaskType,
 } from "@/utils/storage/index.js";
 import chalk from "chalk";
 import { diffLines } from "diff";
@@ -472,9 +472,9 @@ async function addTask(
 
     const task = await storage.saveIssue({
       title,
-      type: (options.type as IssueType) || "task",
-      status: (options.status as IssueStatus) || "open",
-      priority: options.priority as IssuePriority,
+      type: (options.type as TaskType) || "task",
+      status: (options.status as TaskStatus) || "open",
+      priority: options.priority as TaskPriority,
       assignees: options.assignee ? [options.assignee] : undefined,
       labels: options.labels ? options.labels.split(",").map((l) => l.trim()) : undefined,
       references,

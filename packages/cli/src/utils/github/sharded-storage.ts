@@ -71,7 +71,7 @@ export interface Group {
   labels?: string[];
   tags?: string[];
   /** Parent group for nested groups (e.g., epic belongs to milestone) */
-  memberOf?: string;
+  parent?: string;
   config?: {
     allowParallelTasks?: boolean;
     autoProgress?: boolean;
@@ -117,7 +117,7 @@ export interface Task {
   acceptanceCriteria?: string[];
   labels?: string[];
   /** Parent group for membership */
-  memberOf?: string;
+  parent?: string;
   /** Milestone group reference (for GitHub/GitLab milestone sync) */
   milestone?: string;
   /** Story points / weight (GitLab weight, Jira points) */

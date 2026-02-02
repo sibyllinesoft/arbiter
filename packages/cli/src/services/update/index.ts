@@ -24,7 +24,7 @@ export interface UpdateOptions {
   description?: string;
   framework?: string;
   port?: number;
-  memberOf?: string;
+  parent?: string;
   // Resource options
   kind?: string;
   image?: string;
@@ -80,7 +80,7 @@ function buildUpdateObject(
 
   // Common fields
   if (options.description !== undefined) updates.description = options.description;
-  if (options.memberOf !== undefined) updates.memberOf = options.memberOf;
+  if (options.parent !== undefined) updates.parent = options.parent;
 
   // Package-specific fields
   if (entityType === "package") {
