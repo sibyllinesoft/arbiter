@@ -204,10 +204,14 @@ jobs:
           # Verify the binary works
           ./arbiter-cli --version
 
-      - name: Build API
+      - name: Build API (if exists)
         run: |
-          cd apps/api
-          bun run build
+          if [ -d "apps/api" ]; then
+            cd apps/api
+            bun run build
+          else
+            echo "No API directory found, skipping"
+          fi
 
       - name: Build frontend (if exists)
         run: |
@@ -231,18 +235,22 @@ jobs:
           cd artifacts && tar -czf "${CLI_NAME}.tar.gz" "${CLI_NAME}"
           rm "${CLI_NAME}"
 
-      - name: Package API build
+      - name: Package API build (if exists)
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
           API_NAME="arbiter-api-v${VERSION}"
 
-          mkdir -p "artifacts/${API_NAME}"
-          cp -r apps/api/dist/* "artifacts/${API_NAME}/" 2>/dev/null || echo "No API dist found"
-          cp -r apps/api/src "artifacts/${API_NAME}/"
-          cp apps/api/package.json "artifacts/${API_NAME}/"
+          if [ -d "apps/api" ]; then
+            mkdir -p "artifacts/${API_NAME}"
+            cp -r apps/api/dist/* "artifacts/${API_NAME}/" 2>/dev/null || echo "No API dist found"
+            cp -r apps/api/src "artifacts/${API_NAME}/"
+            cp apps/api/package.json "artifacts/${API_NAME}/"
 
-          cd artifacts && tar -czf "${API_NAME}.tar.gz" "${API_NAME}"
-          rm -rf "${API_NAME}"
+            cd artifacts && tar -czf "${API_NAME}.tar.gz" "${API_NAME}"
+            rm -rf "${API_NAME}"
+          else
+            echo "No API directory found, skipping"
+          fi
 
       - name: Package frontend build (if exists)
         run: |
