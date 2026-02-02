@@ -52,8 +52,9 @@ function main() {
   const packageFiles = [
     "./package.json",
     "./packages/cli/package.json",
-    "./packages/shared/package.json",
-    "./apps/api/package.json",
+    "./packages/validation/package.json",
+    "./packages/specification/package.json",
+    "./packages/ingest/package.json",
   ];
 
   // Check for additional package.json files
