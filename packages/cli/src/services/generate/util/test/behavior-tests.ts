@@ -6,7 +6,7 @@ import { ensureDirectory, writeFileWithHooks } from "@/services/generate/util/ho
 import { joinRelativePath, slugify, toPathSegments } from "@/services/generate/util/shared.js";
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { ProjectStructureConfig } from "@/types.js";
-import type { AppSpec } from "@arbiter/specification";
+import { type AppSpec, getBehaviorsArray, getPackages } from "@arbiter/specification";
 import chalk from "chalk";
 import fs from "fs-extra";
 
@@ -16,7 +16,7 @@ function isTypeScriptServiceLanguage(language?: string): boolean {
   return normalized === "typescript" || normalized === "javascript" || normalized === "node";
 }
 
-type FlowRouteMetadata = {
+type BehaviorRouteMetadata = {
   rootTestId?: string;
   actionTestIds: string[];
   successTestId?: string;
@@ -187,8 +187,11 @@ function resolveLocatorToTestId(key: string, locatorMap: Record<string, string>)
   return key;
 }
 
-function generateDefaultFlowTest(flow: any, locatorMap: Record<string, string> = {}): string {
-  const steps = (flow.steps || [])
+function generateDefaultBehaviorTest(
+  behavior: any,
+  locatorMap: Record<string, string> = {},
+): string {
+  const steps = (behavior.steps || [])
     .map((step: any, index: number) => {
       if (step.visit) {
         return `  await page.goto('${step.visit}'); // step ${index}`;
@@ -213,7 +216,7 @@ function generateDefaultFlowTest(flow: any, locatorMap: Record<string, string> =
     .join("\n");
 
   return `import { test, expect } from '@playwright/test';
-\ntest('${flow.id}', async ({ page }) => {
+\ntest('${behavior.id}', async ({ page }) => {
 ${steps}
   expect(true).toBe(true);
 });\n`;
@@ -244,7 +247,7 @@ async function scaffoldPlaywrightWorkspace(
   clientTarget: ClientGenerationTarget | undefined,
   structure: ProjectStructureConfig,
 ): Promise<string[]> {
-  if (!appSpec.behaviors || appSpec.behaviors.length === 0) {
+  if (!getBehaviorsArray(appSpec) || getBehaviorsArray(appSpec).length === 0) {
     return [];
   }
 
@@ -305,7 +308,7 @@ async function scaffoldPlaywrightWorkspace(
   return files;
 }
 
-export async function generateFlowBasedTests(
+export async function generateBehaviorBasedTests(
   appSpec: AppSpec,
   outputDir: string,
   options: GenerateOptions,
@@ -336,16 +339,16 @@ export async function generateFlowBasedTests(
     relativeWorkspace.trim().length > 0
       ? toPathSegments(relativeWorkspace)
       : defaultWorkspaceSegments;
-  const flowsDir = path.join(workspaceRoot, "behaviors");
-  if (!fs.existsSync(flowsDir) && !options.dryRun) {
-    fs.mkdirSync(flowsDir, { recursive: true });
+  const behaviorsDir = path.join(workspaceRoot, "behaviors");
+  if (!fs.existsSync(behaviorsDir) && !options.dryRun) {
+    fs.mkdirSync(behaviorsDir, { recursive: true });
   }
 
-  for (const flow of appSpec.behaviors) {
-    const testContent = generateDefaultFlowTest(flow, (appSpec as any).locators);
+  for (const behavior of getBehaviorsArray(appSpec)) {
+    const testContent = generateDefaultBehaviorTest(behavior, (appSpec as any).locators);
 
-    const testFileName = `${flow.id.replace(/:/g, "_")}.test.ts`;
-    const testPath = path.join(flowsDir, testFileName);
+    const testFileName = `${behavior.id.replace(/:/g, "_")}.test.ts`;
+    const testPath = path.join(behaviorsDir, testFileName);
     await writeFileWithHooks(testPath, testContent, options);
     files.push(joinRelativePath(...workspaceSegments, "behaviors", testFileName));
   }
@@ -375,7 +378,7 @@ function buildPlaywrightConfig(
   const clientDirRelative = path.posix.join("..", "..", clientBase);
 
   // Collect packages with TypeScript language
-  const tsServices = Object.entries(appSpec.packages ?? {}).filter(([, pkg]) =>
+  const tsServices = Object.entries(getPackages(appSpec)).filter(([, pkg]) =>
     isTypeScriptServiceLanguage((pkg as any)?.language as string | undefined),
   );
 

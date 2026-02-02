@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import type { AppSpec } from "@arbiter/specification";
 
 import {
-  deriveFlowRouteMetadata,
+  deriveBehaviorRouteMetadata,
   extractTestId,
   humanizeTestId,
   sanitizeTestId,
@@ -11,14 +11,15 @@ import {
 describe("generate helpers - flow metadata", () => {
   it("derives flow metadata including root, actions, success, and API interactions", () => {
     const appSpec: AppSpec = {
-      product: { name: "Flows" },
+      product: { name: "Behaviors" },
       ui: { routes: [{ id: "home:main" }] },
       locators: {
         "page:home": 'data-testid="home-root"',
         "btn:purchase": 'data-testid="purchase-btn"',
       },
-      behaviors: [
-        {
+      entities: {
+        "home:purchase": {
+          type: "behavior",
           id: "home:purchase",
           steps: [
             { click: "btn:purchase" },
@@ -26,11 +27,10 @@ describe("generate helpers - flow metadata", () => {
             { expect_api: { path: "/api/pay", method: "post", status: 201 } },
           ],
         },
-      ],
-      capabilities: null,
+      },
     };
 
-    const metadata = deriveFlowRouteMetadata(appSpec);
+    const metadata = deriveBehaviorRouteMetadata(appSpec);
     const entry = metadata.get("home:main");
     expect(entry).toBeDefined();
     expect(entry?.rootTestId).toBe("home-root");

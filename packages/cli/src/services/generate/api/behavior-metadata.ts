@@ -1,14 +1,14 @@
 /**
  * @packageDocumentation
- * Flow route metadata utilities for deriving test IDs and route information.
+ * Behavior route metadata utilities for deriving test IDs and route information.
  *
- * Provides functions to extract and sanitize test identifiers from flow
+ * Provides functions to extract and sanitize test identifiers from behavior
  * specifications for use in generated test files.
  */
 
-import type { AppSpec } from "@arbiter/specification";
+import { type AppSpec, getBehaviorsArray } from "@arbiter/specification";
 
-export interface FlowRouteMetadata {
+export interface BehaviorRouteMetadata {
   rootTestId?: string;
   actionTestIds: string[];
   successTestId?: string;
@@ -18,14 +18,14 @@ export interface FlowRouteMetadata {
 /**
  * Create a route ID resolver function
  */
-function createRouteIdResolver(routes: Array<{ id: string }>): (flowId: string) => string {
-  return (flowId: string): string => {
-    if (routes.some((route) => route.id === flowId)) {
-      return flowId;
+function createRouteIdResolver(routes: Array<{ id: string }>): (behaviorId: string) => string {
+  return (behaviorId: string): string => {
+    if (routes.some((route) => route.id === behaviorId)) {
+      return behaviorId;
     }
-    const namespace = flowId.split(":")[0];
+    const namespace = behaviorId.split(":")[0];
     const matchedRoute = routes.find((route) => route.id.startsWith(namespace)) ??
-      routes[0] ?? { id: flowId };
+      routes[0] ?? { id: behaviorId };
     return matchedRoute.id;
   };
 }
@@ -54,7 +54,7 @@ function processStepActions(
 function processStepExpect(
   step: any,
   locatorMap: Record<string, string>,
-  entry: FlowRouteMetadata,
+  entry: BehaviorRouteMetadata,
 ): string | undefined {
   if (typeof step.expect?.locator !== "string") {
     return undefined;
@@ -75,7 +75,7 @@ function processStepExpect(
 /**
  * Process step's API expectation
  */
-function processStepApiExpect(step: any, entry: FlowRouteMetadata): void {
+function processStepApiExpect(step: any, entry: BehaviorRouteMetadata): void {
   if (!step.expect_api) return;
 
   const method = (step.expect_api.method || "GET").toUpperCase();
@@ -99,7 +99,7 @@ function processStepApiExpect(step: any, entry: FlowRouteMetadata): void {
  * Resolve root test ID from locator map if not already set
  */
 function resolveRootTestId(
-  entry: FlowRouteMetadata,
+  entry: BehaviorRouteMetadata,
   routeId: string,
   locatorMap: Record<string, string>,
 ): void {
@@ -116,16 +116,16 @@ function resolveRootTestId(
 }
 
 /**
- * Derive flow route metadata from app spec
+ * Derive behavior route metadata from app spec
  */
-export function deriveFlowRouteMetadata(appSpec: AppSpec): Map<string, FlowRouteMetadata> {
-  const metadata = new Map<string, FlowRouteMetadata>();
+export function deriveBehaviorRouteMetadata(appSpec: AppSpec): Map<string, BehaviorRouteMetadata> {
+  const metadata = new Map<string, BehaviorRouteMetadata>();
   const locatorMap = (appSpec as any).locators || {};
   const routes = Array.isArray((appSpec as any).ui?.routes) ? (appSpec as any).ui.routes : [];
   const resolveRouteId = createRouteIdResolver(routes);
 
-  for (const flow of appSpec.behaviors || []) {
-    const routeId = resolveRouteId(flow.id);
+  for (const behavior of getBehaviorsArray(appSpec)) {
+    const routeId = resolveRouteId(behavior.id);
 
     if (!metadata.has(routeId)) {
       metadata.set(routeId, { actionTestIds: [], apiInteractions: [] });
@@ -135,7 +135,7 @@ export function deriveFlowRouteMetadata(appSpec: AppSpec): Map<string, FlowRoute
     const actionSet = new Set(entry.actionTestIds);
     let lastExpectId = entry.successTestId;
 
-    for (const step of flow.steps || []) {
+    for (const step of behavior.steps || []) {
       processStepActions(step, locatorMap, actionSet);
 
       const expectId = processStepExpect(step, locatorMap, entry);
