@@ -42,7 +42,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "mkdir -p dist && bun build src/cli.ts --outfile dist/cli.js --target=node --format=esm --bundle --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid --external inquirer --external cli-spinners --external cli-table3 --external ora --external cuelang-js --external node-plop --external plop --external handlebars && rm -rf dist/templates && cp -R templates dist/templates && cp -R src/templates/plopfiles dist/templates/plopfiles",
+    "build": "mkdir -p dist && bun build src/cli.ts --outfile dist/cli.js --target=node --format=esm --bundle --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid --external inquirer --external cli-spinners --external cli-table3 --external ora --external cuelang-js --external node-plop --external plop --external handlebars --external js-yaml --external @octokit/rest && rm -rf dist/templates && cp -R templates dist/templates && cp -R src/templates/plopfiles dist/templates/plopfiles",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build && npm test",
     "lint": "bunx @biomejs/biome check src",
@@ -56,6 +56,7 @@
     "arbiter:sync": "arbiter sync --language typescript"
   },
   "dependencies": {
+    "@octokit/rest": "^21.0.0",
     "chalk": "^5.3.0",
     "chokidar": "^4.0.3",
     "cli-spinners": "^2.9.2",
@@ -67,6 +68,7 @@
     "glob": "^11.0.3",
     "handlebars": "^4.7.8",
     "inquirer": "^9.3.7",
+    "js-yaml": "^4.1.0",
     "node-plop": "^0.32.3",
     "ora": "^8.0.1",
     "plop": "^4.0.5",
@@ -77,6 +79,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@types/glob": "^8.1.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.11.0",
     "@types/yaml": "^1.9.7",
     "typedoc": "^0.28.16"
