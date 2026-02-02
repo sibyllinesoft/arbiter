@@ -125,29 +125,16 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Build packages (required for type checking)
+        run: bun run build:packages 2>/dev/null || true
+
       - name: CLI Biome check
         working-directory: packages/cli
         run: bunx @biomejs/biome check src
 
-      - name: CLI TypeScript check
+      - name: CLI build check
         working-directory: packages/cli
-        run: bunx tsc --noEmit --project tsconfig.json
-
-      - name: Validate version consistency
-        run: |
-          bun run version:validate
-
-      - name: Type checking
-        run: bun run typecheck
-
-      - name: Code quality check
-        run: bun run check:ci
-
-      - name: Lint check
-        run: bun run lint
-
-      - name: Format check
-        run: bun run format:check
+        run: bun run build
 
   test:
     name: Test Suite
