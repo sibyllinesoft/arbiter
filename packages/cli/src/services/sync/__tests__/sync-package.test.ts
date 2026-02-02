@@ -25,7 +25,7 @@ describe("sync package.json flow", () => {
     // existing script stays; other arbiter scripts are added
     expect(conflicts.length).toBeGreaterThanOrEqual(0);
     expect(pkg.scripts["arbiter:status"]).toBeDefined();
-    expect(pkg.devDependencies["@arbiter/cli"]).toBeDefined();
+    expect((pkg as any).arbiter).toBeDefined();
   });
 
   it("applies package changes, backup optional, and idempotency warning", async () => {

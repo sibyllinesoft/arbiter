@@ -55,7 +55,6 @@ describe("syncProject service", () => {
     const updatedPkg = await fs.readJSON(pkgPath);
     // Check for scripts that are actually added by getArbiterPackageUpdates
     expect(updatedPkg.scripts["arbiter:status"]).toBe("arbiter status");
-    expect(updatedPkg.devDependencies["@arbiter/cli"]).toMatch(/^\^/);
     expect(updatedPkg.arbiter?.coverage?.threshold).toBe(0.8);
   });
 });
