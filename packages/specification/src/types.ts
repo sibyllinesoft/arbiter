@@ -92,7 +92,7 @@ export type TrackedEntityType =
   | "flow"
   | "route"
   | "schema"
-  | "issue"
+  | "task"
   | "process"
   | "comment"
   | "relationship";
@@ -559,8 +559,8 @@ export type Role = Slug; // Role (e.g., manager)
 export type LocatorToken = string; // Pattern: ^[a-z]+:[a-z0-9_-]+$ (e.g., btn:approve)
 export type CssSelector = string; // Non-empty single-line selector
 
-// Flow types
-export type FlowID = Slug;
+// Behavior types
+export type BehaviorID = Slug;
 export type StateKind = "visible" | "hidden" | "enabled" | "disabled" | "attached" | "detached";
 export type FactoryName = Slug;
 
@@ -699,8 +699,8 @@ export interface UISpec {
   routes: UIRoute[];
 }
 
-// Flow specification
-export interface FlowStep {
+// Behavior specification
+export interface BehaviorStep {
   visit?: string | RouteID;
   click?: LocatorToken;
   fill?: { locator: LocatorToken; value: string };
@@ -708,20 +708,20 @@ export interface FlowStep {
   expect_api?: ExpectAPI;
 }
 
-export interface FlowVariant {
+export interface BehaviorVariant {
   name: Slug;
   override?: any;
 }
 
-export interface FlowSpec extends EntityMeta {
-  id: FlowID;
+export interface BehaviorSpec extends EntityMeta {
+  id: BehaviorID;
   preconditions?: {
     role?: Role;
     seed?: Seed[];
     env?: Slug;
   };
-  steps: FlowStep[];
-  variants?: FlowVariant[];
+  steps: BehaviorStep[];
+  variants?: BehaviorVariant[];
 }
 
 // Testability specification
@@ -809,36 +809,64 @@ export interface RelationshipSpec extends EntityMeta {
   tags?: Slug[];
 }
 
+// =============================================================================
+// FLAT ENTITY MODEL
+// =============================================================================
+
+/**
+ * Discriminated union of all spec entity types.
+ * Each entity has a `type` field for discrimination and optional `parent` for hierarchy.
+ *
+ * @public
+ */
+export type SpecEntity =
+  | ({ type: "package" } & PackageConfig)
+  | ({ type: "resource" } & ResourceConfig)
+  | ({ type: "group" } & GroupSpec)
+  | ({ type: "task" } & TaskConfig)
+  | ({ type: "comment" } & CommentConfig)
+  | ({ type: "relationship" } & RelationshipSpec)
+  | ({ type: "behavior" } & BehaviorSpec)
+  | ({ type: "process" } & FSMSpec)
+  | ({ type: "operation" } & OperationSpec);
+
+/**
+ * Helper type to extract entity by type.
+ *
+ * @public
+ */
+export type EntityOfType<T extends SpecEntity["type"]> = Extract<SpecEntity, { type: T }>;
+
 // Complete App Specification
 export interface AppSpec {
   product: ProductSpec;
   config?: {
     [key: string]: any;
   };
+
+  /**
+   * Flat entity collection - all spec entities in one map.
+   * Entity hierarchy is expressed via `parent` field, not nesting.
+   * Keys are entity slugs/IDs.
+   */
+  entities?: Record<string, SpecEntity>;
+
+  // ---------- Non-entity fields ----------
   capabilities?: Record<Slug, CapabilitySpec>;
-  operations?: Record<string, OperationSpec>;
-  behaviors: FlowSpec[];
-
-  /** Code artifacts (services, frontends, tools, libraries) - unified Package type */
-  packages?: Record<string, PackageConfig>;
-  /** Infrastructure resources (databases, caches, containers) */
-  resources?: Record<string, ResourceConfig>;
-  /** Artifact groups for organizing related artifacts */
-  groups?: Record<string, GroupSpec>;
-  /** Work items tracking spec changes */
-  issues?: Record<Slug, IssueConfig>;
-  /** Comments attached to entities (discussions, agent guidance, memory) */
-  comments?: Record<Slug, CommentConfig>;
-  /** Explicit relationships between entities (complements implicit deps) */
-  relationships?: Record<Slug, RelationshipSpec>;
-
   environments?: Record<string, DeploymentConfig>;
   testability?: TestabilitySpec;
   ops?: OpsSpec;
-  processes?: Record<Slug, FSMSpec>;
+
+  /** UI configuration including routes */
+  ui?: {
+    routes?: Array<{ id: string; path?: string; name?: string }>;
+    [key: string]: any;
+  };
+
+  /** Locator mappings for test ID resolution */
+  locators?: Record<string, string>;
 
   tests?: any[];
-  epics?: any[];
   docs?: any;
   security?: any;
   performance?: any;
@@ -939,7 +967,8 @@ export interface PackageConfig extends EntityMeta {
   framework?: string;
   template?: string;
   tags?: string[];
-  memberOf?: string;
+  /** Parent entity for hierarchy (directory containment) */
+  parent?: string;
 
   /** Arbitrary metadata for context-specific properties */
   metadata?: Record<string, unknown>;
@@ -1030,7 +1059,8 @@ export interface ResourceConfig extends EntityMeta {
   metadata?: Record<string, unknown>;
 
   tags?: string[];
-  memberOf?: string;
+  /** Parent entity for hierarchy (directory containment) */
+  parent?: string;
 }
 
 /**
@@ -1077,8 +1107,8 @@ export interface GroupSpec extends EntityMeta {
   tags?: string[];
   /** Override project structure within this group */
   structure?: Partial<ProjectStructureConfig>;
-  /** Parent group (for nested groups) */
-  memberOf?: string;
+  /** Parent entity for hierarchy (directory containment) */
+  parent?: string;
   /** Due date for milestone/release groups */
   due?: ISODateTime;
   /** Group status */
@@ -1096,18 +1126,18 @@ export interface GroupSpec extends EntityMeta {
 }
 
 /**
- * Issue priority levels.
+ * Task priority levels.
  *
  * @public
  */
-export type IssuePriority = "critical" | "high" | "medium" | "low";
+export type TaskPriority = "critical" | "high" | "medium" | "low";
 
 /**
- * Issue workflow status.
+ * Task workflow status.
  *
  * @public
  */
-export type IssueStatus =
+export type TaskStatus =
   | "open"
   | "in_progress"
   | "blocked"
@@ -1136,11 +1166,11 @@ export interface EntityRef {
 export type ExternalSource = "local" | "github" | "gitlab" | "jira" | "linear";
 
 /**
- * Issue type for categorization (compatible with GitHub/GitLab/Jira).
+ * Task type for categorization (compatible with GitHub/GitLab/Jira).
  *
  * @public
  */
-export type IssueType =
+export type TaskType =
   | "issue"
   | "bug"
   | "feature"
@@ -1151,24 +1181,24 @@ export type IssueType =
   | "spike";
 
 /**
- * Configuration for a trackable work item (issue, epic, etc.).
+ * Configuration for a trackable work item (task, issue, etc.).
  *
  * Compatible with GitHub Issues, GitLab Issues, and Jira for bidirectional sync.
  *
  * @public
  */
-export interface IssueConfig extends EntityMeta {
-  /** Issue title (required) */
+export interface TaskConfig extends EntityMeta {
+  /** Task title (required) */
   title: string;
-  /** Detailed description of the issue */
+  /** Detailed description of the task */
   description?: string;
-  /** Issue type/category */
-  type?: IssueType;
+  /** Task type/category */
+  type?: TaskType;
   /** Current workflow status */
-  status?: IssueStatus;
+  status?: TaskStatus;
   /** Priority level */
-  priority?: IssuePriority;
-  /** References to other entities this issue relates to */
+  priority?: TaskPriority;
+  /** References to other entities this task relates to */
   references?: EntityRef[];
   /** People or teams responsible (supports multiple assignees like GitHub/GitLab) */
   assignees?: string[];
@@ -1182,17 +1212,15 @@ export interface IssueConfig extends EntityMeta {
   updated?: ISODateTime;
   /** Closed/completed timestamp */
   closedAt?: ISODateTime;
-  /** Parent issue for hierarchical tracking (epic/story relationship) */
+  /** Parent entity for hierarchy (directory containment) */
   parent?: string;
-  /** Milestone this issue belongs to (maps to GitHub milestone, GitLab milestone) */
+  /** Milestone this task belongs to (maps to GitHub milestone, GitLab milestone) */
   milestone?: string;
-  /** Related issues */
+  /** Related tasks */
   related?: Array<{
-    issue: string;
+    task: string;
     type: "blocks" | "blocked-by" | "duplicates" | "related-to";
   }>;
-  /** Group this issue belongs to */
-  memberOf?: string;
 
   // ---------- Estimation & Tracking ----------
   /** Story points / weight (GitLab weight, Jira story points) */
@@ -1203,11 +1231,11 @@ export interface IssueConfig extends EntityMeta {
   timeSpent?: number;
 
   // ---------- External Source Tracking ----------
-  /** Where this issue originated (local spec or external system) */
+  /** Where this task originated (local spec or external system) */
   source?: ExternalSource;
-  /** External system issue ID (e.g., GitHub issue number "123", Jira key "PROJ-123") */
+  /** External system task ID (e.g., GitHub issue number "123", Jira key "PROJ-123") */
   externalId?: string;
-  /** Full URL to the issue in the external system */
+  /** Full URL to the task in the external system */
   externalUrl?: string;
   /** Repository or project in the external system (e.g., "owner/repo") */
   externalRepo?: string;
@@ -1262,3 +1290,101 @@ export interface CommentConfig extends EntityMeta {
   /** Full URL to the comment in the external system */
   externalUrl?: string;
 }
+
+// =============================================================================
+// ENTITY HELPERS
+// =============================================================================
+
+/**
+ * Filter entities by type from a spec's entities map.
+ *
+ * @public
+ */
+export function entitiesOfType<T extends SpecEntity["type"]>(
+  entities: Record<string, SpecEntity> | undefined,
+  type: T,
+): Record<string, EntityOfType<T>> {
+  if (!entities) return {} as Record<string, EntityOfType<T>>;
+  const result: Record<string, EntityOfType<T>> = {};
+  for (const [key, entity] of Object.entries(entities)) {
+    if (entity.type === type) {
+      result[key] = entity as EntityOfType<T>;
+    }
+  }
+  return result;
+}
+
+/**
+ * Get all packages from a spec.
+ * @public
+ */
+export const getPackages = (spec: AppSpec) => entitiesOfType(spec.entities, "package");
+
+/**
+ * Get all resources from a spec.
+ * @public
+ */
+export const getResources = (spec: AppSpec) => entitiesOfType(spec.entities, "resource");
+
+/**
+ * Get all groups from a spec.
+ * @public
+ */
+export const getGroups = (spec: AppSpec) => entitiesOfType(spec.entities, "group");
+
+/**
+ * Get all tasks from a spec.
+ * @public
+ */
+export const getTasks = (spec: AppSpec) => entitiesOfType(spec.entities, "task");
+
+/**
+ * Get all behaviors from a spec.
+ * @public
+ */
+export const getBehaviors = (spec: AppSpec) => entitiesOfType(spec.entities, "behavior");
+
+/**
+ * Get all processes from a spec.
+ * @public
+ */
+export const getProcesses = (spec: AppSpec) => entitiesOfType(spec.entities, "process");
+
+/**
+ * Get all operations from a spec.
+ * @public
+ */
+export const getOperations = (spec: AppSpec) => entitiesOfType(spec.entities, "operation");
+
+/**
+ * Get all relationships from a spec.
+ * @public
+ */
+export const getRelationships = (spec: AppSpec) => entitiesOfType(spec.entities, "relationship");
+
+/**
+ * Get all comments from a spec.
+ * @public
+ */
+export const getComments = (spec: AppSpec) => entitiesOfType(spec.entities, "comment");
+
+/**
+ * Get behaviors as an array.
+ * @public
+ */
+export const getBehaviorsArray = (spec: AppSpec): Array<BehaviorSpec & { type: "behavior" }> =>
+  Object.values(getBehaviors(spec));
+
+/**
+ * Check if spec has any entities of a given type.
+ * @public
+ */
+export const hasEntitiesOfType = (spec: AppSpec, type: SpecEntity["type"]): boolean =>
+  spec.entities ? Object.values(spec.entities).some((e) => e.type === type) : false;
+
+/**
+ * Count entities of a given type.
+ * @public
+ */
+export const countEntitiesOfType = (spec: AppSpec, type: SpecEntity["type"]): number =>
+  spec.entities ? Object.values(spec.entities).filter((e) => e.type === type).length : 0;
