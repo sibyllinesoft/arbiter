@@ -17,8 +17,8 @@
       "@arbiter/validation": ["./packages/validation/src"],
       "@arbiter/validation/*": ["./packages/validation/src/*"],
       "@arbiter/cli": ["./packages/cli/src"],
-      "@arbiter/importer": ["./packages/importer/src"],
-      "@arbiter/importer/*": ["./packages/importer/src/*"]
+      "@arbiter/ingest": ["./packages/ingest/src"],
+      "@arbiter/ingest/*": ["./packages/ingest/src/*"]
     }
   },
   "files": [],
@@ -33,7 +33,7 @@
       "path": "./packages/cli"
     },
     {
-      "path": "./packages/importer"
+      "path": "./packages/ingest"
     }
   ],
   "exclude": ["node_modules", "dist", "**/dist/**", "**/node_modules/**"]

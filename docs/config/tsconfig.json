@@ -17,8 +17,8 @@
       "@arbiter/api-types": ["./packages/api-types/src"],
       "@arbiter/shared-types": ["./packages/shared-types/src"],
       "@arbiter/shared-types/*": ["./packages/shared-types/src/*"],
-      "@arbiter/importer": ["./packages/importer/src"],
-      "@arbiter/importer/*": ["./packages/importer/src/*"]
+      "@arbiter/ingest": ["./packages/ingest/src"],
+      "@arbiter/ingest/*": ["./packages/ingest/src/*"]
     }
   },
   "include": [
