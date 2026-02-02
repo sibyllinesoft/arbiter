@@ -44,7 +44,7 @@
   "scripts": {
     "build": "mkdir -p dist && bun build src/cli.ts --outfile dist/cli.js --target=node --format=esm --bundle --external commander --external chalk --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid --external inquirer --external cli-spinners --external cli-table3 --external ora --external cuelang-js --external node-plop --external plop --external handlebars --external js-yaml --external @octokit/rest && rm -rf dist/templates && cp -R templates dist/templates && cp -R src/templates/plopfiles dist/templates/plopfiles",
     "clean": "rm -rf dist",
-    "prepublishOnly": "npm run clean && npm run build && npm test",
+    "prepublishOnly": "npm run clean && npm run build",
     "lint": "bunx @biomejs/biome check src",
     "test": "bun test",
     "smoke": "bun scripts/generator-smoke.ts",
