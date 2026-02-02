@@ -18,18 +18,10 @@ All data is stored in `.arbiter/` as Obsidian-compatible markdown files, making 
 ## Installation
 
 ```bash
-# npm
 npm install -g @sibyllinesoft/arbiter
-
-# yarn
-yarn global add @sibyllinesoft/arbiter
-
-# pnpm
-pnpm add -g @sibyllinesoft/arbiter
-
-# bun
-bun add -g @sibyllinesoft/arbiter
 ```
+
+After installation, the `arbiter` command will be available globally.
 
 ## Quick Start
 
