@@ -8,7 +8,7 @@
 
 import { executeCommand } from "@/services/generate/core/compose/assembly-helpers.js";
 import type { GenerationReporter } from "@/services/generate/util/types.js";
-import type { AppSpec, ConfigWithVersion, SchemaVersion } from "@arbiter/specification";
+import type { AppSpec, ConfigWithVersion, SchemaVersion, SpecEntity } from "@arbiter/specification";
 import fs from "fs-extra";
 
 /**
@@ -95,20 +95,60 @@ export function detectSchemaVersion(cueData: any): SchemaVersion {
 }
 
 /**
+ * Build flat entities map from CUE data with various source fields.
+ */
+function buildEntities(cueData: any): Record<string, SpecEntity> {
+  const entities: Record<string, SpecEntity> = {};
+
+  // Add packages (from packages or services)
+  const packages = cueData.packages ?? cueData.services ?? {};
+  for (const [key, value] of Object.entries(packages)) {
+    entities[key] = { type: "package", ...(value as object) } as SpecEntity;
+  }
+
+  // Add resources (from resources or components, skip if array)
+  const resources = cueData.resources ?? cueData.components;
+  if (resources && typeof resources === "object" && !Array.isArray(resources)) {
+    for (const [key, value] of Object.entries(resources)) {
+      entities[key] = { type: "resource", ...(value as object) } as SpecEntity;
+    }
+  }
+
+  // Add groups
+  const groups = cueData.groups ?? {};
+  for (const [key, value] of Object.entries(groups)) {
+    entities[key] = { type: "group", ...(value as object) } as SpecEntity;
+  }
+
+  // Add behaviors (from behaviors array)
+  const behaviors = cueData.behaviors ?? [];
+  for (const behavior of behaviors) {
+    if (behavior?.id) {
+      entities[behavior.id] = { type: "behavior", ...behavior } as SpecEntity;
+    }
+  }
+
+  // Add processes (from processes or stateModels)
+  const processes = cueData.processes ?? cueData.stateModels ?? {};
+  for (const [key, value] of Object.entries(processes)) {
+    entities[key] = { type: "process", ...(value as object) } as SpecEntity;
+  }
+
+  return entities;
+}
+
+/**
  * Parse App Specification schema.
  */
 export function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): ConfigWithVersion {
-  const appSpec = {
-    product: cueData.product || {
-      name: "Unknown App",
-    },
+  const appSpec: AppSpec = {
+    product: cueData.product || { name: "Unknown App" },
     config: cueData.config,
-    resources: cueData.resources ?? cueData.components ?? [],
-    behaviors: cueData.behaviors || [],
-    packages: cueData.packages ?? cueData.services,
+    entities: buildEntities(cueData),
     capabilities: normalizeCapabilities(cueData.capabilities),
+    ui: cueData.ui,
+    locators: cueData.locators,
     tests: cueData.tests,
-    groups: cueData.groups,
     docs: cueData.docs,
     security: cueData.security,
     performance: cueData.performance,
@@ -118,14 +158,7 @@ export function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): Conf
     metadata: cueData.metadata,
     testability: cueData.testability,
     ops: cueData.ops,
-    processes: cueData.processes ?? cueData.stateModels,
-    // UI-related fields (deprecated, accessed via type assertion in consumers)
-    ui: cueData.ui,
-    locators: cueData.locators,
-    deployment: cueData.deployment,
-    // API paths for OpenAPI generation (deprecated, accessed via type assertion)
-    paths: cueData.paths,
-  } as AppSpec;
+  };
 
   const config: ConfigWithVersion = {
     schema: schemaVersion,
@@ -149,7 +182,7 @@ export async function fallbackParseAssembly(
   // Always use app schema
   const schemaVersion: SchemaVersion = { version: "app", detected_from: "default" };
 
-  reporter.warn("⚠️  CUE evaluation failed - using limited fallback parsing");
+  reporter.warn("CUE evaluation failed - using limited fallback parsing");
 
   // Extract basic information from the CUE file
   const nameMatch = content.match(/name:\s*"([^"]+)"/);
@@ -160,8 +193,7 @@ export async function fallbackParseAssembly(
   const appSpec: AppSpec = {
     product: { name: productName },
     config: { language },
-    resources: {},
-    behaviors: [],
+    entities: {},
     capabilities: {},
   };
 
