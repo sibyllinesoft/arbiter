@@ -34,7 +34,7 @@ const reporter: GenerationReporter = {
 };
 
 import {
-  deriveServiceEndpointsFromFlows,
+  deriveServiceEndpointsFromBehaviors,
   deriveServiceEndpointsFromPaths,
   mergeRouteBindings,
 } from "@/services/generate/api/route-derivation.js";
@@ -434,13 +434,13 @@ function combineServiceRoutes(
     serviceSpec,
     pathOwnership,
   );
-  const flowDerivedRoutes = deriveServiceEndpointsFromFlows(
+  const behaviorDerivedRoutes = deriveServiceEndpointsFromBehaviors(
     appSpec,
     originalName,
     serviceName,
     serviceSpec,
   );
-  return mergeRouteBindings(mergeRouteBindings(parsedRoutes, derivedRoutes), flowDerivedRoutes);
+  return mergeRouteBindings(mergeRouteBindings(parsedRoutes, derivedRoutes), behaviorDerivedRoutes);
 }
 
 /**

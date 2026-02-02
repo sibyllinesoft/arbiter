@@ -39,7 +39,7 @@ import { joinRelativePath, slugify } from "@/services/generate/util/shared.js";
 import type { GenerateOptions, GenerationReporter } from "@/services/generate/util/types.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
 import type { PackageManagerCommandSet } from "@/utils/io/package-manager.js";
-import type { AppSpec } from "@arbiter/specification";
+import { type AppSpec, getBehaviorsArray, getPackages } from "@arbiter/specification";
 import chalk from "chalk";
 import fs from "fs-extra";
 
@@ -86,13 +86,13 @@ function generateReadmeRoutes(appSpec: AppSpec): string {
 }
 
 /**
- * Generate README flows section
+ * Generate README behaviors section
  */
-function generateReadmeFlows(appSpec: AppSpec): string {
+function generateReadmeBehaviors(appSpec: AppSpec): string {
   return (
-    appSpec.behaviors
-      ?.map((flow: any) => `- **${flow.id}**: ${flow.steps?.length ?? 0} steps`)
-      .join("\n") ?? "No flows defined"
+    getBehaviorsArray(appSpec)
+      ?.map((behavior: any) => `- **${behavior.id}**: ${behavior.steps?.length ?? 0} steps`)
+      .join("\n") ?? "No behaviors defined"
   );
 }
 
@@ -122,9 +122,9 @@ ${generateReadmeConstraints(appSpec)}
 
 ${generateReadmeRoutes(appSpec)}
 
-## Flows
+## Behaviors
 
-${generateReadmeFlows(appSpec)}
+${generateReadmeBehaviors(appSpec)}
 
 ## Development Workflow
 
@@ -192,7 +192,7 @@ export function buildDevProxyConfig(
     const prefix = `/${firstSegment}`;
     if (proxies[prefix]) continue;
 
-    const packageEntry = Object.entries(appSpec.packages ?? {}).find(
+    const packageEntry = Object.entries(getPackages(appSpec) ?? {}).find(
       ([packageName]) => slugify(packageName, packageName) === ownerSlug,
     );
     if (!packageEntry) continue;
@@ -583,7 +583,7 @@ export async function generateServiceStructures(
   cliConfig: CLIConfig,
   packageManager: PackageManagerCommandSet,
 ): Promise<string[]> {
-  const hasPackages = appSpec.packages && Object.keys(appSpec.packages).length > 0;
+  const hasPackages = getPackages(appSpec) && Object.keys(getPackages(appSpec)).length > 0;
 
   if (!hasPackages) {
     return [];
@@ -594,7 +594,7 @@ export async function generateServiceStructures(
   const files: string[] = [];
   const pathOwnership = determinePathOwnership(appSpec);
 
-  for (const [packageName, packageConfig] of Object.entries(appSpec.packages!)) {
+  for (const [packageName, packageConfig] of Object.entries(getPackages(appSpec)!)) {
     if (!packageConfig || typeof packageConfig !== "object") continue;
 
     const packageFiles = await processService(

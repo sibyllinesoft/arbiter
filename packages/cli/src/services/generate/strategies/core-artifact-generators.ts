@@ -14,10 +14,16 @@ import {
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
 import type { PackageManagerCommandSet } from "@/utils/io/package-manager.js";
-import type { AppSpec } from "@arbiter/specification";
+import {
+  type AppSpec,
+  getBehaviorsArray,
+  getOperations,
+  getPackages,
+  getResources,
+} from "@arbiter/specification";
 
 /**
- * Generate all client-side assets (UI routes, locators, flow tests, project scaffolds).
+ * Generate all client-side assets (UI routes, locators, behavior tests, project scaffolds).
  * Mutates the shared context to expose the tests workspace path for later strategies.
  */
 export class ClientArtifactsGenerator implements ArtifactGenerator {
@@ -27,7 +33,7 @@ export class ClientArtifactsGenerator implements ArtifactGenerator {
     private readonly deps: {
       generateUIComponents: GenerateUIComponentsFn;
       generateLocatorDefinitions: GenerateLocatorDefinitionsFn;
-      generateFlowBasedTests: GenerateFlowBasedTestsFn;
+      generateBehaviorBasedTests: GenerateBehaviorBasedTestsFn;
       generateProjectStructure: GenerateProjectStructureFn;
       ensureDirectory: EnsureDirectoryFn;
       toRelativePath: (from: string, to: string) => string | null;
@@ -58,9 +64,9 @@ export class ClientArtifactsGenerator implements ArtifactGenerator {
       files.push(...locatorFiles);
     }
 
-    // Generate flow-based tests unless --no-tests is set
-    if (appSpec.behaviors.length > 0 && options.tests !== false) {
-      const testResult = await this.deps.generateFlowBasedTests(
+    // Generate behavior-based tests unless --no-tests is set
+    if (getBehaviorsArray(appSpec).length > 0 && options.tests !== false) {
+      const testResult = await this.deps.generateBehaviorBasedTests(
         appSpec,
         outputDir,
         options,
@@ -134,7 +140,11 @@ export class ApiSpecGenerator implements ArtifactGenerator {
   constructor(private readonly fn: ApiSpecFn) {}
 
   async generate(context: ArtifactGeneratorContext): Promise<string[]> {
-    if (!context.appSpec.resources && !context.appSpec.operations) return [];
+    if (
+      Object.keys(getResources(context.appSpec)).length === 0 &&
+      Object.keys(getOperations(context.appSpec)).length === 0
+    )
+      return [];
     return this.fn(context.appSpec, context.outputDir, context.options, context.structure);
   }
 }
@@ -146,7 +156,7 @@ export class ServiceArtifactsGenerator implements ArtifactGenerator {
 
   async generate(context: ArtifactGeneratorContext): Promise<string[]> {
     const hasPackages =
-      context.appSpec.packages && Object.keys(context.appSpec.packages).length > 0;
+      getPackages(context.appSpec) && Object.keys(getPackages(context.appSpec)).length > 0;
 
     if (!hasPackages) return [];
 
@@ -212,7 +222,7 @@ export type GenerateLocatorDefinitionsFn = (
   options: GenerateOptions,
 ) => Promise<string[]>;
 
-export type GenerateFlowBasedTestsFn = (
+export type GenerateBehaviorBasedTestsFn = (
   app: AppSpec,
   outputDir: string,
   options: GenerateOptions,

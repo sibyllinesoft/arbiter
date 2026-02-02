@@ -5,11 +5,11 @@
 
 import path from "node:path";
 import {
-  type FlowRouteMetadata,
-  deriveFlowRouteMetadata,
+  type BehaviorRouteMetadata,
+  deriveBehaviorRouteMetadata,
   humanizeTestId,
   sanitizeTestId,
-} from "@/services/generate/api/flow-metadata.js";
+} from "@/services/generate/api/behavior-metadata.js";
 import type { ClientGenerationTarget } from "@/services/generate/io/contexts.js";
 import { ensureDirectory, writeFileWithHooks } from "@/services/generate/util/hook-executor.js";
 import { joinRelativePath } from "@/services/generate/util/shared.js";
@@ -25,9 +25,9 @@ const reporter: GenerationReporter = {
 /**
  * Resolve the root test ID attribute for a route
  */
-function resolveRootTestIdAttr(routeId: string, flowMetadata?: FlowRouteMetadata): string {
-  if (flowMetadata?.rootTestId && flowMetadata.rootTestId.length > 0) {
-    return ` data-testid="${flowMetadata.rootTestId}"`;
+function resolveRootTestIdAttr(routeId: string, behaviorMetadata?: BehaviorRouteMetadata): string {
+  if (behaviorMetadata?.rootTestId && behaviorMetadata.rootTestId.length > 0) {
+    return ` data-testid="${behaviorMetadata.rootTestId}"`;
   }
   return ` data-testid="${sanitizeTestId(routeId)}"`;
 }
@@ -69,7 +69,7 @@ function generateSuccessBlock(successTestId: string | undefined): string {
   return `        {status === 'success' && (
           <div role="status" data-testid="${successTestId}">
             <h3>Success</h3>
-            <p>{activeAction ? \`Flow for \${activeAction} is ready.\` : 'Flow completed.'}</p>
+            <p>{activeAction ? \`Behavior for \${activeAction} is ready.\` : 'Behavior completed.'}</p>
           </div>
         )}`;
 }
@@ -79,7 +79,7 @@ function generateSuccessBlock(successTestId: string | undefined): string {
  */
 function generateFetchCalls(
   routeId: string,
-  apiInteractions: FlowRouteMetadata["apiInteractions"],
+  apiInteractions: BehaviorRouteMetadata["apiInteractions"],
 ): string {
   if (!apiInteractions?.length) {
     return "      await new Promise((resolve) => setTimeout(resolve, 300));";
@@ -155,12 +155,12 @@ export function buildRouteComponentContent(
   description: string,
   capabilityBlock: string,
   locatorMap: Record<string, string>,
-  flowMetadata?: FlowRouteMetadata,
+  behaviorMetadata?: BehaviorRouteMetadata,
 ): string {
-  const rootAttr = resolveRootTestIdAttr(route.id, flowMetadata);
-  const hasInteractiveFlow = (flowMetadata?.actionTestIds?.length || 0) > 0;
+  const rootAttr = resolveRootTestIdAttr(route.id, behaviorMetadata);
+  const hasInteractiveBehavior = (behaviorMetadata?.actionTestIds?.length || 0) > 0;
 
-  if (!hasInteractiveFlow && !flowMetadata?.successTestId) {
+  if (!hasInteractiveBehavior && !behaviorMetadata?.successTestId) {
     return generateStaticComponent(
       componentName,
       definitionName,
@@ -173,9 +173,9 @@ export function buildRouteComponentContent(
     );
   }
 
-  const actionSection = generateActionSection(flowMetadata?.actionTestIds);
-  const successBlock = generateSuccessBlock(flowMetadata?.successTestId);
-  const fetchCalls = generateFetchCalls(route.id, flowMetadata?.apiInteractions);
+  const actionSection = generateActionSection(behaviorMetadata?.actionTestIds);
+  const successBlock = generateSuccessBlock(behaviorMetadata?.successTestId);
+  const fetchCalls = generateFetchCalls(route.id, behaviorMetadata?.apiInteractions);
 
   return `import { useState } from 'react';
 import type { FC } from 'react';
@@ -346,14 +346,14 @@ async function processRouteComponent(
   routesDir: string,
   relativeRoot: string,
   locatorMap: Record<string, string>,
-  flowRoutes: Map<string, FlowRouteMetadata>,
+  behaviorRoutes: Map<string, BehaviorRouteMetadata>,
   options: GenerateOptions,
 ): Promise<{ relPath: string; importName: string }> {
   const metadata = buildRouteMetadata(route);
   const filePath = path.join(routesDir, metadata.fileName);
   const relPath = joinRelativePath(relativeRoot, "src", "routes", metadata.fileName);
 
-  const flowMetadata = flowRoutes.get(route.id);
+  const behaviorMetadata = behaviorRoutes.get(route.id);
   const componentContent = buildRouteComponentContent(
     route,
     metadata.componentName,
@@ -363,7 +363,7 @@ async function processRouteComponent(
     metadata.description,
     metadata.capabilityBlock,
     locatorMap,
-    flowMetadata,
+    behaviorMetadata,
   );
 
   await writeFileWithHooks(filePath, componentContent, options);
@@ -400,7 +400,7 @@ export async function generateUIComponents(
 
   // Process all routes
   const locatorMap = (appSpec as any).locators || {};
-  const flowRoutes = deriveFlowRouteMetadata(appSpec);
+  const behaviorRoutes = deriveBehaviorRouteMetadata(appSpec);
   const routeDefinitions: Array<{ importName: string }> = [];
 
   const uiRoutes = (appSpec as any).ui?.routes || [];
@@ -410,7 +410,7 @@ export async function generateUIComponents(
       context.routesDir,
       relativeRoot,
       locatorMap,
-      flowRoutes,
+      behaviorRoutes,
       options,
     );
     files.push(result.relPath);

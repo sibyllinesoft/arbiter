@@ -124,7 +124,7 @@ describe("DefaultPathRouter", () => {
         artifactType: "service",
         artifactKey: "payment-api",
         artifactSlug: "payment-api",
-        artifactConfig: { memberOf: "billing" },
+        artifactConfig: { parent: "billing" },
         groups,
         projectDir: "/project",
         structureConfig: baseStructure,
@@ -140,7 +140,7 @@ describe("DefaultPathRouter", () => {
         artifactType: "service",
         artifactKey: "checkout",
         artifactSlug: "checkout",
-        artifactConfig: { memberOf: "commerce" },
+        artifactConfig: { parent: "commerce" },
         groups,
         projectDir: "/project",
         structureConfig: baseStructure,
@@ -172,7 +172,7 @@ describe("DefaultPathRouter", () => {
         artifactType: "service",
         artifactKey: "api",
         artifactSlug: "api",
-        artifactConfig: { memberOf: "nonexistent" },
+        artifactConfig: { parent: "nonexistent" },
         groups,
         projectDir: "/project",
         structureConfig: baseStructure,
@@ -192,12 +192,12 @@ describe("DefaultPathRouter", () => {
       billing: {
         name: "Billing",
         description: "Billing feature group",
-        memberOf: "platform",
+        parent: "platform",
       },
       subscriptions: {
         name: "Subscriptions",
         description: "Subscription management",
-        memberOf: "billing",
+        parent: "billing",
       },
     };
 
@@ -207,7 +207,7 @@ describe("DefaultPathRouter", () => {
         artifactType: "service",
         artifactKey: "recurring-payments",
         artifactSlug: "recurring-payments",
-        artifactConfig: { memberOf: "subscriptions" },
+        artifactConfig: { parent: "subscriptions" },
         groups: nestedGroups,
         projectDir: "/project",
         structureConfig: baseStructure,
@@ -223,7 +223,7 @@ describe("DefaultPathRouter", () => {
         artifactType: "client",
         artifactKey: "invoice-ui",
         artifactSlug: "invoice-ui",
-        artifactConfig: { memberOf: "billing" },
+        artifactConfig: { parent: "billing" },
         groups: nestedGroups,
         projectDir: "/project",
         structureConfig: baseStructure,
@@ -251,7 +251,7 @@ describe("DefaultPathRouter", () => {
         artifactType: "client",
         artifactKey: "ios-app",
         artifactSlug: "ios-app",
-        artifactConfig: { memberOf: "mobile" },
+        artifactConfig: { parent: "mobile" },
         groups: groupsWithOverrides,
         projectDir: "/project",
         structureConfig: baseStructure,
@@ -278,19 +278,17 @@ describe("createRouter", () => {
 describe("validateGroupReferences", () => {
   const groups: Record<string, GroupSpec> = {
     billing: { name: "Billing" },
-    commerce: { name: "Commerce", memberOf: "platform" },
+    commerce: { name: "Commerce", parent: "platform" },
   };
 
   it("returns empty array when all references are valid", () => {
-    const artifacts = [{ key: "api", config: { memberOf: "billing" }, type: "service" as const }];
+    const artifacts = [{ key: "api", config: { parent: "billing" }, type: "service" as const }];
     const warnings = validateGroupReferences(artifacts, { billing: { name: "Billing" } });
     expect(warnings).toEqual([]);
   });
 
   it("returns warning for unknown artifact group reference", () => {
-    const artifacts = [
-      { key: "api", config: { memberOf: "nonexistent" }, type: "service" as const },
-    ];
+    const artifacts = [{ key: "api", config: { parent: "nonexistent" }, type: "service" as const }];
     const cleanGroups = { billing: { name: "Billing" } };
     const warnings = validateGroupReferences(artifacts, cleanGroups);
     expect(warnings).toHaveLength(1);
@@ -305,7 +303,7 @@ describe("validateGroupReferences", () => {
     expect(warnings[0]).toContain("platform");
   });
 
-  it("ignores artifacts without memberOf", () => {
+  it("ignores artifacts without parent", () => {
     const artifacts = [{ key: "api", config: {}, type: "service" as const }];
     const warnings = validateGroupReferences(artifacts, groups);
     // Only the commerce->platform warning should be present

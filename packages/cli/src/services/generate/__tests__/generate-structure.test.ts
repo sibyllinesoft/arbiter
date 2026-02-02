@@ -45,11 +45,17 @@ describe("generate structure helpers", () => {
 
     const appSpec: any = {
       product: { name: "App" },
-      packages: { Orders: { subtype: "service", language: "typescript", ports: [{ port: 4000 }] } },
+      entities: {
+        Orders: {
+          type: "package",
+          subtype: "service",
+          language: "typescript",
+          ports: [{ port: 4000 }],
+        },
+      },
       paths: { Orders: { "/orders/cart": {} } },
       ui: { routes: [] },
       locators: {},
-      flows: [],
     };
 
     const clientTarget = createClientTarget("web", {} as any, baseStructure as any, tmp);

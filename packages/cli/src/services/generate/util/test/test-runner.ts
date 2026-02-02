@@ -21,7 +21,7 @@ import {
   detectPackageManager,
   getPackageManagerCommands,
 } from "@/utils/io/package-manager.js";
-import type { AppSpec } from "@arbiter/specification";
+import { type AppSpec, getPackages } from "@arbiter/specification";
 import fs from "fs-extra";
 
 const reporter: GenerationReporter = {
@@ -111,7 +111,7 @@ export async function buildEndpointAssertionTask(
   packageManager: PackageManagerCommandSet,
 ): Promise<TestTask | null> {
   // Collect TypeScript packages
-  const tsServices = Object.entries(appSpec.packages ?? {}).filter(
+  const tsServices = Object.entries(getPackages(appSpec)).filter(
     ([, pkg]) => ((pkg as any)?.language as string | undefined)?.toLowerCase() === "typescript",
   );
 
@@ -202,7 +202,7 @@ export function buildServiceTestTasks(
 ): TestTask[] {
   const tasks: TestTask[] = [];
 
-  const packageEntries = Object.entries(appSpec.packages ?? {});
+  const packageEntries = Object.entries(getPackages(appSpec));
   for (const [packageName, packageConfig] of packageEntries) {
     if (!packageConfig || typeof packageConfig !== "object") continue;
 
@@ -388,8 +388,8 @@ function collectWorkspaces(
   }
 
   // Collect packages
-  if (appSpec.packages) {
-    for (const [packageName, packageSpec] of Object.entries(appSpec.packages)) {
+  if (getPackages(appSpec)) {
+    for (const [packageName, packageSpec] of Object.entries(getPackages(appSpec))) {
       if (!isWorkspaceFriendlyLanguage((packageSpec as any)?.language as string | undefined))
         continue;
       const slug = slugify(packageName, packageName);

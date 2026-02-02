@@ -12,7 +12,12 @@ import { joinRelativePath, slugify } from "@/services/generate/util/shared.js";
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
 import type { PackageManagerCommandSet } from "@/utils/io/package-manager.js";
-import type { AppSpec, ConfigWithVersion } from "@arbiter/specification";
+import {
+  type AppSpec,
+  type ConfigWithVersion,
+  getBehaviorsArray,
+  getPackages,
+} from "@arbiter/specification";
 import fs from "fs-extra";
 
 /**
@@ -60,28 +65,28 @@ function buildOverviewContent(appSpec: AppSpec): string {
     header,
     buildGoalsSection(appSpec.product.goals),
     buildRoutesSection((appSpec as any).ui?.routes),
-    buildPackagesSection(appSpec.packages),
+    buildPackagesSection(getPackages(appSpec)),
   ]
     .filter(Boolean)
     .join("\n");
 }
 
 /**
- * Build a single flow section
+ * Build a single behavior section
  */
-function buildFlowSection(flow: any): string {
-  const steps = flow.steps
+function buildBehaviorSection(behavior: any): string {
+  const steps = behavior.steps
     ?.map((step: any, idx: number) => `  ${idx + 1}. ${JSON.stringify(step)}`)
     .join("\n");
   const stepsBlock = steps ? `**Steps:**\n${steps}\n` : "";
-  return `## ${flow.id}\n\n${flow.description || "Generated flow"}\n\n${stepsBlock}`;
+  return `## ${behavior.id}\n\n${behavior.description || "Generated behavior"}\n\n${stepsBlock}`;
 }
 
 /**
  * Build behaviors markdown content
  */
 function buildBehaviorsContent(behaviors: any[]): string {
-  return ["# User Flows", "", ...behaviors.map(buildFlowSection)].join("\n");
+  return ["# User Behaviors", "", ...behaviors.map(buildBehaviorSection)].join("\n");
 }
 
 /**
@@ -102,10 +107,14 @@ export async function generateDocumentationArtifacts(
   await writeFileWithHooks(overviewPath, buildOverviewContent(appSpec), options);
   files.push(joinRelativePath(structure.docsDirectory, "overview.md"));
 
-  // Write behaviors.md if flows exist
-  if (appSpec.behaviors?.length > 0) {
+  // Write behaviors.md if behaviors exist
+  if (getBehaviorsArray(appSpec)?.length > 0) {
     const behaviorsPath = path.join(docsRoot, "behaviors.md");
-    await writeFileWithHooks(behaviorsPath, buildBehaviorsContent(appSpec.behaviors), options);
+    await writeFileWithHooks(
+      behaviorsPath,
+      buildBehaviorsContent(getBehaviorsArray(appSpec)),
+      options,
+    );
     files.push(joinRelativePath(structure.docsDirectory, "behaviors.md"));
   }
 

@@ -29,9 +29,13 @@ describe("enhanceClientDevServer", () => {
       product: { name: "Proxy App" },
       ui: { routes: [] },
       locators: {},
-      flows: [],
-      packages: {
-        Orders: { subtype: "service", language: "typescript", ports: [{ port: 4100 }] },
+      entities: {
+        Orders: {
+          type: "package",
+          subtype: "service",
+          language: "typescript",
+          ports: [{ port: 4100 }],
+        },
       },
       paths: {
         Orders: {

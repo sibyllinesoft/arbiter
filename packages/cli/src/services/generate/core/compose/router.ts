@@ -78,7 +78,7 @@ function getTypeDirectory(type: RoutableArtifactType, structure: ProjectStructur
 
 /**
  * Resolve the full group path for nested groups.
- * Traverses the memberOf chain to build the complete path.
+ * Traverses the parent chain to build the complete path.
  */
 function resolveGroupPath(
   groupKey: string,
@@ -97,7 +97,7 @@ function resolveGroupPath(
   }
 
   const groupDir = group.directory || slugify(group.name);
-  const parentPath = group.memberOf ? resolveGroupPath(group.memberOf, groups, visited) : [];
+  const parentPath = group.parent ? resolveGroupPath(group.parent, groups, visited) : [];
 
   return [...parentPath, groupDir];
 }
@@ -121,13 +121,13 @@ export class DefaultPathRouter implements PathRouter {
   /**
    * Emit warning for ungrouped artifacts if configured
    */
-  private warnForUngroupedArtifact(artifactKey: string, memberOf: string | undefined): void {
+  private warnForUngroupedArtifact(artifactKey: string, parent: string | undefined): void {
     if (!this.warnOnUngrouped) return;
 
-    if (memberOf) {
-      console.warn(`Warning: Artifact "${artifactKey}" references unknown group "${memberOf}"`);
+    if (parent) {
+      console.warn(`Warning: Artifact "${artifactKey}" references unknown group "${parent}"`);
     } else if (this.mode === "by-group") {
-      console.warn(`Warning: Artifact "${artifactKey}" has no memberOf field in by-group mode`);
+      console.warn(`Warning: Artifact "${artifactKey}" has no parent field in by-group mode`);
     }
   }
 
@@ -135,10 +135,10 @@ export class DefaultPathRouter implements PathRouter {
    * Check if artifact should use group-based routing
    */
   private shouldUseGroupRouting(
-    memberOf: string | undefined,
+    parent: string | undefined,
     groups: PathRouterInput["groups"],
   ): boolean {
-    return Boolean(memberOf && groups[memberOf]);
+    return Boolean(parent && groups[parent]);
   }
 
   resolve(input: PathRouterInput): PathRouterOutput {
@@ -149,10 +149,10 @@ export class DefaultPathRouter implements PathRouter {
     }
 
     // by-group mode
-    const memberOf = (artifactConfig as { memberOf?: string }).memberOf;
+    const parent = (artifactConfig as { parent?: string }).parent;
 
-    if (!this.shouldUseGroupRouting(memberOf, groups)) {
-      this.warnForUngroupedArtifact(input.artifactKey, memberOf);
+    if (!this.shouldUseGroupRouting(parent, groups)) {
+      this.warnForUngroupedArtifact(input.artifactKey, parent);
       return { root: this.getTypeRoot(artifactType, artifactSlug, structureConfig) };
     }
 
@@ -170,13 +170,13 @@ export class DefaultPathRouter implements PathRouter {
 
   private getGroupRoot(input: PathRouterInput): string {
     const { artifactType, artifactSlug, artifactConfig, groups, structureConfig } = input;
-    const memberOf = (artifactConfig as { memberOf?: string }).memberOf!;
+    const parent = (artifactConfig as { parent?: string }).parent!;
 
     // Resolve full group path (handles nested groups)
-    const groupPath = resolveGroupPath(memberOf, groups);
+    const groupPath = resolveGroupPath(parent, groups);
 
     // Get the type directory, potentially overridden by the group's structure
-    const group = groups[memberOf];
+    const group = groups[parent];
     const effectiveStructure = group.structure
       ? { ...structureConfig, ...group.structure }
       : structureConfig;
@@ -232,7 +232,7 @@ export async function createRouter(
  * Helper to check if an artifact has group membership.
  */
 export function hasGroupMembership(config: Record<string, unknown>): boolean {
-  return typeof config.memberOf === "string" && config.memberOf.length > 0;
+  return typeof config.parent === "string" && config.parent.length > 0;
 }
 
 /**
@@ -246,16 +246,16 @@ export function validateGroupReferences(
   const warnings: string[] = [];
 
   for (const artifact of artifacts) {
-    const memberOf = (artifact.config as { memberOf?: string }).memberOf;
-    if (memberOf && !groups[memberOf]) {
-      warnings.push(`${artifact.type} "${artifact.key}" references unknown group "${memberOf}"`);
+    const parent = (artifact.config as { parent?: string }).parent;
+    if (parent && !groups[parent]) {
+      warnings.push(`${artifact.type} "${artifact.key}" references unknown group "${parent}"`);
     }
   }
 
   // Also validate group->group references
   for (const [groupKey, group] of Object.entries(groups)) {
-    if (group.memberOf && !groups[group.memberOf]) {
-      warnings.push(`group "${groupKey}" references unknown parent group "${group.memberOf}"`);
+    if (group.parent && !groups[group.parent]) {
+      warnings.push(`group "${groupKey}" references unknown parent group "${group.parent}"`);
     }
   }
 

@@ -16,7 +16,7 @@ import { writeFileWithHooks } from "@/services/generate/util/hook-executor.js";
 import { joinRelativePath } from "@/services/generate/util/shared.js";
 import type { GenerateOptions, GenerationReporter } from "@/services/generate/util/types.js";
 import type { ProjectStructureConfig } from "@/types.js";
-import type { AppSpec, PathSpec } from "@arbiter/specification";
+import { type AppSpec, type PathSpec, getResources } from "@arbiter/specification";
 import fs from "fs-extra";
 
 const reporter: GenerationReporter = {
@@ -116,10 +116,10 @@ export async function generateAPISpecifications(
   const files: string[] = [];
 
   // Generate language-specific API services
-  if (plugin?.capabilities?.api && appSpec.resources) {
+  if (plugin?.capabilities?.api && Object.keys(getResources(appSpec)).length > 0) {
     reporter.info(`Generating ${language} API services using ${plugin.name}...`);
 
-    for (const [componentName, component] of Object.entries(appSpec.resources)) {
+    for (const [componentName, component] of Object.entries(getResources(appSpec))) {
       const componentFiles = await generateComponentServices(
         componentName,
         component,
@@ -142,7 +142,7 @@ export async function generateAPISpecifications(
 }
 
 function buildComponentSchemas(appSpec: AppSpec): Record<string, any> {
-  const resourceSchemas = (appSpec.resources as any)?.schemas;
+  const resourceSchemas = (getResources(appSpec) as any)?.schemas;
   if (!resourceSchemas || typeof resourceSchemas !== "object") {
     return {};
   }

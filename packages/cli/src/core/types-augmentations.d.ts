@@ -17,7 +17,7 @@ declare module "@arbiter/specification" {
     technology?: string | null;
   }
 
-  interface FlowSpec {
+  interface BehaviorSpec {
     description?: string | null;
   }
 

@@ -195,7 +195,7 @@ export interface RoutingConfig {
   mode?: "by-type" | "by-group";
   /** Path to a custom router module (exports a PathRouter) */
   customRouter?: string;
-  /** Emit warnings when artifacts lack a memberOf field (useful for enforcing grouping) */
+  /** Emit warnings when artifacts lack a parent field (useful for enforcing grouping) */
   warnOnUngrouped?: boolean;
 }
 
@@ -336,7 +336,7 @@ export interface UISpec {
  *
  * @public
  */
-export interface FlowSpec {
+export interface BehaviorSpec {
   id: string;
   description?: string | null;
   steps?: Array<Record<string, unknown>>;
@@ -401,7 +401,7 @@ export interface AppSpec {
   } | null;
   ui: UISpec;
   services?: Record<string, ServiceConfig>;
-  flows: FlowSpec[];
+  flows: BehaviorSpec[];
   ops?: OpsSpec | null;
   capabilities?: Record<string, CapabilitySpec> | null;
   tests?: any[];

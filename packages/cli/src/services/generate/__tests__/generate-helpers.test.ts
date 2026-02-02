@@ -8,8 +8,9 @@ describe("generate helper utilities", () => {
       product: { name: "Test App" },
       ui: { routes: [] },
       locators: {},
-      behaviors: [
-        {
+      entities: {
+        checkout: {
+          type: "behavior",
           id: "checkout",
           steps: [
             {
@@ -27,10 +28,8 @@ describe("generate helper utilities", () => {
             },
           ],
         },
-      ],
-      packages: {
-        Orders: { subtype: "service", language: "typescript" },
-        Payments: { subtype: "service", language: "python" },
+        Orders: { type: "package", subtype: "service", language: "typescript" },
+        Payments: { type: "package", subtype: "service", language: "python" },
       },
       paths: {
         Orders: {
@@ -51,10 +50,19 @@ describe("generate helper utilities", () => {
       product: { name: "Proxy App" },
       ui: { routes: [] },
       locators: {},
-      behaviors: [],
-      packages: {
-        Orders: { subtype: "service", language: "typescript", ports: [{ port: 4000 }] },
-        Payments: { subtype: "service", language: "python", ports: [{ port: 5001 }] },
+      entities: {
+        Orders: {
+          type: "package",
+          subtype: "service",
+          language: "typescript",
+          ports: [{ port: 4000 }],
+        },
+        Payments: {
+          type: "package",
+          subtype: "service",
+          language: "python",
+          ports: [{ port: 5001 }],
+        },
       },
     } as unknown as AppSpec;
 
@@ -78,8 +86,9 @@ describe("generate helper utilities", () => {
         "button:submit": 'data-testid="submit-btn"',
         "page:checkout": 'data-testid="checkout-root"',
       },
-      behaviors: [
-        {
+      entities: {
+        checkout: {
+          type: "behavior",
           id: "checkout",
           steps: [
             { click: "button:submit" },
@@ -99,11 +108,10 @@ describe("generate helper utilities", () => {
             },
           ],
         },
-      ],
-      packages: {},
+      },
     } as unknown as AppSpec;
 
-    const metadata = __generateTesting.deriveFlowRouteMetadata(appSpec);
+    const metadata = __generateTesting.deriveBehaviorRouteMetadata(appSpec);
     const checkout = metadata.get("checkout");
 
     expect(checkout?.rootTestId).toBe("checkout-root");

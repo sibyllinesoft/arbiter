@@ -7,7 +7,12 @@
  */
 
 import { slugify } from "@/services/generate/util/shared.js";
-import type { AppSpec, PathSpec } from "@arbiter/specification";
+import {
+  type AppSpec,
+  type PathSpec,
+  getBehaviorsArray,
+  getPackages,
+} from "@arbiter/specification";
 
 export const SUPPORTED_HTTP_METHODS: Array<keyof PathSpec> = [
   "get",
@@ -152,12 +157,12 @@ export function determinePathOwnership(appSpec: AppSpec): Map<string, string> {
   }
 
   // Collect packages for path ownership
-  const allServices = Object.entries(appSpec.packages ?? {}).filter(([, pkg]) =>
+  const allServices = Object.entries(getPackages(appSpec)).filter(([, pkg]) =>
     isTypeScriptServiceLanguage((pkg as any)?.language as string | undefined),
   );
 
-  for (const flow of appSpec.behaviors ?? []) {
-    for (const step of flow.steps ?? []) {
+  for (const behavior of getBehaviorsArray(appSpec)) {
+    for (const step of behavior.steps ?? []) {
       const api = step.expect_api;
       if (!api?.path || ownership.has(api.path)) {
         continue;
@@ -381,29 +386,29 @@ export function deriveServiceEndpointsFromPaths(
 }
 
 /**
- * Derive service endpoints from flow behaviors
+ * Derive service endpoints from behaviors
  */
-export function deriveServiceEndpointsFromFlows(
+export function deriveServiceEndpointsFromBehaviors(
   appSpec: AppSpec | undefined,
   serviceName: string,
   serviceSlug: string,
   serviceSpec: any,
 ): RouteBindingInput[] {
-  if (!appSpec?.behaviors) {
+  if (getBehaviorsArray(appSpec).length === 0) {
     return [];
   }
 
   const results: RouteBindingInput[] = [];
   const serviceOriginal = serviceName;
 
-  for (const flow of appSpec.behaviors) {
-    for (const step of flow.steps ?? []) {
+  for (const behavior of getBehaviorsArray(appSpec)) {
+    for (const step of behavior.steps ?? []) {
       const api = step.expect_api;
       if (!api?.path) continue;
       if (!pathBelongsToService(api.path, serviceOriginal, serviceSpec)) continue;
 
       const method = (api.method || "GET").toUpperCase();
-      const summary = `${flow.id} ${method} ${api.path}`;
+      const summary = `${behavior.id} ${method} ${api.path}`;
       const statusCode = Number.isFinite(api.status)
         ? Number(api.status)
         : method === "POST"
@@ -416,7 +421,7 @@ export function deriveServiceEndpointsFromFlows(
         summary,
         reply: {
           service: serviceSlug,
-          flow: flow.id,
+          behavior: behavior.id,
           status: "not_implemented",
           method,
           path: api.path,

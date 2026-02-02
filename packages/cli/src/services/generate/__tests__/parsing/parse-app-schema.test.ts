@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { parseAppSchema } from "@/services/generate/io/index.js";
+import { getBehaviorsArray, getGroups } from "@arbiter/specification";
 
 const baseSchema = {
   product: { name: "App" },
@@ -16,20 +17,21 @@ describe("parseAppSchema", () => {
 
     expect(config.schema.version).toBe("app");
     expect(config.app.capabilities?.auth.name).toBe("auth");
-    expect(config.app.behaviors).toEqual([]);
+    expect(getBehaviorsArray(config.app)).toEqual([]);
   });
 
   it("passes through existing optional sections", () => {
     const schema = {
       ...baseSchema,
       tests: { suites: [] },
-      groups: [{ name: "E" }],
+      groups: { groupE: { name: "E" } },
       docs: { overview: "ok" },
     };
 
     const config = parseAppSchema(schema, { version: "app", detected_from: "metadata" });
     expect(config.app.tests?.suites).toEqual([]);
-    expect(config.app.groups?.[0].name).toBe("E");
+    const groups = getGroups(config.app);
+    expect(groups.groupE?.name).toBe("E");
     expect(config.app.docs?.overview).toBe("ok");
   });
 });

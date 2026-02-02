@@ -19,6 +19,13 @@ import type {
 import { SpecificationRepository } from "@/repositories/specification-repository.js";
 import { generateAPISpecifications } from "@/services/generate/api/api-specifications.js";
 import {
+  type BehaviorRouteMetadata,
+  deriveBehaviorRouteMetadata,
+  extractTestId,
+  humanizeTestId,
+  sanitizeTestId,
+} from "@/services/generate/api/behavior-metadata.js";
+import {
   DEFAULT_TESTING_FRAMEWORKS,
   collectEndpointAssertionCases,
   escapeGoString,
@@ -35,13 +42,6 @@ import {
   resolveTestingFramework,
 } from "@/services/generate/api/endpoint-assertions.js";
 import {
-  type FlowRouteMetadata,
-  deriveFlowRouteMetadata,
-  extractTestId,
-  humanizeTestId,
-  sanitizeTestId,
-} from "@/services/generate/api/flow-metadata.js";
-import {
   generateGoFiles,
   generateLanguageFiles,
   generatePythonFiles,
@@ -53,7 +53,7 @@ import {
   type RouteBindingInput,
   SUPPORTED_HTTP_METHODS,
   deriveServiceAliases,
-  deriveServiceEndpointsFromFlows,
+  deriveServiceEndpointsFromBehaviors,
   deriveServiceEndpointsFromPaths,
   determinePathOwnership,
   extractExampleFromContent,
@@ -191,7 +191,7 @@ import {
   writeFileWithHooks,
 } from "@/services/generate/util/hook-executor.js";
 import { joinRelativePath, slugify, toPathSegments } from "@/services/generate/util/shared.js";
-import { generateFlowBasedTests } from "@/services/generate/util/test/flow-tests.js";
+import { generateBehaviorBasedTests } from "@/services/generate/util/test/behavior-tests.js";
 import {
   type TestTask,
   buildClientTestTasks,
@@ -295,7 +295,7 @@ export {
 export const __generateTesting = {
   determinePathOwnership,
   buildDevProxyConfig,
-  deriveFlowRouteMetadata,
+  deriveBehaviorRouteMetadata,
   extractTestId,
   sanitizeTestId,
   humanizeTestId,
@@ -321,7 +321,7 @@ export const __generateTesting = {
   executeCommand,
   handleGitHubSync,
   deriveServiceEndpointsFromPaths,
-  deriveServiceEndpointsFromFlows,
+  deriveServiceEndpointsFromBehaviors,
 };
 
 function createDefaultReporter(): GenerationReporter {
@@ -572,7 +572,7 @@ async function generateAppArtifacts(
     new ClientArtifactsGenerator({
       generateUIComponents,
       generateLocatorDefinitions,
-      generateFlowBasedTests,
+      generateBehaviorBasedTests,
       generateProjectStructure,
       ensureDirectory,
       toRelativePath,
@@ -787,7 +787,7 @@ export {
   pathBelongsToService,
   determinePathOwnership,
   buildDevProxyConfig,
-  deriveFlowRouteMetadata,
+  deriveBehaviorRouteMetadata,
   extractTestId,
   sanitizeTestId,
   humanizeTestId,

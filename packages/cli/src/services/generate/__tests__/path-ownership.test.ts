@@ -43,23 +43,34 @@ describe("generate helpers - path ownership and proxies", () => {
   it("determines path ownership from explicit paths and flows", () => {
     const appSpec: AppSpec = {
       product: { name: "Demo" },
-      packages: {
+      entities: {
         "billing-service": {
+          type: "package",
           subtype: "service",
           language: "typescript",
           domains: ["billing"],
           ports: [{ port: 9000 }],
         },
         "checkout-service": {
+          type: "package",
           subtype: "service",
           language: "node",
           capabilities: [{ contractRef: "checkout@v1" }],
           ports: [{ port: 4100 }],
         },
         "webhook-handler": {
+          type: "package",
           subtype: "service",
           language: "typescript",
           capabilities: [{ contractRef: "payments/webhook@v1" }],
+        },
+        "checkout-flow": {
+          type: "behavior",
+          id: "checkout-flow",
+          steps: [
+            { expect_api: { path: "/checkout/submit", method: "post" } },
+            { expect_api: { path: "/webhook/payment", method: "post" } },
+          ],
         },
       },
       paths: {
@@ -67,19 +78,9 @@ describe("generate helpers - path ownership and proxies", () => {
           "/billing/pay": {},
         },
       },
-      behaviors: [
-        {
-          id: "checkout-flow",
-          steps: [
-            { expect_api: { path: "/checkout/submit", method: "post" } },
-            { expect_api: { path: "/webhook/payment", method: "post" } },
-          ],
-        },
-      ],
       locators: {},
       ui: { routes: [] },
-      capabilities: null,
-    };
+    } as unknown as AppSpec;
 
     const ownership = determinePathOwnership(appSpec);
 
@@ -91,19 +92,23 @@ describe("generate helpers - path ownership and proxies", () => {
   it("builds dev proxy config for owned paths", () => {
     const appSpec: AppSpec = {
       product: { name: "Proxy Demo" },
-      packages: {
+      entities: {
         "billing-service": {
+          type: "package",
           subtype: "service",
           language: "typescript",
           ports: [{ targetPort: 9200 }],
         },
-        "checkout-service": { subtype: "service", language: "typescript", ports: [{ port: 4100 }] },
+        "checkout-service": {
+          type: "package",
+          subtype: "service",
+          language: "typescript",
+          ports: [{ port: 4100 }],
+        },
       },
       locators: {},
       ui: { routes: [] },
-      flows: [],
-      capabilities: null,
-    };
+    } as unknown as AppSpec;
 
     const ownership = new Map<string, string>([
       ["/billing/pay", "billing-service"],

@@ -13,7 +13,7 @@ import { joinRelativePath } from "@/services/generate/util/shared.js";
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { ProjectStructureConfig } from "@/types.js";
 import type { PackageManagerCommandSet } from "@/utils/io/package-manager.js";
-import type { AppSpec } from "@arbiter/specification";
+import { type AppSpec, getBehaviorsArray } from "@arbiter/specification";
 import {
   getBuildCommand,
   getInstallCommand,
@@ -62,9 +62,11 @@ ${appSpec.product.constraints.map((constraint) => `- ${constraint}`).join("\n")}
 
 ${((appSpec as any).ui?.routes ?? []).map((route: any) => `- **${route.path}** (${route.id}): ${(route.capabilities ?? []).join(", ")}`).join("\n") || "No routes defined"}
 
-## Flows
+## Behaviors
 
-${appSpec.behaviors.map((flow) => `- **${flow.id}**: ${flow.steps.length} steps`).join("\n")}
+${getBehaviorsArray(appSpec)
+  .map((behavior) => `- **${behavior.id}**: ${behavior.steps.length} steps`)
+  .join("\n")}
 
 ## Development Workflow
 

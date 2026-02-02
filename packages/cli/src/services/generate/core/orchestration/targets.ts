@@ -20,7 +20,12 @@ import type {
 } from "@/services/generate/io/contexts.js";
 import { joinRelativePath, slugify, toPathSegments } from "@/services/generate/util/shared.js";
 import type { ProjectStructureConfig } from "@/types.js";
-import type { AppSpec, GroupSpec, PackageConfig } from "@arbiter/specification";
+import {
+  type AppSpec,
+  type GroupSpec,
+  type PackageConfig,
+  getPackages,
+} from "@arbiter/specification";
 
 const PACKAGE_RELATIVE_KEYS = ["docsDirectory", "testsDirectory", "infraDirectory"] as const;
 type PackageRelativeKey = (typeof PACKAGE_RELATIVE_KEYS)[number];
@@ -61,7 +66,7 @@ export function collectClientTargets(
   options?: TargetCreationOptions,
 ): ClientGenerationTarget[] {
   // Find packages with subtype="frontend"
-  const frontendPackages = Object.entries(appSpec.packages ?? {}).filter(
+  const frontendPackages = Object.entries(getPackages(appSpec)).filter(
     ([, config]) => (config as any)?.subtype === "frontend",
   );
 
@@ -94,7 +99,7 @@ export function collectServiceTargets(
   options?: TargetCreationOptions,
 ): ServiceGenerationTarget[] {
   // Find packages with subtype="service" or subtype="worker"
-  const servicePackages = Object.entries(appSpec.packages ?? {}).filter(([, config]) => {
+  const servicePackages = Object.entries(getPackages(appSpec)).filter(([, config]) => {
     const subtype = (config as any)?.subtype;
     return subtype === "service" || subtype === "worker" || (config as any)?.port;
   });

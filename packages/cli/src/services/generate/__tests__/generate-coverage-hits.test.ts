@@ -17,9 +17,9 @@ describe("generate coverage spot checks", () => {
 
     const appSpec = {
       product: { name: "MegaApp" },
-      packages: {
-        web: { subtype: "frontend", sourceDirectory: "custom/web" },
-        admin: { subtype: "frontend" },
+      entities: {
+        web: { type: "package", subtype: "frontend", sourceDirectory: "custom/web" },
+        admin: { type: "package", subtype: "frontend" },
       },
     } as unknown as AppSpec;
 
@@ -75,15 +75,16 @@ describe("generate coverage spot checks", () => {
 
   it("derives service endpoints from paths and behaviors", () => {
     const appSpec = {
-      packages: {
+      product: { name: "Orders App" },
+      entities: {
         Orders: {
+          type: "package",
           subtype: "service",
           language: "typescript",
           domains: ["orders"],
         },
-      },
-      behaviors: [
-        {
+        "place-order": {
+          type: "behavior",
           id: "place-order",
           steps: [
             {
@@ -95,7 +96,7 @@ describe("generate coverage spot checks", () => {
             },
           ],
         },
-      ],
+      },
     } as unknown as AppSpec;
 
     const endpoints = __generateTesting.deriveServiceEndpointsFromPaths(
@@ -114,7 +115,7 @@ describe("generate coverage spot checks", () => {
     );
     expect(endpoints[0]?.url).toBe("/orders/create");
 
-    const flowEndpoints = __generateTesting.deriveServiceEndpointsFromFlows(
+    const flowEndpoints = __generateTesting.deriveServiceEndpointsFromBehaviors(
       appSpec,
       "Orders",
       "orders",
