@@ -22,7 +22,7 @@ import { ensureUniqueSlug, slugify } from "./slug.js";
 // ============================================================================
 
 // Types matching CUE schema definitions from spec/schema/core_types.cue and artifacts.cue
-export type IssueType =
+export type TaskType =
   | "issue"
   | "bug"
   | "feature"
@@ -31,7 +31,7 @@ export type IssueType =
   | "milestone"
   | "story"
   | "spike";
-export type IssueStatus =
+export type TaskStatus =
   | "open"
   | "in_progress"
   | "blocked"
@@ -39,7 +39,7 @@ export type IssueStatus =
   | "done"
   | "closed"
   | "wontfix";
-export type IssuePriority = "critical" | "high" | "medium" | "low";
+export type TaskPriority = "critical" | "high" | "medium" | "low";
 export type ExternalSource = "local" | "github" | "gitlab" | "jira" | "linear";
 export type CommentKind = "discussion" | "guidance" | "memory" | "decision" | "note";
 
@@ -62,15 +62,15 @@ export interface RelatedIssue {
 }
 
 /**
- * Issue matching #IssueConfig from CUE schema
+ * Issue matching #TaskConfig from CUE schema
  */
 export interface Issue {
   id: string;
   title: string;
   description?: string;
-  type?: IssueType;
-  status: IssueStatus;
-  priority?: IssuePriority;
+  type?: TaskType;
+  status: TaskStatus;
+  priority?: TaskPriority;
   /** References to spec entities this issue relates to */
   references?: EntityRef[];
   assignees?: string[];
@@ -79,13 +79,11 @@ export interface Issue {
   created?: string;
   updated?: string;
   closedAt?: string;
-  /** Parent issue for hierarchical tracking */
-  parent?: string;
   /** Milestone/group this issue belongs to */
   milestone?: string;
   related?: RelatedIssue[];
   /** Group membership */
-  memberOf?: string;
+  parent?: string;
   /** Story points */
   weight?: number;
   /** Time estimate in hours */
@@ -237,7 +235,6 @@ export class Storage {
       related: issue.related,
       milestone: issue.milestone,
       parent: issue.parent,
-      memberOf: issue.memberOf,
       weight: issue.weight,
       estimate: issue.estimate,
       timeSpent: issue.timeSpent,
@@ -263,9 +260,9 @@ export class Storage {
       id: frontmatter.id as string,
       title,
       description: body || undefined,
-      type: frontmatter.type as IssueType | undefined,
-      status: (frontmatter.status as IssueStatus) || "open",
-      priority: frontmatter.priority as IssuePriority | undefined,
+      type: frontmatter.type as TaskType | undefined,
+      status: (frontmatter.status as TaskStatus) || "open",
+      priority: frontmatter.priority as TaskPriority | undefined,
       assignees: frontmatter.assignees as string[] | undefined,
       labels: frontmatter.labels as string[] | undefined,
       due: frontmatter.due as string | undefined,
@@ -276,7 +273,6 @@ export class Storage {
       related: frontmatter.related as RelatedIssue[] | undefined,
       milestone: frontmatter.milestone as string | undefined,
       parent: frontmatter.parent as string | undefined,
-      memberOf: frontmatter.memberOf as string | undefined,
       weight: frontmatter.weight as number | undefined,
       estimate: frontmatter.estimate as number | undefined,
       timeSpent: frontmatter.timeSpent as number | undefined,
@@ -519,12 +515,12 @@ export class Storage {
    * List issues with optional filters
    */
   async listIssues(filter?: {
-    status?: IssueStatus;
-    priority?: IssuePriority;
-    type?: IssueType;
+    status?: TaskStatus;
+    priority?: TaskPriority;
+    type?: TaskType;
     entity?: string; // Filter by referenced entity
     milestone?: string;
-    memberOf?: string;
+    parent?: string;
     label?: string;
     assignee?: string;
   }): Promise<Issue[]> {
@@ -546,8 +542,8 @@ export class Storage {
     if (filter?.milestone) {
       result = result.filter((i) => i.milestone === filter.milestone);
     }
-    if (filter?.memberOf) {
-      result = result.filter((i) => i.memberOf === filter.memberOf);
+    if (filter?.parent) {
+      result = result.filter((i) => i.parent === filter.parent);
     }
     if (filter?.label) {
       result = result.filter((i) => i.labels?.includes(filter.label!));
@@ -577,7 +573,7 @@ export class Storage {
   /**
    * Update issue status
    */
-  async updateIssueStatus(issueId: string, status: IssueStatus): Promise<Issue | null> {
+  async updateTaskStatus(issueId: string, status: TaskStatus): Promise<Issue | null> {
     const issue = await this.getIssue(issueId);
     if (!issue) return null;
 
@@ -906,7 +902,6 @@ export class Storage {
       if (issue.closedAt) lines.push(`    closedAt: "${issue.closedAt}"`);
       if (issue.parent) lines.push(`    parent: "${issue.parent}"`);
       if (issue.milestone) lines.push(`    milestone: "${issue.milestone}"`);
-      if (issue.memberOf) lines.push(`    memberOf: "${issue.memberOf}"`);
       if (issue.weight !== undefined) lines.push(`    weight: ${issue.weight}`);
       if (issue.estimate !== undefined) lines.push(`    estimate: ${issue.estimate}`);
       if (issue.timeSpent !== undefined) lines.push(`    timeSpent: ${issue.timeSpent}`);

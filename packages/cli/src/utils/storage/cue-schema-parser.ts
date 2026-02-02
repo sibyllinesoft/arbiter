@@ -55,9 +55,9 @@ export interface CueEntityDef {
  * Known enum type references that should be treated as enums
  */
 const KNOWN_ENUM_REFS = new Set([
-  "#IssueStatus",
-  "#IssuePriority",
-  "#IssueType",
+  "#TaskStatus",
+  "#TaskPriority",
+  "#TaskType",
   "#CommentKind",
   "#ExternalSource",
   "#PackageSubtype",

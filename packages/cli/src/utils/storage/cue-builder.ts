@@ -198,7 +198,7 @@ export class CueBuilder {
     if (node.parentId) {
       const parent = graph.nodes.get(node.parentId);
       if (parent && parent.type === "group") {
-        fields.push(`memberOf: "${this.slugify(parent.name)}"`);
+        fields.push(`parent: "${this.slugify(parent.name)}"`);
       }
     }
 

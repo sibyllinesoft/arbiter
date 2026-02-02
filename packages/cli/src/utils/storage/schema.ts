@@ -108,7 +108,7 @@ const fieldAliases: Record<string, string> = {
  * Custom flag names for fields that don't map directly
  */
 const customFlags: Record<string, string> = {
-  memberOf: "member-of",
+  parent: "parent",
   targetType: "target-type",
   groupId: "group",
   dependsOn: "depends-on",
@@ -168,7 +168,7 @@ function cueEntityToSchema(
 
 // Entity name mapping: CUE definition name -> CLI entity type
 const entityNameMap: Record<string, string> = {
-  IssueConfig: "task",
+  TaskConfig: "task",
   CommentConfig: "note",
   PackageConfig: "package",
   ResourceConfig: "resource",
@@ -218,7 +218,7 @@ function loadFallbackSchemas(): void {
   cachedEnums = new Map();
 
   // Fallback enum definitions
-  cachedEnums.set("IssueStatus", [
+  cachedEnums.set("TaskStatus", [
     "open",
     "in_progress",
     "blocked",
@@ -227,8 +227,8 @@ function loadFallbackSchemas(): void {
     "closed",
     "wontfix",
   ]);
-  cachedEnums.set("IssuePriority", ["critical", "high", "medium", "low"]);
-  cachedEnums.set("IssueType", [
+  cachedEnums.set("TaskPriority", ["critical", "high", "medium", "low"]);
+  cachedEnums.set("TaskType", [
     "issue",
     "bug",
     "feature",
@@ -248,21 +248,21 @@ function loadFallbackSchemas(): void {
       {
         name: "status",
         type: "enum",
-        values: cachedEnums.get("IssueStatus"),
+        values: cachedEnums.get("TaskStatus"),
         description: "Filter by status",
         alias: "s",
       },
       {
         name: "priority",
         type: "enum",
-        values: cachedEnums.get("IssuePriority"),
+        values: cachedEnums.get("TaskPriority"),
         description: "Filter by priority",
         alias: "p",
       },
       {
         name: "type",
         type: "enum",
-        values: cachedEnums.get("IssueType"),
+        values: cachedEnums.get("TaskType"),
         description: "Filter by type",
         alias: "t",
       },
@@ -270,8 +270,8 @@ function loadFallbackSchemas(): void {
       { name: "labels", flag: "label", type: "string[]", description: "Filter by label" },
       { name: "milestone", type: "string", description: "Filter by milestone" },
       {
-        name: "memberOf",
-        flag: "member-of",
+        name: "parent",
+        flag: "parent",
         type: "string",
         description: "Filter by group membership",
       },

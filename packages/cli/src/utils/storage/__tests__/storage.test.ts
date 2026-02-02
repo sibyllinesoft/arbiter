@@ -115,7 +115,7 @@ describe("Markdown Storage", () => {
       const issues = await storage.listIssues({ status: "open" });
       const issue = issues[0];
 
-      const updated = await storage.updateIssueStatus(issue.id, "done");
+      const updated = await storage.updateTaskStatus(issue.id, "done");
       expect(updated).not.toBeNull();
       expect(updated!.status).toBe("done");
       expect(updated!.closedAt).toBeDefined();
