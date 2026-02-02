@@ -270,7 +270,12 @@ jobs:
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
           echo "cli-artifact=arbiter-cli-v${VERSION}-linux-x64.tar.gz" >> $GITHUB_OUTPUT
-          echo "api-artifact=arbiter-api-v${VERSION}.tar.gz" >> $GITHUB_OUTPUT
+
+          if [ -f "artifacts/arbiter-api-v${VERSION}.tar.gz" ]; then
+            echo "api-artifact=arbiter-api-v${VERSION}.tar.gz" >> $GITHUB_OUTPUT
+          else
+            echo "api-artifact=" >> $GITHUB_OUTPUT
+          fi
 
           if [ -f "artifacts/arbiter-frontend-v${VERSION}.tar.gz" ]; then
             echo "frontend-artifact=arbiter-frontend-v${VERSION}.tar.gz" >> $GITHUB_OUTPUT
