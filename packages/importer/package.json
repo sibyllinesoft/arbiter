@@ -29,7 +29,12 @@
     "clean": "rm -rf dist",
     "test": "bun test",
     "lint": "biome check src/",
-    "format": "biome format --write src/"
+    "format": "biome format --write src/",
+    "arbiter:status": "arbiter status",
+    "arbiter:test:scaffold": "arbiter tests scaffold --language typescript",
+    "arbiter:test:cover": "arbiter tests cover --threshold 0.8",
+    "arbiter:version:plan": "arbiter version plan --strict",
+    "arbiter:sync": "arbiter sync --language typescript"
   },
   "dependencies": {
     "fs-extra": "^11.2.0",
@@ -53,5 +58,13 @@
     "brownfield"
   ],
   "author": "Arbiter Team",
-  "license": "MIT"
+  "license": "MIT",
+  "arbiter": {
+    "profiles": [
+      "library"
+    ],
+    "coverage": {
+      "threshold": 0.8
+    }
+  }
 }

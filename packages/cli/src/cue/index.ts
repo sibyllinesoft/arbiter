@@ -14,7 +14,7 @@
 import * as os from "node:os";
 import path from "node:path";
 import { safeFileOperation } from "@/constraints/index.js";
-import { CueRunner } from "@arbiter/cue-runner";
+import { CueRunner } from "@arbiter/validation";
 import fs from "fs-extra";
 
 // Re-export types for backwards compatibility

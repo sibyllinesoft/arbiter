@@ -258,7 +258,7 @@ import type {
   TestCase,
   TestCompositionResult,
   TestSuite,
-} from "@arbiter/shared";
+} from "@arbiter/specification";
 import fs from "fs-extra";
 import * as YAML from "yaml";
 export type { GenerateOptions } from "@/services/generate/util/types.js";

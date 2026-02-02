@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { __generateTesting } from "@/services/generate/io/index.js";
-import type { AppSpec } from "@arbiter/shared";
+import type { AppSpec } from "@arbiter/specification";
 
 describe("generate helper utilities", () => {
   it("determines path ownership from declared paths and flows", () => {

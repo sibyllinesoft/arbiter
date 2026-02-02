@@ -14,7 +14,7 @@ import type { ClientGenerationTarget } from "@/services/generate/io/contexts.js"
 import { ensureDirectory, writeFileWithHooks } from "@/services/generate/util/hook-executor.js";
 import { joinRelativePath } from "@/services/generate/util/shared.js";
 import type { GenerateOptions, GenerationReporter } from "@/services/generate/util/types.js";
-import type { AppSpec } from "@arbiter/shared";
+import type { AppSpec } from "@arbiter/specification";
 
 const reporter: GenerationReporter = {
   info: (...args: any[]) => console.info(...args),

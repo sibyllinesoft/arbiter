@@ -1,4 +1,13 @@
 [test]
-# Run tests serially to reduce mock pollution issues
-# Bun's mock.module affects global module cache
+# Preload test setup for env/cwd isolation
+preload = ["./test-setup.ts"]
+# Disable coverage for faster test runs
 coverage = false
+# Exclude vitest-based tests (they use vi.mock which bun doesn't handle)
+exclude = [
+  "**/sync-github.test.ts",
+  "**/compat-more.test.ts",
+  "**/relationship-parser.test.ts",
+  "**/graph-loader.test.ts",
+  "**/markdown-storage.test.ts",
+]

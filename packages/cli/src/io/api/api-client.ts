@@ -1,6 +1,6 @@
 import { COMMON_PORTS } from "@/io/config/config.js";
 import type { AuthSession, CLIConfig, CommandResult } from "@/types.js";
-import type { ValidationRequest, ValidationResponse } from "@arbiter/shared";
+import type { ValidationRequest, ValidationResponse } from "@arbiter/specification";
 
 export type ProjectStructureApiResponse = {
   success: boolean;

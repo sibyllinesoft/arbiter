@@ -6,7 +6,7 @@ import {
   executeMigration,
   getRuntimeVersionInfo,
   validateVersionSet,
-} from "@arbiter/shared";
+} from "@arbiter/specification";
 
 describe("shared version helpers", () => {
   it("treats matching versions as compatible", async () => {

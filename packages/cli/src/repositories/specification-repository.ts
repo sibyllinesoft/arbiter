@@ -7,7 +7,7 @@
 
 import type { ApiClient } from "@/io/api/api-client.js";
 import type { CommandResult } from "@/types.js";
-import type { IRResponse } from "@arbiter/shared";
+import type { IRResponse } from "@arbiter/specification";
 
 /** Parameters for storing a specification. */
 type StoreSpecParams = {

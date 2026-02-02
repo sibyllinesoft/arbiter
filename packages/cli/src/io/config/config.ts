@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { safeFileOperation } from "@/constraints/index.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
 import { findGitRoot } from "@/utils/io/git-detection.js";
-import { DEFAULT_UI_OPTION_CATALOG } from "@arbiter/shared";
+import { DEFAULT_UI_OPTION_CATALOG } from "@arbiter/specification";
 import chalk from "chalk";
 import fs from "fs-extra";
 import yaml from "yaml";

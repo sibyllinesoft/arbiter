@@ -18,7 +18,7 @@ import { writeFileWithHooks } from "@/services/generate/util/hook-executor.js";
 import { joinRelativePath, toPathSegments } from "@/services/generate/util/shared.js";
 import type { GenerateOptions, GenerationReporter } from "@/services/generate/util/types.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
-import type { AppSpec, CueAssertion, CueAssertionBlock, PathSpec } from "@arbiter/shared";
+import type { AppSpec, CueAssertion, CueAssertionBlock, PathSpec } from "@arbiter/specification";
 import fs from "fs-extra";
 
 const reporter: GenerationReporter = {

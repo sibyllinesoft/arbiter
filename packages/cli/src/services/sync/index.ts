@@ -32,6 +32,7 @@ import {
   syncPackageJson,
   syncPyprojectToml,
 } from "./manifest-sync.js";
+import { extractPackageAPIWithTypeDoc, generateAPIMarkdown } from "./typedoc-extract.js";
 
 // Re-export for external consumers
 export type { ConflictResolution, SyncResult } from "./manifest-sync.js";
@@ -236,6 +237,9 @@ async function detectNodePackage(dir: string, relPath: string): Promise<Detected
   try {
     const content = await fs.readFile(manifestPath, "utf-8");
     const pkg = JSON.parse(content);
+
+    // Skip private packages (typically monorepo roots)
+    if (pkg.private) return null;
 
     // Infer subtype from dependencies and scripts
     let subtype: DetectedPackage["subtype"] = "library";
@@ -547,111 +551,223 @@ async function updateSpecEntities(
   resources: DetectedResource[],
   report: SyncReport,
 ): Promise<void> {
-  const assemblyPath = path.join(context.projectPath, ".arbiter", "assembly.cue");
+  const arbiterDir = path.join(context.projectPath, ".arbiter");
 
-  // Load or create assembly
-  let assemblyContent: string;
-  let existingSpec: any = {};
+  // Use markdown storage for entities
+  const storage = new MarkdownStorage(arbiterDir);
 
-  if (await fsExtra.pathExists(assemblyPath)) {
-    assemblyContent = await fs.readFile(assemblyPath, "utf-8");
-    try {
-      const manipulator = getCueManipulator();
-      existingSpec = await manipulator.parse(assemblyContent);
-      await manipulator.cleanup();
-    } catch {
-      // Couldn't parse existing spec
+  // Get existing entities to check for updates
+  const existingPackageDirs = new Set<string>();
+  const existingResourceFiles = new Set<string>();
+
+  try {
+    const entries = await fs.readdir(arbiterDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "cache") {
+        // Check if it's a package/service directory
+        const readmePath = path.join(arbiterDir, entry.name, "README.md");
+        if (await fsExtra.pathExists(readmePath)) {
+          existingPackageDirs.add(entry.name);
+        }
+      } else if (entry.isFile() && entry.name.endsWith(".md") && entry.name !== "README.md") {
+        existingResourceFiles.add(entry.name.replace(".md", ""));
+      }
     }
-  } else {
-    assemblyContent = generateInitialAssembly(context.projectPath);
-    await fsExtra.ensureDir(path.dirname(assemblyPath));
+  } catch {
+    // Directory might not exist yet
   }
 
-  const existingPackages = existingSpec.packages || {};
-  const existingResources = existingSpec.resources || {};
-
-  // Track what we're adding/updating
-  const packagesToAdd: Record<string, any> = {};
-  const resourcesToAdd: Record<string, any> = {};
-
-  // Process packages
-  for (const pkg of packages) {
+  // Process packages - create service directories with README.md
+  const packagesToProcess = packages.filter((pkg) => {
     const slug = slugify(pkg.name);
-    const existing = existingPackages[slug];
+    const isNew = !existingPackageDirs.has(slug);
+    return isNew || context.force;
+  });
 
-    const packageConfig: any = {
-      name: pkg.name,
-      language: pkg.language,
-      manifest: pkg.manifest,
-      sourceDirectory: pkg.directory,
-    };
+  // Count TypeScript/JavaScript packages that will have API docs extracted
+  const tsPackages = packagesToProcess.filter(
+    (pkg) => pkg.language === "typescript" || pkg.language === "javascript",
+  );
 
-    if (pkg.version) packageConfig.version = pkg.version;
-    if (pkg.framework) packageConfig.framework = pkg.framework;
-    if (pkg.subtype) packageConfig.subtype = pkg.subtype;
-
-    if (existing) {
-      // Only update if there are meaningful changes
-      if (hasChanges(existing, packageConfig)) {
-        packagesToAdd[slug] = packageConfig;
-        report.packagesUpdated.push(pkg.name);
-      }
-    } else {
-      packagesToAdd[slug] = packageConfig;
-      report.packagesCreated.push(pkg.name);
-    }
-  }
-
-  // Process resources
-  for (const res of resources) {
-    const slug = slugify(res.name);
-    const existing = existingResources[slug];
-
-    const resourceConfig: any = {
-      name: res.name,
-      kind: res.kind,
-    };
-
-    if (res.image) resourceConfig.image = res.image;
-    if (res.engine) resourceConfig.engine = res.engine;
-    if (res.ports) {
-      resourceConfig.ports = res.ports.map((p) => ({
-        name: p.name || res.name,
-        port: p.port,
-      }));
-    }
-
-    if (existing) {
-      if (hasChanges(existing, resourceConfig)) {
-        resourcesToAdd[slug] = resourceConfig;
-        report.resourcesUpdated.push(res.name);
-      }
-    } else {
-      resourcesToAdd[slug] = resourceConfig;
-      report.resourcesCreated.push(res.name);
-    }
-  }
-
-  // Generate updated assembly content
-  if (Object.keys(packagesToAdd).length > 0 || Object.keys(resourcesToAdd).length > 0) {
-    const updatedContent = await generateUpdatedAssembly(
-      assemblyContent,
-      packagesToAdd,
-      resourcesToAdd,
+  if (tsPackages.length > 0) {
+    console.log(
+      chalk.dim(
+        `  Extracting API documentation for ${tsPackages.length} TypeScript/JavaScript package(s)...`,
+      ),
     );
+    console.log(chalk.dim("  (This may take a moment for larger codebases)"));
+  }
+
+  let processedCount = 0;
+  for (const pkg of packagesToProcess) {
+    processedCount++;
+    const slug = slugify(pkg.name);
+    const pkgDir = path.join(arbiterDir, slug);
+    const readmePath = path.join(pkgDir, "README.md");
+    const isNew = !existingPackageDirs.has(slug);
+
+    // Show progress for each package
+    const progress = `[${processedCount}/${packagesToProcess.length}]`;
+    const hasApiDocs = pkg.language === "typescript" || pkg.language === "javascript";
+    const suffix = hasApiDocs ? chalk.dim(" (extracting API docs...)") : "";
+    console.log(chalk.cyan(`  ${progress} Processing ${pkg.name}${suffix}`));
+
+    const content = await generatePackageMarkdown(pkg, context.projectPath);
 
     if (!context.dryRun) {
-      await fsExtra.ensureDir(path.dirname(assemblyPath));
-      await fs.writeFile(assemblyPath, updatedContent, "utf-8");
-      console.log(chalk.green(`  ✅ Updated ${path.relative(context.projectPath, assemblyPath)}`));
-    } else {
-      console.log(
-        chalk.yellow(`  Would update ${path.relative(context.projectPath, assemblyPath)}`),
-      );
+      console.log(chalk.green(`  ${progress} ✓ ${isNew ? "Created" : "Updated"} ${pkg.name}`));
     }
-  } else {
+
+    if (!context.dryRun) {
+      await fsExtra.ensureDir(pkgDir);
+      await fs.writeFile(readmePath, content, "utf-8");
+    }
+
+    if (isNew) {
+      report.packagesCreated.push(pkg.name);
+    } else {
+      report.packagesUpdated.push(pkg.name);
+    }
+  }
+
+  // Process resources - create individual .md files
+  for (const res of resources) {
+    const slug = slugify(res.name);
+    const resourcePath = path.join(arbiterDir, `${slug}.md`);
+
+    const isNew = !existingResourceFiles.has(slug);
+
+    if (isNew || context.force) {
+      const content = generateResourceMarkdown(res);
+
+      if (!context.dryRun) {
+        await fs.writeFile(resourcePath, content, "utf-8");
+      }
+
+      if (isNew) {
+        report.resourcesCreated.push(res.name);
+      } else {
+        report.resourcesUpdated.push(res.name);
+      }
+    }
+  }
+
+  // Report what was done
+  const totalChanges =
+    report.packagesCreated.length +
+    report.packagesUpdated.length +
+    report.resourcesCreated.length +
+    report.resourcesUpdated.length;
+
+  if (totalChanges === 0) {
     console.log(chalk.dim("  No entity changes needed"));
   }
+}
+
+/**
+ * Generate markdown content for a detected package
+ */
+async function generatePackageMarkdown(pkg: DetectedPackage, projectDir: string): Promise<string> {
+  const now = new Date().toISOString();
+  const { v4: uuidv4 } = require("uuid");
+
+  // Only use "service" type for actual services (has port, serves HTTP, etc.)
+  // Default to "package" for libraries, tools, etc.
+  const isService = pkg.subtype === "service" || pkg.subtype === "frontend";
+  const entityType = isService ? "service" : "package";
+
+  const frontmatter: Record<string, unknown> = {
+    type: entityType,
+    entityId: uuidv4(),
+    createdAt: now,
+    updatedAt: now,
+    language: pkg.language,
+    sourceDirectory: pkg.directory,
+  };
+
+  if (pkg.version) frontmatter.version = pkg.version;
+  if (pkg.framework) frontmatter.framework = pkg.framework;
+  if (pkg.subtype) frontmatter.subtype = pkg.subtype;
+
+  const subtypeLabel =
+    pkg.subtype === "frontend"
+      ? "Frontend"
+      : pkg.subtype === "service"
+        ? "Service"
+        : pkg.subtype === "tool"
+          ? "CLI Tool"
+          : pkg.subtype === "worker"
+            ? "Worker"
+            : "Library";
+
+  const displayName = getDisplayName(pkg.name);
+  let body = `# ${displayName}
+
+${subtypeLabel} (${pkg.language}).
+
+## Details
+
+- **Language**: ${pkg.language}
+- **Source**: \`${pkg.directory}\`
+- **Manifest**: \`${pkg.manifest}\`
+${pkg.version ? `- **Version**: ${pkg.version}` : ""}
+${pkg.framework ? `- **Framework**: ${pkg.framework}` : ""}
+`;
+
+  // Extract and append API documentation for TypeScript packages
+  if (pkg.language === "typescript" || pkg.language === "javascript") {
+    try {
+      const packageDir = path.join(projectDir, pkg.directory);
+      const api = await extractPackageAPIWithTypeDoc(packageDir);
+      if (api && (api.functions.length > 0 || api.interfaces.length > 0 || api.types.length > 0)) {
+        body += "\n" + generateAPIMarkdown(api);
+      }
+    } catch {
+      // Skip API extraction on error
+    }
+  }
+
+  // Convert frontmatter to YAML
+  const yaml = require("yaml");
+  return `---
+${yaml.stringify(frontmatter)}---
+
+${body}`;
+}
+
+/**
+ * Generate markdown content for a detected resource
+ */
+function generateResourceMarkdown(res: DetectedResource): string {
+  const now = new Date().toISOString();
+  const { v4: uuidv4 } = require("uuid");
+
+  const frontmatter: Record<string, unknown> = {
+    type: "resource",
+    entityId: uuidv4(),
+    createdAt: now,
+    updatedAt: now,
+    kind: res.kind,
+  };
+
+  if (res.image) frontmatter.image = res.image;
+  if (res.engine) frontmatter.engine = res.engine;
+  if (res.ports) frontmatter.ports = res.ports;
+
+  const body = `# ${res.name}
+
+Infrastructure resource of type \`${res.kind}\`.
+
+## Details
+
+- **Kind**: ${res.kind}
+${res.engine ? `- **Engine**: ${res.engine}` : ""}
+${res.image ? `- **Image**: \`${res.image}\`` : ""}
+${res.ports ? `- **Ports**: ${res.ports.map((p) => p.port).join(", ")}` : ""}
+`;
+
+  const yaml = require("yaml");
+  return `---\n${yaml.stringify(frontmatter)}---\n\n${body}`;
 }
 
 function hasChanges(existing: any, updated: any): boolean {
@@ -669,6 +785,16 @@ function slugify(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+/**
+ * Get a clean display name for a package (strips scope prefix)
+ * @example "@arbiter/shared" -> "shared"
+ * @example "my-package" -> "my-package"
+ */
+function getDisplayName(name: string): string {
+  // Remove scope prefix like @org/
+  return name.replace(/^@[^/]+\//, "");
 }
 
 function generateInitialAssembly(projectPath: string): string {

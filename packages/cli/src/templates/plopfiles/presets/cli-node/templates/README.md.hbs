@@ -1,0 +1,42 @@
+---
+type: project
+entityId: {{uuid}}
+createdAt: {{timestamp}}
+updatedAt: {{timestamp}}
+preset: {{presetId}}
+language: {{language}}
+tags:
+  - cli
+  - {{language}}
+---
+
+# {{name}}
+
+Command-line tool built with {{language}}.
+
+## Getting Started
+
+Run `arbiter sync` to detect packages and create service entities.
+
+```bash
+arbiter sync
+```
+
+## Viewing Your Spec
+
+- **CLI**: `arbiter list service`, `arbiter list package`
+- **Browser**: `arbiter view` to start documentation server
+- **Obsidian**: Open `.arbiter/` folder as a vault
+
+## Adding Entities
+
+```bash
+# Add a service
+arbiter add service my-service --language {{language}}
+
+# Add a task
+arbiter add task "Implement feature X"
+
+# Add a group (milestone)
+arbiter add group "v1.0 Release"
+```

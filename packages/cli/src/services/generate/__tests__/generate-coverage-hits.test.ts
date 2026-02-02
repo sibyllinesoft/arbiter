@@ -6,7 +6,7 @@ import {
   collectClientTargets,
   normalizeCapabilities,
 } from "@/services/generate/io/index.js";
-import type { AppSpec } from "@arbiter/shared";
+import type { AppSpec } from "@arbiter/specification";
 import fs from "fs-extra";
 
 describe("generate coverage spot checks", () => {

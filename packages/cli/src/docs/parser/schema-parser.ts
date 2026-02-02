@@ -7,7 +7,7 @@
  */
 
 import path from "node:path";
-import { CueRunner } from "@arbiter/cue-runner";
+import { CueRunner } from "@arbiter/validation";
 import fs from "fs-extra";
 
 export interface ParsedField {

@@ -1,0 +1,40 @@
+{
+  "name": "@arbiter/validation",
+  "version": "0.1.0",
+  "description": "Spec validation layer for Arbiter - validates and transforms specification data",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "bun-types": "^1.2.21",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "cue-wasm": "^1.0.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "keywords": [
+    "validation",
+    "schema",
+    "arbiter",
+    "spec"
+  ],
+  "author": "Nathan Rice",
+  "license": "MIT"
+}

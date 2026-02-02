@@ -12,7 +12,7 @@ import {
   type ArtifactGeneratorContext,
 } from "@/services/generate/strategies/base.js";
 import type { GenerateOptions } from "@/services/generate/util/types.js";
-import type { ConfigWithVersion } from "@arbiter/shared";
+import type { ConfigWithVersion } from "@arbiter/specification";
 
 type CIWorkflowFn = (
   configWithVersion: ConfigWithVersion,

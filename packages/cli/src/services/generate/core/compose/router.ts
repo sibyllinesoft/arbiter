@@ -8,7 +8,7 @@
 
 import path from "node:path";
 import type { ProjectStructureConfig, RoutingConfig } from "@/types.js";
-import type { GroupSpec, PackageConfig } from "@arbiter/shared-types/cli";
+import type { GroupSpec, PackageConfig } from "@arbiter/specification";
 
 /**
  * Artifact types that can be routed.

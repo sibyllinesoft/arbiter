@@ -46,7 +46,7 @@ describe("evaluateApiVersion", () => {
       })),
     };
 
-    mock.module("@arbiter/shared", () => sharedMock);
+    mock.module("@arbiter/specification", () => sharedMock);
 
     // Import with cache buster
     const timestamp = Date.now();
@@ -110,7 +110,7 @@ describe("loadVersionsToCheck", () => {
       })),
     };
 
-    mock.module("@arbiter/shared", () => sharedMock);
+    mock.module("@arbiter/specification", () => sharedMock);
 
     const timestamp = Date.now();
     compatModule = await import(`@/services/compat/index.js?load=${timestamp}`);
@@ -185,7 +185,7 @@ describe("showVersionInfo", () => {
       })),
     };
 
-    mock.module("@arbiter/shared", () => sharedMock);
+    mock.module("@arbiter/specification", () => sharedMock);
 
     const timestamp = Date.now();
     compatModule = await import(`@/services/compat/index.js?show=${timestamp}`);
@@ -244,7 +244,7 @@ describe("runMigration", () => {
       })),
     };
 
-    mock.module("@arbiter/shared", () => sharedMock);
+    mock.module("@arbiter/specification", () => sharedMock);
 
     const timestamp = Date.now();
     compatModule = await import(`@/services/compat/index.js?run=${timestamp}`);

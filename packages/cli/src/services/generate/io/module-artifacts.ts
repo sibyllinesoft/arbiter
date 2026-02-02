@@ -13,7 +13,7 @@ import { ensureDirectory, writeFileWithHooks } from "@/services/generate/util/ho
 import { joinRelativePath } from "@/services/generate/util/shared.js";
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { ProjectStructureConfig } from "@/types.js";
-import type { AppSpec } from "@arbiter/shared";
+import type { AppSpec } from "@arbiter/specification";
 
 /**
  * Generate module artifacts from app spec resources and processes

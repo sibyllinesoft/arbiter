@@ -12,12 +12,12 @@
   },
   "scripts": {
     "build": "bun run build:all",
-    "build:all": "bun run build:cue-runner && bun run build:importer && bun run build:cli",
-    "build:cue-runner": "bun run --cwd packages/cue-runner build",
+    "build:all": "bun run build:validation && bun run build:importer && bun run build:cli",
+    "build:validation": "bun run --cwd packages/validation build",
     "build:importer": "bun run --cwd packages/importer build",
     "build:cli": "bun run --cwd packages/cli build",
     "build:standalone": "bun build packages/cli/src/cli.ts --compile --outfile arbiter-cli --target=bun",
-    "clean": "bun run --cwd packages/cue-runner clean && bun run --cwd packages/importer clean && bun run --cwd packages/cli clean",
+    "clean": "bun run --cwd packages/validation clean && bun run --cwd packages/importer clean && bun run --cwd packages/cli clean",
     "cli": "./arbiter-cli",
     "cli:install": "./install-cli.sh",
     "cli:test": "./arbiter-cli --self-test",
@@ -37,7 +37,12 @@
     "quality": "bun run format:check && bun run lint && bun run typecheck",
     "quality:fix": "bun run format && bun run check && bun run typecheck",
     "validate": "bun run quality && bun run test",
-    "prepare": "husky"
+    "prepare": "husky",
+    "arbiter:status": "arbiter status",
+    "arbiter:test:scaffold": "arbiter tests scaffold --language typescript",
+    "arbiter:test:cover": "arbiter tests cover --threshold 0.8",
+    "arbiter:version:plan": "arbiter version plan --strict",
+    "arbiter:sync": "arbiter sync --language typescript"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -69,5 +74,13 @@
     "typescript"
   ],
   "author": "Nathan Rice",
-  "license": "LicenseRef-SPL-1.0"
+  "license": "LicenseRef-SPL-1.0",
+  "arbiter": {
+    "profiles": [
+      "library"
+    ],
+    "coverage": {
+      "threshold": 0.8
+    }
+  }
 }

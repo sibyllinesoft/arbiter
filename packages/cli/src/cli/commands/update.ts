@@ -17,7 +17,7 @@ import { Command, Option } from "commander";
 /**
  * Supported entity types for the update command.
  */
-type UpdateableEntityType = "package" | "resource" | "group" | "task";
+type UpdateableEntityType = "package" | "resource" | "group" | "issue";
 
 /**
  * Handle command errors by logging and exiting with error code 2.
@@ -166,7 +166,7 @@ export function createUpdateCommands(): Command {
     .option("-v, --verbose", "Show verbose output")
     .option("--dry-run", "Show changes without applying")
     .allowUnknownOption(true)
-    .action(createUpdateHandler("task"));
+    .action(createUpdateHandler("issue"));
 
   return updateCmd;
 }

@@ -1,10 +1,11 @@
 /** @packageDocumentation GitHub sync tests */
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { GitHubSyncClient } from "@/utils/github/sync/github-sync.js";
 
 const tokenEnv = "GITHUB_TOKEN";
+let originalToken: string | undefined;
 
 function createClient(overrides: any = {}): GitHubSyncClient {
   process.env[tokenEnv] = "token";
@@ -18,7 +19,16 @@ function createClient(overrides: any = {}): GitHubSyncClient {
 
 describe("GitHubSyncClient preview", () => {
   beforeEach(() => {
+    originalToken = process.env[tokenEnv];
     mock.restore();
+  });
+
+  afterEach(() => {
+    if (originalToken !== undefined) {
+      process.env[tokenEnv] = originalToken;
+    } else {
+      delete process.env[tokenEnv];
+    }
   });
 
   it("classifies groups into create/update/close buckets", async () => {

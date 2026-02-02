@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { GroupSpec } from "@arbiter/shared-types/cli";
+import type { GroupSpec } from "@arbiter/specification";
 import type { ProjectStructureConfig } from "../../../types.js";
 import {
   DefaultPathRouter,

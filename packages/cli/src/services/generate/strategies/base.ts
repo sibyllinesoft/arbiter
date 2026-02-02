@@ -14,7 +14,7 @@ import type {
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
 import type { PackageManagerCommandSet } from "@/utils/io/package-manager.js";
-import type { AppSpec, ConfigWithVersion } from "@arbiter/shared";
+import type { AppSpec, ConfigWithVersion } from "@arbiter/specification";
 
 export interface ArtifactGeneratorContext {
   appSpec: AppSpec;

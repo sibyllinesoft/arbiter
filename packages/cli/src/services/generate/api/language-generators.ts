@@ -23,7 +23,7 @@ import {
 } from "@/services/generate/util/shared.js";
 import type { GenerateOptions, GenerationReporter } from "@/services/generate/util/types.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
-import type { AppSpec } from "@arbiter/shared";
+import type { AppSpec } from "@arbiter/specification";
 import fs from "fs-extra";
 
 // Fallback reporter; generateCommand provides a scoped reporter when invoked

@@ -12,7 +12,7 @@ import { joinRelativePath, slugify } from "@/services/generate/util/shared.js";
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
 import type { PackageManagerCommandSet } from "@/utils/io/package-manager.js";
-import type { AppSpec, ConfigWithVersion } from "@arbiter/shared";
+import type { AppSpec, ConfigWithVersion } from "@arbiter/specification";
 import fs from "fs-extra";
 
 /**

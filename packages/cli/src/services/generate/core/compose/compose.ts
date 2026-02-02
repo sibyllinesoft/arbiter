@@ -25,7 +25,7 @@ import {
   resolveServiceWorkload,
 } from "@/utils/api/service-metadata.js";
 import type { PackageManagerCommandSet } from "@/utils/io/package-manager.js";
-import type { DeploymentConfig, ServiceDeploymentOverride } from "@arbiter/shared";
+import type { DeploymentConfig, ServiceDeploymentOverride } from "@arbiter/specification";
 import fs from "fs-extra";
 
 export type { ComposeServiceConfig } from "@/services/generate/core/compose/compose-service-sections.js";

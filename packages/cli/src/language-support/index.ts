@@ -3,7 +3,7 @@
  * Provides pluggable code generation for multiple programming languages
  */
 
-import type { AppSpec } from "@arbiter/shared";
+import type { AppSpec } from "@arbiter/specification";
 
 // Core types for the plugin system
 export interface ComponentProp {

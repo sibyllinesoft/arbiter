@@ -12,12 +12,11 @@
     "baseUrl": ".",
     "types": ["bun-types"],
     "paths": {
-      "@arbiter/shared": ["./packages/shared/src"],
-      "@arbiter/cue-runner": ["./packages/cue-runner/src"],
+      "@arbiter/specification": ["./packages/specification/src"],
+      "@arbiter/specification/*": ["./packages/specification/src/*"],
+      "@arbiter/validation": ["./packages/validation/src"],
+      "@arbiter/validation/*": ["./packages/validation/src/*"],
       "@arbiter/cli": ["./packages/cli/src"],
-      "@arbiter/api-types": ["./packages/api-types/src"],
-      "@arbiter/shared-types": ["./packages/shared-types/src"],
-      "@arbiter/shared-types/*": ["./packages/shared-types/src/*"],
       "@arbiter/importer": ["./packages/importer/src"],
       "@arbiter/importer/*": ["./packages/importer/src/*"]
     }
@@ -25,28 +24,16 @@
   "files": [],
   "references": [
     {
-      "path": "./packages/shared"
+      "path": "./packages/specification"
     },
     {
-      "path": "./packages/cue-runner"
-    },
-    {
-      "path": "./packages/shared-types"
+      "path": "./packages/validation"
     },
     {
       "path": "./packages/cli"
     },
     {
-      "path": "./packages/api-types"
-    },
-    {
       "path": "./packages/importer"
-    },
-    {
-      "path": "./apps/api"
-    },
-    {
-      "path": "./apps/client"
     }
   ],
   "exclude": ["node_modules", "dist", "**/dist/**", "**/node_modules/**"]

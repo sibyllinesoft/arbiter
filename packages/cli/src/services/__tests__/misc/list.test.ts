@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 import * as cueIntegration from "@/constraints/cli-integration.js";
+import * as markdownHandlers from "@/services/add/markdown-handlers.js";
 import { listCommand } from "@/services/list/index.js";
 import * as formatting from "@/utils/util/output/formatting.js";
 import fs from "fs-extra";
@@ -90,6 +91,8 @@ describe("listCommand local mode", () => {
   const localCfg = { ...baseConfig, localMode: true, projectDir: "/tmp/project" };
 
   it("returns 1 when assembly missing", async () => {
+    // Force legacy CUE mode, then fail to find assembly
+    spyOn(markdownHandlers, "isMarkdownStorage").mockResolvedValue(false);
     spyOn(fs, "pathExists").mockResolvedValue(false);
     const err = spyOn(console, "error").mockImplementation(() => {});
     const code = await listCommand("service", {}, localCfg as any);
@@ -98,6 +101,8 @@ describe("listCommand local mode", () => {
   });
 
   it("returns 2 when parse fails", async () => {
+    // Force legacy CUE mode
+    spyOn(markdownHandlers, "isMarkdownStorage").mockResolvedValue(false);
     spyOn(fs, "pathExists").mockResolvedValue(true);
     spyOn(fs, "readFile").mockResolvedValue("bad cue");
     const manip = {
@@ -116,6 +121,8 @@ describe("listCommand local mode", () => {
   });
 
   it("prints table for local components", async () => {
+    // Force legacy CUE mode
+    spyOn(markdownHandlers, "isMarkdownStorage").mockResolvedValue(false);
     spyOn(fs, "pathExists").mockResolvedValue(true);
     spyOn(fs, "readFile").mockResolvedValue("cue content");
     const manip = {

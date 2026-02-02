@@ -6,7 +6,7 @@ import { ensureDirectory, writeFileWithHooks } from "@/services/generate/util/ho
 import { joinRelativePath, slugify, toPathSegments } from "@/services/generate/util/shared.js";
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { ProjectStructureConfig } from "@/types.js";
-import type { AppSpec } from "@arbiter/shared";
+import type { AppSpec } from "@arbiter/specification";
 import chalk from "chalk";
 import fs from "fs-extra";
 

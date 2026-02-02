@@ -6,7 +6,7 @@
  * artifact types from service configuration.
  */
 
-import type { PackageConfig } from "@arbiter/shared-types/cli";
+import type { PackageConfig } from "@arbiter/specification";
 
 /** Service artifact type indicating internal or external origin. */
 type ArtifactType = "internal" | "external";

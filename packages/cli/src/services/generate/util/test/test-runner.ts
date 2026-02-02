@@ -21,7 +21,7 @@ import {
   detectPackageManager,
   getPackageManagerCommands,
 } from "@/utils/io/package-manager.js";
-import type { AppSpec } from "@arbiter/shared";
+import type { AppSpec } from "@arbiter/specification";
 import fs from "fs-extra";
 
 const reporter: GenerationReporter = {

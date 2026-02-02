@@ -15,7 +15,7 @@ import {
   formatWarnings,
   validateSpecification,
 } from "@/validation/warnings.js";
-import type { AppSpec } from "@arbiter/shared";
+import type { AppSpec } from "@arbiter/specification";
 import {
   createCompleteValidSpec,
   createIncompleteSpec,

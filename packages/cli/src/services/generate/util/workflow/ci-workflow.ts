@@ -19,7 +19,7 @@ import { parseDeploymentServiceConfig } from "@/services/generate/infrastructure
 import { ensureDirectory, writeFileWithHooks } from "@/services/generate/util/hook-executor.js";
 import { slugify } from "@/services/generate/util/shared.js";
 import type { GenerateOptions, GenerationReporter } from "@/services/generate/util/types.js";
-import type { AppSpec, ConfigWithVersion, ServiceArtifactType } from "@arbiter/shared";
+import type { AppSpec, ConfigWithVersion, ServiceArtifactType } from "@arbiter/specification";
 import fs from "fs-extra";
 import * as YAML from "yaml";
 

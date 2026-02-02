@@ -6,7 +6,7 @@
  * specifications for use in generated test files.
  */
 
-import type { AppSpec } from "@arbiter/shared";
+import type { AppSpec } from "@arbiter/specification";
 
 export interface FlowRouteMetadata {
   rootTestId?: string;

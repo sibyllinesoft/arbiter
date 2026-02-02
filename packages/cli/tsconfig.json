@@ -28,20 +28,17 @@
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "@arbiter/shared": [
-        "../shared/src/index.ts"
+      "@arbiter/specification": [
+        "../specification/src/index.ts"
       ],
-      "@arbiter/shared/*": [
-        "../shared/src/*"
+      "@arbiter/specification/*": [
+        "../specification/src/*"
       ],
-      "@arbiter/shared-types/cli": [
-        "../shared-types/src/cli.ts"
+      "@arbiter/validation": [
+        "../validation/src/index.ts"
       ],
-      "@arbiter/shared-types": [
-        "../shared-types/src/index.ts"
-      ],
-      "@arbiter/shared-types/*": [
-        "../shared-types/src/*"
+      "@arbiter/validation/*": [
+        "../validation/src/*"
       ],
       "@/*": [
         "./src/*"
@@ -68,10 +65,10 @@
   },
   "references": [
     {
-      "path": "../shared"
+      "path": "../specification"
     },
     {
-      "path": "../shared-types"
+      "path": "../validation"
     }
   ],
   "include": [

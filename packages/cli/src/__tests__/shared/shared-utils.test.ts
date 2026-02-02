@@ -6,7 +6,7 @@ import {
   isRelativePath,
   normalizePath,
   translateCueErrors,
-} from "@arbiter/shared";
+} from "@arbiter/specification";
 
 describe("shared utils", () => {
   it("formats validation errors with paths and locations", () => {

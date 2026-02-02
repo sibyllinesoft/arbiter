@@ -14,7 +14,7 @@ import {
 } from "@/services/generate/strategies/base.js";
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { ProjectStructureConfig } from "@/types.js";
-import type { AppSpec } from "@arbiter/shared";
+import type { AppSpec } from "@arbiter/specification";
 
 type DocumentationFn = (
   appSpec: AppSpec,

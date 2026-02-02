@@ -11,11 +11,25 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "arbiter:status": "arbiter status",
+    "arbiter:test:scaffold": "arbiter tests scaffold --language typescript",
+    "arbiter:test:cover": "arbiter tests cover --threshold 0.8",
+    "arbiter:version:plan": "arbiter version plan --strict",
+    "arbiter:sync": "arbiter sync --language typescript"
   },
   "dependencies": {},
-  "devDependencies": {},
+  "devDependencies": {
+  },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "arbiter": {
+    "profiles": [
+      "library"
+    ],
+    "coverage": {
+      "threshold": 0.8
+    }
   }
 }

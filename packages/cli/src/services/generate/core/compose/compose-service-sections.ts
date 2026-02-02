@@ -10,7 +10,7 @@ import {
   resolveServiceArtifactType,
   resolveServiceWorkload,
 } from "@/utils/api/service-metadata.js";
-import type { PackageConfig } from "@arbiter/shared";
+import type { PackageConfig } from "@arbiter/specification";
 
 /** Port configuration for compose services */
 interface ComposePort {

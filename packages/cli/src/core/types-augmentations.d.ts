@@ -1,6 +1,6 @@
-import "@arbiter/shared";
+import "@arbiter/specification";
 
-declare module "@arbiter/shared" {
+declare module "@arbiter/specification" {
   interface UIRoute {
     name?: string | null;
     summary?: string | null;

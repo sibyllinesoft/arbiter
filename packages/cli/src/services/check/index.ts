@@ -25,7 +25,7 @@ import {
   formatValidationTable,
   formatWarningDetails,
 } from "@/utils/util/output/formatting.js";
-import { translateCueErrors } from "@arbiter/shared";
+import { translateCueErrors } from "@arbiter/specification";
 import chalk from "chalk";
 import fs from "fs-extra";
 import { glob } from "glob";

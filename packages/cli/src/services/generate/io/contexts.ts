@@ -8,7 +8,7 @@
  * - Package generation context
  */
 
-import type { PackageConfig } from "@arbiter/shared-types/cli";
+import type { PackageConfig } from "@arbiter/specification";
 
 export interface ClientGenerationContext {
   root: string;

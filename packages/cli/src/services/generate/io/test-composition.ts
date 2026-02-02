@@ -9,7 +9,12 @@ import { writeFileWithHooks } from "@/services/generate/util/hook-executor.js";
 import { joinRelativePath, toPathSegments } from "@/services/generate/util/shared.js";
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { ProjectStructureConfig } from "@/types.js";
-import type { PackageConfig, TestCase, TestCompositionResult, TestSuite } from "@arbiter/shared";
+import type {
+  PackageConfig,
+  TestCase,
+  TestCompositionResult,
+  TestSuite,
+} from "@arbiter/specification";
 import fs from "fs-extra";
 
 /** Type alias for deployment service configuration */

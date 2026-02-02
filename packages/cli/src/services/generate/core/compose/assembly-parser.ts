@@ -8,7 +8,7 @@
 
 import { executeCommand } from "@/services/generate/core/compose/assembly-helpers.js";
 import type { GenerationReporter } from "@/services/generate/util/types.js";
-import type { AppSpec, ConfigWithVersion, SchemaVersion } from "@arbiter/shared";
+import type { AppSpec, ConfigWithVersion, SchemaVersion } from "@arbiter/specification";
 import fs from "fs-extra";
 
 /**

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
@@ -11,9 +11,21 @@ const minimalConfig = {
   token: "test-token",
 } as any;
 
+let origCwd: string;
+let tmpDir: string | null = null;
+
 describe("initCommand", () => {
-  afterEach(() => {
+  beforeEach(() => {
+    origCwd = process.cwd();
+  });
+
+  afterEach(async () => {
     mock.restore();
+    process.chdir(origCwd);
+    if (tmpDir) {
+      await fs.remove(tmpDir).catch(() => {});
+      tmpDir = null;
+    }
   });
 
   it("requires a preset to be specified", async () => {
@@ -61,31 +73,25 @@ describe("initCommand", () => {
 
   it("creates project via preset using local mode", async () => {
     // Create a temp directory for the test
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "arbiter-init-"));
-    const origDir = process.cwd();
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "arbiter-init-"));
     process.chdir(tmpDir);
 
-    try {
-      // Import with cache buster
-      const timestamp = Date.now();
-      const { initCommand } = await import(`@/services/init/index.js?preset=${timestamp}`);
+    // Import with cache buster
+    const timestamp = Date.now();
+    const { initCommand } = await import(`@/services/init/index.js?preset=${timestamp}`);
 
-      // web-app preset supports local mode, so it will use createProjectLocally
-      // No need to mock ApiClient since it won't be called in local mode
-      const code = await initCommand(undefined, { preset: "web-app" } as any, {
-        ...minimalConfig,
-        projectDir: tmpDir,
-        localMode: true, // Explicitly use local mode
-      });
+    // web-app preset supports local mode, so it will use createProjectLocally
+    // No need to mock ApiClient since it won't be called in local mode
+    const code = await initCommand(undefined, { preset: "web-app" } as any, {
+      ...minimalConfig,
+      projectDir: tmpDir,
+      localMode: true, // Explicitly use local mode
+    });
 
-      expect(code).toBe(0);
+    expect(code).toBe(0);
 
-      // Verify .arbiter/assembly.cue was created
-      const assemblyPath = path.join(tmpDir, ".arbiter", "assembly.cue");
-      expect(await fs.pathExists(assemblyPath)).toBe(true);
-    } finally {
-      process.chdir(origDir);
-      await fs.remove(tmpDir);
-    }
+    // Verify markdown-first storage was created (.arbiter/README.md)
+    const readmePath = path.join(tmpDir, ".arbiter", "README.md");
+    expect(await fs.pathExists(readmePath)).toBe(true);
   });
 });

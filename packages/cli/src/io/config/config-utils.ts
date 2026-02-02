@@ -17,7 +17,7 @@ import {
   type UIOptionCatalog,
   type UIOptionGeneratorMap,
   UI_OPTION_KEYS,
-} from "@arbiter/shared";
+} from "@arbiter/specification";
 
 /**
  * Clone a framework map (language -> frameworks[])

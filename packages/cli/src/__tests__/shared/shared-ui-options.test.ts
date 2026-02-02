@@ -7,7 +7,7 @@ import {
   DEFAULT_UI_OPTION_CATALOG,
   buildUIOptionConfig,
   resolveUIOptionCatalog,
-} from "@arbiter/shared";
+} from "@arbiter/specification";
 
 const tempDirs: string[] = [];
 

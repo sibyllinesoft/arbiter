@@ -1,11 +1,22 @@
 /**
  * @packageDocumentation
  * Parse CUE schema definitions to extract filterable fields.
- * Uses the CUE WASM runtime (cuelang-js) as the source of truth.
+ * Uses direct file parsing with optional cue-wasm validation.
  */
 
+import * as fs from "node:fs";
 import path from "node:path";
-import cue from "cuelang-js";
+import { init as initCueWasm } from "cue-wasm";
+
+// Singleton for cue-wasm instance (used for validation only)
+let cueInstance: Awaited<ReturnType<typeof initCueWasm>> | null = null;
+
+async function getCue() {
+  if (!cueInstance) {
+    cueInstance = await initCueWasm();
+  }
+  return cueInstance;
+}
 
 /**
  * Field types derived from CUE type expressions
@@ -226,7 +237,7 @@ export function parseCueEnums(content: string): Map<string, string[]> {
 }
 
 /**
- * Load CUE schema definitions using the WASM runtime
+ * Load CUE schema definitions by reading schema files directly
  */
 export async function loadCueSchemas(schemaDir?: string): Promise<{
   entities: Map<string, CueEntityDef>;
@@ -239,18 +250,29 @@ export async function loadCueSchemas(schemaDir?: string): Promise<{
   const schemaFiles = [path.join(dir, "core_types.cue"), path.join(dir, "artifacts.cue")];
 
   try {
-    // Use cue def to get normalized schema output
-    const result = (await cue("def", schemaFiles)) as {
-      code: number;
-      stdout: string;
-      stderr: string;
-    };
-
-    if (result.code !== 0) {
-      throw new Error(`cue def failed: ${result.stderr}`);
+    // Read schema files directly
+    const contents: string[] = [];
+    for (const file of schemaFiles) {
+      if (fs.existsSync(file)) {
+        contents.push(fs.readFileSync(file, "utf-8"));
+      }
     }
 
-    const content = result.stdout;
+    if (contents.length === 0) {
+      return { entities: new Map(), enums: new Map() };
+    }
+
+    const content = contents.join("\n\n");
+
+    // Optionally validate with cue-wasm (catches syntax errors)
+    try {
+      const cue = await getCue();
+      cue.parse(content);
+    } catch (parseError) {
+      // Log parse error but continue - regex parsing may still work
+      console.warn("CUE validation warning:", parseError);
+    }
+
     const entities = parseCueSchemaContent(content);
     const enums = parseCueEnums(content);
 

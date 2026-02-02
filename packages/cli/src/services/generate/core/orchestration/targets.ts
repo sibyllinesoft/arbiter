@@ -20,7 +20,7 @@ import type {
 } from "@/services/generate/io/contexts.js";
 import { joinRelativePath, slugify, toPathSegments } from "@/services/generate/util/shared.js";
 import type { ProjectStructureConfig } from "@/types.js";
-import type { AppSpec, GroupSpec, PackageConfig } from "@arbiter/shared";
+import type { AppSpec, GroupSpec, PackageConfig } from "@arbiter/specification";
 
 const PACKAGE_RELATIVE_KEYS = ["docsDirectory", "testsDirectory", "infraDirectory"] as const;
 type PackageRelativeKey = (typeof PACKAGE_RELATIVE_KEYS)[number];

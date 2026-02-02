@@ -4,7 +4,7 @@ import {
   estimateMigrationDuration,
   getAvailableMigrationPaths,
   hasMigrationPath,
-} from "@arbiter/shared";
+} from "@arbiter/specification";
 
 describe("migration helpers", () => {
   it("returns default migration paths for known components", () => {

@@ -7,7 +7,7 @@
 
 import { ApiClient } from "@/io/api/api-client.js";
 import type { CommandResult } from "@/types.js";
-import type { ValidationResponse } from "@arbiter/shared";
+import type { ValidationResponse } from "@arbiter/specification";
 
 /**
  * SystemRepository encapsulates server-level operations (health, exports, discovery endpoints)

@@ -1,8 +1,25 @@
-import { describe, expect, it, spyOn } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import { __listTesting, listCommand } from "@/services/list/index.js";
+
+let origCwd: string;
+let tmpDir: string | null = null;
+
+beforeEach(() => {
+  origCwd = process.cwd();
+});
+
+afterEach(async () => {
+  mock.restore();
+  process.chdir(origCwd);
+  if (tmpDir) {
+    await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+    tmpDir = null;
+  }
+});
 
 const baseConfig: any = {
   localMode: true,
@@ -12,20 +29,17 @@ const baseConfig: any = {
 
 describe("list command", () => {
   it("rejects invalid type", async () => {
-    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+    spyOn(console, "error").mockImplementation(() => {});
     const code = await listCommand("invalid", {}, baseConfig as any);
     expect(code).toBe(1);
-    errorSpy.mockRestore();
   });
 
   it("returns when local spec missing", async () => {
-    const tmp = await mkdtemp(path.join(import.meta.dir, "list-missing-"));
-    const logSpy = spyOn(console, "log").mockImplementation(() => {});
-    const code = await listCommand("service", {}, { ...baseConfig, projectDir: tmp } as any);
+    tmpDir = await mkdtemp(path.join(os.tmpdir(), "list-missing-"));
+    spyOn(console, "log").mockImplementation(() => {});
+    const code = await listCommand("service", {}, { ...baseConfig, projectDir: tmpDir } as any);
     // List command now returns 0 with empty results when spec is missing
     expect(code).toBe(0);
-    logSpy.mockRestore();
-    await rm(tmp, { recursive: true, force: true });
   });
 
   it("buildComponentsFromSpec builds various component summaries", () => {

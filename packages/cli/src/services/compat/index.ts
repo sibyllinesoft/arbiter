@@ -15,7 +15,7 @@ import {
   getRuntimeVersionInfo,
   hasMigrationPath,
   validateVersionSet,
-} from "@arbiter/shared";
+} from "@arbiter/specification";
 import { z } from "zod";
 
 /** Type alias for runtime version information returned by getRuntimeVersionInfo */

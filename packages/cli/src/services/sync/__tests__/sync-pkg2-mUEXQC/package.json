@@ -1,1 +1,20 @@
-{"name":"demo"}
+{
+  "name": "demo",
+  "scripts": {
+    "arbiter:status": "arbiter status",
+    "arbiter:test:scaffold": "arbiter tests scaffold --language typescript",
+    "arbiter:test:cover": "arbiter tests cover --threshold 0.8",
+    "arbiter:version:plan": "arbiter version plan --strict",
+    "arbiter:sync": "arbiter sync --language typescript"
+  },
+  "devDependencies": {
+  },
+  "arbiter": {
+    "profiles": [
+      "library"
+    ],
+    "coverage": {
+      "threshold": 0.8
+    }
+  }
+}

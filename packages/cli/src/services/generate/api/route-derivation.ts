@@ -7,7 +7,7 @@
  */
 
 import { slugify } from "@/services/generate/util/shared.js";
-import type { AppSpec, PathSpec } from "@arbiter/shared";
+import type { AppSpec, PathSpec } from "@arbiter/specification";
 
 export const SUPPORTED_HTTP_METHODS: Array<keyof PathSpec> = [
   "get",

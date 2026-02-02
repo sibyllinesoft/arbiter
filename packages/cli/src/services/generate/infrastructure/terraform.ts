@@ -18,7 +18,11 @@ import {
   resolveServiceArtifactType,
   resolveServiceWorkload,
 } from "@/utils/api/service-metadata.js";
-import type { DeploymentConfig, ServiceArtifactType, ServiceWorkload } from "@arbiter/shared";
+import type {
+  DeploymentConfig,
+  ServiceArtifactType,
+  ServiceWorkload,
+} from "@arbiter/specification";
 
 export interface TerraformServiceMetadata {
   name: string;

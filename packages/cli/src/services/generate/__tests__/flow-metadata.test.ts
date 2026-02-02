@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { AppSpec } from "@arbiter/shared";
+import type { AppSpec } from "@arbiter/specification";
 
 import {
   deriveFlowRouteMetadata,

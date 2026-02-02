@@ -3,258 +3,236 @@
  * Init command - Initialize new Arbiter projects with markdown-first storage.
  *
  * Provides functionality to:
- * - Initialize projects from predefined presets
+ * - Initialize projects from config-driven presets (plopfile bundles)
  * - Create markdown structure in .arbiter directory
- * - Support web-app, mobile-app, api-service, microservice templates
+ * - Support layered preset discovery (project → user → builtin)
  * - Handle both local and server-assisted initialization
  */
 
+import os from "node:os";
 import path from "node:path";
 import { ApiClient } from "@/io/api/api-client.js";
 import type { CLIConfig, InitOptions } from "@/types.js";
 import { withProgress } from "@/utils/api/progress.js";
-import { MarkdownStorage } from "@/utils/storage/markdown-storage.js";
-import { createMarkdownFile } from "@/utils/storage/markdown.js";
 import chalk from "chalk";
 import fs from "fs-extra";
 import { v4 as uuidv4 } from "uuid";
 
 /**
- * Available presets with local template support
+ * Preset metadata
  */
-const PRESETS = [
+interface PresetInfo {
+  id: string;
+  name: string;
+  description: string;
+  language?: string;
+  category?: string;
+  source: "builtin" | "project" | "user";
+}
+
+/**
+ * Built-in presets (embedded in code for standalone binary compatibility)
+ */
+const BUILTIN_PRESETS: PresetInfo[] = [
+  {
+    id: "cli-node",
+    name: "CLI Tool (Node.js/TypeScript)",
+    description: "Command-line tool or library using Node.js/TypeScript/Bun",
+    language: "typescript",
+    category: "cli",
+    source: "builtin",
+  },
+  {
+    id: "cli-python",
+    name: "CLI Tool (Python)",
+    description: "Command-line tool or library using Python",
+    language: "python",
+    category: "cli",
+    source: "builtin",
+  },
+  {
+    id: "cli-rust",
+    name: "CLI Tool (Rust)",
+    description: "Command-line tool or library using Rust",
+    language: "rust",
+    category: "cli",
+    source: "builtin",
+  },
+  {
+    id: "cli-go",
+    name: "CLI Tool (Go)",
+    description: "Command-line tool or library using Go",
+    language: "go",
+    category: "cli",
+    source: "builtin",
+  },
   {
     id: "web-app",
     name: "Web Application",
-    description: "Full-stack web application with React frontend and Node.js backend",
-    supportsLocal: true,
-  },
-  {
-    id: "mobile-app",
-    name: "Mobile Application",
-    description: "Cross-platform mobile app with React Native",
-    supportsLocal: false,
+    description: "Full-stack web application with frontend and backend",
+    category: "web",
+    source: "builtin",
   },
   {
     id: "api-service",
     name: "API Service",
     description: "RESTful API service with database integration",
-    supportsLocal: true,
-  },
-  {
-    id: "microservice",
-    name: "Microservice",
-    description: "Containerized microservice with monitoring",
-    supportsLocal: true,
+    category: "api",
+    source: "builtin",
   },
 ];
 
 /**
- * Preset configuration for markdown generation
+ * Get preset search paths for custom presets (project → user)
  */
-interface PresetConfig {
-  services?: Array<{
-    name: string;
-    language: string;
-    port?: number;
-    framework?: string;
-    subtype?: "service" | "frontend" | "worker";
-  }>;
-  resources?: Array<{
-    name: string;
-    kind: string;
-    engine?: string;
-  }>;
-}
+function getCustomPresetSearchPaths(projectDir?: string): string[] {
+  const paths: string[] = [];
 
-/**
- * Get preset configuration based on preset ID
- */
-function getPresetConfig(presetId: string): PresetConfig {
-  switch (presetId) {
-    case "web-app":
-      return {
-        services: [
-          {
-            name: "api",
-            language: "typescript",
-            port: 3001,
-            subtype: "service",
-          },
-          {
-            name: "web",
-            language: "typescript",
-            framework: "react",
-            subtype: "frontend",
-          },
-        ],
-      };
-
-    case "api-service":
-      return {
-        services: [
-          {
-            name: "api",
-            language: "typescript",
-            port: 3000,
-            subtype: "service",
-          },
-        ],
-      };
-
-    case "microservice":
-      return {
-        services: [
-          {
-            name: "service",
-            language: "typescript",
-            port: 8080,
-            subtype: "service",
-          },
-        ],
-      };
-
-    default:
-      return {};
+  // Project-level presets
+  if (projectDir) {
+    paths.push(path.join(projectDir, ".arbiter", "presets"));
   }
+  paths.push(path.join(process.cwd(), ".arbiter", "presets"));
+
+  // User-level presets
+  paths.push(path.join(os.homedir(), ".arbiter", "presets"));
+
+  return paths;
 }
 
 /**
- * Generate the root README.md content for the project
+ * Discover custom presets from file system
  */
-function generateRootReadme(projectName: string, presetId: string): string {
+async function discoverCustomPresets(projectDir?: string): Promise<PresetInfo[]> {
+  const presets: PresetInfo[] = [];
+  const searchPaths = getCustomPresetSearchPaths(projectDir);
+
+  for (const basePath of searchPaths) {
+    if (!(await fs.pathExists(basePath))) continue;
+
+    try {
+      const entries = await fs.readdir(basePath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        if (entry.name.startsWith("_") || entry.name.startsWith(".")) continue;
+
+        const modulePath = path.join(basePath, entry.name, "module.js");
+        if (!(await fs.pathExists(modulePath))) continue;
+
+        try {
+          const mod = await import(modulePath);
+          presets.push({
+            id: mod.id || entry.name,
+            name: mod.name || entry.name,
+            description: mod.description || "",
+            language: mod.language,
+            category: mod.category,
+            source: basePath.includes(path.join(".arbiter", "presets")) ? "project" : "user",
+          });
+        } catch {
+          // Skip presets that fail to load
+        }
+      }
+    } catch {
+      // Directory not readable
+    }
+  }
+
+  return presets;
+}
+
+/**
+ * Get all available presets (custom + builtin)
+ */
+async function discoverPresets(projectDir?: string): Promise<PresetInfo[]> {
+  const customPresets = await discoverCustomPresets(projectDir);
+
+  // Custom presets override builtins with the same ID
+  const customIds = new Set(customPresets.map((p) => p.id));
+  const builtins = BUILTIN_PRESETS.filter((p) => !customIds.has(p.id));
+
+  return [...customPresets, ...builtins];
+}
+
+/**
+ * Generate README.md content for a preset
+ */
+function generateReadmeContent(projectName: string, preset: PresetInfo): string {
   const now = new Date().toISOString();
+  const language = preset.language || "typescript";
 
-  const frontmatter = {
-    type: "project",
-    entityId: uuidv4(),
-    createdAt: now,
-    updatedAt: now,
-    tags: [presetId],
-  };
+  return `---
+type: project
+entityId: ${uuidv4()}
+createdAt: ${now}
+updatedAt: ${now}
+preset: ${preset.id}
+language: ${language}
+tags:
+  - ${preset.category || "project"}
+  - ${language}
+---
 
-  const body = `# ${projectName}
+# ${projectName}
 
-This is the specification for **${projectName}**, initialized from the \`${presetId}\` preset.
-
-## Directory Structure
-
-The \`.arbiter/\` directory contains your project specification as markdown files:
-
-- **README.md** - This file (project root entity)
-- **{service-name}/** - Service containers with their endpoints
-- **{name}.md** - Leaf entities (resources, tasks, notes)
+${preset.category === "cli" ? "Command-line tool" : "Project"} built with ${language}.
 
 ## Getting Started
 
-1. Add services: \`arbiter add service my-service --language typescript\`
-2. Add endpoints: \`arbiter add endpoint get-users --service my-service --path /users --methods GET\`
-3. Add resources: \`arbiter add resource postgres --kind database --engine postgres\`
-4. Add tasks: \`arbiter add task "Implement authentication"\`
+Run \`arbiter sync\` to detect packages and create service entities.
+
+\`\`\`bash
+arbiter sync
+\`\`\`
 
 ## Viewing Your Spec
 
-- **CLI**: \`arbiter list services\`, \`arbiter list endpoints\`
-- **Obsidian**: Open the \`.arbiter/\` folder as a vault
-- **Docsify**: Run \`arbiter view\` to start a local documentation server
-`;
+- **CLI**: \`arbiter list service\`, \`arbiter list package\`
+- **Browser**: \`arbiter view\` to start documentation server
+- **Obsidian**: Open \`.arbiter/\` folder as a vault
 
-  return createMarkdownFile(frontmatter, body);
-}
-
-/**
- * Generate a service directory with README.md
- */
-function generateServiceReadme(
-  service: NonNullable<PresetConfig["services"]>[number],
-  parentDir: string,
-): { path: string; content: string } {
-  const now = new Date().toISOString();
-
-  const frontmatter: Record<string, unknown> = {
-    type: "service",
-    entityId: uuidv4(),
-    createdAt: now,
-    updatedAt: now,
-    language: service.language,
-    subtype: service.subtype || "service",
-  };
-
-  if (service.port) {
-    frontmatter.port = service.port;
-  }
-  if (service.framework) {
-    frontmatter.framework = service.framework;
-  }
-
-  const body = `# ${service.name}
-
-${service.subtype === "frontend" ? "Frontend application" : "Backend service"} for the project.
-
-## Configuration
-
-- **Language**: ${service.language}
-${service.port ? `- **Port**: ${service.port}` : ""}
-${service.framework ? `- **Framework**: ${service.framework}` : ""}
-
-## Endpoints
-
-Add endpoints to this service using:
+## Adding Entities
 
 \`\`\`bash
-arbiter add endpoint my-endpoint --service ${service.name} --path /api/example --methods GET,POST
+# Add a service
+arbiter add service my-service --language ${language}
+
+# Add a task
+arbiter add task "Implement feature X"
+
+# Add a group (milestone)
+arbiter add group "v1.0 Release"
 \`\`\`
 `;
-
-  return {
-    path: path.join(parentDir, service.name, "README.md"),
-    content: createMarkdownFile(frontmatter, body),
-  };
 }
 
 /**
- * Generate a resource markdown file
+ * Generate config.json content for a preset
  */
-function generateResourceMarkdown(
-  resource: NonNullable<PresetConfig["resources"]>[number],
-  parentDir: string,
-): { path: string; content: string } {
-  const now = new Date().toISOString();
-
-  const frontmatter: Record<string, unknown> = {
-    type: "resource",
-    entityId: uuidv4(),
-    createdAt: now,
-    updatedAt: now,
-    kind: resource.kind,
-  };
-
-  if (resource.engine) {
-    frontmatter.engine = resource.engine;
-  }
-
-  const body = `# ${resource.name}
-
-Infrastructure resource of type \`${resource.kind}\`.
-
-${resource.engine ? `**Engine**: ${resource.engine}` : ""}
-`;
-
-  return {
-    path: path.join(parentDir, `${resource.name}.md`),
-    content: createMarkdownFile(frontmatter, body),
-  };
+function generateConfigContent(preset: PresetInfo): string {
+  return JSON.stringify(
+    {
+      preset: preset.id,
+      language: preset.language || "typescript",
+      storage: "markdown",
+      sync: {
+        autoDetectPackages: true,
+        createMarkdownEntities: true,
+      },
+    },
+    null,
+    2,
+  );
 }
 
 /**
  * Create project locally with markdown-first storage
  */
-async function createProjectLocally(
-  projectName: string,
-  preset: (typeof PRESETS)[number],
-): Promise<number> {
+async function createProjectLocally(projectName: string, preset: PresetInfo): Promise<number> {
   const arbiterDir = path.join(process.cwd(), ".arbiter");
   const readmePath = path.join(arbiterDir, "README.md");
+  const configPath = path.join(arbiterDir, "config.json");
 
   // Check if .arbiter directory already exists with README.md
   if (await fs.pathExists(readmePath)) {
@@ -273,29 +251,13 @@ async function createProjectLocally(
   // Create .arbiter directory
   await fs.ensureDir(arbiterDir);
 
-  // Generate and write the root README.md
-  const rootContent = generateRootReadme(projectName, preset.id);
-  await fs.writeFile(readmePath, rootContent, "utf-8");
+  // Generate and write README.md
+  const readmeContent = generateReadmeContent(projectName, preset);
+  await fs.writeFile(readmePath, readmeContent, "utf-8");
 
-  // Generate preset-specific entities
-  const presetConfig = getPresetConfig(preset.id);
-
-  // Create services
-  if (presetConfig.services) {
-    for (const service of presetConfig.services) {
-      const { path: servicePath, content } = generateServiceReadme(service, arbiterDir);
-      await fs.ensureDir(path.dirname(servicePath));
-      await fs.writeFile(servicePath, content, "utf-8");
-    }
-  }
-
-  // Create resources
-  if (presetConfig.resources) {
-    for (const resource of presetConfig.resources) {
-      const { path: resourcePath, content } = generateResourceMarkdown(resource, arbiterDir);
-      await fs.writeFile(resourcePath, content, "utf-8");
-    }
-  }
+  // Generate and write config.json
+  const configContent = generateConfigContent(preset);
+  await fs.writeFile(configPath, configContent, "utf-8");
 
   showProjectCreatedMessage(projectName, preset.name);
   return 0;
@@ -307,7 +269,7 @@ async function createProjectLocally(
 function showProjectCreatedMessage(projectName: string, presetName: string): void {
   console.log(chalk.green(`\n✓ Created project "${projectName}" from ${presetName} preset`));
   console.log(chalk.dim("\n💡 Your project has been created with markdown-first storage"));
-  console.log(chalk.dim("   Use 'arbiter list services' to see what was generated"));
+  console.log(chalk.dim("   Run 'arbiter sync' to detect packages and create entities"));
   console.log(chalk.dim("   Use 'arbiter add <entity>' to add more components"));
   console.log(chalk.dim("   Use 'arbiter view' to browse your spec in a web browser"));
 }
@@ -318,7 +280,7 @@ function showProjectCreatedMessage(projectName: string, presetName: string): voi
 async function createProjectWithApi(
   config: CLIConfig,
   projectName: string,
-  preset: (typeof PRESETS)[number],
+  preset: PresetInfo,
 ): Promise<number> {
   const apiClient = new ApiClient(config);
   const result = await apiClient.createProject({
@@ -344,29 +306,32 @@ export async function initCommand(
   config?: CLIConfig,
 ): Promise<number> {
   try {
+    // Discover available presets
+    const presets = await discoverPresets(config?.projectDir);
+
     if (options.listPresets) {
-      listPresets();
+      await printPresetList(presets);
       return 0;
     }
 
     // Validate preset selection
     if (!options.preset) {
       console.error(chalk.red("Please choose an init preset using --preset <id>."));
-      printPresetList();
+      await printPresetList(presets);
       return 1;
     }
 
-    const preset = PRESETS.find((p) => p.id === options.preset);
+    const preset = presets.find((p) => p.id === options.preset);
     if (!preset) {
       console.error(chalk.red(`Unknown preset: ${options.preset}`));
-      printPresetList();
+      await printPresetList(presets);
       return 1;
     }
 
     const projectName = displayName || options.name || path.basename(process.cwd());
 
-    // Default to local mode - only use API if explicitly configured and preset doesn't support local
-    const useLocalMode = config?.localMode !== false && preset.supportsLocal;
+    // Default to local mode
+    const useLocalMode = config?.localMode !== false;
 
     if (useLocalMode) {
       return await withProgress(
@@ -405,19 +370,40 @@ export async function initCommand(
 /**
  * List available presets
  */
-export function listPresets(): void {
-  printPresetList();
+export async function listPresets(): Promise<void> {
+  const presets = await discoverPresets();
+  await printPresetList(presets);
   console.log();
   console.log(chalk.dim("Usage: arbiter init <name> --preset <preset-id>"));
-  console.log(chalk.dim("Example: arbiter init my-app --preset web-app"));
+  console.log(chalk.dim("Example: arbiter init my-cli --preset cli-node"));
 }
 
-function printPresetList(): void {
-  console.log(chalk.cyan("Available presets:"));
+async function printPresetList(presets: PresetInfo[]): Promise<void> {
+  console.log(chalk.cyan("\nAvailable presets:"));
   console.log();
 
-  PRESETS.forEach((preset) => {
-    const localBadge = preset.supportsLocal ? chalk.dim(" [local]") : chalk.dim(" [api-only]");
-    console.log(`${chalk.green(preset.id.padEnd(15))} ${preset.description}${localBadge}`);
-  });
+  // Group by category
+  const byCategory = new Map<string, PresetInfo[]>();
+  for (const preset of presets) {
+    const category = preset.category || "other";
+    if (!byCategory.has(category)) {
+      byCategory.set(category, []);
+    }
+    byCategory.get(category)!.push(preset);
+  }
+
+  // Display grouped presets
+  for (const [category, categoryPresets] of byCategory) {
+    console.log(chalk.yellow(`  ${category.toUpperCase()}`));
+    for (const preset of categoryPresets) {
+      const sourceBadge =
+        preset.source === "builtin"
+          ? ""
+          : preset.source === "project"
+            ? chalk.dim(" [project]")
+            : chalk.dim(" [user]");
+      console.log(`    ${chalk.green(preset.id.padEnd(20))} ${preset.description}${sourceBadge}`);
+    }
+    console.log();
+  }
 }

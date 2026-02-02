@@ -13,7 +13,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { copyStandalone, safeFileOperation } from "@/constraints/index.js";
 import chalk from "chalk";
-import packageJson from "../../../package.json" with { type: "json" };
 
 export interface SyncResult {
   modified: boolean;
@@ -168,9 +167,6 @@ export function getArbiterPackageUpdates() {
       "arbiter:version:plan": "arbiter version plan --strict",
       "arbiter:sync": "arbiter sync --language typescript",
     },
-    devDependencies: {
-      "@arbiter/cli": `^${packageJson.version}`,
-    },
     arbiter: {
       profiles: ["library"],
       coverage: {
@@ -191,16 +187,8 @@ export function applyArbiterUpdates(
   const conflicts: ConflictResolution[] = [];
 
   if (!pkg.scripts) pkg.scripts = {};
-  if (!pkg.devDependencies) pkg.devDependencies = {};
 
   pkg.scripts = deepMerge(pkg.scripts, arbiterUpdates.scripts, conflicts, "scripts", force);
-  pkg.devDependencies = deepMerge(
-    pkg.devDependencies,
-    arbiterUpdates.devDependencies,
-    conflicts,
-    "devDependencies",
-    force,
-  );
   pkg.arbiter = deepMerge(pkg.arbiter || {}, arbiterUpdates.arbiter, conflicts, "arbiter", force);
 
   return conflicts;

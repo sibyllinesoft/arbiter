@@ -43,13 +43,13 @@ export type {
   ChecklistItem,
   IssueValidationConfig,
   IssueValidationResult,
-} from "@arbiter/shared";
+} from "@arbiter/specification";
 export {
   DEFAULT_ISSUE_VALIDATION,
   validateIssue,
   createIssue,
   createChecklistItem,
-} from "@arbiter/shared";
+} from "@arbiter/specification";
 
 // Re-export GitHub types
 export type {
@@ -69,7 +69,7 @@ export type {
   GitHubTemplateOptions,
 } from "./types/github.js";
 
-import type { UIOptionCatalog, UIOptionGeneratorMap } from "@arbiter/shared";
+import type { UIOptionCatalog, UIOptionGeneratorMap } from "@arbiter/specification";
 // Import types used within this file
 import type { GitHubSyncConfig } from "./types/github.js";
 

@@ -1,6 +1,6 @@
 /**
  * @packageDocumentation
- * View command - View Arbiter vault in browser or Obsidian.
+ * View command - View Arbiter vault in browser.
  */
 
 import { requireCommandConfig } from "@/cli/context.js";
@@ -25,8 +25,7 @@ function handleCommandError(error: unknown): never {
 export function createViewCommand(program: Command): void {
   program
     .command("view")
-    .description("view .arbiter vault in browser (docsify) or Obsidian")
-    .option("-o, --obsidian", "open in Obsidian instead of browser")
+    .description("view .arbiter vault in browser")
     .option("-p, --port <port>", "port for docsify server", "4000")
     .option("--no-browser", "don't open browser automatically")
     .action(async (options, command) => {
@@ -34,7 +33,6 @@ export function createViewCommand(program: Command): void {
         const config = requireCommandConfig(command);
 
         const viewOptions: ViewOptions = {
-          obsidian: options.obsidian,
           port: parseInt(options.port, 10),
           noBrowser: options.browser === false,
         };
