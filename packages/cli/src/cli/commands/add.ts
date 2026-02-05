@@ -35,7 +35,8 @@ type EntityType =
   | "component"
   | "module"
   | "task"
-  | "note";
+  | "note"
+  | "assertion";
 
 /**
  * Configuration for a CLI option.
@@ -103,31 +104,37 @@ function createActionHandler(
   transformOptions?: AddSubcommandConfig["transformOptions"],
 ) {
   return async (
-    nameOrArg1: string,
-    optionsOrArg2: ExtendedAddOptions | string,
+    nameOrArg1: string | ExtendedAddOptions,
+    optionsOrArg2: ExtendedAddOptions | string | Command,
     maybeOptionsOrCommand?: ExtendedAddOptions | Command,
     maybeCommand?: Command,
   ) => {
-    // Handle both single and double argument commands
+    // Handle both single and double argument commands, plus no-argument commands
     let name: string;
     let options: ExtendedAddOptions;
     let command: Command;
 
-    if (typeof optionsOrArg2 === "string") {
+    if (typeof nameOrArg1 === "object" && !(nameOrArg1 instanceof Command)) {
+      // No positional argument: (options, command)
+      // Commands like "assertion" that have no <name> argument
+      name = "";
+      options = nameOrArg1 as ExtendedAddOptions;
+      command = optionsOrArg2 as Command;
+    } else if (typeof optionsOrArg2 === "string") {
       // Double argument: contract-operation <contract> <operation>
       name = optionsOrArg2; // operation is the name
       options = maybeOptionsOrCommand as ExtendedAddOptions;
-      options = { ...options, contract: nameOrArg1 }; // contract is first arg
+      options = { ...options, contract: nameOrArg1 as string }; // contract is first arg
       command = maybeCommand as Command;
     } else if (maybeOptionsOrCommand instanceof Command) {
       // Single argument with Command as third parameter
-      name = nameOrArg1;
-      options = optionsOrArg2;
+      name = nameOrArg1 as string;
+      options = optionsOrArg2 as ExtendedAddOptions;
       command = maybeOptionsOrCommand;
     } else if (maybeCommand instanceof Command) {
       // Single argument with Command as fourth parameter
-      name = nameOrArg1;
-      options = optionsOrArg2;
+      name = nameOrArg1 as string;
+      options = optionsOrArg2 as ExtendedAddOptions;
       command = maybeCommand;
     } else {
       // Fallback - should not normally reach here
@@ -229,6 +236,10 @@ const ADD_SUBCOMMANDS: AddSubcommandConfig[] = [
         flags: "--attach-to <service>",
         description: "attach this infrastructure service to another service",
       },
+      {
+        flags: "--parent <group>",
+        description: "parent group for directory organization (e.g., admin creates apps/admin/)",
+      },
     ],
   },
   {
@@ -250,6 +261,10 @@ const ADD_SUBCOMMANDS: AddSubcommandConfig[] = [
       { flags: "--port <port>", description: "local dev port", defaultValue: parsePort },
       { flags: "--description <text>", description: "short description of the client" },
       { flags: "--tags <tags>", description: "comma-separated tags for the client" },
+      {
+        flags: "--parent <group>",
+        description: "parent group for directory organization (e.g., admin creates apps/admin/)",
+      },
     ],
   },
   {
@@ -365,6 +380,21 @@ const ADD_SUBCOMMANDS: AddSubcommandConfig[] = [
         description: 'JSON array of behavior steps (e.g. "[{"visit":"/"}]")',
       },
       { flags: "--expected-outcome <outcome>", description: "expected outcome of the behavior" },
+    ],
+  },
+  {
+    name: "assertion",
+    description: "add or update Hurl assertions for an endpoint",
+    entityType: "assertion",
+    options: [
+      { flags: "--endpoint <path>", description: "endpoint path (e.g. /api/health)" },
+      { flags: "--service <service>", description: "service containing the endpoint" },
+      {
+        flags: "--hurl <assertions>",
+        description: "Hurl assertion block (HTTP status + [Asserts])",
+      },
+      { flags: "--edit", description: "open assertions in $EDITOR" },
+      { flags: "--append", description: "append to existing assertions instead of replacing" },
     ],
   },
   {
@@ -520,6 +550,10 @@ const ADD_SUBCOMMANDS: AddSubcommandConfig[] = [
         flags: "--version <version>",
         description: "initial version number",
         defaultValue: "1.0.0",
+      },
+      {
+        flags: "--parent <group>",
+        description: "parent group for directory organization",
       },
     ],
   },

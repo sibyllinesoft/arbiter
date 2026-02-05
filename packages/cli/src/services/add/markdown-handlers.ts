@@ -175,10 +175,8 @@ export async function addEndpointMarkdown(
 
   const endpointPath = path.join(servicePath, `${uniqueSlug}.md`);
 
-  // Parse methods
-  const methods = (options.methods ?? options.method ?? "GET")
-    .split(",")
-    .map((m) => m.trim().toUpperCase());
+  // Parse method (single method per endpoint file)
+  const method = (options.method ?? "GET").toUpperCase();
 
   // Build frontmatter
   const now = new Date().toISOString();
@@ -187,8 +185,8 @@ export async function addEndpointMarkdown(
     entityId: uuidv4(),
     createdAt: now,
     updatedAt: now,
-    path: options.path ?? `/${endpointSlug}`,
-    methods,
+    path: options.path ?? name, // Use the actual path from command
+    method,
   };
 
   if (options.summary) frontmatter.summary = options.summary;
@@ -201,14 +199,7 @@ export async function addEndpointMarkdown(
   // Build body
   const body = `# ${name}
 
-${options.summary ?? `API endpoint for ${name}`}
-
-## Details
-
-- **Path**: \`${frontmatter.path}\`
-- **Methods**: ${methods.join(", ")}
-
-${options.description ?? ""}
+${options.summary ?? options.description ?? ""}
 `;
 
   // Write endpoint file
@@ -217,8 +208,7 @@ ${options.description ?? ""}
 
   console.log(chalk.green(`✅ Created endpoint: ${name}`));
   console.log(chalk.dim(`   Service: ${serviceName}`));
-  console.log(chalk.dim(`   Path: ${frontmatter.path}`));
-  console.log(chalk.dim(`   Methods: ${methods.join(", ")}`));
+  console.log(chalk.dim(`   Method: ${method}`));
 
   return 0;
 }
@@ -435,4 +425,187 @@ arbiter add task "My task" --member-of ${groupSlug}
   console.log(chalk.dim(`   Path: ${path.relative(projectDir, readmePath)}`));
 
   return 0;
+}
+
+/**
+ * Assertion options for markdown handler
+ */
+export interface MarkdownAssertionOptions extends AddOptions {
+  endpoint?: string;
+  service?: string;
+  hurl?: string;
+  edit?: boolean;
+  append?: boolean;
+}
+
+/**
+ * Add Hurl assertions to an endpoint's frontmatter
+ */
+export async function addAssertionMarkdown(
+  _name: string,
+  options: MarkdownAssertionOptions,
+  projectDir: string,
+): Promise<number> {
+  const arbiterDir = path.join(projectDir, ".arbiter");
+
+  if (!options.endpoint) {
+    console.error(chalk.red("❌ --endpoint is required"));
+    console.log(chalk.dim("Usage: arbiter add assertion --endpoint /api/health --hurl 'HTTP 200'"));
+    return 1;
+  }
+
+  const serviceName = options.service ?? "api";
+  const serviceSlug = slugify(serviceName);
+  const servicePath = path.join(arbiterDir, serviceSlug);
+
+  // Find the endpoint file
+  const endpointPath = options.endpoint;
+  const endpointSlug = slugify(endpointPath);
+  const slugifiedPath = `/${endpointSlug}`;
+
+  let endpointFile: string | null = null;
+  const files = await fs.readdir(servicePath).catch(() => []);
+
+  for (const file of files) {
+    if (!file.endsWith(".md") || file === "README.md") continue;
+
+    const filePath = path.join(servicePath, file);
+    const content = await fs.readFile(filePath, "utf-8");
+    const frontmatter = parseFrontmatter(content);
+
+    // Check path field or paths keys
+    if (frontmatter.path === endpointPath || frontmatter.path === slugifiedPath) {
+      endpointFile = filePath;
+      break;
+    }
+    if (frontmatter.paths) {
+      for (const pk of Object.keys(frontmatter.paths)) {
+        if (pk === endpointPath || pk === slugifiedPath) {
+          endpointFile = filePath;
+          break;
+        }
+      }
+      if (endpointFile) break;
+    }
+  }
+
+  if (!endpointFile) {
+    console.error(chalk.red(`❌ Endpoint "${endpointPath}" not found in service "${serviceName}"`));
+    console.log(
+      chalk.dim(
+        `Create it first with: arbiter add endpoint ${endpointPath} --service ${serviceName}`,
+      ),
+    );
+    return 1;
+  }
+
+  // Read and parse the endpoint file
+  const content = await fs.readFile(endpointFile, "utf-8");
+  const frontmatter = parseFrontmatter(content);
+  const body = extractBody(content);
+
+  // Get Hurl assertions from --hurl flag or open editor
+  let hurlAssertions: string | undefined;
+
+  if (options.hurl) {
+    hurlAssertions = options.hurl;
+  } else if (options.edit) {
+    // Open editor with existing assertions or template
+    const existing =
+      frontmatter.assertions ||
+      `HTTP 200
+[Asserts]
+# Add your assertions here
+# jsonpath "$.field" == "value"
+`;
+    hurlAssertions = await openInEditor(existing, ".hurl");
+    if (!hurlAssertions) {
+      console.log(chalk.yellow("No changes made"));
+      return 0;
+    }
+  } else {
+    console.error(chalk.red("❌ Either --hurl or --edit is required"));
+    console.log(chalk.dim("Usage: arbiter add assertion --endpoint /api/health --hurl 'HTTP 200'"));
+    console.log(chalk.dim("       arbiter add assertion --endpoint /api/health --edit"));
+    return 1;
+  }
+
+  // Append or replace assertions
+  if (options.append && frontmatter.assertions) {
+    frontmatter.assertions = frontmatter.assertions.trim() + "\n" + hurlAssertions.trim();
+  } else {
+    frontmatter.assertions = hurlAssertions.trim();
+  }
+
+  // Update the file
+  frontmatter.updatedAt = new Date().toISOString();
+  const updatedContent = createMarkdownFile(frontmatter, body);
+  await fs.writeFile(endpointFile, updatedContent, "utf-8");
+
+  console.log(chalk.green(`✅ Updated assertions for: ${endpointPath}`));
+  console.log(chalk.dim(`   Service: ${serviceName}`));
+  console.log(
+    chalk.dim(
+      hurlAssertions
+        .split("\n")
+        .map((l) => `   ${l}`)
+        .join("\n"),
+    ),
+  );
+
+  return 0;
+}
+
+/**
+ * Open content in user's editor and return the result
+ */
+async function openInEditor(content: string, extension: string): Promise<string | null> {
+  const editor = process.env.EDITOR || process.env.VISUAL || "vi";
+  const tmpFile = path.join(require("os").tmpdir(), `arbiter-${Date.now()}${extension}`);
+
+  await fs.writeFile(tmpFile, content, "utf-8");
+
+  const { spawn } = require("child_process");
+
+  return new Promise((resolve) => {
+    const child = spawn(editor, [tmpFile], { stdio: "inherit" });
+
+    child.on("close", async (code: number) => {
+      if (code !== 0) {
+        resolve(null);
+        return;
+      }
+
+      try {
+        const result = await fs.readFile(tmpFile, "utf-8");
+        await fs.unlink(tmpFile);
+        resolve(result);
+      } catch {
+        resolve(null);
+      }
+    });
+  });
+}
+
+/**
+ * Parse YAML frontmatter from markdown content
+ */
+function parseFrontmatter(content: string): Record<string, any> {
+  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return {};
+
+  try {
+    const yaml = require("yaml");
+    return yaml.parse(match[1]) || {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Extract body content after frontmatter
+ */
+function extractBody(content: string): string {
+  const match = content.match(/^---\n[\s\S]*?\n---\n?([\s\S]*)$/);
+  return match ? match[1] : content;
 }

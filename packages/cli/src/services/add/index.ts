@@ -43,11 +43,13 @@ import chalk from "chalk";
 import { diffLines } from "diff";
 import fs from "fs-extra";
 import {
+  type MarkdownAssertionOptions,
   type MarkdownClientOptions,
   type MarkdownEndpointOptions,
   type MarkdownGroupOptions,
   type MarkdownResourceOptions,
   type MarkdownServiceOptions,
+  addAssertionMarkdown,
   addClientMarkdown,
   addEndpointMarkdown,
   addGroupMarkdown,
@@ -422,12 +424,17 @@ async function runMarkdownAddCommand(
         projectDir,
       );
 
+    case "assertion":
+      return addAssertionMarkdown(name, options as MarkdownAssertionOptions, projectDir);
+
     default:
       console.error(
         chalk.red(`❌ Subcommand "${subcommand}" is not yet supported with markdown storage.`),
       );
       console.log(
-        chalk.dim("Supported: service, endpoint, resource, client, group, database, cache, queue"),
+        chalk.dim(
+          "Supported: service, endpoint, resource, client, group, database, cache, queue, assertion",
+        ),
       );
       console.log(
         chalk.dim("For other commands, use a CUE-based project (arbiter init with --legacy flag)."),
