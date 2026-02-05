@@ -126,9 +126,9 @@ function generateStaticComponent(
   rootAttr: string,
 ): string {
   return `import type { FC } from 'react';
-import type { RouteDefinition } from '@/services/generate/types';
+import type { RouteDefinition } from './types';
 
-const ${componentName}: FC =  => {
+const ${componentName}: FC = () => {
   return (
     <section data-route="${routeId}" role="main"${rootAttr}>
       <header>
@@ -179,9 +179,9 @@ export function buildRouteComponentContent(
 
   return `import { useState } from 'react';
 import type { FC } from 'react';
-import type { RouteDefinition } from '@/services/generate/types';
+import type { RouteDefinition } from './types';
 
-const ${componentName}: FC =  => {
+const ${componentName}: FC = () => {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -312,15 +312,12 @@ function buildRouteMetadata(route: any): RouteMetadata {
  */
 function generateAggregatorContent(routeDefinitions: Array<{ importName: string }>): string {
   const imports = routeDefinitions
-    .map(
-      (definition) =>
-        `import { ${definition.importName} } from '@/services/generate/${definition.importName}';`,
-    )
+    .map((definition) => `import { ${definition.importName} } from './${definition.importName}';`)
     .join("\n");
   const definitionsArray = routeDefinitions.map((definition) => definition.importName).join(", ");
 
   return `import type { RouteObject } from 'react-router-dom';
-import type { RouteDefinition } from '@/services/generate/types';
+import type { RouteDefinition } from './types';
 ${imports ? `${imports}\n` : ""}
 const definitions: RouteDefinition[] = [${definitionsArray}];
 
@@ -334,7 +331,7 @@ const toRouteObject = (definition: RouteDefinition): RouteObject => {
 };
 
 export const routes: RouteObject[] = definitions.map(toRouteObject);
-export type { RouteDefinition } from '@/services/generate/types';
+export type { RouteDefinition } from './types';
 `;
 }
 
@@ -426,6 +423,81 @@ export async function generateUIComponents(
   const appRoutesPath = path.join(context.routesDir, "AppRoutes.tsx");
   await writeFileWithHooks(appRoutesPath, APP_ROUTES_CONTENT, options);
   files.push(joinRelativePath(relativeRoot, "src", "routes", "AppRoutes.tsx"));
+
+  return files;
+}
+
+/**
+ * Generate baseline unit tests for the client
+ */
+export async function generateBaselineTests(
+  appSpec: AppSpec,
+  clientTarget: ClientGenerationTarget,
+  options: GenerateOptions,
+): Promise<string[]> {
+  const files: string[] = [];
+  const routes = appSpec.ui?.routes || [];
+
+  reporter.info("🧪 Generating baseline tests...");
+
+  const srcDir = path.join(clientTarget.context.root, "src");
+  await ensureDirectory(srcDir, options);
+
+  // Generate App.test.tsx
+  const appTestContent = `import { describe, it, expect } from 'vitest';
+import { render } from '@testing-library/react';
+import { App } from './App';
+
+describe('App', () => {
+  it('renders without crashing', () => {
+    const { container } = render(<App />);
+    expect(container).toBeDefined();
+  });
+});
+`;
+  const appTestPath = path.join(srcDir, "App.test.tsx");
+  await writeFileWithHooks(appTestPath, appTestContent, options);
+  files.push(joinRelativePath(clientTarget.relativeRoot, "src", "App.test.tsx"));
+
+  // Generate route tests
+  if (routes.length > 0) {
+    const routesDir = path.join(srcDir, "routes");
+    await ensureDirectory(routesDir, options);
+
+    for (const route of routes) {
+      const routeId = route.id || route.path?.replace(/\//g, "") || "unknown";
+      const componentName = `${routeId.charAt(0).toUpperCase()}${routeId.slice(1)}View`;
+      const routeFileName = `${routeId.charAt(0).toUpperCase()}${routeId.slice(1)}Route`;
+
+      const routeTestContent = `import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import { ${routeFileName} } from './${routeFileName}';
+
+describe('${routeFileName}', () => {
+  it('renders the route component', () => {
+    const Component = ${routeFileName}.Component;
+    render(
+      <BrowserRouter>
+        <Component />
+      </BrowserRouter>
+    );
+    expect(screen.getByRole('main')).toBeInTheDocument();
+  });
+
+  it('has correct route configuration', () => {
+    expect(${routeFileName}.id).toBe('${routeId}');
+    expect(${routeFileName}.path).toBeDefined();
+  });
+});
+`;
+      const routeTestPath = path.join(routesDir, `${routeFileName}.test.tsx`);
+      await writeFileWithHooks(routeTestPath, routeTestContent, options);
+      files.push(
+        joinRelativePath(clientTarget.relativeRoot, "src", "routes", `${routeFileName}.test.tsx`),
+      );
+    }
+  }
 
   return files;
 }

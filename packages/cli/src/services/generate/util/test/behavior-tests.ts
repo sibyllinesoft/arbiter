@@ -24,7 +24,7 @@ type BehaviorRouteMetadata = {
 };
 
 /**
- * Generate E2E package.json for Playwright workspace
+ * Generate E2E package.json for Playwright workspace with Cucumber/Gherkin support
  */
 function generateE2ePackageJson(slug: string): object {
   return {
@@ -35,10 +35,14 @@ function generateE2ePackageJson(slug: string): object {
       test: "node ./support/run-e2e.mjs",
       "test:headed": "node ./support/run-e2e.mjs --headed",
       "test:ui": "node ./support/run-e2e.mjs --ui",
+      "test:cucumber": "cucumber-js",
     },
     devDependencies: {
       "@playwright/test": "^1.48.2",
+      "@cucumber/cucumber": "^10.3.1",
+      "@cucumber/pretty-formatter": "^1.0.1",
       typescript: "^5.5.4",
+      "ts-node": "^10.9.2",
     },
   };
 }
@@ -52,7 +56,7 @@ function generateE2eTsconfig(): object {
       target: "ESNext",
       module: "CommonJS",
       moduleResolution: "Node",
-      types: ["node", "@playwright/test"],
+      types: ["node", "@playwright/test", "@cucumber/cucumber"],
       allowSyntheticDefaultImports: true,
       esModuleInterop: true,
       resolveJsonModule: true,
@@ -61,6 +65,123 @@ function generateE2eTsconfig(): object {
     },
     include: ["**/*.ts"],
   };
+}
+
+/**
+ * Generate Cucumber configuration
+ */
+function generateCucumberConfig(): string {
+  return `export default {
+  require: ['step-definitions/**/*.ts'],
+  requireModule: ['ts-node/register'],
+  format: ['@cucumber/pretty-formatter'],
+  paths: ['features/**/*.feature'],
+  publishQuiet: true,
+};
+`;
+}
+
+/**
+ * Generate baseline feature file
+ */
+function generateBaselineFeature(appName: string): string {
+  return `Feature: ${appName} Application
+  As a user
+  I want the application to load successfully
+  So that I can use its features
+
+  Scenario: Application loads successfully
+    Given I am on the home page
+    Then I should see the application
+
+  Scenario: Application displays without errors
+    Given I am on the home page
+    Then there should be no console errors
+`;
+}
+
+/**
+ * Generate step definitions for baseline feature
+ */
+function generateBaselineStepDefinitions(): string {
+  return `import { Given, Then, Before, After, setDefaultTimeout } from '@cucumber/cucumber';
+import { chromium, Browser, Page, BrowserContext } from 'playwright';
+import assert from 'node:assert';
+
+setDefaultTimeout(60_000);
+
+let browser: Browser;
+let context: BrowserContext;
+let page: Page;
+const consoleErrors: string[] = [];
+
+Before(async function () {
+  browser = await chromium.launch();
+  context = await browser.newContext();
+  page = await context.newPage();
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      consoleErrors.push(msg.text());
+    }
+  });
+});
+
+After(async function () {
+  await context?.close();
+  await browser?.close();
+  consoleErrors.length = 0;
+});
+
+Given('I am on the home page', async function () {
+  const baseUrl = process.env.E2E_BASE_URL ?? 'http://localhost:5173';
+  await page.goto(baseUrl);
+});
+
+Then('I should see the application', async function () {
+  await page.waitForLoadState('domcontentloaded');
+  const body = await page.$('body');
+  assert.ok(body, 'Page body should exist');
+});
+
+Then('there should be no console errors', async function () {
+  assert.strictEqual(
+    consoleErrors.length,
+    0,
+    \`Expected no console errors but found: \${consoleErrors.join(', ')}\`
+  );
+});
+`;
+}
+
+/**
+ * Generate baseline Playwright test (runs without behaviors)
+ */
+function generateBaselineE2eTest(appName: string): string {
+  return `import { test, expect } from '@playwright/test';
+
+test.describe('${appName}', () => {
+  test('application loads successfully', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.locator('body')).toBeVisible();
+  });
+
+  test('has no console errors on load', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        errors.push(msg.text());
+      }
+    });
+
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    expect(errors).toHaveLength(0);
+  });
+});
+`;
 }
 
 /**
@@ -247,13 +368,10 @@ async function scaffoldPlaywrightWorkspace(
   clientTarget: ClientGenerationTarget | undefined,
   structure: ProjectStructureConfig,
 ): Promise<string[]> {
-  if (!getBehaviorsArray(appSpec) || getBehaviorsArray(appSpec).length === 0) {
-    return [];
-  }
-
   await ensureDirectory(workspaceRoot, options);
   const files: string[] = [];
   const slug = clientTarget?.slug ?? "app";
+  const appName = appSpec.product?.name ?? slug;
   const rel = (file: string) => joinRelativePath(...workspaceSegments, file);
 
   // Write package.json
@@ -305,6 +423,44 @@ async function scaffoldPlaywrightWorkspace(
     rel,
   );
 
+  // Write baseline Playwright test
+  await writeWorkspaceFile(
+    workspaceRoot,
+    path.join("specs", "baseline.spec.ts"),
+    generateBaselineE2eTest(appName),
+    options,
+    files,
+    rel,
+  );
+
+  // Scaffold Gherkin/Cucumber support
+  await writeWorkspaceFile(
+    workspaceRoot,
+    "cucumber.config.mjs",
+    generateCucumberConfig(),
+    options,
+    files,
+    rel,
+  );
+
+  await writeWorkspaceFile(
+    workspaceRoot,
+    path.join("features", "baseline.feature"),
+    generateBaselineFeature(appName),
+    options,
+    files,
+    rel,
+  );
+
+  await writeWorkspaceFile(
+    workspaceRoot,
+    path.join("step-definitions", "baseline.steps.ts"),
+    generateBaselineStepDefinitions(),
+    options,
+    files,
+    rel,
+  );
+
   return files;
 }
 
@@ -316,8 +472,9 @@ export async function generateBehaviorBasedTests(
   clientTarget?: ClientGenerationTarget,
 ): Promise<{ files: string[]; workspaceDir?: string }> {
   const files: string[] = [];
+  const hasBehaviors = getBehaviorsArray(appSpec).length > 0;
 
-  console.log(chalk.blue("🧪 Generating tests from behaviors..."));
+  console.log(chalk.blue("🧪 Generating e2e test scaffolding..."));
 
   const language = clientTarget?.config?.language || appSpec.config?.language || "typescript";
   const plugin = getConfiguredLanguagePlugin(language);
@@ -328,31 +485,12 @@ export async function generateBehaviorBasedTests(
     );
   }
 
-  const defaultWorkspaceSegments = [
-    ...toPathSegments(structure.testsDirectory || "tests"),
-    clientTarget?.slug ?? "app",
-  ];
-  const workspaceRoot =
-    clientTarget?.context?.testsDir ?? path.join(outputDir, ...defaultWorkspaceSegments);
-  const relativeWorkspace = path.relative(outputDir, workspaceRoot);
-  const workspaceSegments =
-    relativeWorkspace.trim().length > 0
-      ? toPathSegments(relativeWorkspace)
-      : defaultWorkspaceSegments;
-  const behaviorsDir = path.join(workspaceRoot, "behaviors");
-  if (!fs.existsSync(behaviorsDir) && !options.dryRun) {
-    fs.mkdirSync(behaviorsDir, { recursive: true });
-  }
+  // Colocate e2e tests with the client package
+  const clientRoot = clientTarget?.relativeRoot ?? "app";
+  const workspaceSegments = [...toPathSegments(clientRoot), "e2e"];
+  const workspaceRoot = path.join(outputDir, ...workspaceSegments);
 
-  for (const behavior of getBehaviorsArray(appSpec)) {
-    const testContent = generateDefaultBehaviorTest(behavior, (appSpec as any).locators);
-
-    const testFileName = `${behavior.id.replace(/:/g, "_")}.test.ts`;
-    const testPath = path.join(behaviorsDir, testFileName);
-    await writeFileWithHooks(testPath, testContent, options);
-    files.push(joinRelativePath(...workspaceSegments, "behaviors", testFileName));
-  }
-
+  // Always scaffold the Playwright + Gherkin workspace
   const workspaceFiles = await scaffoldPlaywrightWorkspace(
     appSpec,
     workspaceRoot,
@@ -363,6 +501,22 @@ export async function generateBehaviorBasedTests(
   );
   files.push(...workspaceFiles);
 
+  // Generate behavior-specific tests if behaviors are defined
+  if (hasBehaviors) {
+    const behaviorsDir = path.join(workspaceRoot, "behaviors");
+    if (!fs.existsSync(behaviorsDir) && !options.dryRun) {
+      fs.mkdirSync(behaviorsDir, { recursive: true });
+    }
+
+    for (const behavior of getBehaviorsArray(appSpec)) {
+      const testContent = generateDefaultBehaviorTest(behavior, (appSpec as any).locators);
+      const testFileName = `${behavior.id.replace(/:/g, "_")}.test.ts`;
+      const testPath = path.join(behaviorsDir, testFileName);
+      await writeFileWithHooks(testPath, testContent, options);
+      files.push(joinRelativePath(...workspaceSegments, "behaviors", testFileName));
+    }
+  }
+
   const workspaceDir = joinRelativePath(...workspaceSegments) || ".";
   return { files, workspaceDir };
 }
@@ -372,14 +526,14 @@ function buildPlaywrightConfig(
   clientTarget: ClientGenerationTarget | undefined,
   structure: ProjectStructureConfig,
 ): string {
-  const slug = clientTarget?.slug ?? "app";
-  const clientBase =
-    clientTarget?.relativeRoot ?? joinRelativePath(structure.clientsDirectory, slug);
-  const clientDirRelative = path.posix.join("..", "..", clientBase);
+  // E2E tests are colocated in client/e2e/, so client root is one level up
+  const clientDirRelative = "..";
 
-  // Collect packages with TypeScript language
-  const tsServices = Object.entries(getPackages(appSpec)).filter(([, pkg]) =>
-    isTypeScriptServiceLanguage((pkg as any)?.language as string | undefined),
+  // Collect backend services (TypeScript, excluding frontends)
+  const tsServices = Object.entries(getPackages(appSpec)).filter(
+    ([, pkg]) =>
+      isTypeScriptServiceLanguage((pkg as any)?.language as string | undefined) &&
+      (pkg as any)?.subtype !== "frontend",
   );
 
   const webPortInit = "Number(process.env.E2E_WEB_PORT ?? 5173)";
@@ -399,7 +553,14 @@ function buildPlaywrightConfig(
         : serviceSlug.includes("stripe")
           ? stripePortExpr
           : storefrontPortExpr;
-      const serviceDir = path.posix.join("..", "..", structure.servicesDirectory, serviceSlug);
+      // From clients/[slug]/e2e/ to services/[service]/ is 3 levels up then into services
+      const serviceDir = path.posix.join(
+        "..",
+        "..",
+        "..",
+        structure.servicesDirectory,
+        serviceSlug,
+      );
       return `{
       command: 'npm run dev',
       cwd: path.resolve(__dirname, '${serviceDir}'),
@@ -438,7 +599,8 @@ const stripePort = ${stripePortInit};
 const baseURL = process.env.E2E_BASE_URL ?? \`http://127.0.0.1:\${webPort}\`;
 
 export default defineConfig({
-  testDir: './behaviors',
+  testDir: '.',
+  testMatch: ['specs/**/*.spec.ts', 'behaviors/**/*.test.ts'],
   timeout: 120_000,
   expect: {
     timeout: 10_000,
