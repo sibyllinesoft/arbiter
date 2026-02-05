@@ -3,8 +3,7 @@
  * @description API route definitions for {{pascalCase name}} backend.
  */
 
-import type { Hono } from "hono";
-import type { Context } from "hono";
+import type { Express, Request, Response } from "express";
 
 interface RouteBinding {
   method: string;
@@ -21,9 +20,9 @@ const routeDefinitions: RouteBinding[] = [];
 {{/if}}
 const SERVICE_NAME = "{{name}}";
 
-export function registerRoutes(app: Hono): void {
-  app.get("/healthz", (c: Context) => {
-    return c.json({
+export function registerRoutes(app: Express): void {
+  app.get("/healthz", (_req: Request, res: Response) => {
+    res.json({
       status: "ok",
       service: SERVICE_NAME,
       timestamp: new Date().toISOString(),
@@ -32,19 +31,19 @@ export function registerRoutes(app: Hono): void {
 
   for (const definition of routeDefinitions) {
     const method = definition.method.toLowerCase() as "get" | "post" | "put" | "patch" | "delete";
-    app[method](definition.url, (c: Context) => {
-      return c.json({
+    app[method](definition.url, (_req: Request, res: Response) => {
+      res.status(definition.statusCode ?? 200).json({
         route: definition.url,
         status: "stubbed",
         summary: definition.summary,
         example: definition.reply,
-      }, definition.statusCode ?? 200);
+      });
     });
   }
 
   if (routeDefinitions.length === 0) {
-    app.get("/", (c: Context) => {
-      return c.json({
+    app.get("/", (_req: Request, res: Response) => {
+      res.json({
         service: SERVICE_NAME,
         status: "pending_implementation",
         message: "Update src/routes/index.ts to expose application endpoints.",

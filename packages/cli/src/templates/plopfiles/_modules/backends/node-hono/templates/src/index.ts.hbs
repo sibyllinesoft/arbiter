@@ -3,28 +3,23 @@
  */
 
 import { Hono } from "hono";
-import { serve } from "@hono/node-server";
-import { logger } from "hono/logger";
 import { cors } from "hono/cors";
-import { routes } from "./routes/index.js";
-{{#if database}}
-import { db } from "./db/index.js";
-{{/if}}
+import { serve } from "@hono/node-server";
+import { registerRoutes } from "./routes/index.js";
 
 const app = new Hono();
 
-// Middleware
-app.use("*", logger());
-app.use("*", cors());
+app.use("/*", cors());
+registerRoutes(app);
 
-// Routes
-app.route("/", routes);
+const defaultPort = {{port}};
+const port = Number(process.env.PORT || defaultPort);
 
-// Start server
-const port = parseInt(process.env.PORT ?? "3000", 10);
+console.log('Service "{{name}}" listening on port %d', port);
 
-serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`🚀 {{pascalCase name}} backend running on http://localhost:${info.port}`);
+serve({
+  fetch: app.fetch,
+  port,
 });
 
-export default app;
+export { app };

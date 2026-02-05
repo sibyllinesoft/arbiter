@@ -1,0 +1,53 @@
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+
+interface RouteBinding {
+  method: string;
+  url: string;
+  summary?: string;
+  reply?: unknown;
+  statusCode?: number;
+}
+
+{{#if routes}}
+const routeDefinitions: RouteBinding[] = {{{json routes}}};
+{{else}}
+const routeDefinitions: RouteBinding[] = [];
+{{/if}}
+const SERVICE_NAME = "{{name}}";
+
+export async function registerRoutes(app: FastifyInstance): Promise<void> {
+  app.get('/healthz', async (_request: FastifyRequest, reply: FastifyReply) => {
+    reply.status(200).send({
+      status: 'ok',
+      service: SERVICE_NAME,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  for (const definition of routeDefinitions) {
+    app.route({
+      method: definition.method as any,
+      url: definition.url,
+      handler: async (_request: FastifyRequest, reply: FastifyReply) => {
+        reply.status(definition.statusCode ?? 200).send({
+          route: definition.url,
+          status: 'stubbed',
+          summary: definition.summary,
+          example: definition.reply,
+        });
+      },
+    });
+  }
+
+  if (routeDefinitions.length === 0) {
+    app.get('/', async (_request: FastifyRequest, reply: FastifyReply) => {
+      reply.status(200).send({
+        service: SERVICE_NAME,
+        status: 'pending_implementation',
+        message: 'Update src/routes/index.ts to expose application endpoints.',
+      });
+    });
+  }
+}
+
+export const routes = routeDefinitions;

@@ -14,6 +14,12 @@ import {
   initializeProject,
 } from "@/services/generate/core/orchestration/template-orchestrator.js";
 import type { ServiceGenerationTarget } from "@/services/generate/io/contexts.js";
+import {
+  type RouteBinding,
+  type ServiceTemplateData,
+  detectFramework as detectServiceFramework,
+  generateServiceFromTemplate,
+} from "@/services/generate/templates/service-generator.js";
 import { getPrimaryServicePort } from "@/services/generate/util/docker/docker-generator.js";
 import { ensureDirectory, writeFileWithHooks } from "@/services/generate/util/hook-executor.js";
 import {
@@ -157,10 +163,43 @@ export async function generateLanguageFiles(
   return [];
 }
 
+type ServiceFramework = "fastify" | "hono" | "express";
+
+function detectFramework(config: any): ServiceFramework {
+  const framework = config.service?.framework?.toLowerCase() || "";
+  if (framework.includes("hono")) return "hono";
+  if (framework.includes("express")) return "express";
+  return "fastify";
+}
+
+const frameworkDependencies: Record<ServiceFramework, Record<string, string>> = {
+  fastify: {
+    fastify: "^4.25.0",
+    "@fastify/cors": "^9.0.0",
+  },
+  hono: {
+    hono: "^4.0.0",
+    "@hono/node-server": "^1.8.0",
+  },
+  express: {
+    express: "^4.18.2",
+    cors: "^2.8.5",
+  },
+};
+
+const frameworkDevDependencies: Record<ServiceFramework, Record<string, string>> = {
+  fastify: {},
+  hono: {},
+  express: {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+  },
+};
+
 /**
  * Create TypeScript package.json content
  */
-function createTsPackageJson(config: any) {
+function createTsPackageJson(config: any, framework: ServiceFramework) {
   return {
     name: config.name,
     version: config.version,
@@ -172,10 +211,7 @@ function createTsPackageJson(config: any) {
       test: "vitest run --passWithNoTests",
       lint: 'eslint "src/**/*.ts"',
     },
-    dependencies: {
-      fastify: "^4.25.0",
-      "@fastify/cors": "^9.0.0",
-    },
+    dependencies: frameworkDependencies[framework],
     devDependencies: {
       "@types/node": "^20.0.0",
       typescript: "^5.0.0",
@@ -184,6 +220,7 @@ function createTsPackageJson(config: any) {
       "@typescript-eslint/parser": "^7.18.0",
       "@typescript-eslint/eslint-plugin": "^7.18.0",
       vitest: "^1.2.0",
+      ...frameworkDevDependencies[framework],
     },
   };
 }
@@ -253,9 +290,9 @@ function createEslintConfig(): string {
 }
 
 /**
- * Create TypeScript index.ts content
+ * Create TypeScript index.ts content for Fastify
  */
-function createTsIndexContent(serviceName: string, defaultPort: number): string {
+function createFastifyIndexContent(serviceName: string, defaultPort: number): string {
   return `import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { registerRoutes } from './routes/index.js';
@@ -271,9 +308,9 @@ async function bootstrap() {
 
   try {
     await app.listen({ port, host });
-    app.log.info('Service "${serviceName}" listening on %d', port);
+    console.log('Service "${serviceName}" listening on %d', port);
   } catch (error) {
-    app.log.error(error);
+    console.error(error);
     process.exit(1);
   }
 }
@@ -284,6 +321,77 @@ if (process.env.NODE_ENV !== 'test') {
 
 export { bootstrap };
 `;
+}
+
+/**
+ * Create TypeScript index.ts content for Hono
+ */
+function createHonoIndexContent(serviceName: string, defaultPort: number): string {
+  return `import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { serve } from '@hono/node-server';
+import { registerRoutes } from './routes/index.js';
+
+const app = new Hono();
+
+app.use('/*', cors());
+registerRoutes(app);
+
+const defaultPort = ${defaultPort};
+const port = Number(process.env.PORT || defaultPort);
+
+console.log('Service "${serviceName}" listening on port %d', port);
+
+serve({
+  fetch: app.fetch,
+  port,
+});
+
+export { app };
+`;
+}
+
+/**
+ * Create TypeScript index.ts content for Express
+ */
+function createExpressIndexContent(serviceName: string, defaultPort: number): string {
+  return `import express from 'express';
+import cors from 'cors';
+import { registerRoutes } from './routes/index.js';
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+registerRoutes(app);
+
+const defaultPort = ${defaultPort};
+const port = Number(process.env.PORT || defaultPort);
+
+app.listen(port, () => {
+  console.log('Service "${serviceName}" listening on port %d', port);
+});
+
+export { app };
+`;
+}
+
+/**
+ * Create TypeScript index.ts content
+ */
+function createTsIndexContent(
+  serviceName: string,
+  defaultPort: number,
+  framework: ServiceFramework,
+): string {
+  if (framework === "hono") {
+    return createHonoIndexContent(serviceName, defaultPort);
+  }
+  if (framework === "express") {
+    return createExpressIndexContent(serviceName, defaultPort);
+  }
+  return createFastifyIndexContent(serviceName, defaultPort);
 }
 
 /**
@@ -331,10 +439,11 @@ async function writeTsConfigFiles(
   config: any,
   outputDir: string,
   options: GenerateOptions,
+  framework: ServiceFramework,
 ): Promise<string[]> {
   const files: string[] = [];
 
-  const packageJson = createTsPackageJson(config);
+  const packageJson = createTsPackageJson(config, framework);
   const packagePath = path.join(outputDir, "package.json");
   await writeFileWithHooks(packagePath, JSON.stringify(packageJson, null, 2), options);
   files.push("package.json");
@@ -348,9 +457,9 @@ async function writeTsConfigFiles(
 }
 
 /**
- * Convert OpenAPI path parameter syntax {param} to Fastify syntax :param
+ * Convert OpenAPI path parameter syntax {param} to framework syntax :param
  */
-function convertPathParamsToFastify(url: string): string {
+function convertPathParams(url: string): string {
   return url.replace(/\{([^}]+)\}/g, ":$1");
 }
 
@@ -358,10 +467,9 @@ function convertPathParamsToFastify(url: string): string {
  * Generate Fastify routes index.ts content
  */
 function generateFastifyRoutesContent(serviceName: string, routes: any[]): string {
-  // Convert OpenAPI path params to Fastify format
   const convertedRoutes = routes.map((route) => ({
     ...route,
-    url: convertPathParamsToFastify(route.url),
+    url: convertPathParams(route.url),
   }));
 
   return `import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -417,6 +525,140 @@ export const routes = routeDefinitions;
 }
 
 /**
+ * Generate Hono routes index.ts content
+ */
+function generateHonoRoutesContent(serviceName: string, routes: any[]): string {
+  const convertedRoutes = routes.map((route) => ({
+    ...route,
+    url: convertPathParams(route.url),
+  }));
+
+  return `import type { Hono } from 'hono';
+import type { Context } from 'hono';
+
+interface RouteBinding {
+  method: string;
+  url: string;
+  summary?: string;
+  reply?: unknown;
+  statusCode?: number;
+}
+
+const routeDefinitions: RouteBinding[] = ${JSON.stringify(convertedRoutes, null, 2)};
+const SERVICE_NAME = "${serviceName}";
+
+export function registerRoutes(app: Hono): void {
+  app.get('/healthz', (c: Context) => {
+    return c.json({
+      status: 'ok',
+      service: SERVICE_NAME,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  for (const definition of routeDefinitions) {
+    const method = definition.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete';
+    app[method](definition.url, (c: Context) => {
+      return c.json({
+        route: definition.url,
+        status: 'stubbed',
+        summary: definition.summary,
+        example: definition.reply,
+      }, definition.statusCode ?? 200);
+    });
+  }
+
+  if (routeDefinitions.length === 0) {
+    app.get('/', (c: Context) => {
+      return c.json({
+        service: SERVICE_NAME,
+        status: 'pending_implementation',
+        message: 'Update src/routes/index.ts to expose application endpoints.',
+      });
+    });
+  }
+}
+
+export const routes = routeDefinitions;
+`;
+}
+
+/**
+ * Generate Express routes index.ts content
+ */
+function generateExpressRoutesContent(serviceName: string, routes: any[]): string {
+  const convertedRoutes = routes.map((route) => ({
+    ...route,
+    url: convertPathParams(route.url),
+  }));
+
+  return `import type { Express, Request, Response } from 'express';
+
+interface RouteBinding {
+  method: string;
+  url: string;
+  summary?: string;
+  reply?: unknown;
+  statusCode?: number;
+}
+
+const routeDefinitions: RouteBinding[] = ${JSON.stringify(convertedRoutes, null, 2)};
+const SERVICE_NAME = "${serviceName}";
+
+export function registerRoutes(app: Express): void {
+  app.get('/healthz', (_req: Request, res: Response) => {
+    res.json({
+      status: 'ok',
+      service: SERVICE_NAME,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  for (const definition of routeDefinitions) {
+    const method = definition.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete';
+    app[method](definition.url, (_req: Request, res: Response) => {
+      res.status(definition.statusCode ?? 200).json({
+        route: definition.url,
+        status: 'stubbed',
+        summary: definition.summary,
+        example: definition.reply,
+      });
+    });
+  }
+
+  if (routeDefinitions.length === 0) {
+    app.get('/', (_req: Request, res: Response) => {
+      res.json({
+        service: SERVICE_NAME,
+        status: 'pending_implementation',
+        message: 'Update src/routes/index.ts to expose application endpoints.',
+      });
+    });
+  }
+}
+
+export const routes = routeDefinitions;
+`;
+}
+
+/**
+ * Generate routes content based on framework
+ */
+function generateRoutesContent(
+  serviceName: string,
+  routes: any[],
+  framework: ServiceFramework,
+): string {
+  if (framework === "hono") {
+    return generateHonoRoutesContent(serviceName, routes);
+  }
+  if (framework === "express") {
+    return generateExpressRoutesContent(serviceName, routes);
+  }
+  return generateFastifyRoutesContent(serviceName, routes);
+}
+
+/**
  * Combine routes from multiple sources (endpoints, paths, flows)
  */
 function combineServiceRoutes(
@@ -444,7 +686,7 @@ function combineServiceRoutes(
 }
 
 /**
- * Generate TypeScript project files
+ * Generate TypeScript project files using plop templates
  */
 export async function generateTypeScriptFiles(
   config: any,
@@ -455,12 +697,50 @@ export async function generateTypeScriptFiles(
   appSpec?: AppSpec,
   pathOwnership?: Map<string, string>,
 ): Promise<string[]> {
-  const files: string[] = [];
   const serviceSpec = config.service ?? {};
   const defaultPort = getPrimaryServicePort(serviceSpec, 3000);
 
+  // Combine routes from all sources (endpoints, paths, behaviors)
+  const combinedRoutes = combineServiceRoutes(
+    serviceSpec,
+    config.name,
+    config.originalName ?? config.name,
+    appSpec,
+    pathOwnership,
+  );
+
+  // Prepare template data
+  const templateData: ServiceTemplateData = {
+    name: config.name,
+    port: defaultPort,
+    routes: combinedRoutes as RouteBinding[],
+    framework: detectServiceFramework(config),
+  };
+
+  // If we have a service target, use the template-based generator
+  if (serviceTarget) {
+    try {
+      const files = await generateServiceFromTemplate(serviceTarget, templateData, options);
+
+      // Setup tests directory
+      const testsEntry = setupTestsDirectory(outputDir, structure, serviceTarget, options);
+      if (testsEntry) {
+        files.push(testsEntry);
+      }
+
+      return files;
+    } catch (error: any) {
+      reporter.warn(`Template generation failed, falling back to inline: ${error.message}`);
+      // Fall through to inline generation
+    }
+  }
+
+  // Fallback: inline generation (for backwards compatibility)
+  const files: string[] = [];
+  const framework = detectFramework(config);
+
   // Write config files
-  const configFiles = await writeTsConfigFiles(config, outputDir, options);
+  const configFiles = await writeTsConfigFiles(config, outputDir, options, framework);
   files.push(...configFiles);
 
   // Write ESLint config
@@ -472,7 +752,7 @@ export async function generateTypeScriptFiles(
   await ensureDirectory(srcDir, options);
   await writeFileWithHooks(
     path.join(srcDir, "index.ts"),
-    createTsIndexContent(config.name, defaultPort),
+    createTsIndexContent(config.name, defaultPort, framework),
     options,
   );
   files.push("src/index.ts");
@@ -481,17 +761,9 @@ export async function generateTypeScriptFiles(
   const routesDir = serviceTarget?.context.routesDir || path.join(srcDir, "routes");
   await ensureDirectory(routesDir, options);
 
-  const combinedRoutes = combineServiceRoutes(
-    serviceSpec,
-    config.name,
-    config.originalName ?? config.name,
-    appSpec,
-    pathOwnership,
-  );
-
   await writeFileWithHooks(
     path.join(routesDir, "index.ts"),
-    generateFastifyRoutesContent(config.name, combinedRoutes),
+    generateRoutesContent(config.name, combinedRoutes, framework),
     options,
   );
   files.push("src/routes/index.ts");
@@ -814,23 +1086,20 @@ function formatWithTrailingSlash(relativePath: string): string {
  */
 function setupTestsDirectory(
   outputDir: string,
-  structure: ProjectStructureConfig,
+  _structure: ProjectStructureConfig,
   serviceTarget: ServiceGenerationTarget | undefined,
   options: GenerateOptions,
 ): string | null {
-  const effectiveTestSegments = resolveTestSegments(structure);
-  const resolvedTestsDir =
-    serviceTarget?.context?.testsDir || path.join(outputDir, ...effectiveTestSegments);
-
-  ensureTestsDirectoryExists(resolvedTestsDir, options);
+  // Tests are colocated with the package
+  const testsDir = serviceTarget?.context?.testsDir || path.join(outputDir, "tests");
+  ensureTestsDirectoryExists(testsDir, options);
 
   if (serviceTarget?.context) {
-    const relative = toRelativePath(serviceTarget.context.root, resolvedTestsDir);
+    const relative = toRelativePath(serviceTarget.context.root, testsDir);
     return relative ? formatWithTrailingSlash(relative) : null;
   }
 
-  const testsDirRelative = joinRelativePath(...effectiveTestSegments);
-  return testsDirRelative ? formatWithTrailingSlash(testsDirRelative) : null;
+  return "tests/";
 }
 
 export async function generateRustFiles(
@@ -928,35 +1197,33 @@ export async function generateGoFiles(
   );
   files.push("main.go");
 
-  // Create tests/api directory
-  const testsDirSegments = toPathSegments(structure.testsDirectory || "tests");
-  const resolvedTestsDir =
-    serviceTarget?.context?.testsDir || path.join(outputDir, ...testsDirSegments);
-  const testApiDir = path.join(resolvedTestsDir, "api");
-  if (!fs.existsSync(testApiDir) && !options.dryRun) {
-    fs.mkdirSync(testApiDir, { recursive: true });
+  // Tests are colocated with the package
+  const testsDir = serviceTarget?.context?.testsDir || path.join(outputDir, "tests");
+  if (!fs.existsSync(testsDir) && !options.dryRun) {
+    fs.mkdirSync(testsDir, { recursive: true });
   }
 
   return files;
 }
 
 /**
- * Generate Makefile content for Shell project
+ * Generate justfile content for Shell project
  */
-function generateShellMakefile(config: { name: string; version: string }): string {
+function generateShellJustfile(config: { name: string; version: string }): string {
   return `# ${config.name} - Generated by Arbiter
 # Version: ${config.version}
 
-.PHONY: test install clean
+default:
+    @just --list
 
 test:
-\tbash test/run_tests.sh
+    bash test/run_tests.sh
 
 install:
-\tcp src/${config.name} /usr/local/bin/
+    cp src/${config.name} /usr/local/bin/
 
 clean:
-\trm -f *.log *.tmp
+    rm -f *.log *.tmp
 `;
 }
 
@@ -997,17 +1264,13 @@ export async function generateShellFiles(
   config: any,
   outputDir: string,
   options: GenerateOptions,
-  structure: ProjectStructureConfig,
+  _structure: ProjectStructureConfig,
 ): Promise<string[]> {
   const files: string[] = [];
 
-  const testsDirSegments = toPathSegments(structure.testsDirectory);
-  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ["tests"];
-  const testsDirRelative = joinRelativePath(...effectiveTestSegments);
-
-  const makefilePath = path.join(outputDir, "Makefile");
-  await writeFileWithHooks(makefilePath, generateShellMakefile(config), options);
-  files.push("Makefile");
+  const justfilePath = path.join(outputDir, "justfile");
+  await writeFileWithHooks(justfilePath, generateShellJustfile(config), options);
+  files.push("justfile");
 
   const srcDir = path.join(outputDir, "src");
   ensureShellDirectory(srcDir, !!options.dryRun);
@@ -1016,12 +1279,10 @@ export async function generateShellFiles(
   await writeFileWithHooks(scriptPath, generateShellMainScript(config), options, 0o755);
   files.push(`src/${config.name}`);
 
-  const testsDir = path.join(outputDir, ...effectiveTestSegments);
+  // Colocate tests with the package
+  const testsDir = path.join(outputDir, "tests");
   ensureShellDirectory(testsDir, !!options.dryRun);
-
-  if (testsDirRelative) {
-    files.push(`${testsDirRelative}/`);
-  }
+  files.push("tests/");
 
   return files;
 }
