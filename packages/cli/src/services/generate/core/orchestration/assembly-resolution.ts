@@ -3,7 +3,7 @@
  * Assembly file resolution utilities for generate command.
  *
  * Provides functionality to:
- * - Resolve which assembly file to use
+ * - Resolve which spec format to use (markdown or CUE)
  * - Handle explicit spec selection
  * - Auto-discover available specs
  */
@@ -14,22 +14,54 @@ import type { GenerateOptions, GenerationReporter } from "@/services/generate/ut
 import fs from "fs-extra";
 
 /**
- * Result of resolving which assembly file to use.
+ * Result of resolving which spec to use.
  */
 export interface AssemblyResolutionResult {
   success: boolean;
+  /** Path to assembly.cue if using CUE format */
   assemblyPath?: string;
+  /** True if using markdown format instead of CUE */
+  useMarkdown?: boolean;
+  /** Path to .arbiter directory for markdown format */
+  arbiterDir?: string;
   errorCode?: number;
 }
 
 /**
- * Resolve which assembly file to use based on options and available specs.
+ * Check if project uses markdown storage (has README.md, no assembly.cue)
+ */
+function isMarkdownProject(): boolean {
+  const arbiterDir = path.resolve(".arbiter");
+  const readmePath = path.join(arbiterDir, "README.md");
+  const assemblyPath = path.join(arbiterDir, "assembly.cue");
+
+  const hasReadme = fs.existsSync(readmePath);
+  const hasAssembly = fs.existsSync(assemblyPath);
+
+  // Markdown format: has README.md but no assembly.cue
+  return hasReadme && !hasAssembly;
+}
+
+/**
+ * Resolve which spec format to use based on options and project structure.
  */
 export function resolveAssemblyFile(
   specName: string | undefined,
   options: GenerateOptions,
   reporter: GenerationReporter,
 ): AssemblyResolutionResult {
+  // Check for markdown-first storage
+  if (isMarkdownProject()) {
+    const arbiterDir = path.resolve(".arbiter");
+    reporter.info("📁 Using markdown specs from .arbiter/");
+    return {
+      success: true,
+      useMarkdown: true,
+      arbiterDir,
+    };
+  }
+
+  // Fall back to CUE-based resolution
   if (specName || options.spec) {
     return resolveExplicitSpec(specName || options.spec!, reporter);
   }
@@ -87,9 +119,9 @@ export function resolveDefaultAssembly(reporter: GenerationReporter): AssemblyRe
     return { success: true, assemblyPath: arbiterPath };
   }
 
-  reporter.error("❌ No assembly specifications found");
+  reporter.error("❌ No specifications found");
   reporter.info("Create a spec with: arbiter add service <name>");
-  reporter.info("Or initialize with: arbiter init");
+  reporter.info("Or initialize with: arbiter init --prompt");
   return { success: false, errorCode: 1 };
 }
 
