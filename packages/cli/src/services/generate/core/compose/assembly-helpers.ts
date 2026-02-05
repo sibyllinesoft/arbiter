@@ -15,21 +15,32 @@ import fs from "fs-extra";
 
 /**
  * Ensure base project structure directories exist.
+ * When using parent-based routing, only creates the directories defined in default.groups.
  */
 export async function ensureBaseStructure(
   structure: ProjectStructureConfig,
   outputDir: string,
   options: GenerateOptions,
+  routingMode?: string,
+  defaultGroups?: Record<string, { directory?: string }>,
 ): Promise<void> {
-  const baseDirs = [
-    structure.clientsDirectory,
-    structure.servicesDirectory,
-    structure.packagesDirectory,
-    structure.toolsDirectory,
-    structure.docsDirectory,
-    structure.testsDirectory,
-    structure.infraDirectory,
-  ].filter(Boolean);
+  let baseDirs: string[];
+
+  if (routingMode === "parent-based" && defaultGroups) {
+    // In parent-based mode, only create directories from default.groups
+    baseDirs = Object.values(defaultGroups)
+      .map((g) => g.directory)
+      .filter((d): d is string => Boolean(d));
+  } else {
+    // Legacy mode: create all standard directories
+    baseDirs = [
+      structure.clientsDirectory,
+      structure.servicesDirectory,
+      structure.packagesDirectory,
+      structure.toolsDirectory,
+      structure.infraDirectory,
+    ].filter(Boolean);
+  }
 
   for (const dir of baseDirs) {
     await ensureDirectory(path.join(outputDir, dir), options);

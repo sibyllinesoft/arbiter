@@ -17,7 +17,6 @@ import type {
   ServiceConfig as LanguageServiceConfig,
 } from "@/language-support/index.js";
 import { SpecificationRepository } from "@/repositories/specification-repository.js";
-import { generateAPISpecifications } from "@/services/generate/api/api-specifications.js";
 import {
   type BehaviorRouteMetadata,
   deriveBehaviorRouteMetadata,
@@ -81,6 +80,7 @@ import {
   generateDockerComposeArtifacts,
   parseDockerComposeServices,
 } from "@/services/generate/core/compose/compose.js";
+import { parseMarkdownSpec } from "@/services/generate/core/compose/markdown-parser.js";
 import {
   buildDevProxyConfig,
   enhanceClientDevServer,
@@ -158,7 +158,6 @@ import {
 import type { ArtifactGeneratorContext } from "@/services/generate/strategies/base.js";
 import { CIWorkflowGenerator } from "@/services/generate/strategies/ci-workflow-generator.js";
 import {
-  ApiSpecGenerator,
   CapabilityFeaturesGenerator,
   ClientArtifactsGenerator,
   ModuleArtifactsGenerator,
@@ -166,14 +165,13 @@ import {
   ToolingArtifactsGenerator,
   WorkspaceManifestGenerator,
 } from "@/services/generate/strategies/core-artifact-generators.js";
-import { DocumentationGenerator } from "@/services/generate/strategies/documentation-generator.js";
 import { InfrastructureGenerator } from "@/services/generate/strategies/infrastructure-generator.js";
 import { TestGenerator } from "@/services/generate/strategies/test-generator.js";
 import {
   type HealthConfiguration,
   generateDocumentation,
-  generateDocumentationArtifacts,
   generateInfrastructureArtifacts,
+  generatePlaceholderReadmes,
   generateToolingArtifacts,
   getTerraformWorkloadType,
   loadDockerTemplateContent,
@@ -208,6 +206,7 @@ import {
 import type { GenerateOptions, GenerationReporter } from "@/services/generate/util/types.js";
 import {
   buildRouteComponentContent,
+  generateBaselineTests,
   generateLocatorDefinitions,
   generateUIComponents,
 } from "@/services/generate/util/ui-components.js";
@@ -351,7 +350,13 @@ async function runGenerationWorkflow(
   const resolution = resolveAssemblyFile(specName, options, reporter);
   if (!resolution.success) return resolution.errorCode ?? 1;
 
-  const configWithVersion = await parseAssemblyFile(resolution.assemblyPath!, reporter);
+  // Parse spec - use markdown parser for markdown projects, CUE parser otherwise
+  let configWithVersion;
+  if (resolution.useMarkdown && resolution.arbiterDir) {
+    configWithVersion = await parseMarkdownSpec(resolution.arbiterDir);
+  } else {
+    configWithVersion = await parseAssemblyFile(resolution.assemblyPath!, reporter);
+  }
   if (options.verbose) reportAssemblyConfig(configWithVersion, reporter);
 
   reporter.info("🔍 Validating specification completeness...");
@@ -379,7 +384,7 @@ export async function generateCommand(
   }
 
   try {
-    reporter.info("🏗️  Generating project artifacts from assembly.cue...");
+    reporter.info("🏗️  Generating project artifacts...");
     return runGenerationWorkflow(specName, options, config, reporter);
   } catch (error) {
     reporter.error("❌ Generate failed:", error instanceof Error ? error.message : String(error));
@@ -550,9 +555,19 @@ async function generateAppArtifacts(
 
   reporter.info(`📱 Generating artifacts for: ${appSpec.product.name}`);
 
-  await ensureBaseStructure(structure, outputDir, options);
+  // Create router from config for path resolution
+  const routingMode = cliConfig.generator?.routing?.mode;
+  const router = await createRouter(cliConfig.generator?.routing, outputDir);
 
-  const clientTargets = collectClientTargets(appSpec, structure, outputDir);
+  await ensureBaseStructure(structure, outputDir, options, routingMode, cliConfig.default?.groups);
+  const groups = (appSpec as any).groups ?? {};
+  const targetOptions: TargetCreationOptions = {
+    router,
+    groups,
+    defaultConfig: cliConfig.default,
+  };
+
+  const clientTargets = collectClientTargets(appSpec, structure, outputDir, targetOptions);
 
   // Strategy-based artifact generators
   const strategyContext: ArtifactGeneratorContext = {
@@ -573,16 +588,15 @@ async function generateAppArtifacts(
       generateUIComponents,
       generateLocatorDefinitions,
       generateBehaviorBasedTests,
+      generateBaselineTests,
       generateProjectStructure,
       ensureDirectory,
       toRelativePath,
     }),
     new CapabilityFeaturesGenerator(generateCapabilityFeatures),
-    new ApiSpecGenerator(generateAPISpecifications),
     new ServiceArtifactsGenerator(generateServiceStructures),
     new ModuleArtifactsGenerator(generateModuleArtifacts),
     new ToolingArtifactsGenerator(generateToolingArtifacts),
-    new DocumentationGenerator(generateDocumentationArtifacts),
     new InfrastructureGenerator(generateInfrastructureArtifacts),
     new TestGenerator(generateEndpointAssertionTests, generateMasterTestRunner),
     new CIWorkflowGenerator(generateCIWorkbehaviors),
@@ -616,6 +630,16 @@ async function generateAppArtifacts(
   }
 
   testsWorkspaceRelative = strategyContext.testsWorkspaceRelative;
+
+  // Generate placeholder READMEs for empty directories
+  const placeholderFiles = await generatePlaceholderReadmes(
+    appSpec,
+    outputDir,
+    options,
+    structure,
+    routingMode,
+  );
+  files.push(...placeholderFiles);
 
   const workspaceManifestFiles = await generateWorkspaceManifest(
     appSpec,

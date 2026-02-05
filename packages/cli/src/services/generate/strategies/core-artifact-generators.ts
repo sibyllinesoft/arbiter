@@ -14,13 +14,7 @@ import {
 import type { GenerateOptions } from "@/services/generate/util/types.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
 import type { PackageManagerCommandSet } from "@/utils/io/package-manager.js";
-import {
-  type AppSpec,
-  getBehaviorsArray,
-  getOperations,
-  getPackages,
-  getResources,
-} from "@arbiter/specification";
+import { type AppSpec, getOperations, getPackages, getResources } from "@arbiter/specification";
 
 /**
  * Generate all client-side assets (UI routes, locators, behavior tests, project scaffolds).
@@ -34,6 +28,7 @@ export class ClientArtifactsGenerator implements ArtifactGenerator {
       generateUIComponents: GenerateUIComponentsFn;
       generateLocatorDefinitions: GenerateLocatorDefinitionsFn;
       generateBehaviorBasedTests: GenerateBehaviorBasedTestsFn;
+      generateBaselineTests: GenerateBaselineTestsFn;
       generateProjectStructure: GenerateProjectStructureFn;
       ensureDirectory: EnsureDirectoryFn;
       toRelativePath: (from: string, to: string) => string | null;
@@ -64,8 +59,8 @@ export class ClientArtifactsGenerator implements ArtifactGenerator {
       files.push(...locatorFiles);
     }
 
-    // Generate behavior-based tests unless --no-tests is set
-    if (getBehaviorsArray(appSpec).length > 0 && options.tests !== false) {
+    // Generate e2e test scaffolding (Playwright + Gherkin) unless --no-tests is set
+    if (options.tests !== false) {
       const testResult = await this.deps.generateBehaviorBasedTests(
         appSpec,
         outputDir,
@@ -75,6 +70,12 @@ export class ClientArtifactsGenerator implements ArtifactGenerator {
       );
       files.push(...testResult.files);
       this.updateTestsWorkspace(context, outputDir, testResult.workspaceDir);
+    }
+
+    // Generate baseline unit tests unless --no-tests is set
+    if (options.tests !== false) {
+      const baselineTestFiles = await this.deps.generateBaselineTests(appSpec, target, options);
+      files.push(...baselineTestFiles);
     }
 
     // Generate project structure
@@ -155,10 +156,13 @@ export class ServiceArtifactsGenerator implements ArtifactGenerator {
   constructor(private readonly fn: ServiceArtifactsFn) {}
 
   async generate(context: ArtifactGeneratorContext): Promise<string[]> {
-    const hasPackages =
-      getPackages(context.appSpec) && Object.keys(getPackages(context.appSpec)).length > 0;
+    // Check both packages (from CUE) and services (from markdown parser)
+    const packages = getPackages(context.appSpec) ?? {};
+    const services = (context.appSpec as any).services ?? {};
+    const hasPackages = Object.keys(packages).length > 0;
+    const hasServices = Object.keys(services).length > 0;
 
-    if (!hasPackages) return [];
+    if (!hasPackages && !hasServices) return [];
 
     return this.fn(
       context.appSpec,
@@ -187,7 +191,14 @@ export class ToolingArtifactsGenerator implements ArtifactGenerator {
   constructor(private readonly fn: ToolingArtifactsFn) {}
 
   async generate(context: ArtifactGeneratorContext): Promise<string[]> {
-    return this.fn(context.appSpec, context.outputDir, context.options, context.structure);
+    const routingMode = context.cliConfig.generator?.routing?.mode;
+    return this.fn(
+      context.appSpec,
+      context.outputDir,
+      context.options,
+      context.structure,
+      routingMode,
+    );
   }
 }
 
@@ -229,6 +240,12 @@ export type GenerateBehaviorBasedTestsFn = (
   structure: ProjectStructureConfig,
   clientTarget?: ClientGenerationTarget,
 ) => Promise<{ files: string[]; workspaceDir?: string }>;
+
+export type GenerateBaselineTestsFn = (
+  app: AppSpec,
+  clientTarget: ClientGenerationTarget,
+  options: GenerateOptions,
+) => Promise<string[]>;
 
 export type GenerateProjectStructureFn = (
   app: AppSpec,
@@ -275,6 +292,7 @@ export type ToolingArtifactsFn = (
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
+  routingMode?: string,
 ) => Promise<string[]>;
 
 export type WorkspaceManifestFn = (

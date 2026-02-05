@@ -19,7 +19,7 @@ import type {
   ToolGenerationTarget,
 } from "@/services/generate/io/contexts.js";
 import { joinRelativePath, slugify, toPathSegments } from "@/services/generate/util/shared.js";
-import type { ProjectStructureConfig } from "@/types.js";
+import type { DefaultConfig, ProjectStructureConfig } from "@/types.js";
 import {
   type AppSpec,
   type GroupSpec,
@@ -42,6 +42,8 @@ export interface TargetCreationOptions {
   router?: PathRouter;
   /** Groups defined in the spec (required when using router in by-group mode) */
   groups?: Record<string, GroupSpec>;
+  /** Default configuration (required when using router in parent-based mode) */
+  defaultConfig?: DefaultConfig;
 }
 
 /**
@@ -98,7 +100,15 @@ export function collectServiceTargets(
   outputDir: string,
   options?: TargetCreationOptions,
 ): ServiceGenerationTarget[] {
-  // Find packages with subtype="service" or subtype="worker"
+  // Check for services defined in appSpec.services (from markdown parser)
+  const servicesFromMarkdown = (appSpec as any).services as Record<string, any> | undefined;
+  if (servicesFromMarkdown && Object.keys(servicesFromMarkdown).length > 0) {
+    return Object.entries(servicesFromMarkdown).map(([key, config]) =>
+      createServiceTarget(key, config, structure, outputDir, options),
+    );
+  }
+
+  // Fall back to packages with subtype="service" or subtype="worker"
   const servicePackages = Object.entries(getPackages(appSpec)).filter(([, config]) => {
     const subtype = (config as any)?.subtype;
     return subtype === "service" || subtype === "worker" || (config as any)?.port;
@@ -163,10 +173,8 @@ function buildClientContext(
   slug: string,
 ): ClientGenerationContext {
   const routesDir = path.join(absoluteRoot, "src", "routes");
-  const testsDirBase = toPathSegments(structure.testsDirectory || "tests");
-  const testsDir = isPackageRelative(structure, "testsDirectory")
-    ? path.join(absoluteRoot, ...testsDirBase)
-    : path.join(outputDir, ...testsDirBase, slug);
+  // Colocate tests with the client
+  const testsDir = path.join(absoluteRoot, "tests");
   return { root: absoluteRoot, routesDir, testsDir };
 }
 
@@ -192,6 +200,7 @@ export function createClientTarget(
       groups: options.groups ?? {},
       projectDir: outputDir,
       structureConfig: structure,
+      defaultConfig: options.defaultConfig,
     };
     relativeRoot = options.router.resolve(routerInput).root;
   } else {
@@ -217,10 +226,8 @@ function createServiceContext(
     ? path.join(outputDir, relativeRoot)
     : path.join(outputDir, structure.servicesDirectory, slug);
   const routesDir = path.join(root, "src", "routes");
-  const testsDirBase = toPathSegments(structure.testsDirectory || "tests");
-  const testsDir = isPackageRelative(structure, "testsDirectory")
-    ? path.join(root, ...testsDirBase)
-    : path.join(outputDir, ...testsDirBase, slug);
+  // Colocate tests with the service
+  const testsDir = path.join(root, "tests");
 
   return { root, routesDir, testsDir };
 }
@@ -248,6 +255,7 @@ export function createServiceTarget(
       groups: options.groups ?? {},
       projectDir: outputDir,
       structureConfig: structure,
+      defaultConfig: options.defaultConfig,
     };
     relativeRoot = options.router.resolve(routerInput).root;
   } else {
@@ -296,6 +304,7 @@ export function createPackageTarget(
       groups: options.groups ?? {},
       projectDir: outputDir,
       structureConfig: structure,
+      defaultConfig: options.defaultConfig,
     };
     relativeRoot = options.router.resolve(routerInput).root;
   } else {
@@ -304,10 +313,8 @@ export function createPackageTarget(
 
   const absoluteRoot = path.join(outputDir, relativeRoot);
   const srcDir = path.join(absoluteRoot, "src");
-  const testsDirBase = toPathSegments(structure.testsDirectory || "tests");
-  const testsDir = isPackageRelative(structure, "testsDirectory")
-    ? path.join(absoluteRoot, ...testsDirBase)
-    : path.join(outputDir, ...testsDirBase, slug);
+  // Colocate tests with the package
+  const testsDir = path.join(absoluteRoot, "tests");
 
   const context: PackageGenerationContext = {
     root: absoluteRoot,
@@ -350,6 +357,7 @@ export function createToolTarget(
       groups: options.groups ?? {},
       projectDir: outputDir,
       structureConfig: structure,
+      defaultConfig: options.defaultConfig,
     };
     relativeRoot = options.router.resolve(routerInput).root;
   } else {
@@ -358,10 +366,8 @@ export function createToolTarget(
 
   const absoluteRoot = path.join(outputDir, relativeRoot);
   const srcDir = path.join(absoluteRoot, "src");
-  const testsDirBase = toPathSegments(structure.testsDirectory || "tests");
-  const testsDir = isPackageRelative(structure, "testsDirectory")
-    ? path.join(absoluteRoot, ...testsDirBase)
-    : path.join(outputDir, ...testsDirBase, slug);
+  // Colocate tests with the tool
+  const testsDir = path.join(absoluteRoot, "tests");
 
   const context: ToolGenerationContext = {
     root: absoluteRoot,

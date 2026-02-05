@@ -18,7 +18,11 @@ import {
   determinePathOwnership,
   isTypeScriptServiceLanguage,
 } from "@/services/generate/api/route-derivation.js";
-import { createServiceTarget } from "@/services/generate/core/orchestration/targets.js";
+import { type PathRouter, createRouter } from "@/services/generate/core/compose/router.js";
+import {
+  type TargetCreationOptions,
+  createServiceTarget,
+} from "@/services/generate/core/orchestration/targets.js";
 import {
   configureTemplateOrchestrator,
   getConfiguredLanguagePlugin,
@@ -132,10 +136,10 @@ ${generateReadmeBehaviors(appSpec)}
 ${workflowCommands}
 \`\`\`
 
-### Make Targets
+### Just Commands
 \`\`\`bash
-make test       # equivalent to ${packageManager.run("test")}
-make test-e2e   # equivalent to ${packageManager.run("test:e2e")}
+just test       # equivalent to ${packageManager.run("test")}
+just test-e2e   # equivalent to ${packageManager.run("test:e2e")}
 \`\`\`
 `;
 }
@@ -246,7 +250,7 @@ ${proxyEntries}
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  plugins: [react],
+  plugins: [react()],
   server: {
     host: '127.0.0.1',
     port: 5173,
@@ -259,7 +263,7 @@ ${proxyBlock}  },
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['@/services/generate/src/test-setup.ts'],
+    setupFiles: ['./src/test-setup.ts'],
   },
 });
 `;
@@ -504,13 +508,20 @@ async function processService(
   cliConfig: CLIConfig,
   packageManager: PackageManagerCommandSet,
   pathOwnership: Map<string, string>,
+  targetOptions?: TargetCreationOptions,
 ): Promise<string[]> {
-  const serviceTarget = createServiceTarget(serviceName, serviceConfig, structure, outputDir);
+  const serviceTarget = createServiceTarget(
+    serviceName,
+    serviceConfig,
+    structure,
+    outputDir,
+    targetOptions,
+  );
   const { context: serviceContext } = serviceTarget;
   await ensureDirectory(serviceContext.root, options);
 
   const language = serviceTarget.language;
-  const relativePrefix = [structure.servicesDirectory, serviceTarget.slug];
+  const relativePrefix = serviceTarget.relativeRoot.split("/");
 
   console.log(
     chalk.dim(`  • ${serviceName} (${language}) -> ${joinRelativePath(...relativePrefix)}`),
@@ -583,9 +594,27 @@ export async function generateServiceStructures(
   cliConfig: CLIConfig,
   packageManager: PackageManagerCommandSet,
 ): Promise<string[]> {
-  const hasPackages = getPackages(appSpec) && Object.keys(getPackages(appSpec)).length > 0;
+  // Get services from both appSpec.services (markdown parser) and packages (CUE parser)
+  const servicesFromMarkdown = (appSpec as any).services as Record<string, any> | undefined;
+  const packagesFromCue = getPackages(appSpec) ?? {};
 
-  if (!hasPackages) {
+  // Merge both sources, with markdown services taking precedence
+  const allServices: Record<string, any> = {
+    ...packagesFromCue,
+    ...(servicesFromMarkdown ?? {}),
+  };
+
+  // Filter to only include service/worker subtypes (not frontends)
+  const serviceEntries = Object.entries(allServices).filter(([, config]) => {
+    if (!config || typeof config !== "object") return false;
+    const subtype = config.subtype;
+    // Include services with subtype service/worker, or any with a port (backend services)
+    // Exclude frontends
+    if (subtype === "frontend") return false;
+    return subtype === "service" || subtype === "worker" || config.port;
+  });
+
+  if (serviceEntries.length === 0) {
     return [];
   }
 
@@ -594,9 +623,16 @@ export async function generateServiceStructures(
   const files: string[] = [];
   const pathOwnership = determinePathOwnership(appSpec);
 
-  for (const [packageName, packageConfig] of Object.entries(getPackages(appSpec)!)) {
-    if (!packageConfig || typeof packageConfig !== "object") continue;
+  // Create router from config for path resolution
+  const router = await createRouter(cliConfig.generator?.routing, outputDir);
+  const groups = (appSpec as any).groups ?? {};
+  const targetOptions: TargetCreationOptions = {
+    router,
+    groups,
+    defaultConfig: cliConfig.default,
+  };
 
+  for (const [packageName, packageConfig] of serviceEntries) {
     const packageFiles = await processService(
       packageName,
       packageConfig,
@@ -607,6 +643,7 @@ export async function generateServiceStructures(
       cliConfig,
       packageManager,
       pathOwnership,
+      targetOptions,
     );
     files.push(...packageFiles);
   }

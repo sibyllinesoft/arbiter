@@ -16,9 +16,16 @@ import { SUPPORTED_HTTP_METHODS } from "@/services/generate/api/route-derivation
 import { getConfiguredLanguagePlugin } from "@/services/generate/core/orchestration/template-orchestrator.js";
 import { writeFileWithHooks } from "@/services/generate/util/hook-executor.js";
 import { joinRelativePath, toPathSegments } from "@/services/generate/util/shared.js";
+import { slugify } from "@/services/generate/util/shared.js";
 import type { GenerateOptions, GenerationReporter } from "@/services/generate/util/types.js";
 import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
-import type { AppSpec, CueAssertion, CueAssertionBlock, PathSpec } from "@arbiter/specification";
+import {
+  type AppSpec,
+  type CueAssertion,
+  type CueAssertionBlock,
+  type PathSpec,
+  getPackages,
+} from "@arbiter/specification";
 import fs from "fs-extra";
 
 const reporter: GenerationReporter = {
@@ -138,11 +145,21 @@ function processOperation(
     primaryResponse,
   );
 
+  // Get status from responses, or extract from Hurl assertions
+  let status = primaryResponse?.status;
+  if (status === undefined && operation.assertions) {
+    // Look for status in Hurl-parsed assertions
+    const firstAssertionWithStatus = Object.values(operation.assertions).find(
+      (a: any) => typeof a?.status === "number",
+    ) as { status?: number } | undefined;
+    status = firstAssertionWithStatus?.status;
+  }
+
   return {
     path: pathKey,
     method: method.toUpperCase(),
     assertions,
-    status: primaryResponse?.status,
+    status,
     metadata,
   };
 }
@@ -207,11 +224,23 @@ function normalizeBooleanAssertion(name: string, value: boolean): EndpointAssert
 }
 
 /**
- * Normalize object assertion to definition
+ * Normalize object assertion to definition (handles both CUE and Hurl-parsed formats)
  */
 function normalizeObjectAssertion(
   name: string,
-  value: { severity?: string; tags?: unknown[]; assert?: unknown; message?: string },
+  value: {
+    severity?: string;
+    tags?: unknown[];
+    assert?: unknown;
+    message?: string;
+    // Hurl-parsed fields
+    type?: string;
+    raw?: string;
+    path?: string;
+    predicate?: string;
+    value?: unknown;
+    status?: number;
+  },
 ): EndpointAssertionDefinition {
   const severity =
     value.severity === "warn" || value.severity === "info" ? value.severity : "error";
@@ -219,11 +248,17 @@ function normalizeObjectAssertion(
     ? value.tags.filter((tag): tag is string => typeof tag === "string")
     : undefined;
 
+  // Build a descriptive message from Hurl assertion if not provided
+  let message = value.message;
+  if (!message && value.raw) {
+    message = value.raw;
+  }
+
   return {
     name,
     result: typeof value.assert === "boolean" ? value.assert : null,
     severity,
-    message: value.message,
+    message,
     tags,
     raw: value,
   };
@@ -453,8 +488,29 @@ function setupTestDirConfig(
   outputDir: string,
   structure: ProjectStructureConfig,
   testingConfig: any,
+  serviceSlug?: string,
+  cliConfig?: CLIConfig,
 ): TestDirConfig {
-  const defaultDirSegments = [...toPathSegments(structure.testsDirectory), "api", "assertions"];
+  // Determine the service directory based on routing mode
+  let serviceDir = structure.servicesDirectory;
+
+  // In parent-based routing, use the default group for services
+  const routingMode = cliConfig?.generator?.routing?.mode;
+  const defaultGroups = cliConfig?.default?.groups;
+
+  if (routingMode === "parent-based" && defaultGroups) {
+    const serviceGroup = cliConfig?.default?.membership?.service || "apps";
+    const groupConfig = defaultGroups[serviceGroup];
+    if (groupConfig?.directory) {
+      serviceDir = groupConfig.directory;
+    }
+  }
+
+  // Colocate tests with the service package if available
+  const defaultDirSegments = serviceSlug
+    ? [serviceDir, serviceSlug, "tests", "assertions"]
+    : [...toPathSegments(structure.testsDirectory), "api", "assertions"];
+
   const configuredSegments = testingConfig?.outputDir
     ? toPathSegments(testingConfig.outputDir)
     : defaultDirSegments;
@@ -642,7 +698,17 @@ export async function generateEndpointAssertionTests(
   const framework = resolveTestingFramework(language, testingConfig?.framework);
   const plugin = getConfiguredLanguagePlugin(language);
 
-  const dirConfig = setupTestDirConfig(outputDir, structure, testingConfig);
+  // Find first API service to colocate tests with
+  // Check both packages (from CUE) and services (from markdown parser)
+  const packages = getPackages(appSpec) ?? {};
+  const services = (appSpec as any).services ?? {};
+  const allServices = { ...packages, ...services };
+  const apiService = Object.entries(allServices).find(
+    ([, pkg]) => (pkg as any)?.subtype !== "frontend",
+  );
+  const serviceSlug = apiService ? slugify(apiService[0], apiService[0]) : undefined;
+
+  const dirConfig = setupTestDirConfig(outputDir, structure, testingConfig, serviceSlug, cliConfig);
   ensureTestsDir(dirConfig.testsDir, options.dryRun);
 
   // Try plugin-based generation first

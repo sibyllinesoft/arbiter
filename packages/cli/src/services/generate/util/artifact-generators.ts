@@ -123,13 +123,20 @@ export async function generateDocumentationArtifacts(
 
 /**
  * Generate tooling artifacts (tools README, automation notes).
+ * Skipped when using parent-based routing (no separate tools directory).
  */
 export async function generateToolingArtifacts(
   appSpec: AppSpec,
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
+  routingMode?: string,
 ): Promise<string[]> {
+  // Skip in parent-based mode - tools go with their parent, not separate directory
+  if (routingMode === "parent-based") {
+    return [];
+  }
+
   const files: string[] = [];
   const toolsRoot = path.join(outputDir, structure.toolsDirectory);
   await ensureDirectory(toolsRoot, options);
@@ -152,6 +159,83 @@ export async function generateToolingArtifacts(
   const toolingPath = path.join(toolsRoot, "README.md");
   await writeFileWithHooks(toolingPath, toolingContent, options);
   files.push(joinRelativePath(structure.toolsDirectory, "README.md"));
+
+  return files;
+}
+
+/**
+ * Generate READMEs for directories that don't have one.
+ * Good hygiene for AI agents navigating the codebase.
+ * When using parent-based routing, only generates infra README.
+ */
+export async function generatePlaceholderReadmes(
+  appSpec: AppSpec,
+  outputDir: string,
+  options: GenerateOptions,
+  structure: ProjectStructureConfig,
+  routingMode?: string,
+): Promise<string[]> {
+  const files: string[] = [];
+
+  // In parent-based mode, don't create any placeholder READMEs
+  // Directories come from default.groups config
+  if (routingMode === "parent-based") {
+    return [];
+  }
+
+  const directories = [
+    {
+      dir: structure.packagesDirectory,
+      content: `# Packages
+
+Shared libraries and modules for ${appSpec.product.name}.
+
+\`\`\`bash
+arbiter add package my-lib
+\`\`\`
+`,
+    },
+    {
+      dir: structure.infraDirectory,
+      content: `# Infrastructure
+
+Infrastructure as code for ${appSpec.product.name}.
+
+\`\`\`yaml
+# Define in spec to generate Terraform/Docker configs
+environments:
+  - development
+  - staging
+  - production
+\`\`\`
+`,
+    },
+    {
+      dir: structure.clientsDirectory,
+      content: `# Clients
+
+Frontend applications for ${appSpec.product.name}.
+`,
+    },
+    {
+      dir: structure.servicesDirectory,
+      content: `# Services
+
+Backend services for ${appSpec.product.name}.
+`,
+    },
+  ];
+
+  for (const { dir, content } of directories) {
+    const dirPath = path.join(outputDir, dir);
+    const readmePath = path.join(dirPath, "README.md");
+
+    if (!fs.existsSync(readmePath)) {
+      await ensureDirectory(dirPath, options);
+      await writeFileWithHooks(readmePath, content, options);
+      files.push(joinRelativePath(dir, "README.md"));
+    }
+  }
 
   return files;
 }
