@@ -377,10 +377,7 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
   private static resolveDefaultTemplateDirectories(): string[] {
     const moduleDir = path.dirname(fileURLToPath(import.meta.url));
-    return [
-      path.resolve(moduleDir, "@/templates/typescript"),
-      path.resolve(moduleDir, "../../templates/typescript"),
-    ];
+    return [path.resolve(moduleDir, "../templates/typescript")];
   }
 
   private buildPropsInterface(config: ComponentConfig, hasProps: boolean): string {
@@ -460,9 +457,28 @@ export class TypeScriptPlugin implements LanguagePlugin {
     );
     files.push({ path: "package.json", content: packageContent });
 
+    const viteConfigFallback = `import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: ${context.devServerPort},
+  },
+  build: {
+    target: 'es2022',
+    sourcemap: true${context.additionalBuildConfig}
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test-setup.ts'],
+  },
+});`;
     const viteConfig = await this.runtime.templateResolver.renderTemplate(
       "project/vite/vite.config.ts.tpl",
       context,
+      viteConfigFallback,
     );
 
     files.push({ path: "vite.config.ts", content: viteConfig });
@@ -470,58 +486,124 @@ export class TypeScriptPlugin implements LanguagePlugin {
     const tsconfigContent = await this.runtime.templateResolver.renderTemplate(
       "project/vite/tsconfig.json.tpl",
       context,
+      tsconfig,
     );
     files.push({ path: "tsconfig.json", content: tsconfigContent });
 
     const tsconfigBuildContent = await this.runtime.templateResolver.renderTemplate(
       "project/vite/tsconfig.build.json.tpl",
       context,
+      tsconfigBuild,
     );
     files.push({ path: "tsconfig.build.json", content: tsconfigBuildContent });
 
     const tsconfigNodeContent = await this.runtime.templateResolver.renderTemplate(
       "project/vite/tsconfig.node.json.tpl",
       context,
+      tsconfigNode,
     );
     files.push({ path: "tsconfig.node.json", content: tsconfigNodeContent });
 
     files.push({ path: ".eslintrc.cjs", content: await this.createViteEslintConfig() });
 
+    const appFallback = `import { BrowserRouter } from 'react-router-dom';
+import { Suspense } from 'react';
+import { routes } from './routes';
+import { AppRoutes } from './routes/AppRoutes';
+import './App.css';
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <Suspense fallback={<div>Loading...</div>}>
+        <AppRoutes routes={routes} />
+      </Suspense>
+    </BrowserRouter>
+  );
+}
+
+export default App;`;
     const appContent = await this.runtime.templateResolver.renderTemplate(
       "project/vite/App.tsx.tpl",
       context,
+      appFallback,
     );
     files.push({ path: "src/App.tsx", content: appContent });
 
+    const mainFallback = `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { App } from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`;
     const mainContent = await this.runtime.templateResolver.renderTemplate(
       "project/vite/main.tsx.tpl",
       context,
+      mainFallback,
     );
     files.push({ path: "src/main.tsx", content: mainContent });
 
+    const indexHtmlFallback = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${context.projectName}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`;
     const indexHtml = await this.runtime.templateResolver.renderTemplate(
       "project/vite/index.html.tpl",
       context,
+      indexHtmlFallback,
     );
     files.push({ path: "index.html", content: indexHtml });
 
     files.push({ path: "src/vite-env.d.ts", content: '/// <reference types="vite/client" />' });
 
+    const testSetupFallback = `import '@testing-library/jest-dom';`;
     const testSetup = await this.runtime.templateResolver.renderTemplate(
       "project/vite/test-setup.ts.tpl",
       context,
+      testSetupFallback,
     );
     files.push({ path: "src/test-setup.ts", content: testSetup });
 
+    const appCssFallback = `#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+}`;
     const appCss = await this.runtime.templateResolver.renderTemplate(
       "project/vite/App.css.tpl",
       context,
+      appCssFallback,
     );
     files.push({ path: "src/App.css", content: appCss });
 
+    const indexCssFallback = `:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}`;
     const indexCss = await this.runtime.templateResolver.renderTemplate(
       "project/vite/index.css.tpl",
       context,
+      indexCssFallback,
     );
     files.push({ path: "src/index.css", content: indexCss });
 
