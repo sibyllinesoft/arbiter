@@ -7,7 +7,7 @@
  */
 
 import path from "node:path";
-import type { ProjectStructureConfig, RoutingConfig } from "@/types.js";
+import type { DefaultConfig, ProjectStructureConfig, RoutingConfig } from "@/types.js";
 import type { GroupSpec, PackageConfig } from "@arbiter/specification";
 
 /**
@@ -33,6 +33,8 @@ export interface PathRouterInput {
   projectDir: string;
   /** Project structure configuration */
   structureConfig: ProjectStructureConfig;
+  /** Default configuration (for parent-based mode) */
+  defaultConfig?: DefaultConfig;
 }
 
 /**
@@ -103,14 +105,55 @@ function resolveGroupPath(
 }
 
 /**
+ * Get the default group key for an artifact type from membership config.
+ */
+function getDefaultGroupForType(
+  artifactType: RoutableArtifactType,
+  config: DefaultConfig,
+): string | undefined {
+  return config.membership?.[artifactType];
+}
+
+/**
+ * Resolve the directory for a default group.
+ */
+function resolveDefaultGroupDirectory(groupKey: string, config: DefaultConfig): string {
+  const group = config.groups[groupKey];
+  return group?.directory ?? groupKey;
+}
+
+/**
+ * Resolve nested parent path for default groups.
+ * Handles cases where an artifact specifies a parent that is a nested group path.
+ * For example, parent="admin" within "apps" group results in "apps/admin".
+ */
+function resolveNestedParentPath(
+  parent: string,
+  defaultGroupKey: string,
+  config: DefaultConfig,
+): string[] {
+  const defaultGroupDir = resolveDefaultGroupDirectory(defaultGroupKey, config);
+
+  // If the parent is the same as the default group, just return the default group dir
+  if (parent === defaultGroupKey) {
+    return [defaultGroupDir];
+  }
+
+  // Otherwise, the parent is a nested group within the default group
+  // Return the default group directory followed by the parent slug
+  return [defaultGroupDir, slugify(parent)];
+}
+
+/**
  * Default path router implementation.
  *
- * Supports two routing modes:
+ * Supports three routing modes:
  * - "by-type" (default): Organizes by artifact type (services/, clients/, etc.)
  * - "by-group": Organizes by group membership (feature/services/, feature/clients/, etc.)
+ * - "parent-based": Uses default config membership to determine root directory (apps/, packages/, etc.)
  */
 export class DefaultPathRouter implements PathRouter {
-  private mode: "by-type" | "by-group";
+  private mode: "by-type" | "by-group" | "parent-based";
   private warnOnUngrouped: boolean;
 
   constructor(config: RoutingConfig = {}) {
@@ -148,6 +191,10 @@ export class DefaultPathRouter implements PathRouter {
       return { root: this.getTypeRoot(artifactType, artifactSlug, structureConfig) };
     }
 
+    if (this.mode === "parent-based" && input.defaultConfig) {
+      return { root: this.getParentBasedRoot(input) };
+    }
+
     // by-group mode
     const parent = (artifactConfig as { parent?: string }).parent;
 
@@ -166,6 +213,33 @@ export class DefaultPathRouter implements PathRouter {
   ): string {
     const typeDir = getTypeDirectory(artifactType, structureConfig);
     return path.posix.join(typeDir, artifactSlug);
+  }
+
+  private getParentBasedRoot(input: PathRouterInput): PathRouterOutput["root"] {
+    const { artifactType, artifactSlug, artifactConfig, defaultConfig } = input;
+
+    if (!defaultConfig) {
+      // Fallback to type-based routing if no config
+      return this.getTypeRoot(artifactType, artifactSlug, input.structureConfig);
+    }
+
+    const parent = (artifactConfig as { parent?: string }).parent;
+    const defaultGroupKey = getDefaultGroupForType(artifactType, defaultConfig);
+
+    if (!defaultGroupKey) {
+      // No default group for this type, fall back to type-based routing
+      return this.getTypeRoot(artifactType, artifactSlug, input.structureConfig);
+    }
+
+    if (parent) {
+      // Artifact has explicit parent - resolve nested path
+      const parentPath = resolveNestedParentPath(parent, defaultGroupKey, defaultConfig);
+      return path.posix.join(...parentPath, artifactSlug);
+    }
+
+    // No parent specified - use default group directly
+    const groupDir = resolveDefaultGroupDirectory(defaultGroupKey, defaultConfig);
+    return path.posix.join(groupDir, artifactSlug);
   }
 
   private getGroupRoot(input: PathRouterInput): string {

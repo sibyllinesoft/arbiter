@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { GroupSpec } from "@arbiter/specification";
-import type { ProjectStructureConfig } from "../../../types.js";
+import type { DefaultConfig, ProjectStructureConfig } from "../../../types.js";
 import {
   DefaultPathRouter,
   type PathRouterInput,
@@ -259,6 +259,179 @@ describe("DefaultPathRouter", () => {
 
       const result = router.resolve(input);
       expect(result.root).toBe("mobile/apps/ios-app");
+    });
+  });
+
+  describe("parent-based mode", () => {
+    const defaultConfig: DefaultConfig = {
+      groups: {
+        apps: {
+          name: "Apps",
+          description: "Runnable applications",
+          directory: "apps",
+          defaultFor: ["service", "client", "tool"],
+        },
+        packages: {
+          name: "Packages",
+          description: "Shared libraries",
+          directory: "packages",
+          defaultFor: ["package"],
+        },
+      },
+      membership: {
+        service: "apps",
+        client: "apps",
+        tool: "apps",
+        package: "packages",
+      },
+    };
+
+    it("routes services to default group directory", () => {
+      const router = new DefaultPathRouter({ mode: "parent-based" });
+      const input: PathRouterInput = {
+        artifactType: "service",
+        artifactKey: "api",
+        artifactSlug: "api",
+        artifactConfig: {},
+        groups: {},
+        projectDir: "/project",
+        structureConfig: baseStructure,
+        defaultConfig,
+      };
+
+      const result = router.resolve(input);
+      expect(result.root).toBe("apps/api");
+    });
+
+    it("routes clients to default group directory", () => {
+      const router = new DefaultPathRouter({ mode: "parent-based" });
+      const input: PathRouterInput = {
+        artifactType: "client",
+        artifactKey: "web",
+        artifactSlug: "web",
+        artifactConfig: {},
+        groups: {},
+        projectDir: "/project",
+        structureConfig: baseStructure,
+        defaultConfig,
+      };
+
+      const result = router.resolve(input);
+      expect(result.root).toBe("apps/web");
+    });
+
+    it("routes packages to packages default group", () => {
+      const router = new DefaultPathRouter({ mode: "parent-based" });
+      const input: PathRouterInput = {
+        artifactType: "package",
+        artifactKey: "shared-utils",
+        artifactSlug: "shared-utils",
+        artifactConfig: {},
+        groups: {},
+        projectDir: "/project",
+        structureConfig: baseStructure,
+        defaultConfig,
+      };
+
+      const result = router.resolve(input);
+      expect(result.root).toBe("packages/shared-utils");
+    });
+
+    it("routes tools to apps default group", () => {
+      const router = new DefaultPathRouter({ mode: "parent-based" });
+      const input: PathRouterInput = {
+        artifactType: "tool",
+        artifactKey: "cli",
+        artifactSlug: "cli",
+        artifactConfig: {},
+        groups: {},
+        projectDir: "/project",
+        structureConfig: baseStructure,
+        defaultConfig,
+      };
+
+      const result = router.resolve(input);
+      expect(result.root).toBe("apps/cli");
+    });
+
+    it("routes artifact with explicit parent to nested path", () => {
+      const router = new DefaultPathRouter({ mode: "parent-based" });
+      const input: PathRouterInput = {
+        artifactType: "service",
+        artifactKey: "dashboard",
+        artifactSlug: "dashboard",
+        artifactConfig: { parent: "admin" },
+        groups: {},
+        projectDir: "/project",
+        structureConfig: baseStructure,
+        defaultConfig,
+      };
+
+      const result = router.resolve(input);
+      expect(result.root).toBe("apps/admin/dashboard");
+    });
+
+    it("handles parent same as default group", () => {
+      const router = new DefaultPathRouter({ mode: "parent-based" });
+      const input: PathRouterInput = {
+        artifactType: "service",
+        artifactKey: "api",
+        artifactSlug: "api",
+        artifactConfig: { parent: "apps" },
+        groups: {},
+        projectDir: "/project",
+        structureConfig: baseStructure,
+        defaultConfig,
+      };
+
+      const result = router.resolve(input);
+      expect(result.root).toBe("apps/api");
+    });
+
+    it("falls back to by-type when no defaultConfig provided", () => {
+      const router = new DefaultPathRouter({ mode: "parent-based" });
+      const input: PathRouterInput = {
+        artifactType: "service",
+        artifactKey: "api",
+        artifactSlug: "api",
+        artifactConfig: {},
+        groups: {},
+        projectDir: "/project",
+        structureConfig: baseStructure,
+        // No defaultConfig
+      };
+
+      const result = router.resolve(input);
+      expect(result.root).toBe("services/api");
+    });
+
+    it("uses custom group directory from config", () => {
+      const customConfig: DefaultConfig = {
+        groups: {
+          backend: {
+            name: "Backend Services",
+            directory: "backend",
+          },
+        },
+        membership: {
+          service: "backend",
+        },
+      };
+
+      const router = new DefaultPathRouter({ mode: "parent-based" });
+      const input: PathRouterInput = {
+        artifactType: "service",
+        artifactKey: "api",
+        artifactSlug: "api",
+        artifactConfig: {},
+        groups: {},
+        projectDir: "/project",
+        structureConfig: baseStructure,
+        defaultConfig: customConfig,
+      };
+
+      const result = router.resolve(input);
+      expect(result.root).toBe("backend/api");
     });
   });
 });
