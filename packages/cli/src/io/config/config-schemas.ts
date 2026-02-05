@@ -241,6 +241,17 @@ export const languagePluginSchema = z
   })
   .catchall(z.unknown());
 
+/**
+ * Schema for routing configuration
+ */
+export const routingConfigSchema = z
+  .object({
+    mode: z.enum(["by-type", "by-group", "parent-based"]).optional(),
+    customRouter: z.string().optional(),
+    warnOnUngrouped: z.boolean().optional(),
+  })
+  .optional();
+
 export const generatorSchema = z
   .object({
     templateOverrides: z.record(z.string(), z.union([z.string(), z.array(z.string())])).optional(),
@@ -248,6 +259,39 @@ export const generatorSchema = z
     hooks: generatorHooksSchema,
     testing: generatorTestingSchema,
     docker: dockerGeneratorSchema,
+    routing: routingConfigSchema,
+  })
+  .optional();
+
+/**
+ * Schema for a single default group configuration
+ */
+export const defaultGroupConfigSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  directory: z.string().optional(),
+  defaultFor: z.array(z.enum(["service", "client", "tool", "package"])).optional(),
+});
+
+/**
+ * Schema for membership mapping (artifact kinds to default groups)
+ */
+export const defaultMembershipConfigSchema = z
+  .object({
+    service: z.string().optional(),
+    client: z.string().optional(),
+    tool: z.string().optional(),
+    package: z.string().optional(),
+  })
+  .optional();
+
+/**
+ * Schema for the default groups system configuration
+ */
+export const defaultConfigSchema = z
+  .object({
+    groups: z.record(z.string(), defaultGroupConfigSchema).optional(),
+    membership: defaultMembershipConfigSchema,
   })
   .optional();
 
@@ -266,4 +310,5 @@ export const configSchema = z.object({
   uiOptions: uiOptionCatalogSchema,
   uiOptionGenerators: uiOptionGeneratorsSchema,
   generator: generatorSchema,
+  default: defaultConfigSchema,
 });

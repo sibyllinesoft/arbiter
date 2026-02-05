@@ -11,6 +11,7 @@ import type {
   GeneratorConfig,
   GeneratorTestingConfig,
   LanguagePluginConfig,
+  RoutingConfig,
 } from "@/types.js";
 import {
   ARRAY_UI_OPTION_KEYS,
@@ -89,6 +90,7 @@ export function cloneGeneratorConfig(config?: GeneratorConfig): GeneratorConfig 
     hooks: config.hooks ? { ...config.hooks } : undefined,
     testing: cloneTestingConfig(config.testing),
     docker: cloneDockerConfig(config.docker),
+    routing: config.routing ? { ...config.routing } : undefined,
   };
 }
 
@@ -299,13 +301,15 @@ function buildGeneratorConfigResult(
   hookConfig: Record<string, string>,
   testingConfig: GeneratorTestingConfig | undefined,
   dockerConfig: DockerGeneratorConfig | undefined,
+  routingConfig: RoutingConfig | undefined,
 ): GeneratorConfig | undefined {
   const hasAnyConfig =
     hasContent(templateOverrides) ||
     hasContent(pluginConfig) ||
     hasContent(hookConfig) ||
     testingConfig ||
-    dockerConfig;
+    dockerConfig ||
+    routingConfig;
 
   if (!hasAnyConfig) return undefined;
 
@@ -315,6 +319,7 @@ function buildGeneratorConfigResult(
     hooks: returnIfNonEmpty(hookConfig),
     testing: testingConfig,
     docker: dockerConfig,
+    routing: routingConfig,
   };
 }
 
@@ -342,12 +347,22 @@ export function mergeGeneratorConfig(
   const testingConfig = mergeTestingConfig(base?.testing, overrides?.testing);
   const dockerConfig = mergeDockerConfig(base?.docker, overrides?.docker);
 
+  // Merge routing config
+  const routingConfig: RoutingConfig | undefined =
+    base?.routing || overrides?.routing
+      ? {
+          ...(base?.routing ?? {}),
+          ...(overrides?.routing ?? {}),
+        }
+      : undefined;
+
   return buildGeneratorConfigResult(
     templateOverrides,
     pluginConfig,
     hookConfig,
     testingConfig,
     dockerConfig,
+    routingConfig,
   );
 }
 

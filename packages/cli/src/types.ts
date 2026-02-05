@@ -74,6 +74,49 @@ import type { UIOptionCatalog, UIOptionGeneratorMap } from "@arbiter/specificati
 import type { GitHubSyncConfig } from "./types/github.js";
 
 /**
+ * Configuration for a single default group.
+ *
+ * @public
+ */
+export interface DefaultGroupConfig {
+  /** Display name for the group */
+  name: string;
+  /** Optional description of the group's purpose */
+  description?: string;
+  /** Directory name (defaults to the group key if not specified) */
+  directory?: string;
+  /** Artifact types that default to this group when no parent is specified */
+  defaultFor?: Array<"service" | "client" | "tool" | "package">;
+}
+
+/**
+ * Membership mapping from artifact kinds to default group IDs
+ */
+export interface DefaultMembershipConfig {
+  /** Default group for services */
+  service?: string;
+  /** Default group for clients/frontends */
+  client?: string;
+  /** Default group for tools */
+  tool?: string;
+  /** Default group for shared packages */
+  package?: string;
+}
+
+/**
+ * Configuration for default groups that organize project artifacts.
+ * Groups are hierarchical containers for organizing artifacts.
+ *
+ * @public
+ */
+export interface DefaultConfig {
+  /** Map of group key to group configuration */
+  groups: Record<string, DefaultGroupConfig>;
+  /** Maps artifact kinds to their default group */
+  membership?: DefaultMembershipConfig;
+}
+
+/**
  * Primary configuration object consumed by the CLI.
  *
  * @public
@@ -141,6 +184,8 @@ export interface CLIConfig {
   uiOptionGenerators?: UIOptionGeneratorMap;
   /** Code generation customization */
   generator?: GeneratorConfig;
+  /** Default groups configuration for artifact organization */
+  default?: DefaultConfig;
 }
 
 /**
@@ -191,8 +236,8 @@ export interface LanguagePluginConfig {
  * @public
  */
 export interface RoutingConfig {
-  /** Routing mode: 'by-type' (default) organizes by artifact type, 'by-group' organizes by group */
-  mode?: "by-type" | "by-group";
+  /** Routing mode: 'by-type' (default) organizes by artifact type, 'by-group' organizes by group, 'parent-based' uses default config membership */
+  mode?: "by-type" | "by-group" | "parent-based";
   /** Path to a custom router module (exports a PathRouter) */
   customRouter?: string;
   /** Emit warnings when artifacts lack a parent field (useful for enforcing grouping) */

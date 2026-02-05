@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { safeFileOperation } from "@/constraints/index.js";
-import type { CLIConfig, ProjectStructureConfig } from "@/types.js";
+import type { CLIConfig, DefaultConfig, ProjectStructureConfig } from "@/types.js";
 import { findGitRoot } from "@/utils/io/git-detection.js";
 import { DEFAULT_UI_OPTION_CATALOG } from "@arbiter/specification";
 import chalk from "chalk";
@@ -61,6 +61,38 @@ export const DEFAULT_PROJECT_STRUCTURE: ProjectStructureConfig = {
     docsDirectory: false,
     testsDirectory: false,
     infraDirectory: false,
+  },
+};
+
+/**
+ * Default configuration for hierarchical artifact organization.
+ * Replaces the default clients/, services/, tools/ directories with a unified apps/ group.
+ */
+export const DEFAULT_GROUPS: DefaultConfig = {
+  groups: {
+    apps: {
+      name: "Apps",
+      description: "Runnable applications (services, clients, tools)",
+      directory: "apps",
+      defaultFor: ["service", "client", "tool"],
+    },
+    packages: {
+      name: "Packages",
+      description: "Shared libraries and packages",
+      directory: "packages",
+      defaultFor: ["package"],
+    },
+    infra: {
+      name: "Infrastructure",
+      description: "Infrastructure definitions",
+      directory: "infra",
+    },
+  },
+  membership: {
+    service: "apps",
+    client: "apps",
+    tool: "apps",
+    package: "packages",
   },
 };
 
@@ -253,6 +285,37 @@ export function deriveLocalMode(config: CLIConfig): CLIConfig {
  * @param overrides - Override values to merge in
  * @returns Merged configuration
  */
+/**
+ * Deep merge default configuration.
+ * Groups are merged by key, with override groups taking precedence.
+ */
+function mergeDefaultConfig(
+  base: CLIConfig["default"],
+  overrides: CLIConfig["default"],
+): CLIConfig["default"] {
+  if (!overrides) return base;
+  if (!base) return overrides;
+
+  // Merge groups by key
+  const mergedGroups = { ...base.groups };
+  if (overrides.groups) {
+    for (const [key, group] of Object.entries(overrides.groups)) {
+      mergedGroups[key] = base.groups?.[key] ? { ...base.groups[key], ...group } : group;
+    }
+  }
+
+  // Merge membership
+  const mergedMembership = {
+    ...base.membership,
+    ...overrides.membership,
+  };
+
+  return {
+    groups: mergedGroups,
+    membership: mergedMembership,
+  };
+}
+
 function mergeConfigs(base: CLIConfig, overrides: Partial<CLIConfig>): CLIConfig {
   const mergedGithub = overrides.github
     ? {
@@ -290,6 +353,7 @@ function mergeConfigs(base: CLIConfig, overrides: Partial<CLIConfig>): CLIConfig
         ...(overrides.projectStructure?.packageRelative ?? {}),
       },
     },
+    default: mergeDefaultConfig(base.default, overrides.default),
     uiOptions: mergeOptionCatalog(base.uiOptions, overrides.uiOptions),
     uiOptionGenerators: mergeOptionGenerators(
       base.uiOptionGenerators,
