@@ -54,6 +54,7 @@ export interface InitOptions {
   preset?: string;
   name?: string;
   listPresets?: boolean;
+  prompt?: boolean;
 }
 
 /**

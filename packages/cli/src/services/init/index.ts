@@ -7,6 +7,7 @@
  * - Create markdown structure in .arbiter directory
  * - Support layered preset discovery (project → user → builtin)
  * - Handle both local and server-assisted initialization
+ * - Interactive mode via --prompt flag
  */
 
 import os from "node:os";
@@ -17,6 +18,7 @@ import { withProgress } from "@/utils/api/progress.js";
 import chalk from "chalk";
 import fs from "fs-extra";
 import { v4 as uuidv4 } from "uuid";
+import { type InteractiveInitResult, runInteractiveInit } from "./prompts.js";
 
 /**
  * Preset metadata
@@ -314,6 +316,11 @@ export async function initCommand(
       return 0;
     }
 
+    // Handle interactive mode
+    if (options.prompt) {
+      return await handleInteractiveInit(presets, config);
+    }
+
     // Validate preset selection
     if (!options.preset) {
       console.error(chalk.red("Please choose an init preset using --preset <id>."));
@@ -364,6 +371,260 @@ export async function initCommand(
       error instanceof Error ? error.message : String(error),
     );
     return 2;
+  }
+}
+
+/**
+ * Handle interactive init mode
+ */
+async function handleInteractiveInit(presets: PresetInfo[], config?: CLIConfig): Promise<number> {
+  const result = await runInteractiveInit();
+
+  // For simple project types (cli-tool), use existing preset flow
+  if (result.presetId && !result.moduleSelections?.backend && !result.moduleSelections?.frontend) {
+    const preset = presets.find((p) => p.id === result.presetId);
+    if (!preset) {
+      // Create a synthetic preset for the selection
+      const syntheticPreset: PresetInfo = {
+        id: result.presetId,
+        name: `${result.projectType} (${result.language || "default"})`,
+        description: `Interactive selection: ${result.projectType}`,
+        language: result.language,
+        category: result.projectType,
+        source: "builtin",
+      };
+      return createProjectLocally(result.projectName, syntheticPreset);
+    }
+    return createProjectLocally(result.projectName, preset);
+  }
+
+  // For complex project types (web-app, api-service, full-stack, monorepo),
+  // use the module composer system via plop
+  return await createProjectWithModules(result, config);
+}
+
+/**
+ * Create a project using the module composer (for full-stack, monorepo, etc.)
+ */
+async function createProjectWithModules(
+  result: InteractiveInitResult,
+  _config?: CLIConfig,
+): Promise<number> {
+  const language = inferLanguageFromSelections(result);
+
+  const preset: PresetInfo = {
+    id: result.projectType,
+    name: getProjectTypeName(result.projectType),
+    description: formatSelectionsSummary(result),
+    language,
+    category: result.projectType,
+    source: "builtin",
+  };
+
+  const exitCode = await createProjectLocally(result.projectName, preset);
+
+  if (exitCode === 0) {
+    // Store module selections in config
+    if (result.moduleSelections) {
+      await storeModuleSelections(result);
+    }
+
+    // Create entity files based on selections
+    await createEntitiesFromSelections(result);
+  }
+
+  return exitCode;
+}
+
+/**
+ * Create entity markdown files based on interactive selections
+ */
+async function createEntitiesFromSelections(result: InteractiveInitResult): Promise<void> {
+  const arbiterDir = path.join(process.cwd(), ".arbiter");
+  const packagesDir = path.join(arbiterDir, "packages");
+  const now = new Date().toISOString();
+
+  // Create packages directory
+  await fs.ensureDir(packagesDir);
+
+  // Create backend service entity in packages/
+  if (result.moduleSelections?.backend && result.moduleSelections.backend !== "none") {
+    const backendName = "api";
+    const backendFramework = result.moduleSelections.backend;
+    const backendLanguage = result.language || inferLanguageFromSelections(result);
+
+    const backendContent = `---
+type: service
+entityId: ${uuidv4()}
+createdAt: ${now}
+updatedAt: ${now}
+language: ${backendLanguage}
+framework: ${backendFramework}
+tags:
+  - backend
+  - api
+---
+
+# ${backendName}
+
+Backend API service using ${formatFrameworkName(backendFramework)}.
+
+## Technology Stack
+
+- **Language**: ${backendLanguage}
+- **Framework**: ${formatFrameworkName(backendFramework)}
+${result.moduleSelections.database && result.moduleSelections.database !== "none" ? `- **Database**: ${result.moduleSelections.database}` : ""}
+
+## Getting Started
+
+\`\`\`bash
+cd backend
+# Install dependencies and run
+\`\`\`
+
+## API Endpoints
+
+Define your API endpoints here.
+`;
+
+    await fs.writeFile(path.join(packagesDir, `${backendName}.md`), backendContent, "utf-8");
+  }
+
+  // Create frontend service entity in packages/
+  if (result.moduleSelections?.frontend && result.moduleSelections.frontend !== "none") {
+    const frontendName = "web";
+    const frontendFramework = result.moduleSelections.frontend;
+
+    const frontendContent = `---
+type: service
+entityId: ${uuidv4()}
+createdAt: ${now}
+updatedAt: ${now}
+language: typescript
+framework: ${frontendFramework}
+tags:
+  - frontend
+  - web
+---
+
+# ${frontendName}
+
+Frontend web application using ${formatFrameworkName(frontendFramework)}.
+
+## Technology Stack
+
+- **Language**: TypeScript
+- **Framework**: ${formatFrameworkName(frontendFramework)}
+
+## Getting Started
+
+\`\`\`bash
+cd frontend
+# Install dependencies and run
+\`\`\`
+
+## Pages
+
+Define your pages and routes here.
+`;
+
+    await fs.writeFile(path.join(packagesDir, `${frontendName}.md`), frontendContent, "utf-8");
+  }
+}
+
+/**
+ * Format framework identifier to human-readable name
+ */
+function formatFrameworkName(framework: string): string {
+  const names: Record<string, string> = {
+    "node-hono": "Hono",
+    "node-express": "Express",
+    "python-fastapi": "FastAPI",
+    "rust-axum": "Axum",
+    "go-chi": "Chi",
+    "kotlin-ktor": "Ktor",
+    "react-vite": "React + Vite",
+    "vue-vite": "Vue + Vite",
+    "solid-vite": "Solid + Vite",
+  };
+  return names[framework] || framework;
+}
+
+/**
+ * Infer primary language from module selections
+ */
+function inferLanguageFromSelections(result: InteractiveInitResult): string {
+  if (result.language) return result.language;
+
+  const backend = result.moduleSelections?.backend;
+  if (backend) {
+    if (backend.startsWith("node-")) return "typescript";
+    if (backend.startsWith("python-")) return "python";
+    if (backend.startsWith("rust-")) return "rust";
+    if (backend.startsWith("go-")) return "go";
+    if (backend.startsWith("kotlin-")) return "kotlin";
+  }
+
+  const frontend = result.moduleSelections?.frontend;
+  if (frontend && frontend !== "none") {
+    return "typescript";
+  }
+
+  return "typescript";
+}
+
+/**
+ * Get human-readable project type name
+ */
+function getProjectTypeName(projectType: string): string {
+  const names: Record<string, string> = {
+    "cli-tool": "CLI Tool",
+    "web-app": "Web Application",
+    "api-service": "API Service",
+    "full-stack": "Full-Stack Application",
+    monorepo: "Monorepo",
+  };
+  return names[projectType] || projectType;
+}
+
+/**
+ * Format module selections as a summary string
+ */
+function formatSelectionsSummary(result: InteractiveInitResult): string {
+  const parts: string[] = [];
+
+  if (result.moduleSelections?.backend && result.moduleSelections.backend !== "none") {
+    parts.push(`backend: ${result.moduleSelections.backend}`);
+  }
+  if (result.moduleSelections?.frontend && result.moduleSelections.frontend !== "none") {
+    parts.push(`frontend: ${result.moduleSelections.frontend}`);
+  }
+  if (result.moduleSelections?.database && result.moduleSelections.database !== "none") {
+    parts.push(`database: ${result.moduleSelections.database}`);
+  }
+  if (result.moduleSelections?.build?.length) {
+    parts.push(`build: ${result.moduleSelections.build.join(", ")}`);
+  }
+
+  return parts.length > 0 ? parts.join(", ") : result.projectType;
+}
+
+/**
+ * Store module selections in .arbiter/config.json for later scaffolding
+ */
+async function storeModuleSelections(result: InteractiveInitResult): Promise<void> {
+  const configPath = path.join(process.cwd(), ".arbiter", "config.json");
+
+  try {
+    const existingConfig = await fs.readJson(configPath).catch(() => ({}));
+    const updatedConfig = {
+      ...existingConfig,
+      modules: result.moduleSelections,
+      projectType: result.projectType,
+    };
+    await fs.writeJson(configPath, updatedConfig, { spaces: 2 });
+  } catch {
+    // Config file may not exist yet, that's fine
   }
 }
 

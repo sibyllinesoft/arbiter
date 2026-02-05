@@ -65,10 +65,11 @@ function registerInitCommand(program: Command): void {
     .description("initialize a new project from a preset")
     .option("--preset <id>", "preset to use (web-app, mobile-app, api-service, microservice)")
     .option("--list-presets", "list available presets")
+    .option("--prompt", "interactive mode - select project type and options via prompts")
     .action(async (displayName: string | undefined, options: InitOptions, command) => {
       try {
         if (options.listPresets) {
-          listPresets();
+          await listPresets();
           exitWithCode(0);
         }
         const config = requireCommandConfig(command);
