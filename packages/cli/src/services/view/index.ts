@@ -629,7 +629,7 @@ function generateDocsifyHtml(name: string): string {
       name: '${name}',
       repo: '',
       loadSidebar: true,
-      subMaxLevel: 3,
+      subMaxLevel: 0,
       auto2top: true,
       alias: {
         '/.*/_sidebar.md': '/_sidebar.md',
@@ -696,6 +696,8 @@ function generateSidebar(arbiterPath: string): string {
 
   // Known directory types with their display titles
   const knownDirectories: Record<string, string> = {
+    packages: "Packages",
+    models: "Models",
     notes: "Notes",
     tasks: "Tasks",
     groups: "Groups",
@@ -758,7 +760,10 @@ function generateSidebar(arbiterPath: string): string {
     lines.push("");
   }
 
-  // Add known directories (notes, tasks, etc.)
+  // Directories that should show h2 headings as sub-items
+  const showHeadingsFor = new Set(["packages", "models"]);
+
+  // Add known directories (packages, models, notes, tasks, etc.)
   for (const dir of otherDirs) {
     const title = knownDirectories[dir];
     const dirPath = path.join(arbiterPath, dir);
@@ -770,8 +775,38 @@ function generateSidebar(arbiterPath: string): string {
       lines.push(`* **${title}**`);
 
       for (const file of files.slice(0, 20)) {
-        const name = file.replace(".md", "");
-        lines.push(`  * [${name}](/${dir}/${file})`);
+        const filePath = path.join(dirPath, file);
+        let displayName = file.replace(".md", "");
+        const headings: string[] = [];
+
+        try {
+          const content = fs.readFileSync(filePath, "utf-8");
+          // Get title from first h1
+          const titleMatch = content.match(/^#\s+(.+)$/m);
+          if (titleMatch) {
+            displayName = titleMatch[1];
+          }
+          // Get h2 headings for packages/models
+          if (showHeadingsFor.has(dir)) {
+            const h2Matches = content.matchAll(/^##\s+(.+)$/gm);
+            for (const match of h2Matches) {
+              headings.push(match[1]);
+            }
+          }
+        } catch {
+          // Use filename as fallback
+        }
+
+        lines.push(`  * [${displayName}](/${dir}/${file})`);
+
+        // Add headings as sub-items
+        for (const heading of headings.slice(0, 10)) {
+          const anchor = heading
+            .toLowerCase()
+            .replace(/[^\w]+/g, "-")
+            .replace(/-+$/, "");
+          lines.push(`    * [${heading}](/${dir}/${file}?id=${anchor})`);
+        }
       }
 
       if (files.length > 20) {
@@ -780,6 +815,48 @@ function generateSidebar(arbiterPath: string): string {
 
       lines.push("");
     }
+  }
+
+  // Add root-level specification files
+  const rootFiles = entries
+    .filter((e) => e.isFile() && e.name.endsWith(".md") && e.name !== "README.md")
+    .map((e) => e.name);
+
+  if (rootFiles.length > 0) {
+    lines.push("* **Specifications**");
+    for (const file of rootFiles.sort()) {
+      const filePath = path.join(arbiterPath, file);
+      let displayName = file.replace(".md", "");
+      const headings: string[] = [];
+
+      try {
+        const content = fs.readFileSync(filePath, "utf-8");
+        // Get title from first h1
+        const titleMatch = content.match(/^#\s+(.+)$/m);
+        if (titleMatch) {
+          displayName = titleMatch[1];
+        }
+        // Get h2 headings for sub-items
+        const h2Matches = content.matchAll(/^##\s+(.+)$/gm);
+        for (const match of h2Matches) {
+          headings.push(match[1]);
+        }
+      } catch {
+        // Use filename as fallback
+      }
+
+      lines.push(`  * [${displayName}](/${file})`);
+
+      // Add headings as sub-items with anchor links
+      for (const heading of headings.slice(0, 10)) {
+        const anchor = heading
+          .toLowerCase()
+          .replace(/[^\w]+/g, "-")
+          .replace(/-+$/, "");
+        lines.push(`    * [${heading}](/${file}?id=${anchor})`);
+      }
+    }
+    lines.push("");
   }
 
   // Note: CUE files are not shown in sidebar as docsify can't render them
@@ -859,10 +936,10 @@ function generateReadme(name: string, arbiterPath: string): string {
 
   // Show root files
   if (files.length > 0) {
-    lines.push("## Files");
+    lines.push("## Specifications");
     lines.push("");
     for (const file of files) {
-      lines.push(`- [${file.name}](${file.name})`);
+      lines.push(`- [${file.name.replace(".md", "")}](${file.name})`);
     }
     lines.push("");
   }

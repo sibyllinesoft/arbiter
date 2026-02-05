@@ -136,27 +136,29 @@ function hasTestType(tests: any[], type: string): boolean {
 }
 
 /** Check for missing test types (unit, integration, e2e) */
-function checkMissingTestTypes(tests: any[]): ValidationWarning[] {
+function checkMissingTestTypes(tests: any[], projectName: string): ValidationWarning[] {
   const checks = [
     {
       type: "unit",
-      message: "Missing unit tests",
+      message: `Project '${projectName}' missing unit tests`,
       suggestion: "Add unit test suite to validate individual components",
     },
     {
       type: "integration",
-      message: "Missing integration tests",
+      message: `Project '${projectName}' missing integration tests`,
       suggestion: "Add integration test suite to validate service interactions",
     },
     {
       type: "e2e",
-      message: "Missing end-to-end tests",
+      message: `Project '${projectName}' missing end-to-end tests`,
       suggestion: "Add e2e test suite to validate complete user workflows",
     },
   ];
   return checks
     .filter(({ type }) => !hasTestType(tests, type))
-    .map(({ message, suggestion }) => createWarning("Testing", message, suggestion, "tests"));
+    .map(({ message, suggestion }) =>
+      createWarning("Testing", message, suggestion, ".arbiter/config.json (tests)"),
+    );
 }
 
 /** Check for test suites without test cases */
@@ -175,17 +177,18 @@ function checkEmptyTestSuites(tests: any[]): ValidationWarning[] {
 
 /** Validate test definitions for completeness */
 function validateTestDefinitions(spec: NormalizedSpec): ValidationWarning[] {
+  const name = spec.product?.name || spec.metadata?.name || "project";
   if (!spec.tests?.length) {
     return [
       createWarning(
         "Testing",
-        "No test suites defined",
+        `Project '${name}' has no test suites defined`,
         "Add comprehensive test coverage with unit, integration, and e2e tests",
-        "tests",
+        ".arbiter/config.json (tests)",
       ),
     ];
   }
-  return [...checkMissingTestTypes(spec.tests), ...checkEmptyTestSuites(spec.tests)];
+  return [...checkMissingTestTypes(spec.tests, name), ...checkEmptyTestSuites(spec.tests)];
 }
 
 /** Check if a service is a source (buildable) service */
@@ -328,12 +331,6 @@ const SERVICE_CHECKS: ServiceCheck[] = [
     pathSuffix: "healthCheck",
   },
   {
-    condition: (s) => !s.resources,
-    message: (n) => `Service '${n}' missing resource specifications`,
-    suggestion: "Define CPU and memory limits for proper resource management",
-    pathSuffix: "resources",
-  },
-  {
     condition: (s) =>
       resolveServiceArtifactType(s) === "internal" && !Object.keys(s.env || {}).length,
     message: (n) => `Source service '${n}' missing environment configuration`,
@@ -349,14 +346,14 @@ const SERVICE_CHECKS: ServiceCheck[] = [
  * @returns Array of validation warnings for the service
  */
 function validateSingleService(serviceName: string, service: any): ValidationWarning[] {
-  const basePath = `services.${serviceName}`;
+  const basePath = `.arbiter/${serviceName}/README.md`;
   return SERVICE_CHECKS.filter(({ condition }) => condition(service)).map(
     ({ message, suggestion, pathSuffix }) =>
       createWarning(
         "Service Definition",
         message(serviceName),
         suggestion,
-        `${basePath}.${pathSuffix}`,
+        `${basePath} (${pathSuffix})`,
       ),
   );
 }
@@ -437,7 +434,7 @@ function validateOrphanServices(spec: NormalizedSpec): ValidationWarning[] {
           "Service Architecture",
           `Service '${serviceName}' has no dependents - nothing uses this service`,
           `Add a relationship showing which clients or services depend on '${serviceName}', or verify this service is needed`,
-          `services.${serviceName}`,
+          `.arbiter/${serviceName}/README.md`,
         ),
       );
     }
@@ -449,15 +446,7 @@ function validateOrphanServices(spec: NormalizedSpec): ValidationWarning[] {
 /**
  * Check for missing product goals
  */
-function checkMissingProductGoals(spec: NormalizedSpec): ValidationWarning | null {
-  if (!spec.product?.goals || spec.product.goals.length === 0) {
-    return createWarning(
-      "Documentation",
-      "Missing product goals and objectives",
-      "Define clear product goals to guide development decisions",
-      "product.goals",
-    );
-  }
+function checkMissingProductGoals(_spec: NormalizedSpec): ValidationWarning | null {
   return null;
 }
 
@@ -466,11 +455,12 @@ function checkMissingProductGoals(spec: NormalizedSpec): ValidationWarning | nul
  */
 function checkMissingDescription(spec: NormalizedSpec): ValidationWarning | null {
   if (!spec.metadata?.description) {
+    const name = spec.product?.name || spec.metadata?.name || "project";
     return createWarning(
       "Documentation",
-      "Missing project description",
+      `Project '${name}' missing description`,
       "Add comprehensive project description in metadata",
-      "metadata.description",
+      ".arbiter/README.md (description)",
     );
   }
   return null;
@@ -536,17 +526,6 @@ function validateSecurity(spec: NormalizedSpec): ValidationWarning[] {
     }
   }
 
-  // Check for missing security configuration
-  if (!spec.security) {
-    warnings.push({
-      category: "Security",
-      severity: "warning",
-      message: "Missing security configuration",
-      suggestion: "Define authentication, authorization, and security policies",
-      path: "security",
-    });
-  }
-
   return warnings;
 }
 
@@ -556,28 +535,7 @@ function validateSecurity(spec: NormalizedSpec): ValidationWarning[] {
 function validatePerformanceSpecs(spec: NormalizedSpec): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
 
-  if (!spec.performance) {
-    warnings.push({
-      category: "Performance",
-      severity: "warning",
-      message: "Missing performance specifications",
-      suggestion: "Define SLAs, response time targets, and throughput requirements",
-      path: "performance",
-    });
-  }
-
   // Check services for missing performance configuration
-  Object.entries(spec.services || {}).forEach(([serviceName, service]) => {
-    if (resolveServiceArtifactType(service) === "internal" && !service.resources?.limits) {
-      warnings.push({
-        category: "Performance",
-        severity: "warning",
-        message: `Service '${serviceName}' missing resource limits`,
-        suggestion: "Define CPU and memory limits for performance predictability",
-        path: `services.${serviceName}.resources.limits`,
-      });
-    }
-  });
 
   return warnings;
 }
@@ -746,42 +704,8 @@ function validatePathGrouping(spec: NormalizedSpec): ValidationWarning[] {
 /**
  * Check observability configuration
  */
-function validateObservability(spec: NormalizedSpec): ValidationWarning[] {
-  const warnings: ValidationWarning[] = [];
-
-  const hasServices = Object.keys(spec.services || {}).length > 0;
-
-  if (hasServices && !spec.observability) {
-    warnings.push({
-      category: "Observability",
-      severity: "warning",
-      message: "Services defined but no observability configuration",
-      suggestion: "Add logging, monitoring, and alerting configuration",
-      path: "observability",
-    });
-  }
-
-  if (hasServices && !spec.observability?.logging) {
-    warnings.push({
-      category: "Observability",
-      severity: "warning",
-      message: "Missing logging configuration",
-      suggestion: "Define log levels, formats, and aggregation strategy",
-      path: "observability.logging",
-    });
-  }
-
-  if (hasServices && !spec.observability?.monitoring) {
-    warnings.push({
-      category: "Observability",
-      severity: "warning",
-      message: "Missing monitoring configuration",
-      suggestion: "Define metrics collection and health monitoring",
-      path: "observability.monitoring",
-    });
-  }
-
-  return warnings;
+function validateObservability(_spec: NormalizedSpec): ValidationWarning[] {
+  return [];
 }
 
 /**
@@ -789,15 +713,16 @@ function validateObservability(spec: NormalizedSpec): ValidationWarning[] {
  */
 function validateEnvironmentConfig(spec: NormalizedSpec): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
+  const name = spec.product?.name || spec.metadata?.name || "project";
 
   // Check for missing environment definitions
   if (!spec.environments || Object.keys(spec.environments).length === 0) {
     warnings.push({
       category: "Environment Config",
       severity: "warning",
-      message: "Missing environment configurations",
-      suggestion: "Define development, staging, and production environments",
-      path: "environments",
+      message: `Project '${name}' missing environment configurations`,
+      suggestion: "Define environments (e.g. development, staging, production)",
+      path: ".arbiter/config.json (environments)",
     });
   } else {
     const requiredEnvs = ["development", "production"];
@@ -808,7 +733,7 @@ function validateEnvironmentConfig(spec: NormalizedSpec): ValidationWarning[] {
         warnings.push({
           category: "Environment Config",
           severity: "warning",
-          message: `Missing ${env} environment configuration`,
+          message: `Project '${name}' missing ${env} environment configuration`,
           suggestion: `Add ${env} environment with proper configuration`,
           path: `environments.${env}`,
         });
@@ -1158,7 +1083,6 @@ function formatValidationItem(item: ValidationWarning, colorFn: typeof chalk.red
     colorFn(`  • ${item.category}: ${item.message}`),
     chalk.gray(`    ${item.suggestion}`),
   ];
-  if (item.path) lines.push(chalk.gray(`    Path: ${item.path}`));
   return lines;
 }
 
