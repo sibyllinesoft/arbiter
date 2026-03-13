@@ -1,0 +1,19 @@
+{
+  "name": "databases/postgres-drizzle",
+  "priority": 50,
+  "conditions": {
+    "all": [
+      { "fact": "database", "operator": "contains", "value": "postgres" },
+      { "fact": "language", "operator": "in", "value": ["typescript", "javascript"] }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "databases",
+      "module": "postgres-drizzle",
+      "priority": 50,
+      "ruleName": "databases/postgres-drizzle"
+    }
+  }
+}

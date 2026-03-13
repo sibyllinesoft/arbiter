@@ -1,0 +1,20 @@
+{
+  "name": "backends/node-hono",
+  "priority": 100,
+  "conditions": {
+    "all": [
+      { "fact": "language", "operator": "in", "value": ["typescript", "javascript"] },
+      { "fact": "framework", "operator": "contains", "value": "hono" },
+      { "fact": "subtype", "operator": "in", "value": ["service", "worker"] }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "backends",
+      "module": "node-hono",
+      "priority": 100,
+      "ruleName": "backends/node-hono"
+    }
+  }
+}

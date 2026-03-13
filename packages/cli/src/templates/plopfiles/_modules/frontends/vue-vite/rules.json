@@ -1,0 +1,19 @@
+{
+  "name": "frontends/vue-vite",
+  "priority": 100,
+  "conditions": {
+    "all": [
+      { "fact": "subtype", "operator": "equal", "value": "frontend" },
+      { "fact": "framework", "operator": "contains", "value": "vue" }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "frontends",
+      "module": "vue-vite",
+      "priority": 100,
+      "ruleName": "frontends/vue-vite"
+    }
+  }
+}

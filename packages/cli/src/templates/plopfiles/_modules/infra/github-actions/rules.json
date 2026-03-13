@@ -1,0 +1,18 @@
+{
+  "name": "infra/github-actions",
+  "priority": 10,
+  "conditions": {
+    "all": [
+      { "fact": "tags", "operator": "hasTag", "value": "github-actions" }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "infra",
+      "module": "github-actions",
+      "priority": 10,
+      "ruleName": "infra/github-actions"
+    }
+  }
+}

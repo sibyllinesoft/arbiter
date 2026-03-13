@@ -98,7 +98,12 @@ export type ModuleCategory =
   | "databases"
   | "infra"
   | "desktop"
-  | "mobile";
+  | "mobile"
+  | "cloud"
+  | "build"
+  | "docs"
+  | "quality"
+  | "storybook";
 
 /**
  * Get the path to a template module

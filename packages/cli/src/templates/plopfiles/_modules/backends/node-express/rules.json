@@ -1,0 +1,20 @@
+{
+  "name": "backends/node-express",
+  "priority": 100,
+  "conditions": {
+    "all": [
+      { "fact": "language", "operator": "in", "value": ["typescript", "javascript"] },
+      { "fact": "framework", "operator": "contains", "value": "express" },
+      { "fact": "subtype", "operator": "in", "value": ["service", "worker"] }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "backends",
+      "module": "node-express",
+      "priority": 100,
+      "ruleName": "backends/node-express"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "quality/clippy",
+  "priority": 20,
+  "conditions": {
+    "all": [
+      { "fact": "language", "operator": "equal", "value": "rust" }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "quality",
+      "module": "clippy",
+      "priority": 20,
+      "ruleName": "quality/clippy"
+    }
+  }
+}

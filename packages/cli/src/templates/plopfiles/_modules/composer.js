@@ -172,9 +172,51 @@ export async function getModuleChoices() {
   };
 }
 
+/**
+ * Compose modules from rule engine match results.
+ *
+ * Accepts an array of { category, module, priority } objects (as returned by
+ * the rule engine's `selectModules()`) and composes them into plop actions
+ * and a manifest — identical to `composeModules()` but driven by engine output
+ * instead of explicit user selections.
+ *
+ * @param {Array<{ category: string, module: string, priority: number }>} matches
+ * @param {import('./types').ModuleContext} context
+ * @returns {Promise<{ actions: any[], manifest: import('./types').ComposedManifest }>}
+ */
+export async function composeFromMatches(matches, context) {
+  const actions = [];
+  const manifest = {
+    name: context.name,
+    modules: [],
+    dependencies: {},
+    devDependencies: {},
+    scripts: {},
+    envVars: {},
+  };
+
+  const mergeModule = (mod, name) => {
+    manifest.modules.push(name);
+    Object.assign(manifest.dependencies, mod.dependencies || {});
+    Object.assign(manifest.devDependencies, mod.devDependencies || {});
+    Object.assign(manifest.scripts, mod.scripts || {});
+    Object.assign(manifest.envVars, mod.envVars || {});
+  };
+
+  // Matches are pre-sorted by priority (descending) from the rule engine
+  for (const match of matches) {
+    const mod = await loadModule(match.category, match.module);
+    actions.push(...mod.default(context));
+    mergeModule(mod, `${match.category}/${match.module}`);
+  }
+
+  return { actions, manifest };
+}
+
 export default {
   loadModule,
   listModules,
   composeModules,
+  composeFromMatches,
   getModuleChoices,
 };

@@ -1,0 +1,18 @@
+{
+  "name": "build/turborepo",
+  "priority": 15,
+  "conditions": {
+    "all": [
+      { "fact": "tags", "operator": "hasTag", "value": "turborepo" }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "build",
+      "module": "turborepo",
+      "priority": 15,
+      "ruleName": "build/turborepo"
+    }
+  }
+}

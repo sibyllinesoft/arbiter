@@ -1,0 +1,20 @@
+{
+  "name": "backends/kotlin-ktor",
+  "priority": 100,
+  "conditions": {
+    "all": [
+      { "fact": "language", "operator": "equal", "value": "kotlin" },
+      { "fact": "framework", "operator": "contains", "value": "ktor" },
+      { "fact": "subtype", "operator": "in", "value": ["service", "worker"] }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "backends",
+      "module": "kotlin-ktor",
+      "priority": 100,
+      "ruleName": "backends/kotlin-ktor"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "cloud/gcp",
+  "priority": 10,
+  "conditions": {
+    "all": [
+      { "fact": "tags", "operator": "hasTag", "value": "gcp" }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "cloud",
+      "module": "gcp",
+      "priority": 10,
+      "ruleName": "cloud/gcp"
+    }
+  }
+}

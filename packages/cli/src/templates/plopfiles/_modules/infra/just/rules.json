@@ -1,0 +1,18 @@
+{
+  "name": "infra/just",
+  "priority": 10,
+  "conditions": {
+    "all": [
+      { "fact": "tags", "operator": "hasTag", "value": "just" }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "infra",
+      "module": "just",
+      "priority": 10,
+      "ruleName": "infra/just"
+    }
+  }
+}

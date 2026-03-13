@@ -1,0 +1,18 @@
+{
+  "name": "docs/mkdocs",
+  "priority": 5,
+  "conditions": {
+    "all": [
+      { "fact": "tags", "operator": "hasTag", "value": "mkdocs" }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "docs",
+      "module": "mkdocs",
+      "priority": 5,
+      "ruleName": "docs/mkdocs"
+    }
+  }
+}

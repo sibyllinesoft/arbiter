@@ -1,0 +1,20 @@
+{
+  "name": "backends/node-fastify",
+  "priority": 100,
+  "conditions": {
+    "all": [
+      { "fact": "language", "operator": "in", "value": ["typescript", "javascript"] },
+      { "fact": "framework", "operator": "contains", "value": "fastify" },
+      { "fact": "subtype", "operator": "in", "value": ["service", "worker"] }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "backends",
+      "module": "node-fastify",
+      "priority": 100,
+      "ruleName": "backends/node-fastify"
+    }
+  }
+}

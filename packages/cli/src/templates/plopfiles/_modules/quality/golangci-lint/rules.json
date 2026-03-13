@@ -1,0 +1,18 @@
+{
+  "name": "quality/golangci-lint",
+  "priority": 20,
+  "conditions": {
+    "all": [
+      { "fact": "language", "operator": "equal", "value": "go" }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "quality",
+      "module": "golangci-lint",
+      "priority": 20,
+      "ruleName": "quality/golangci-lint"
+    }
+  }
+}

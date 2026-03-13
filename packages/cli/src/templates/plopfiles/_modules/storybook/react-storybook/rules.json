@@ -1,0 +1,18 @@
+{
+  "name": "storybook/react-storybook",
+  "priority": 25,
+  "conditions": {
+    "all": [
+      { "fact": "tags", "operator": "hasTag", "value": "storybook" }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "storybook",
+      "module": "react-storybook",
+      "priority": 25,
+      "ruleName": "storybook/react-storybook"
+    }
+  }
+}

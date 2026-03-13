@@ -1,0 +1,20 @@
+{
+  "name": "backends/python-fastapi",
+  "priority": 100,
+  "conditions": {
+    "all": [
+      { "fact": "language", "operator": "equal", "value": "python" },
+      { "fact": "framework", "operator": "contains", "value": "fastapi" },
+      { "fact": "subtype", "operator": "in", "value": ["service", "worker"] }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "backends",
+      "module": "python-fastapi",
+      "priority": 100,
+      "ruleName": "backends/python-fastapi"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "backends/go-chi",
+  "priority": 100,
+  "conditions": {
+    "all": [
+      { "fact": "language", "operator": "equal", "value": "go" },
+      { "fact": "framework", "operator": "contains", "value": "chi" },
+      { "fact": "subtype", "operator": "in", "value": ["service", "worker"] }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "backends",
+      "module": "go-chi",
+      "priority": 100,
+      "ruleName": "backends/go-chi"
+    }
+  }
+}

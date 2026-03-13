@@ -1,0 +1,18 @@
+{
+  "name": "mobile/react-native",
+  "priority": 90,
+  "conditions": {
+    "all": [
+      { "fact": "tags", "operator": "hasTag", "value": "react-native" }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "mobile",
+      "module": "react-native",
+      "priority": 90,
+      "ruleName": "mobile/react-native"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "backends/rust-axum",
+  "priority": 100,
+  "conditions": {
+    "all": [
+      { "fact": "language", "operator": "equal", "value": "rust" },
+      { "fact": "framework", "operator": "contains", "value": "axum" },
+      { "fact": "subtype", "operator": "in", "value": ["service", "worker"] }
+    ]
+  },
+  "event": {
+    "type": "module-match",
+    "params": {
+      "category": "backends",
+      "module": "rust-axum",
+      "priority": 100,
+      "ruleName": "backends/rust-axum"
+    }
+  }
+}
