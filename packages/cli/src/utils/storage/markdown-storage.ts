@@ -150,13 +150,22 @@ export class MarkdownStorage {
     updates: Partial<Omit<EntityNode, "entityId">>,
   ): Promise<EntityNode | null> {
     const graph = await this.getGraph();
-    const existing = graph.nodes.get(entityId);
+    let existing = graph.nodes.get(entityId);
 
     if (!existing) {
       return null;
     }
 
-    // Merge updates
+    // Handle name changes (requires file rename)
+    if (updates.name && updates.name !== existing.name) {
+      const renamed = await this.rename(entityId, updates.name);
+      if (!renamed) {
+        return null;
+      }
+      existing = renamed;
+    }
+
+    // Merge updates after any rename so the final file path is correct.
     const updated: EntityNode = {
       ...existing,
       ...updates,
@@ -166,11 +175,6 @@ export class MarkdownStorage {
         updatedAt: new Date().toISOString(),
       },
     };
-
-    // Handle name changes (requires file rename)
-    if (updates.name && updates.name !== existing.name) {
-      await this.rename(entityId, updates.name);
-    }
 
     // Write updated content
     const content = this.buildMarkdownContent(updated.name, updated.frontmatter, updated.body);

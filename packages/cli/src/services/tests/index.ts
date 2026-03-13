@@ -142,7 +142,7 @@ export async function scaffoldCommand(options: TestsOptions, _config: CLIConfig)
   try {
     const language = options.language || "typescript";
     const framework = options.framework || getDefaultFramework(language);
-    const outputDir = options.output || "@/services/tests/tests";
+    const outputDir = options.output || "tests";
 
     console.log(
       chalk.blue(

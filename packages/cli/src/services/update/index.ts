@@ -10,7 +10,12 @@ import * as path from "node:path";
 import { getCueManipulator } from "@/constraints/cli-integration.js";
 import { safeFileOperation } from "@/constraints/index.js";
 import { formatCUE, validateCUE } from "@/cue/index.js";
+import { isMarkdownStorage } from "@/services/add/markdown-handlers.js";
 import type { CLIConfig } from "@/types.js";
+import { Storage, type TaskPriority, type TaskStatus } from "@/utils/storage/index.js";
+import { MarkdownStorage } from "@/utils/storage/markdown-storage.js";
+import { slugify } from "@/utils/storage/slug.js";
+import type { EntityNode, EntityType } from "@/utils/storage/types.js";
 import chalk from "chalk";
 import { diffLines } from "diff";
 import fs from "fs-extra";
@@ -51,6 +56,11 @@ interface AssemblyContext {
   content: string;
 }
 
+const MARKDOWN_ENTITY_TYPES: Partial<Record<UpdateableEntityType, EntityType>> = {
+  resource: "resource",
+  group: "group",
+};
+
 /**
  * Load the assembly file from the .arbiter directory.
  */
@@ -80,7 +90,11 @@ function buildUpdateObject(
 
   // Common fields
   if (options.description !== undefined) updates.description = options.description;
-  if (options.parent !== undefined) updates.parent = options.parent;
+  const parent =
+    options.parent ??
+    ((options as UpdateOptions & { memberOf?: string }).memberOf as string | undefined) ??
+    (options.metadata?.["member-of"] as string | undefined);
+  if (parent !== undefined) updates.parent = parent;
 
   // Package-specific fields
   if (entityType === "package") {
@@ -131,6 +145,121 @@ function buildUpdateObject(
   return updates;
 }
 
+function isMarkdownEntityType(
+  entityType: UpdateableEntityType,
+): entityType is "resource" | "group" {
+  return entityType === "resource" || entityType === "group";
+}
+
+function matchesEntitySlug(entity: EntityNode, slug: string): boolean {
+  const fileName = path.basename(entity.filePath, path.extname(entity.filePath));
+  const directoryName =
+    fileName === "README" ? path.basename(path.dirname(entity.filePath)) : fileName;
+
+  return entity.entityId === slug || directoryName === slug || slugify(entity.name) === slug;
+}
+
+function mergeMarkdownBody(existingBody: string, name: string, description?: string): string {
+  if (description === undefined) {
+    return existingBody;
+  }
+
+  const trimmed = existingBody.trim();
+  const sections = trimmed.split(/\n## /);
+  const heading = `# ${name}`;
+  const remainingSections = sections
+    .slice(1)
+    .map((section, index) => `${index === 0 ? "## " : "\n## "}${section}`)
+    .join("");
+
+  const descriptionBlock = description.trim().length > 0 ? `${description.trim()}\n` : "";
+  return `${heading}\n\n${descriptionBlock}${remainingSections}`.trimEnd() + "\n";
+}
+
+async function updateMarkdownTask(
+  slug: string,
+  options: UpdateOptions,
+  projectDir: string,
+): Promise<number> {
+  const storage = new Storage({
+    baseDir: path.join(projectDir, ".arbiter"),
+    notesDir: path.join(projectDir, ".arbiter", "notes"),
+    tasksDir: path.join(projectDir, ".arbiter", "tasks"),
+  });
+  await storage.initialize();
+
+  const issue = await storage.getIssue(slug);
+  if (!issue) {
+    console.error(chalk.red(`❌ Task "${slug}" not found`));
+    return 1;
+  }
+
+  const updated = await storage.saveIssue({
+    ...issue,
+    title: options.title ?? issue.title,
+    description: options.description ?? issue.description,
+    status: (options.status as TaskStatus | undefined) ?? issue.status,
+    priority: (options.priority as TaskPriority | undefined) ?? issue.priority,
+    assignees:
+      options.assignees !== undefined
+        ? options.assignees
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean)
+        : issue.assignees,
+    labels:
+      options.labels !== undefined
+        ? options.labels
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean)
+        : issue.labels,
+    due: options.due ?? issue.due,
+    milestone: options.milestone ?? issue.milestone,
+    parent: (options.parent as string | undefined) ?? (issue.parent as string | undefined),
+  });
+
+  console.log(chalk.green(`✅ Updated task: ${updated.id}`));
+  console.log(chalk.dim(`   Title: ${updated.title}`));
+  console.log(chalk.dim(`   Status: ${updated.status}`));
+  return 0;
+}
+
+async function updateMarkdownEntity(
+  entityType: "resource" | "group",
+  slug: string,
+  options: UpdateOptions,
+  projectDir: string,
+): Promise<number> {
+  const storage = new MarkdownStorage(path.join(projectDir, ".arbiter"));
+  const entities = await storage.list([MARKDOWN_ENTITY_TYPES[entityType]!]);
+  const entity = entities.find((candidate) => matchesEntitySlug(candidate, slug));
+
+  if (!entity) {
+    console.error(chalk.red(`❌ ${entityType} "${slug}" not found`));
+    return 1;
+  }
+
+  const updates = buildUpdateObject(entityType, options);
+  const { description, name: _ignoredName, title: _ignoredTitle, ...frontmatterUpdates } = updates;
+  const nextName =
+    entityType === "group" && typeof options.name === "string" ? options.name : entity.name;
+  const updated = await storage.update(entity.entityId, {
+    name: nextName,
+    body: mergeMarkdownBody(entity.body, nextName, description as string | undefined),
+    frontmatter: frontmatterUpdates,
+  });
+
+  if (!updated) {
+    console.error(chalk.red(`❌ ${entityType} "${slug}" could not be updated`));
+    return 1;
+  }
+
+  console.log(chalk.green(`✅ Updated ${entityType}: ${updated.name}`));
+  console.log(chalk.dim(`   Path: .arbiter/${updated.filePath}`));
+  return 0;
+}
+
 /**
  * Get the CUE section path for an entity type.
  */
@@ -173,6 +302,24 @@ export async function runUpdateCommand(
   options: UpdateOptions,
   config: CLIConfig,
 ): Promise<number> {
+  const projectDir = config.projectDir ?? process.cwd();
+  const useMarkdown = await isMarkdownStorage(projectDir);
+
+  if (useMarkdown) {
+    if (entityType === "issue") {
+      return updateMarkdownTask(slug, options, projectDir);
+    }
+
+    if (isMarkdownEntityType(entityType)) {
+      return updateMarkdownEntity(entityType, slug, options, projectDir);
+    }
+
+    console.error(
+      chalk.red(`❌ ${entityType} updates are not supported in markdown-first projects.`),
+    );
+    return 1;
+  }
+
   const manipulator = getCueManipulator();
 
   try {

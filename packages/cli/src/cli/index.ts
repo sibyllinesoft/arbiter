@@ -8,6 +8,8 @@
  * It serves as the main entry point for the Arbiter command-line tool.
  */
 
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createAddCommands } from "@/cli/commands/add.js";
 import { createAuthCommand } from "@/cli/commands/auth.js";
 import { createDesignCommand } from "@/cli/commands/design.js";
@@ -16,11 +18,34 @@ import { createIntegrationCommands } from "@/cli/commands/integration.js";
 import { createPlanCommand } from "@/cli/commands/plan.js";
 import { createProjectCommands } from "@/cli/commands/project.js";
 import { createRemoveCommands } from "@/cli/commands/remove.js";
+import { createToolingCommands } from "@/cli/commands/tooling.js";
 import { createUpdateCommands } from "@/cli/commands/update.js";
 import { createViewCommand } from "@/cli/commands/view.js";
 import { hydrateCliContext } from "@/cli/context.js";
 import chalk from "chalk";
 import { Command } from "commander";
+import fs from "fs-extra";
+
+function resolveCliVersion(): string {
+  const startDir = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    path.join(startDir, "..", "..", "package.json"),
+    path.join(startDir, "..", "package.json"),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      const pkg = fs.readJsonSync(candidate) as { version?: string };
+      if (typeof pkg.version === "string" && pkg.version.length > 0) {
+        return pkg.version;
+      }
+    } catch {
+      // Try the next candidate.
+    }
+  }
+
+  return "0.1.0";
+}
 
 // Create the main program
 const program = new Command();
@@ -31,7 +56,7 @@ program
   .description(
     "Spec-driven development CLI. Track work with tasks, persist context with notes, define architecture with specs.",
   )
-  .version("1.0.0")
+  .version(resolveCliVersion())
   .addHelpCommand(false)
   .option("-c, --config <path>", "path to configuration file")
   .option("--api-url <url>", "Arbiter API server URL (overrides config)")
@@ -56,6 +81,7 @@ program.addCommand(createUpdateCommands());
 createRemoveCommands(program);
 createGenerationCommands(program);
 createIntegrationCommands(program);
+createToolingCommands(program);
 createAuthCommand(program);
 createPlanCommand(program);
 createDesignCommand(program);

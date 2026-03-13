@@ -48,18 +48,20 @@ export function createVersionCommands(program: Command): void {
   versionCmd
     .command("plan")
     .description("analyze changes and plan version increment")
-    .option("-f, --format <format>", "output format (table, json)", "table")
-    .option("--breaking", "force major version increment")
-    .option("--feature", "force minor version increment")
-    .option("--patch", "force patch version increment")
+    .option("--current <file>", "current surface file path", "surface.json")
+    .option("--previous <file>", "previous surface file path", "surface.prev.json")
+    .option("-o, --output <file>", "write the plan to a file", "version-plan.json")
+    .option("--strict", "enable strict library compliance checks")
+    .option("-v, --verbose", "include verbose analysis output")
     .action(createActionHandler<VersionPlanOptions>(versionPlanCommand));
 
   versionCmd
     .command("release")
     .description("execute planned version release")
+    .option("--plan <file>", "version plan file to execute", "version-plan.json")
     .option("--version <version>", "specific version to set (overrides plan)")
-    .option("--tag", "create git tag for release")
-    .option("--dry-run", "preview changes without applying them (default)", true)
-    .option("--apply", "apply changes (overrides dry-run)")
+    .option("--notes <file>", "release notes output path", "RELEASE_NOTES.md")
+    .option("--tests", "run release validation tests")
+    .option("--dry-run", "preview changes without applying them")
     .action(createActionHandler<VersionReleaseOptions>(versionReleaseCommand));
 }
