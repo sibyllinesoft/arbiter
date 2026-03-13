@@ -20,6 +20,8 @@ export interface ViewOptions {
   port?: number;
   /** Don't open browser automatically */
   noBrowser?: boolean;
+  /** Open the vault directly in Obsidian */
+  obsidian?: boolean;
 }
 
 /**
@@ -64,6 +66,18 @@ async function openUrl(url: string): Promise<void> {
       reject(new Error(`Failed to open URL: ${err.message}`));
     });
   });
+}
+
+async function openObsidianVault(arbiterPath: string): Promise<void> {
+  const url = `obsidian://open?path=${encodeURIComponent(arbiterPath)}`;
+  try {
+    await openUrl(url);
+  } catch (error) {
+    console.warn(
+      chalk.yellow("Unable to open Obsidian automatically:"),
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 }
 
 /**
@@ -1086,8 +1100,22 @@ async function serveWithDocsify(
  */
 export async function viewCommand(options: ViewOptions, config: CLIConfig): Promise<number> {
   const arbiterPath = path.join(config.projectDir ?? process.cwd(), ".arbiter");
+  if (
+    !(await fs.promises
+      .access(arbiterPath)
+      .then(() => true)
+      .catch(() => false))
+  ) {
+    console.error(chalk.red(`No .arbiter directory found at ${arbiterPath}`));
+    return 1;
+  }
+
+  if (options.obsidian) {
+    await openObsidianVault(arbiterPath);
+    return 0;
+  }
+
   const port = options.port ?? 4000;
   const openBrowser = !options.noBrowser;
-
   return serveWithDocsify(arbiterPath, port, openBrowser);
 }

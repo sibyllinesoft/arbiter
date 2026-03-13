@@ -60,15 +60,22 @@ describe("docs commands", () => {
     expect(parsed.generatedAt).toBeDefined();
   });
 
-  it("produces schema docs and examples when assembly exists", async () => {
+  it("produces schema docs and examples when a markdown-first vault exists", async () => {
     const dir = await tmp();
-    const prev = process.cwd();
-    process.chdir(dir);
 
     try {
       const config = baseConfig(dir);
-      const assembly = `// Project name\nname: string\n// Service description\nservice: string default: "api"\nimport "github.com/arbiter/core"`;
-      await fs.writeFile(path.join(dir, "arbiter.assembly.cue"), assembly, "utf-8");
+      await fs.mkdir(path.join(dir, ".arbiter", "api"), { recursive: true });
+      await fs.writeFile(
+        path.join(dir, ".arbiter", "README.md"),
+        "---\ntype: project\nentityId: project-1\ncreatedAt: 2026-01-01T00:00:00Z\nupdatedAt: 2026-01-01T00:00:00Z\n---\n\n# Demo\n",
+        "utf-8",
+      );
+      await fs.writeFile(
+        path.join(dir, ".arbiter", "api", "README.md"),
+        "---\ntype: service\nentityId: service-1\ncreatedAt: 2026-01-01T00:00:00Z\nupdatedAt: 2026-01-01T00:00:00Z\nlanguage: typescript\nport: 3000\n---\n\n# API\n",
+        "utf-8",
+      );
 
       const code = await docsCommand(
         "schema",
@@ -82,7 +89,8 @@ describe("docs commands", () => {
 
       expect(code).toBe(0);
       const output = await fs.readFile(path.join(dir, "out", "schema.md"), "utf-8");
-      expect(output).toContain("Arbiter Assembly");
+      expect(output).toContain("Demo Arbiter Vault");
+      expect(output).toContain("markdown-first");
       expect(output).toContain("service");
 
       const libraryExample = await fs.readFile(
@@ -91,7 +99,6 @@ describe("docs commands", () => {
       );
       expect(libraryExample).toContain('kind: "library"');
     } finally {
-      process.chdir(prev);
       await fs.rm(dir, { recursive: true, force: true });
     }
   });

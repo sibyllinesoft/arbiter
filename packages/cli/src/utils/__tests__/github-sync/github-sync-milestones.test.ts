@@ -68,6 +68,7 @@ describe("GitHubSyncClient milestones", () => {
 
     const stub = makeStubOctokit();
     const client = new GitHubSyncClient({
+      projectDir: tmpDir,
       repository: { owner: "me", repo: "demo" },
       templates: {},
       automation: { createMilestones: true, autoClose: false },
@@ -119,6 +120,7 @@ describe("GitHubSyncClient milestones", () => {
 
     const stub = makeStubOctokit();
     const client = new GitHubSyncClient({
+      projectDir: tmpDir,
       repository: { owner: "me", repo: "demo" },
       templates: {},
       automation: { createMilestones: true, autoClose: true },

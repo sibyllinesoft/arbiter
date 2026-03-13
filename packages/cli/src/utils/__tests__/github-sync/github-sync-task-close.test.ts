@@ -55,6 +55,7 @@ describe("GitHubSyncClient task autoClose", () => {
 
     const stub = makeStubOctokit();
     const client = new GitHubSyncClient({
+      projectDir: tmpDir,
       repository: { owner: "me", repo: "demo" },
       templates: {},
       automation: { autoClose: true },

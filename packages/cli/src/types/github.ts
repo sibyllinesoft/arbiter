@@ -27,6 +27,8 @@ export interface GitHubRepo {
  * @public
  */
 export interface GitHubSyncConfig {
+  /** Project root used for resolving Arbiter metadata and templates */
+  projectDir?: string;
   /** GitHub repository configuration */
   repository?: GitHubRepo;
   /** Issue title prefixes */

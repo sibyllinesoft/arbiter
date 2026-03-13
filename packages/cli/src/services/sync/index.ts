@@ -993,6 +993,7 @@ async function syncGitHubIssues(context: SyncContext, report: SyncReport): Promi
 
   // Create GitHub sync config
   const githubConfig: GitHubSyncConfig = {
+    projectDir: context.projectPath,
     repository: {
       owner,
       repo,

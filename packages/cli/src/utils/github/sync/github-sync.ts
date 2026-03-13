@@ -43,11 +43,16 @@ export class GitHubSyncClient {
   private syncStatePath: string;
   private syncState: SyncState;
   private stateDirty = false;
+  private projectDir: string;
 
   constructor(config: GitHubSyncConfig) {
     this.config = config;
-    this.templateManager = new UnifiedGitHubTemplateManager(config.templates || {}, process.cwd());
-    this.syncStatePath = path.resolve(process.cwd(), ".arbiter", "sync-state.json");
+    this.projectDir = path.resolve(config.projectDir || process.cwd());
+    this.templateManager = new UnifiedGitHubTemplateManager(
+      config.templates || {},
+      this.projectDir,
+    );
+    this.syncStatePath = path.join(this.projectDir, ".arbiter", "sync-state.json");
     this.syncState = this.initializeSyncState();
     this.loadSyncState();
 

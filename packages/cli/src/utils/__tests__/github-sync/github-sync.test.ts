@@ -30,6 +30,7 @@ describe("GitHubSyncClient", () => {
     savedEnv[tokenEnv] = undefined; // Mark for cleanup
 
     const client = new GitHubSyncClient({
+      projectDir: process.cwd(),
       repository: { owner: "me", repo: "demo", tokenEnv },
       templates: {},
     } as any);
@@ -44,6 +45,7 @@ describe("GitHubSyncClient", () => {
 
     expect(() => {
       new GitHubSyncClient({
+        projectDir: process.cwd(),
         repository: { owner: "me", repo: "demo", tokenEnv: customVar },
         templates: {},
       } as any);

@@ -28,6 +28,7 @@ export function createViewCommand(program: Command): void {
     .description("view .arbiter vault in browser")
     .option("-p, --port <port>", "port for docsify server", "4000")
     .option("--no-browser", "don't open browser automatically")
+    .option("--obsidian", "open the vault directly in Obsidian")
     .action(async (options, command) => {
       try {
         const config = requireCommandConfig(command);
@@ -35,6 +36,7 @@ export function createViewCommand(program: Command): void {
         const viewOptions: ViewOptions = {
           port: parseInt(options.port, 10),
           noBrowser: options.browser === false,
+          obsidian: options.obsidian === true,
         };
 
         const exitCode = await viewCommand(viewOptions, config);

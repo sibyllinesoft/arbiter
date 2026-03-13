@@ -110,7 +110,7 @@ export function generateMarkdownDocs(schemaInfo: SchemaDoc): string {
   md += `${schemaInfo.description}\n\n`;
 
   // Auto-generated notice
-  md += "> This documentation is auto-generated from CUE definitions.\n";
+  md += "> This documentation is auto-generated from Arbiter project metadata.\n";
   md += `> Last updated: ${new Date().toISOString()}\n\n`;
 
   // Table of Contents
@@ -123,7 +123,7 @@ export function generateMarkdownDocs(schemaInfo: SchemaDoc): string {
 
   // Schema Overview
   md += "## Schema Overview\n\n";
-  md += "This schema defines the structure for Arbiter project configurations.\n\n";
+  md += "This document summarizes the current Arbiter project structure.\n\n";
 
   // Fields
   md += "## Fields\n\n";

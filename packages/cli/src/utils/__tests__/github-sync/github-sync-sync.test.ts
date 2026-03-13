@@ -73,6 +73,7 @@ describe("GitHubSyncClient sync flows", () => {
 
     const stub = makeStubOctokit();
     const client = new GitHubSyncClient({
+      projectDir: tmpDir,
       repository: { owner: "me", repo: "demo" },
       templates: {},
       automation: { syncAssignees: true, createMilestones: false, autoClose: true },

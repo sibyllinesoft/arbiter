@@ -117,6 +117,7 @@ async function resolveRepositoryConfig(
   }
 
   const githubConfig = {
+    projectDir: config.projectDir,
     repository: finalRepo,
     prefixes: config.github?.prefixes || { group: "[Group]", task: "[Task]" },
     labels: config.github?.labels || { default: ["arbiter-generated"] },

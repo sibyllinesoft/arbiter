@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
  * @packageDocumentation
- * Docs command - Generate documentation from CUE specifications.
+ * Docs command - Generate documentation from Arbiter project artifacts.
  *
  * Provides functionality to:
  * - Generate Markdown, HTML, or JSON documentation
- * - Extract schema and field documentation
+ * - Summarize markdown-first Arbiter vaults and API surfaces
  * - Support custom templates for output
  * - Include usage examples in generated docs
  */
@@ -14,6 +14,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { safeFileOperation } from "@/constraints/index.js";
 import type { CLIConfig } from "@/types.js";
+import { MarkdownStorage } from "@/utils/storage/markdown-storage.js";
 import chalk from "chalk";
 import {
   CLI_EXAMPLE_TEMPLATE,
@@ -38,7 +39,7 @@ export interface DocsOptions {
 }
 
 /**
- * Schema documentation generator from CUE definitions
+ * Schema documentation generator from the markdown-first vault
  */
 export async function docsCommand(
   subcommand: "schema" | "api" | "help",
@@ -101,18 +102,77 @@ export async function docsGenerateCommand(options: any, _config: CLIConfig): Pro
 }
 
 /**
- * Check for assembly file existence
+ * Check for markdown vault existence
  */
-async function checkAssemblyFile(assemblyPath: string): Promise<boolean> {
+async function checkVaultDirectory(arbiterPath: string): Promise<boolean> {
   try {
-    await fs.access(assemblyPath);
-    console.log(chalk.green("✅ Found arbiter.assembly.cue"));
+    await fs.access(arbiterPath);
+    console.log(chalk.green("✅ Found .arbiter vault"));
     return true;
   } catch {
-    console.log(chalk.red("❌ No arbiter.assembly.cue found in current directory"));
+    console.log(chalk.red("❌ No .arbiter directory found in current project"));
     console.log(chalk.dim("Run: arbiter init --preset <id> to create one"));
     return false;
   }
+}
+
+async function buildVaultSchemaDoc(arbiterPath: string): Promise<SchemaDoc> {
+  const storage = new MarkdownStorage(arbiterPath);
+  const graph = await storage.getGraph();
+  const nodes = Array.from(graph.nodes.values());
+  const counts = new Map<string, number>();
+
+  for (const node of nodes) {
+    counts.set(node.type, (counts.get(node.type) ?? 0) + 1);
+  }
+
+  const projectName =
+    nodes.find((node) => node.type === "project")?.name ?? path.basename(path.dirname(arbiterPath));
+
+  return {
+    name: `${projectName} Arbiter Vault`,
+    description:
+      "Auto-generated documentation for the markdown-first Arbiter specification stored in .arbiter/.",
+    fields: [
+      {
+        name: "storage",
+        type: "string",
+        description: "Backing storage format for the project specification",
+        required: true,
+        default: "markdown-first",
+        constraints: [],
+      },
+      {
+        name: "entities",
+        type: "number",
+        description: "Total number of entities stored in the vault",
+        required: true,
+        default: String(nodes.length),
+        constraints: [],
+      },
+      {
+        name: "relationships",
+        type: "number",
+        description: "Total number of resolved relationships between entities",
+        required: true,
+        default: String(graph.edges.length),
+        constraints: [],
+      },
+      ...Array.from(counts.entries())
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([type, count]) => ({
+          name: type,
+          type: "entity[]",
+          description: `Entities of type "${type}" present in the vault`,
+          required: false,
+          default: String(count),
+          constraints: [],
+        })),
+    ],
+    examples: nodes.slice(0, 5).map((node) => `.arbiter/${node.filePath}`),
+    constraints: [],
+    imports: [".arbiter/**"],
+  };
 }
 
 /**
@@ -154,21 +214,20 @@ function showDocGenerationNextSteps(outputPath: string): void {
 }
 
 /**
- * Generate schema documentation from arbiter.assembly.cue
+ * Generate schema documentation from the markdown-first .arbiter vault
  */
 async function generateSchemaDocumentation(
   options: DocsOptions,
-  _config: CLIConfig,
+  config: CLIConfig,
 ): Promise<number> {
-  console.log(chalk.blue("📚 Generating schema documentation from CUE definitions..."));
+  console.log(chalk.blue("📚 Generating schema documentation from the Arbiter vault..."));
 
-  const assemblyPath = path.resolve("arbiter.assembly.cue");
-  if (!(await checkAssemblyFile(assemblyPath))) {
+  const arbiterPath = path.join(config.projectDir ?? process.cwd(), ".arbiter");
+  if (!(await checkVaultDirectory(arbiterPath))) {
     return 1;
   }
 
-  const assemblyContent = await fs.readFile(assemblyPath, "utf-8");
-  const schemaInfo = await parseCueSchema(assemblyContent);
+  const schemaInfo = await buildVaultSchemaDoc(arbiterPath);
 
   const format = options.format || "markdown";
   const outputPath = resolveDocOutputPath(options);
@@ -591,7 +650,7 @@ function showDocsHelp(): void {
 ${chalk.bold("arbiter docs")} - Documentation generation
 
 ${chalk.bold("USAGE:")}
-  arbiter docs schema [options]     Generate schema documentation from CUE
+  arbiter docs schema [options]     Generate documentation from the .arbiter vault
   arbiter docs api [options]        Generate API documentation from surface
   arbiter docs help                 Show this help
 
@@ -602,9 +661,9 @@ ${chalk.bold("OPTIONS:")}
   --interactive       Interactive documentation setup
 
 ${chalk.bold("EXAMPLES:")}
-  arbiter docs schema                           # Generate Markdown schema docs
+  arbiter docs schema                           # Generate Markdown vault docs
   arbiter docs schema --format html            # Generate HTML documentation
-  arbiter docs schema --examples --format json # Generate JSON schema + examples
+  arbiter docs schema --examples --format json # Generate JSON vault summary + examples
   arbiter docs api --format html               # Generate API docs from surface.json
 `);
 }

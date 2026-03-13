@@ -28,7 +28,10 @@ afterAll(() => {
 
 describe("GitHub sync state persistence", () => {
   it("uses local sync-state mapping even if titles/comments change", () => {
-    const client = new GitHubSyncClient({ repository: { owner: "me", repo: "demo" } });
+    const client = new GitHubSyncClient({
+      projectDir: tempDir,
+      repository: { owner: "me", repo: "demo" },
+    });
 
     // Seed cache only by GitHub number to simulate title/body changes
     const alteredIssue: GitHubIssue = {

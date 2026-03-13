@@ -10,6 +10,7 @@ let originalToken: string | undefined;
 function createClient(overrides: any = {}): GitHubSyncClient {
   process.env[tokenEnv] = "token";
   const client = new GitHubSyncClient({
+    projectDir: overrides.projectDir || process.cwd(),
     repository: { owner: "me", repo: "demo", tokenEnv },
     templates: {},
     ...overrides,
@@ -87,12 +88,13 @@ describe("GitHubSyncClient preview", () => {
   });
 
   it("persists sync state when mappings change", async () => {
-    const dir = path.join(process.cwd(), ".arbiter");
+    const projectDir = path.join(process.cwd(), "tmp-github-sync-preview");
+    const dir = path.join(projectDir, ".arbiter");
     await mkdir(dir, { recursive: true });
     const statePath = path.join(dir, "sync-state.json");
     await rm(statePath, { force: true });
 
-    const client = createClient();
+    const client = createClient({ projectDir });
     (client as any).templateManager = {
       generateGroupTemplate: async (group: any) => ({
         title: `Group: ${group.id}`,
@@ -115,5 +117,6 @@ describe("GitHubSyncClient preview", () => {
       await (await import("node:fs/promises")).readFile(statePath, "utf-8"),
     );
     expect(persisted.issues["group-save"]).toBe(42);
+    await rm(projectDir, { recursive: true, force: true });
   });
 });
