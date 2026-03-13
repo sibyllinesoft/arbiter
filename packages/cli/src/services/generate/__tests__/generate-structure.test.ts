@@ -22,7 +22,7 @@ describe("generate structure helpers", () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "arbiter-struct-"));
     await __generateTesting.ensureBaseStructure(baseStructure as any, tmp, options);
 
-    const expectedDirs = ["clients", "services", "packages", "tools", "docs", "tests", "infra"];
+    const expectedDirs = ["clients", "services", "packages", "tools", "infra"];
     for (const dir of expectedDirs) {
       expect(await fs.pathExists(path.join(tmp, dir))).toBe(true);
     }

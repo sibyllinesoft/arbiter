@@ -22,7 +22,7 @@ const routeDefinitions: RouteBinding[] = [];
 const SERVICE_NAME = "{{name}}";
 
 export function registerRoutes(app: Hono): void {
-  app.get("/healthz", (c: Context) => {
+  app.get("/health", (c: Context) => {
     return c.json({
       status: "ok",
       service: SERVICE_NAME,
@@ -33,12 +33,20 @@ export function registerRoutes(app: Hono): void {
   for (const definition of routeDefinitions) {
     const method = definition.method.toLowerCase() as "get" | "post" | "put" | "patch" | "delete";
     app[method](definition.url, (c: Context) => {
-      return c.json({
-        route: definition.url,
-        status: "stubbed",
-        summary: definition.summary,
-        example: definition.reply,
-      }, definition.statusCode ?? 200);
+      return new Response(
+        JSON.stringify({
+          route: definition.url,
+          status: "stubbed",
+          summary: definition.summary,
+          example: definition.reply,
+        }),
+        {
+          status: definition.statusCode ?? 200,
+          headers: {
+            "content-type": "application/json",
+          },
+        },
+      );
     });
   }
 

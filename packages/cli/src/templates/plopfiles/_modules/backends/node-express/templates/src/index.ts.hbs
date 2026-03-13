@@ -13,7 +13,7 @@ app.use(express.json());
 
 registerRoutes(app);
 
-const defaultPort = {{port}};
+const defaultPort = {{#if port}}{{port}}{{else}}3000{{/if}};
 const port = Number(process.env.PORT || defaultPort);
 
 app.listen(port, () => {

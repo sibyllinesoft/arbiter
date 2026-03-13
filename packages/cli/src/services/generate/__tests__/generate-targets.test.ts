@@ -27,7 +27,7 @@ describe("create targets and paths", () => {
       "/tmp/root",
     );
     expect(client.relativeRoot).toBe("apps/web");
-    expect(client.context.testsDir).toContain("/tmp/root/tests/web");
+    expect(client.context.testsDir).toContain("/tmp/root/apps/web/tests");
 
     const svc = __generateTesting.createServiceTarget(
       "Billing",
@@ -37,6 +37,7 @@ describe("create targets and paths", () => {
     );
     expect(svc.relativeRoot).toBe("services/billing");
     expect(svc.language).toBe("go");
+    expect(svc.context.testsDir).toContain("/tmp/root/services/billing/tests");
   });
 
   it("computes relative paths with toRelativePath", () => {

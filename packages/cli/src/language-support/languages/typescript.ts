@@ -377,7 +377,11 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
   private static resolveDefaultTemplateDirectories(): string[] {
     const moduleDir = path.dirname(fileURLToPath(import.meta.url));
-    return [path.resolve(moduleDir, "../templates/typescript")];
+    return [
+      path.resolve(moduleDir, "../../templates/typescript"),
+      path.resolve(moduleDir, "./templates/typescript"),
+      path.resolve(moduleDir, "../templates/typescript"),
+    ];
   }
 
   private buildPropsInterface(config: ComponentConfig, hasProps: boolean): string {

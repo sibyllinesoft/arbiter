@@ -21,7 +21,7 @@ const routeDefinitions: RouteBinding[] = [];
 const SERVICE_NAME = "{{name}}";
 
 export function registerRoutes(app: Express): void {
-  app.get("/healthz", (_req: Request, res: Response) => {
+  app.get("/health", (_req: Request, res: Response) => {
     res.json({
       status: "ok",
       service: SERVICE_NAME,
