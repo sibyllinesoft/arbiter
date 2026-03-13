@@ -8,7 +8,6 @@
   },
   "files": [
     "dist",
-    "templates",
     "README.md"
   ],
   "keywords": [
